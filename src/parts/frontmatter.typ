@@ -5,6 +5,8 @@
 // affiliation, grouped by shared affiliation), then abstract / CCS / keywords /
 // ACM reference format. See the acmsmall-frontmatter-specs memory for sources.
 
+#import "copyright.typ": permission-text, copyright-owner
+
 #let fnsymbols = ("*", "†", "‡", "§", "¶", "‖", "**", "††", "‡‡")
 
 #let month-names = (
@@ -156,32 +158,6 @@
   if affbits.len() > 0 { people + ", " + affbits.join(", ") } else { people }
 }
 
-// Copyright permission text by mode (currently the common acmlicensed wording,
-// extracted from acmart output). Other modes fall back to this.
-#let permission-text(copyright) = [
-  Permission to make digital or hard copies of all or part of this work for
-  personal or classroom use is granted without fee provided that copies are not
-  made or distributed for profit or commercial advantage and that copies bear
-  this notice and the full citation on the first page. Copyrights for components
-  of this work owned by others than the author(s) must be honored. Abstracting
-  with credit is permitted. To copy otherwise, or republish, to post on servers
-  or to redistribute to lists, requires prior specific permission and\/or a fee.
-  Request permissions from permissions\@acm.org.
-]
-
-#let copyright-line(copyright, year) = {
-  let y = if year != none { str(year) } else { "" }
-  if copyright == "acmlicensed" {
-    [© #y Copyright held by the owner/author(s). Publication rights licensed to ACM.]
-  } else if copyright == "rightsretained" {
-    [© #y Copyright held by the owner/author(s).]
-  } else if copyright == "acmcopyright" {
-    [© #y Association for Computing Machinery.]
-  } else {
-    [© #y Copyright held by the owner/author(s).]
-  }
-}
-
 // The page-1 footnote stack: author notes, authors' contact information, and the
 // copyright/permission block, each with a rule above. Placed at the bottom of
 // the first page's text area.
@@ -201,34 +177,49 @@
     set text(font: cfg.fonts.serif, size: fs)
     set par(justify: true, leading: lead, first-line-indent: 0pt, spacing: lead)
 
+    let anon = meta.at("anonymous", default: false)
+
     // 1. Author notes (regular footnotes, symbol marks)
-    if ni.notes.len() > 0 {
+    if not anon and ni.notes.len() > 0 {
       rule(cfg.footnote-rule-short)
       for n in ni.notes {
         block(spacing: lead)[#super(n.symbol)#n.body]
       }
     }
 
-    // 2. Authors' Contact Information
-    if meta.authors.len() > 0 and meta.authors.any(a => a.at("affiliation", default: none) != none or a.at("email", default: none) != none) {
+    // 2. Authors' Contact Information (suppressed in anonymous mode)
+    if not anon and meta.authors.len() > 0 and meta.authors.any(a => a.at("affiliation", default: none) != none or a.at("email", default: none) != none) {
       rule(100%)
       let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
       let groups = group-authors(meta.authors).map(contact-group).join("; ")
       block(spacing: lead)[#label #groups.]
     }
 
-    // 3. Copyright / permission
+    // 3. Copyright / permission (faithful to acmart's assembly)
     rule(100%)
     block(spacing: lead, {
-      permission-text(meta.copyright)
-      parbreak()
+      let mode = meta.copyright
+      let ptext = permission-text(mode, cc-type: meta.cc-type, cc-version: meta.cc-version)
+      if ptext != none { ptext; parbreak() }
       set par(justify: false)
-      copyright-line(meta.copyright, meta.copyright-year)
-      linebreak()
-      [ACM #j.issn/#str(meta.acm-year)/#str(meta.acm-month)-ART#str(meta.acm-article)]
-      if meta.doi != none {
+      // © <year> <owner>
+      let owner = copyright-owner(mode)
+      if owner != none {
+        let y = if meta.copyright-year != none { str(meta.copyright-year) } else { "" }
+        [© #y #owner]
         linebreak()
-        link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
+      } else if meta.copyright-year != none {
+        [#str(meta.copyright-year). ]
+      }
+      if meta.manuscript {
+        [Manuscript submitted to ACM]
+      } else {
+        // journal bibstrip: ACM <issn>/<year>/<month>-ART<article> then DOI
+        [ACM #j.issn/#str(meta.acm-year)/#str(meta.acm-month)-ART#str(meta.acm-article)]
+        if meta.doi != none {
+          linebreak()
+          link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
+        }
       }
     })
   }
@@ -256,6 +247,14 @@
   v(cfg.bigskip + cfg.smallskip, weak: true) // title \bigskip then \medskip (less Typst box-edge overlap)
 
   // --- Authors (grouped by affiliation) ---
+  // Anonymous review: replace the whole author strip with "Anonymous Author(s)".
+  if meta.at("anonymous", default: false) {
+    block(spacing: 0pt)[
+      #set text(font: cfg.fonts.sans, size: cfg.size.large)
+      #upper[Anonymous Author(s)]
+    ]
+    v(cfg.medskip, weak: true)
+  } else {
   let ni = collect-notes(meta.authors)
   let marked = meta.authors.enumerate().map(((i, a)) => {
     let a2 = a
@@ -295,6 +294,7 @@
   ]
 
   v(cfg.medskip, weak: true) // authors \par\medskip
+  } // end non-anonymous author block
 
   // --- Abstract (9pt, no heading label, first line not indented) ---
   if meta.abstract != none {
@@ -329,7 +329,7 @@
         #set par(justify: true, leading: cfg.bls.small - cfg.size.small,
           first-line-indent: 0pt, spacing: cfg.bls.small - cfg.size.small)
         #strong[ACM Reference Format:]\
-        #andify(meta.authors.map(a => a.name)). #str(meta.acm-year). #meta.title#{
+        #{ if meta.at("anonymous", default: false) [Anonymous Author(s)] else { andify(meta.authors.map(a => a.name)) } }. #str(meta.acm-year). #meta.title#{
           if meta.subtitle != none [: #meta.subtitle]
         }. #if j.short != none { emph(j.short) + " " }#{
           let parts = ()

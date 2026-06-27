@@ -9,7 +9,7 @@ tests/out/
 
 # Compiled test PDFs and scratch
 tests/*.pdf
-tests/_cal*
+tests/_*
 template/*.pdf
 
 # LaTeX aux files

@@ -38,9 +38,16 @@
   doi: none,
   copyright: "acmlicensed",
   copyright-year: none,
+  cc-type: "by",
+  cc-version: "4.0",
   show-ref: true,
   short-title: auto,
   short-authors: auto,
+  // document options
+  review: false,
+  screen: false,
+  anonymous: false,
+  manuscript: false,
   ..rest,
   body,
 ) = {
@@ -66,7 +73,11 @@
     doi: doi,
     copyright: copyright,
     copyright-year: copyright-year,
+    cc-type: cc-type,
+    cc-version: cc-version,
+    manuscript: manuscript,
     show-ref: show-ref,
+    anonymous: anonymous,
   )
 
   // Running footer: "<short>, Vol. V, No. N, Article A. Publication date: M Y."
@@ -87,7 +98,7 @@
   //   odd:  [LO] short title         [RO] article:page
   // in sans footnotesize (\@headfootfont).
   let st = if short-title == auto { title } else { short-title }
-  let sa = if short-authors == auto {
+  let sa = if anonymous { "Anonymous Author(s)" } else if short-authors == auto {
     let lastname(n) = n.split(" ").last()
     if authors.len() == 0 { none }
     else if authors.len() == 1 { lastname(authors.at(0).name) }
@@ -141,6 +152,19 @@
     if it.level == 1 { thm-counter.update(0) } // theorems numbered within section
     render-heading(it, cfg)
   }
+
+  // `screen`: colour hyperlinks (acmart ACMPurple for refs/cites, ACMDarkBlue
+  // for URLs). Without it, links stay black as in print acmart.
+  let acm-purple = cmyk(55%, 100%, 0%, 15%)
+  let acm-dark-blue = cmyk(100%, 58%, 0%, 21%)
+  show link: it => if screen {
+    text(fill: if type(it.dest) == str { acm-dark-blue } else { acm-purple }, it)
+  } else { it }
+
+  // `review`: number every line in the left margin (red, small), as acmart does.
+  set par.line(numbering: if review {
+    n => text(fill: red, size: cfg.size.footnotesize)[#n]
+  } else { none })
 
   cfg-state.update(cfg) // publish config for theorem environments
 
