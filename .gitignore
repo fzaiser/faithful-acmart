@@ -22,3 +22,6 @@ template/*.pdf
 *.synctex.gz
 
 .DS_Store
+*.out
+*.bcf
+*.run.xml
