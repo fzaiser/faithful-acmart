@@ -1,0 +1,4 @@
+#!/bin/sh
+# typst compile/watch wrapper that uses the project's full-featured Libertinus
+# fonts (the OTFs in fonts/) and ignores the possibly-stripped system fonts.
+exec typst "$@" --font-path "$(dirname "$0")/../fonts" --ignore-system-fonts --root "$(dirname "$0")/.."

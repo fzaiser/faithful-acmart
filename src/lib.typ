@@ -11,6 +11,10 @@
 #import "formats/acmsmall.typ": acmsmall
 #import "parts/headings.typ": render-heading
 #import "parts/frontmatter.typ": make-title, make-footnotes, lookup-journal, pub-date
+#import "parts/body.typ": apply-body
+#import "parts/theorems.typ": cfg-state, thm-counter
+#import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture
+#import "parts/theorems.typ": definition, example, remark, proof
 
 #let _formats = (
   acmsmall: acmsmall,
@@ -105,12 +109,17 @@
   )
 
   set heading(numbering: cfg.heading-numbering)
-  show heading: it => render-heading(it, cfg)
+  show heading: it => {
+    if it.level == 1 { thm-counter.update(0) } // theorems numbered within section
+    render-heading(it, cfg)
+  }
+
+  cfg-state.update(cfg) // publish config for theorem environments
 
   if meta.title != none {
     make-footnotes(cfg, meta) // place(bottom) on page 1
     make-title(cfg, meta)
   }
 
-  body
+  apply-body(cfg, body)
 }

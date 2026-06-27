@@ -1,0 +1,55 @@
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\begin{document}
+
+\section{Elements}
+Text before a figure to establish context for the caption comparison below.
+
+\begin{figure}[h]
+\centering
+\rule{4cm}{2cm}
+\caption{A sample figure caption that is long enough to wrap onto a second line so we can examine caption typography.}
+\label{fig:sample}
+\end{figure}
+
+\begin{table}[h]
+\caption{A sample table caption set above the table body as ACM requires.}
+\label{tab:sample}
+\begin{tabular}{ll}
+\toprule
+Header A & Header B \\
+\midrule
+Value 1 & Value 2 \\
+Value 3 & Value 4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{theorem}\label{thm:main}
+This is the statement of a theorem, which should be typeset with an italic body and a small-caps head.
+\end{theorem}
+
+\begin{lemma}
+A lemma shares the theorem counter and uses the same plain style.
+\end{lemma}
+
+\begin{definition}
+A definition uses an upright (roman) body and an italic head.
+\end{definition}
+
+\begin{proof}
+This is a proof, ending with a QED square. \qed
+\end{proof}
+
+\begin{itemize}
+\item First bullet item in an itemized list.
+\item Second bullet item, slightly longer so it may wrap around to a second line for spacing checks.
+\end{itemize}
+
+\begin{enumerate}
+\item First enumerated item.
+\item Second enumerated item.
+\end{enumerate}
+
+\end{document}
