@@ -17,7 +17,6 @@
     set text(font: cfg.fonts.sans, size: cfg.size.small)
     set par(leading: cfg.bls.small - cfg.size.small)
     layout(size => {
-      let rendered = box(width: size.width, it)
       let w = measure(it).width
       if w <= size.width {
         align(center, it)
