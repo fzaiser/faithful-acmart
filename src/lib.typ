@@ -119,7 +119,7 @@
     width: cfg.paper.width,
     height: cfg.paper.height,
     margin: cfg.margin,
-    header-ascent: cfg.head.sep - cfg.size.footnotesize,
+    header-ascent: cfg.head.sep + (cfg.bls.footnotesize - cfg.size.footnotesize),
     footer-descent: cfg.foot.skip - cfg.size.footnotesize,
     header: header-content,
     footer: footer-content,
