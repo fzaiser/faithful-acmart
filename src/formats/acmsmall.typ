@@ -31,6 +31,19 @@
   // typography
   font-size: 10 * tp,
   baselineskip: 12 * tp,
+  // LaTeX font-size steps (TeX pt) — size and baselineskip
+  size: (
+    footnotesize: 8 * tp, small: 9 * tp, normalsize: 10 * tp,
+    large: 10.95 * tp, Large: 12 * tp, LARGE: 14.4 * tp,
+    huge: 17.28 * tp, Huge: 20.74 * tp,
+  ),
+  bls: (
+    footnotesize: 10 * tp, small: 11 * tp, normalsize: 12 * tp,
+    large: 13 * tp, Large: 14 * tp, LARGE: 17 * tp,
+    huge: 20 * tp, Huge: 24 * tp,
+  ),
+  // standard LaTeX skips (size-independent)
+  smallskip: 3 * tp, medskip: 6 * tp, bigskip: 12 * tp,
   parindent: 10 * tp,
   parskip: 0pt,
   runin-sep: 3.5 * tp, // |afterskip| for run-in headings (subsubsection/paragraph)

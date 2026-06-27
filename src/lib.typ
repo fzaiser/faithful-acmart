@@ -10,6 +10,7 @@
 
 #import "formats/acmsmall.typ": acmsmall
 #import "parts/headings.typ": render-heading
+#import "parts/frontmatter.typ": make-title
 
 #let _formats = (
   acmsmall: acmsmall,
@@ -17,6 +18,22 @@
 
 #let acmart(
   format: "acmsmall",
+  title: none,
+  subtitle: none,
+  authors: (),
+  abstract: none,
+  ccs: none,
+  keywords: none,
+  // publication metadata
+  journal: none,
+  acm-volume: none,
+  acm-number: none,
+  acm-article: none,
+  acm-year: none,
+  acm-month: none,
+  doi: none,
+  copyright: "acmlicensed",
+  copyright-year: none,
   ..rest,
   body,
 ) = {
@@ -25,6 +42,24 @@
     message: "unknown/unimplemented acmart format: " + format,
   )
   let cfg = _formats.at(format)
+
+  let meta = (
+    title: title,
+    subtitle: subtitle,
+    authors: authors,
+    abstract: abstract,
+    ccs: ccs,
+    keywords: keywords,
+    journal: journal,
+    acm-volume: acm-volume,
+    acm-number: acm-number,
+    acm-article: acm-article,
+    acm-year: acm-year,
+    acm-month: acm-month,
+    doi: doi,
+    copyright: copyright,
+    copyright-year: copyright-year,
+  )
 
   set page(
     width: cfg.paper.width,
@@ -54,6 +89,10 @@
 
   set heading(numbering: cfg.heading-numbering)
   show heading: it => render-heading(it, cfg)
+
+  if meta.title != none {
+    make-title(cfg, meta)
+  }
 
   body
 }
