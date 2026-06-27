@@ -39,6 +39,53 @@
   groups
 }
 
+// CCS concepts: group by area (preserving order), style specifics by
+// significance (>=500 bold, >=300 italic, else roman), join with "; ",
+// bullet + bold area + arrow per group, trailing period. Input: list of
+// (significance, area, specific) tuples (mirrors \ccsdesc[sig]{area~specific}).
+#let render-ccs-concepts(ccs) = {
+  // preserve area order
+  let areas = ()
+  let by-area = (:)
+  for entry in ccs {
+    let (sig, area, ..rest) = entry
+    let spec = if rest.len() > 0 { rest.at(0) } else { none }
+    if area not in by-area {
+      by-area.insert(area, ())
+      areas.push(area)
+    }
+    if spec != none and spec != "" {
+      by-area.at(area).push((sig: sig, spec: spec))
+    }
+  }
+  let style-spec(s) = {
+    if s.sig >= 500 { strong(s.spec) }
+    else if s.sig >= 300 { emph(s.spec) }
+    else { s.spec }
+  }
+  for (i, area) in areas.enumerate() {
+    if i > 0 { [ ] }
+    [• #strong(area)]
+    let specs = by-area.at(area)
+    if specs.len() > 0 {
+      [ → ]
+      specs.map(style-spec).join("; ")
+    }
+  }
+  [.]
+}
+
+// A 9pt "Label: content" line used for CCS Concepts and Keywords.
+#let special-line(cfg, label, content) = {
+  v(cfg.medskip, weak: true)
+  block(width: 100%, spacing: cfg.bls.small - cfg.size.small)[
+    #set text(font: cfg.fonts.serif, size: cfg.size.small)
+    #set par(justify: false, leading: cfg.bls.small - cfg.size.small,
+      first-line-indent: 0pt, spacing: cfg.bls.small - cfg.size.small)
+    #label: #content
+  ]
+}
+
 #let make-title(cfg, meta) = {
   // --- Title (LARGE sans bold, left-aligned) ---
   block(spacing: 0pt)[
@@ -90,4 +137,26 @@
   ]
 
   v(cfg.medskip, weak: true) // authors \par\medskip
+
+  // --- Abstract (9pt, no heading label, first line not indented) ---
+  if meta.abstract != none {
+    block(width: 100%, spacing: 0pt)[
+      #set text(font: cfg.fonts.serif, size: cfg.size.small)
+      #set par(justify: true, leading: cfg.bls.small - cfg.size.small,
+        first-line-indent: (amount: cfg.parindent, all: false),
+        spacing: cfg.bls.small - cfg.size.small)
+      #meta.abstract
+    ]
+  }
+
+  // --- CCS Concepts ---
+  if meta.ccs != none {
+    special-line(cfg, [CCS Concepts], render-ccs-concepts(meta.ccs))
+  }
+
+  // --- Keywords ---
+  if meta.keywords != none {
+    let kw = if type(meta.keywords) == array { meta.keywords.join(", ") } else { meta.keywords }
+    special-line(cfg, [Keywords], kw)
+  }
 }
