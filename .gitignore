@@ -1,0 +1,24 @@
+# Python venv for diff tooling
+tools/venv/
+
+# Generated LaTeX reference build (regenerate from acmart/ via the harness)
+reference/
+
+# Visual-diff outputs
+tests/out/
+
+# Compiled test PDFs and scratch
+tests/*.pdf
+tests/_cal*
+template/*.pdf
+
+# LaTeX aux files
+*.aux
+*.log
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+.DS_Store

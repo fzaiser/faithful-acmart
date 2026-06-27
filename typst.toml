@@ -1,0 +1,7 @@
+[package]
+name = "acmart"
+version = "0.0.1"
+entrypoint = "src/lib.typ"
+authors = ["typst-acmart contributors"]
+license = "MIT"
+description = "Typst port of the LaTeX acmart class — renders idiomatic Typst as close as possible to acmart."
