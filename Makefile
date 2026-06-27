@@ -1,50 +1,55 @@
 # typst-acmart — build and validation targets.
 #
-#   make reference          build the LaTeX acmart reference PDF (reference/acmsmall.pdf)
-#   make example            build the Typst example (template/main.pdf)
-#   make diff               diff the Typst frontmatter test against the reference
-#   make test               build reference + all Typst tests
+#   make reference          build the LaTeX acmart reference PDF (tests/out/latex/acmsmall.pdf)
+#   make example            build the Typst example (tests/out/typst/main.pdf)
+#   make test               build the reference + all Typst test PDFs (+ LaTeX test refs)
+#   make diff               diff a Typst output against its LaTeX reference
+#   make clean              remove all generated output (tests/out/)
+#
+# All output lives under tests/out/ (gitignored):
+#   tests/out/latex/  LaTeX builds (acmart.cls, samples, reference PDFs)
+#   tests/out/typst/  Typst output PDFs
+#   tests/out/diff/   visual-diff images
 #
 # Builds use tools/tc, which points Typst at the bundled full Libertinus +
 # Inconsolata fonts (see README "Fonts").
 
-TC      := tools/tc
-PY      := tools/venv/bin/python
-SAMPLE  := acmsmall
+TC     := tools/tc
+PY     := tools/venv/bin/python
+SAMPLE := acmsmall
+LATEX  := tests/out/latex
+TYPST  := tests/out/typst
+DIFF   := tests/out/diff
 
-.PHONY: reference example diff test test-references clean
+# Typst documents that have a matched LaTeX reference (.tex + .typ share a stem).
+MATCHED := body-test head-test body2-test fn-test full-test
+
+.PHONY: reference example test test-references diff clean
 
 reference:
 	tools/build-reference.sh $(SAMPLE)
 
-# Build the LaTeX reference PDFs for the matched test documents, each compiled to
-# stability via tools/latex-build.sh (no "Temporary page" / stale TotPages).
-LATEX_TESTS := tests/body-test.tex tests/head-test.tex tests/body2-test.tex \
-               tests/fn-test.tex tests/full-test.tex
+# Compile each matched LaTeX test document to a stable PDF in tests/out/latex/.
 test-references:
-	@for t in $(LATEX_TESTS); do tools/latex-build.sh $$t; done
+	@for t in $(MATCHED); do tools/latex-build.sh tests/$$t.tex; done
 
 example:
-	$(TC) compile template/main.typ template/main.pdf
-
-# Diff a Typst test PDF against the reference. Override FILE/REF/PAGES as needed:
-#   make diff FILE=tests/title-test.pdf REF=reference/acmsmall.pdf PAGES=1
-FILE  ?= template/main.pdf
-REF   ?= reference/$(SAMPLE).pdf
-PAGES ?= 1
-diff: example
-	$(PY) tools/pdfdiff.py $(REF) $(FILE) tests/out --dpi 150 --pages $(PAGES)
+	@mkdir -p $(TYPST)
+	$(TC) compile template/main.typ $(TYPST)/main.pdf
 
 test: reference test-references
-	$(TC) compile tests/body-test.typ   tests/body-test-typ.pdf
-	$(TC) compile tests/head-test.typ   tests/head-test-typ.pdf
-	$(TC) compile tests/title-test.typ  tests/title-test.pdf
-	$(TC) compile tests/body2-test.typ  tests/body2-test-typ.pdf
-	$(TC) compile tests/fn-test.typ     tests/fn-test-typ.pdf
-	$(TC) compile tests/bib-test.typ    tests/bib-test-typ.pdf
-	$(TC) compile tests/full-test.typ   tests/full-test-typ.pdf
-	$(TC) compile template/main.typ     template/main.pdf
-	@echo "All Typst tests built."
+	@mkdir -p $(TYPST)
+	@for t in $(MATCHED) title-test bib-test; do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
+	$(TC) compile template/main.typ $(TYPST)/main.pdf
+	@echo "All Typst tests built into $(TYPST)/."
+
+# Diff a Typst output against its LaTeX reference. Override STEM/PAGES:
+#   make diff STEM=full-test PAGES=1-2
+STEM  ?= full-test
+PAGES ?= 1
+diff:
+	@mkdir -p $(DIFF)
+	$(PY) tools/pdfdiff.py $(LATEX)/$(STEM).pdf $(TYPST)/$(STEM).pdf $(DIFF) --dpi 150 --pages $(PAGES)
 
 clean:
-	rm -rf tests/out tests/*-typ.pdf tests/*.pdf template/*.pdf
+	rm -rf tests/out

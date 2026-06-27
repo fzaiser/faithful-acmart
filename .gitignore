@@ -2,7 +2,6 @@
 tools/venv/
 
 # Generated LaTeX reference build (regenerate from acmart/ via the harness)
-reference/
 
 # Visual-diff outputs
 tests/out/

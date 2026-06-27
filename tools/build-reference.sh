@@ -1,21 +1,20 @@
 #!/bin/sh
-# Build the LaTeX acmart reference artifacts into reference/ (gitignored).
+# Build the LaTeX acmart reference artifacts into tests/out/latex/ (gitignored).
 #
 # Generates acmart.cls from the upstream sources in acmart/, extracts the sample
-# .tex files, and compiles a chosen sample (default: acmsmall) to a reference
-# PDF that the Typst output is diffed against. Requires a TeX Live install
-# (pdflatex, bibtex).
+# .tex files, and compiles a chosen sample to a reference PDF that the Typst
+# output is diffed against. Requires a TeX Live install (pdflatex, bibtex).
 #
 # Usage: tools/build-reference.sh [sample-name]   # e.g. acmsmall (default), sigconf, ...
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/acmart"
-REF="$ROOT/reference"
+OUT="$ROOT/tests/out/latex"
 SAMPLE="${1:-acmsmall}"
 
-mkdir -p "$REF"
-cd "$REF"
+mkdir -p "$OUT"
+cd "$OUT"
 
 # docstrip generation tolerates pdflatex's non-zero exit; the actual document is
 # compiled to stability by tools/latex-build.sh (resolves TotPages / temp pages).
@@ -35,4 +34,4 @@ if [ ! -f "$SAMPLE.tex" ]; then
 fi
 
 # 3. Compile the chosen sample to a stable PDF (no temp page, resolved TotPages).
-"$ROOT/tools/latex-build.sh" "$REF/$SAMPLE.tex"
+"$ROOT/tools/latex-build.sh" "$OUT/$SAMPLE.tex" "$OUT"

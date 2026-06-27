@@ -110,16 +110,26 @@ the Typst output and diffing them page-by-page.
 # one-time: create the Python venv used by the diff tools
 python3 -m venv tools/venv && tools/venv/bin/pip install pillow numpy fonttools
 
-make reference     # build reference/acmsmall.pdf from acmart/ (needs TeX Live)
-make example       # build template/main.pdf with the Typst template
-make test          # build the reference + all Typst test PDFs
-make diff FILE=tests/title-test.pdf REF=reference/acmsmall.pdf PAGES=1
+make reference     # build the LaTeX acmsmall reference from acmart/ (needs TeX Live)
+make example       # build the Typst example
+make test          # build the LaTeX references + all Typst test PDFs
+make diff STEM=full-test PAGES=1-2   # diff a Typst output vs its LaTeX reference
+```
+
+All generated output lives under `tests/out/` (gitignored):
+
+```
+tests/out/latex/   LaTeX builds (acmart.cls, samples, reference PDFs)
+tests/out/typst/   Typst output PDFs
+tests/out/diff/    visual-diff images
 ```
 
 Pieces:
 
 - `tools/build-reference.sh` — generates `acmart.cls` from `acmart/`, extracts the
-  sample sources, and compiles a sample to `reference/<name>.pdf` (gitignored).
+  sample sources, and compiles a sample to `tests/out/latex/<name>.pdf`.
+- `tools/latex-build.sh` — compile any `.tex` to a *stable* PDF (reruns until
+  `TotPages`/labels settle; fails on a surviving "Temporary page").
 - `tools/pdfdiff.py` — per-page side-by-side + red/blue overlay diff and a
   numeric mismatch %.
 - `tools/linepitch.py` — measure baseline pitch / first-line position in a PDF.
