@@ -1,0 +1,38 @@
+#import "../src/lib.typ": acmart
+#show: acmart.with(format: "acmsmall")
+
+= Section Number 1
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+A second paragraph continues with more fixed text so that paragraphs wrap across several lines and the baseline grid can be compared between the two engines over a long document. Notice that the first line of each paragraph is indented and that the text is justified to both margins. The body font is Libertinus Serif at ten points set on a twelve point baseline grid.
+
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+= Section Number 2
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+A second paragraph continues with more fixed text so that paragraphs wrap across several lines and the baseline grid can be compared between the two engines over a long document. Notice that the first line of each paragraph is indented and that the text is justified to both margins. The body font is Libertinus Serif at ten points set on a twelve point baseline grid.
+
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+= Section Number 3
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+A second paragraph continues with more fixed text so that paragraphs wrap across several lines and the baseline grid can be compared between the two engines over a long document. Notice that the first line of each paragraph is indented and that the text is justified to both margins. The body font is Libertinus Serif at ten points set on a twelve point baseline grid.
+
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+= Section Number 4
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+A second paragraph continues with more fixed text so that paragraphs wrap across several lines and the baseline grid can be compared between the two engines over a long document. Notice that the first line of each paragraph is indented and that the text is justified to both margins. The body font is Libertinus Serif at ten points set on a twelve point baseline grid.
+
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+= Section Number 5
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+
+A second paragraph continues with more fixed text so that paragraphs wrap across several lines and the baseline grid can be compared between the two engines over a long document. Notice that the first line of each paragraph is indented and that the text is justified to both margins. The body font is Libertinus Serif at ten points set on a twelve point baseline grid.
+
+The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.
+

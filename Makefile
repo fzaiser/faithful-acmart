@@ -12,10 +12,17 @@ TC      := tools/tc
 PY      := tools/venv/bin/python
 SAMPLE  := acmsmall
 
-.PHONY: reference example diff test clean
+.PHONY: reference example diff test test-references clean
 
 reference:
 	tools/build-reference.sh $(SAMPLE)
+
+# Build the LaTeX reference PDFs for the matched test documents, each compiled to
+# stability via tools/latex-build.sh (no "Temporary page" / stale TotPages).
+LATEX_TESTS := tests/body-test.tex tests/head-test.tex tests/body2-test.tex \
+               tests/fn-test.tex tests/full-test.tex
+test-references:
+	@for t in $(LATEX_TESTS); do tools/latex-build.sh $$t; done
 
 example:
 	$(TC) compile template/main.typ template/main.pdf
@@ -28,13 +35,14 @@ PAGES ?= 1
 diff: example
 	$(PY) tools/pdfdiff.py $(REF) $(FILE) tests/out --dpi 150 --pages $(PAGES)
 
-test: reference
+test: reference test-references
 	$(TC) compile tests/body-test.typ   tests/body-test-typ.pdf
 	$(TC) compile tests/head-test.typ   tests/head-test-typ.pdf
 	$(TC) compile tests/title-test.typ  tests/title-test.pdf
 	$(TC) compile tests/body2-test.typ  tests/body2-test-typ.pdf
 	$(TC) compile tests/fn-test.typ     tests/fn-test-typ.pdf
 	$(TC) compile tests/bib-test.typ    tests/bib-test-typ.pdf
+	$(TC) compile tests/full-test.typ   tests/full-test-typ.pdf
 	$(TC) compile template/main.typ     template/main.pdf
 	@echo "All Typst tests built."
 

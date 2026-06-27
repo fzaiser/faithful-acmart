@@ -34,23 +34,31 @@
   let bls = cfg.baselineskip
   let num = heading-number(it)
 
+  // \@startsection puts a heading a full \baselineskip + |beforeskip| below the
+  // previous baseline, and the body a \baselineskip + afterskip below the
+  // heading. Typst's line box is 1em (= font-size), not \baselineskip, so each
+  // block gap is short by (\baselineskip - font-size); add it back so the
+  // baseline-to-baseline gaps equal LaTeX's exactly.
+  let comp = bls - cfg.font-size
+
   if lvl <= 2 {
     // display heading: own line, sans bold, ragged right.
-    // Numbered level-1 sections are uppercased; unnumbered ones (e.g. the
-    // "References" heading, abstract) keep their case, matching acmart.
+    // section: before .75bl, after .25bl. Numbered level-1 sections are
+    // uppercased; unnumbered ones (References, abstract) keep their case.
     let title = if lvl == 1 and num != none { upper(it.body) } else { it.body }
-    block(above: 0.75 * bls, below: 0.25 * bls, sticky: true)[
+    block(above: 0.75 * bls + comp, below: 0.25 * bls + comp, sticky: true)[
       #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.font-size)
       #set par(justify: false, leading: bls - cfg.font-size)
       #if num != none [#num#h(1em)]
       #title
     ]
   } else if lvl == 3 {
-    run-in-heading(it, cfg, before: 0.5 * bls, indent: 0pt,
+    // subsubsection: before .5bl, run-in
+    run-in-heading(it, cfg, before: 0.5 * bls + comp, indent: 0pt,
       font: cfg.fonts.sans, style: "italic", num: num)
   } else {
-    // paragraph: serif italic, indented, unnumbered
-    run-in-heading(it, cfg, before: 0.5 * bls, indent: cfg.parindent,
+    // paragraph: serif italic, indented, run-in, before .5bl
+    run-in-heading(it, cfg, before: 0.5 * bls + comp, indent: cfg.parindent,
       font: cfg.fonts.serif, style: "italic", num: none)
   }
 }

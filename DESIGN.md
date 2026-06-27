@@ -62,6 +62,18 @@ first line's cap-top sits at the top margin, matching TeX's `\topskip` behaviour
 for a first line taller than `\topskip`. This is **matched to output**, verified
 with `tools/linepitch.py` (pitch 11.94 vs 11.95pt; first baseline 92.07pt exact).
 
+### Heading / block vertical spacing (the line-box compensation)
+`\@startsection` places a heading a full `\baselineskip` **plus** `beforeskip`
+below the previous baseline, and the body a `\baselineskip` plus `afterskip`
+below the heading. Typst's line box is `1em` (= font size), **not**
+`\baselineskip`, so a Typst block gap of `g` yields a baseline-to-baseline
+distance of `g + 1em`. To reproduce LaTeX's `\baselineskip + skip` we therefore
+set the block gap to `skip + (\baselineskip − font-size)`. For acmsmall sections
+this gives `above = 0.75bl + (bl − 10pt)` and `below = 0.25bl + (bl − 10pt)`.
+Verified against a descender-free probe: before-gap 20.92 vs LaTeX 20.96pt,
+after-gap 14.94 vs 14.90pt — exact. (The same `(bl − font-size)` term is why the
+inter-paragraph `spacing` is `bl − font-size`, giving a solid 12pt grid.)
+
 ### Run-in headings
 subsubsection/paragraph headings flow inline with the following text. A heading
 show rule that returns *inline* content (not a block) achieves this; a weak
@@ -101,8 +113,22 @@ macro that uppercases was never located — the rule was inferred from rendering
 
 - Only `acmsmall`. No `sigconf`/`sigplan`/… (no two-column support yet).
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
-- No cumulative multi-page diff vs the real sample beyond the bundled test.
 - No automated pass/fail thresholds; validation is visual + mismatch %.
+- Multi-page drift: heading/paragraph spacing matches LaTeX exactly in isolation,
+  but `tests/full-test` shows a small residual (~3.5pt per section) that appears
+  only when the line preceding a heading has descenders — likely a TeX
+  `\prevdepth`/interline interaction (or a measurement artifact). It is well
+  under one line and did not change the page count in the test. Not chased
+  further, to avoid an unprincipled fudge.
+
+## Test harness robustness
+
+LaTeX references are built via `tools/latex-build.sh`, which **reruns pdflatex
+until stable** (cross-references / `TotPages` / lastpage resolved) and **fails if
+a "Temporary page!" placeholder survives**. A single pdflatex pass leaves acmart
+with an unresolved `TotPages`, producing a spurious extra page — the builder
+prevents that from polluting diffs. `tools/build-reference.sh` and the Makefile
+`test`/`test-references` targets all route through it.
 
 ## Validation
 
