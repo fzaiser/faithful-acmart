@@ -42,10 +42,10 @@
   let comp = bls - cfg.font-size
 
   if lvl <= 2 {
-    // display heading: own line, sans bold, ragged right.
-    // section: before .75bl, after .25bl. Numbered level-1 sections are
-    // uppercased; unnumbered ones (References, abstract) keep their case.
-    let title = if lvl == 1 and num != none { upper(it.body) } else { it.body }
+    // display heading: own line, sans bold, ragged right, mixed case as written
+    // (acmsmall does not uppercase section titles — verified against the sample).
+    // section/subsection both: before .75bl, after .25bl.
+    let title = it.body
     block(above: 0.75 * bls + comp, below: 0.25 * bls + comp, sticky: true)[
       #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.font-size)
       #set par(justify: false, leading: bls - cfg.font-size)

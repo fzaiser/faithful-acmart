@@ -211,15 +211,11 @@
       } else if meta.copyright-year != none {
         [#str(meta.copyright-year). ]
       }
-      if meta.manuscript {
-        [Manuscript submitted to ACM]
-      } else {
-        // journal bibstrip: ACM <issn>/<year>/<month>-ART<article> then DOI
-        [ACM #j.issn/#str(meta.acm-year)/#str(meta.acm-month)-ART#str(meta.acm-article)]
-        if meta.doi != none {
-          linebreak()
-          link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
-        }
+      // journal bibstrip: ACM <issn>/<year>/<month>-ART<article> then DOI
+      [ACM #j.issn/#str(meta.acm-year)/#str(meta.acm-month)-ART#str(meta.acm-article)]
+      if meta.doi != none {
+        linebreak()
+        link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
       }
     })
   }

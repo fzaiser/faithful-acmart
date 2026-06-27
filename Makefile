@@ -24,7 +24,12 @@ DIFF   := tests/out/diff
 # Typst documents that have a matched LaTeX reference (.tex + .typ share a stem).
 MATCHED := body-test head-test body2-test fn-test full-test
 
-.PHONY: reference example test test-references diff clean
+.PHONY: reference example test test-references diff validate clean
+
+# Validate copyright modes + document options (review/screen/anonymous) against
+# matched LaTeX references, the same standard as the default path.
+validate: reference
+	$(PY) tools/validate-variants.py
 
 reference:
 	tools/build-reference.sh $(SAMPLE)

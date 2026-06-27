@@ -47,7 +47,6 @@
   review: false,
   screen: false,
   anonymous: false,
-  manuscript: false,
   ..rest,
   body,
 ) = {
@@ -75,7 +74,6 @@
     copyright-year: copyright-year,
     cc-type: cc-type,
     cc-version: cc-version,
-    manuscript: manuscript,
     show-ref: show-ref,
     anonymous: anonymous,
   )

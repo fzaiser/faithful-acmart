@@ -98,9 +98,11 @@ caption show rule.
 lines, journal name/ISSN table, link colours, line-number colour.
 
 **Matched to rendered output (empirical, because TeX glue ≠ Typst spacing):**
-title→authors gap, figure/caption float spacing, run-in separator width, and the
-"numbered sections are uppercased, starred ones aren't" rule (the exact `.dtx`
-macro that uppercases was never located — the rule was inferred from rendering).
+title→authors gap, figure/caption float spacing, run-in separator width.
+
+> Section titles are **mixed case** (bold sans), not uppercased — verified
+> against the rendered sample. (An earlier version wrongly uppercased them; the
+> variant-validation harness, `tools/validate-variants.py`, caught it.)
 
 **Deliberate approximations:**
 - Bibliography uses Typst's built-in ACM CSL, not `ACM-Reference-Format.bst`.
