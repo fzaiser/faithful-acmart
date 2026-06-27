@@ -101,16 +101,33 @@ Theorem-like environments: `theorem`, `lemma`, `corollary`, `proposition`,
 `conjecture`, `definition`, `example`, `remark`, `proof`. They share one counter
 numbered within the section, e.g. `#theorem(name: "Optional")[…]`.
 
-## Development
+## Development & validation
 
-The reference LaTeX output and the visual-diff harness live in `reference/` and
-`tools/`:
+The template is validated by rendering both the **real LaTeX acmart** output and
+the Typst output and diffing them page-by-page.
 
-- `tools/pdfdiff.py` — per-page side-by-side + overlay diff of two PDFs
-- `tools/linepitch.py` — measure baseline pitch / first-line position
-- `acmart/` — the upstream LaTeX acmart source (the spec)
+```sh
+# one-time: create the Python venv used by the diff tools
+python3 -m venv tools/venv && tools/venv/bin/pip install pillow numpy fonttools
 
-Regenerate the LaTeX references from `acmart/` and compare against Typst output.
+make reference     # build reference/acmsmall.pdf from acmart/ (needs TeX Live)
+make example       # build template/main.pdf with the Typst template
+make test          # build the reference + all Typst test PDFs
+make diff FILE=tests/title-test.pdf REF=reference/acmsmall.pdf PAGES=1
+```
+
+Pieces:
+
+- `tools/build-reference.sh` — generates `acmart.cls` from `acmart/`, extracts the
+  sample sources, and compiles a sample to `reference/<name>.pdf` (gitignored).
+- `tools/pdfdiff.py` — per-page side-by-side + red/blue overlay diff and a
+  numeric mismatch %.
+- `tools/linepitch.py` — measure baseline pitch / first-line position in a PDF.
+- `tools/tc` — `typst` wrapper that uses the bundled fonts.
+- `acmart/` — the upstream LaTeX acmart source (the spec being matched).
+
+See [DESIGN.md](DESIGN.md) for the architecture and the source-vs-output
+matching decisions.
 
 ## License
 
