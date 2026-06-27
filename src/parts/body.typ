@@ -39,5 +39,17 @@
   // Enumerate labels: (1), (2), ... ; tight item spacing
   set enum(numbering: "(1)")
 
+  // Monospace (Inconsolata/zi4) for inline and block code.
+  show raw: set text(font: cfg.fonts.mono)
+
+  // Footnotes: footnotesize (8pt), short 4pc rule (\footnoterule).
+  set footnote.entry(
+    separator: line(length: cfg.footnote-rule-short, stroke: 0.4pt),
+    gap: cfg.footnote-rule-kern-below,
+    indent: 0pt,
+  )
+  show footnote.entry: set text(size: cfg.size.footnotesize)
+  show footnote.entry: set par(leading: cfg.bls.footnotesize - cfg.size.footnotesize)
+
   body
 }

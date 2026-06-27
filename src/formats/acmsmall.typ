@@ -53,7 +53,8 @@
   fonts: (
     serif: "Libertinus Serif",
     sans: "Libertinus Sans",
-    mono: "Libertinus Mono",
+    mono: "Inconsolatazi4", // acmart uses zi4 (Inconsolata) for \texttt
+
     math: "Libertinus Math",
   ),
 )
