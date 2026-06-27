@@ -9,6 +9,7 @@
 // and bibliography styling come later.
 
 #import "formats/acmsmall.typ": acmsmall
+#import "parts/headings.typ": render-heading
 
 #let _formats = (
   acmsmall: acmsmall,
@@ -50,6 +51,9 @@
     spacing: cfg.baselineskip - cfg.font-size, // inter-paragraph = one blank baselineskip step (parskip=0)
     justify: true,
   )
+
+  set heading(numbering: cfg.heading-numbering)
+  show heading: it => render-heading(it, cfg)
 
   body
 }

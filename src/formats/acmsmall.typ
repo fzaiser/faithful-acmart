@@ -33,6 +33,8 @@
   baselineskip: 12 * tp,
   parindent: 10 * tp,
   parskip: 0pt,
+  runin-sep: 3.5 * tp, // |afterskip| for run-in headings (subsubsection/paragraph)
+  heading-numbering: "1.1.1", // secnumdepth=3 (paragraphs unnumbered, handled in show rule)
   fonts: (
     serif: "Libertinus Serif",
     sans: "Libertinus Sans",
