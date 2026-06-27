@@ -267,9 +267,9 @@
     #for g in group-authors(marked) {
       let names = g.authors.map(a => {
         upper(a.name)
-        // note marks (superscript symbols)
+        // note marks (superscript symbols); the ✉ glyph is large, so shrink it
         for m in a._marks {
-          super(m)
+          if m == "✉" { super(text(size: 0.72em)[#m]) } else { super(m) }
         }
       })
       block(spacing: cfg.bls.large - cfg.size.large)[
