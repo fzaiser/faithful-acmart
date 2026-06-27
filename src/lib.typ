@@ -10,7 +10,7 @@
 
 #import "formats/acmsmall.typ": acmsmall
 #import "parts/headings.typ": render-heading
-#import "parts/frontmatter.typ": make-title
+#import "parts/frontmatter.typ": make-title, make-footnotes, lookup-journal, pub-date
 
 #let _formats = (
   acmsmall: acmsmall,
@@ -34,6 +34,7 @@
   doi: none,
   copyright: "acmlicensed",
   copyright-year: none,
+  show-ref: true,
   ..rest,
   body,
 ) = {
@@ -59,12 +60,28 @@
     doi: doi,
     copyright: copyright,
     copyright-year: copyright-year,
+    show-ref: show-ref,
   )
+
+  // Running footer: "<short>, Vol. V, No. N, Article A. Publication date: M Y."
+  // Right-aligned on odd pages, left on even (acmart fancyfoot[RO,LE]).
+  let footer-content = {
+    let j = lookup-journal(journal)
+    if j.short != none and acm-volume != none {
+      context {
+        set text(font: cfg.fonts.serif, size: cfg.size.footnotesize)
+        let txt = [#j.short, Vol. #str(acm-volume), No. #str(acm-number), Article #str(acm-article). Publication date: #pub-date(meta).]
+        if calc.odd(here().page()) { align(right, txt) } else { align(left, txt) }
+      }
+    }
+  }
 
   set page(
     width: cfg.paper.width,
     height: cfg.paper.height,
     margin: cfg.margin,
+    footer-descent: cfg.foot.skip - cfg.size.footnotesize,
+    footer: footer-content,
   )
 
   // Pin the line box to the font size (top-edge - bottom-edge = 1em) so that the
@@ -91,6 +108,7 @@
   show heading: it => render-heading(it, cfg)
 
   if meta.title != none {
+    make-footnotes(cfg, meta) // place(bottom) on page 1
     make-title(cfg, meta)
   }
 

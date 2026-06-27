@@ -44,6 +44,8 @@
   ),
   // standard LaTeX skips (size-independent)
   smallskip: 3 * tp, medskip: 6 * tp, bigskip: 12 * tp,
+  footnote-rule-short: 4 * 12 * tp, // 4pc (regular footnote rule)
+  footnote-rule-kern-above: 3 * tp, footnote-rule-kern-below: 2.6 * tp,
   parindent: 10 * tp,
   parskip: 0pt,
   runin-sep: 3.5 * tp, // |afterskip| for run-in headings (subsubsection/paragraph)
