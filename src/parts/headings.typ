@@ -35,8 +35,10 @@
   let num = heading-number(it)
 
   if lvl <= 2 {
-    // display heading: own line, sans bold, ragged right
-    let title = if lvl == 1 { upper(it.body) } else { it.body }
+    // display heading: own line, sans bold, ragged right.
+    // Numbered level-1 sections are uppercased; unnumbered ones (e.g. the
+    // "References" heading, abstract) keep their case, matching acmart.
+    let title = if lvl == 1 and num != none { upper(it.body) } else { it.body }
     block(above: 0.75 * bls, below: 0.25 * bls, sticky: true)[
       #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.font-size)
       #set par(justify: false, leading: bls - cfg.font-size)
