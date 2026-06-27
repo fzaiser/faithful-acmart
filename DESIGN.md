@@ -116,12 +116,18 @@ title→authors gap, figure/caption float spacing, run-in separator width.
 - Only `acmsmall`. No `sigconf`/`sigplan`/… (no two-column support yet).
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
 - No automated pass/fail thresholds; validation is visual + mismatch %.
-- Multi-page drift: heading/paragraph spacing matches LaTeX exactly in isolation,
-  but `tests/full-test` shows a small residual (~3.5pt per section) that appears
-  only when the line preceding a heading has descenders — likely a TeX
-  `\prevdepth`/interline interaction (or a measurement artifact). It is well
-  under one line and did not change the page count in the test. Not chased
-  further, to avoid an unprincipled fudge.
+- **`\flushbottom` (vertical justification) is not replicable in Typst.**
+  acmsmall inherits LaTeX's twoside default of `\flushbottom`: on a *full* page
+  it stretches the rubber glue in section skips (`.75bl \@plus -2pt` etc.) so the
+  text fills to the bottom margin. Typst has no vertical justification, so our
+  pages are effectively ragged-bottom. Our section spacing is *exactly* correct
+  — verified by forcing `\raggedbottom` in LaTeX, after which LaTeX's section
+  positions match ours to within 0.2pt (increments 191.3 vs 191.3pt). The only
+  difference is that LaTeX additionally stretches a full page by a few pt per
+  section to reach the bottom; this shows as gradual vertical drift on full pages
+  (e.g. `tests/full-test` page 1) but not on partial/last pages (page 2 matches).
+  Each page's content and spacing are correct; only the bottom-fill stretch is
+  missing. Not worked around — there is no clean Typst mechanism for it.
 
 ## Test harness robustness
 
