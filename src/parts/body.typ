@@ -28,6 +28,14 @@
     })
   }
 
+  // Float spacing: \intextsep (12pt) around [h] floats, \abovecaptionskip (12pt)
+  // between figure body and caption.
+  show figure: set block(above: cfg.bigskip, below: cfg.bigskip)
+  set figure(gap: cfg.bigskip)
+
+  // Tables: booktabs-like tight rows (Typst's default inset is too tall).
+  set table(inset: (x: 0.6em, y: 0.28em), stroke: none)
+
   // Enumerate labels: (1), (2), ... ; tight item spacing
   set enum(numbering: "(1)")
 
