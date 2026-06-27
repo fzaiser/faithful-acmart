@@ -233,7 +233,9 @@
     })
   }
 
-  place(bottom, block(width: 100%, spacing: 0pt, stack))
+  // float: true so the block reserves space at the bottom of the first page and
+  // the body text flows above it (rather than overlapping).
+  place(bottom, float: true, block(width: 100%, spacing: 0pt, stack))
 }
 
 #let make-title(cfg, meta) = {

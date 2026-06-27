@@ -39,6 +39,8 @@
   copyright: "acmlicensed",
   copyright-year: none,
   show-ref: true,
+  short-title: auto,
+  short-authors: auto,
   ..rest,
   body,
 ) = {
@@ -80,11 +82,37 @@
     }
   }
 
+  // Running head on continuation pages (page 1 uses no running head). acmsmall:
+  //   even: [LE] article:page        [RE] short authors
+  //   odd:  [LO] short title         [RO] article:page
+  // in sans footnotesize (\@headfootfont).
+  let st = if short-title == auto { title } else { short-title }
+  let sa = if short-authors == auto {
+    let lastname(n) = n.split(" ").last()
+    if authors.len() == 0 { none }
+    else if authors.len() == 1 { lastname(authors.at(0).name) }
+    else if authors.len() == 2 { lastname(authors.at(0).name) + " and " + lastname(authors.at(1).name) }
+    else { lastname(authors.at(0).name) + " et al." }
+  } else { short-authors }
+  let header-content = context {
+    let p = here().page()
+    if p <= 1 { return }
+    set text(font: cfg.fonts.sans, size: cfg.size.footnotesize)
+    let article-page = if acm-article != none [#str(acm-article):#p] else [#p]
+    if calc.odd(p) {
+      grid(columns: (1fr, auto), align(left, st), align(right, article-page))
+    } else {
+      grid(columns: (auto, 1fr), align(left, article-page), align(right, sa))
+    }
+  }
+
   set page(
     width: cfg.paper.width,
     height: cfg.paper.height,
     margin: cfg.margin,
+    header-ascent: cfg.head.sep - cfg.size.footnotesize,
     footer-descent: cfg.foot.skip - cfg.size.footnotesize,
+    header: header-content,
     footer: footer-content,
   )
 
