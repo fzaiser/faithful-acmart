@@ -21,9 +21,23 @@ works for `acmsmall`:
 - Body elements: figure/table captions, theorem environments
   (theorem/lemma/…/definition/proof with QED), lists, footnotes, code
 - Bibliography via the official ACM CSL
+- Copyright modes (acmcopyright/acmlicensed/rightsretained/usgov/usgovmixed/CC)
+  and options (`review`, `screen`, `anonymous`) — validated against LaTeX with
+  `make validate`
 
-Differences from LaTeX are limited to engine-level line/page breaking and minor
-bibliography-CSL details.
+Known differences from LaTeX (engine limits, not spacing errors — see
+[DESIGN.md](DESIGN.md)):
+
+- **`\flushbottom`**: acmsmall vertically justifies full pages; Typst can't, so
+  our pages are ragged-bottom. Spacing is otherwise exact (proven against LaTeX
+  `\raggedbottom`).
+- Line/page breaking differs between engines → horizontal word drift on dense
+  pages and different page breaks.
+- Minor: ACM-CSL vs `.bst` details; CC badge image omitted; contact-info field
+  order.
+
+Not yet implemented: other formats (sigconf/sigplan/… — need two-column), math
+fidelity tuning, the separate single-column `manuscript` format.
 
 ## Requirements
 
@@ -137,7 +151,9 @@ Pieces:
 - `acmart/` — the upstream LaTeX acmart source (the spec being matched).
 
 See [DESIGN.md](DESIGN.md) for the architecture and the source-vs-output
-matching decisions.
+matching decisions. Each subdirectory has its own README:
+[`src/`](src/README.md) (package modules), [`tools/`](tools/README.md) (harness),
+[`tests/`](tests/README.md) (test docs), [`fonts/`](fonts/README.md) (bundled fonts).
 
 ## License
 
