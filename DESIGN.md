@@ -139,8 +139,16 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   (`acmart.dtx:5430`). What differs is *ordering* — we emit ✉-then-note in a fixed
   order, not LaTeX's source-declaration order, because our author model stores a
   boolean `corresponding` and a `note` with no declaration order to honour.
-- `\titlenote`/`\subtitlenote`, `\received`, the `acks` environment, teaser
-  figures, and author badges are not modelled; use ordinary Typst headings/notes.
+- **Author grouping is by affiliation *value*, not acmart's structural rule.**
+  acmart groups consecutive authors onto one line when the earlier ones carry no
+  `\affiliation` at all (the affiliation is given once, on the last of the group;
+  `\@mkauthors@i` flushes a line whenever an `\affiliation` token is seen,
+  `acmart.dtx:7337`). We instead merge consecutive authors whose affiliation
+  *values* are equal (`group-authors`, `frontmatter.typ`) — the natural Typst
+  input is to give each author their affiliation. Both yield the same output for
+  the common "shared affiliation" case (and the upstream sample); they diverge
+  only if a doc repeats an *identical* affiliation on each author expecting
+  acmart's repeat-the-line behaviour, or relies on a blank affiliation to merge.
 - Lists: body indents are tuned to land at `\leftmargin` (24.5pt, level 1) for the
   common single-level case, but Typst has no fixed hanging-label box (LaTeX's
   `\llap`), so on deeply nested or width-varied markers the body drifts with the

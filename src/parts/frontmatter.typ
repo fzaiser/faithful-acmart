@@ -146,26 +146,53 @@
   fm-block(cfg, [#label: #content], justify: false, spacing: comp(cfg, sz: "small"))
 }
 
-// Assign footnote symbols to author notes (deduplicating identical notes), and
-// compute each author's superscript marks (corresponding ✉ then note symbol).
-#let collect-notes(authors) = {
+// Assign footnote symbols across the whole top matter, matching acmart's shared
+// footnote counter. \maketitle resets the counter and emits the texts in the
+// order \@titlenotes, \@subtitlenotes, \@authornotes (acmart.dtx:6577-6581), all
+// using \@fnsymbol marks (acmart.dtx:6571). So a title note takes the first
+// symbol (*), a subtitle note the next, and author notes follow. Identical author
+// notes are deduplicated; the corresponding-author ✉ is a fixed glyph (\ding{41},
+// acmart.dtx:5430), NOT a counter step, so it consumes no symbol. In anonymous
+// mode \authornote is suppressed (acmart.dtx:5406) while title/subtitle notes
+// still appear with placeholder text (acmart.dtx:5360/5383).
+//
+// Returns the title/subtitle marks (for make-title), the ordered footnote list
+// (for make-footnotes), and each author's superscript marks.
+#let collect-notes(meta) = {
+  let anon = meta.anonymous
   let notes = ()
+  let idx = 0
+  let title-mark = none
+  let subtitle-mark = none
+
+  if meta.title-note != none {
+    title-mark = fnsymbols.at(idx)
+    notes.push((symbol: title-mark, body: if anon { [Title note] } else { meta.title-note }))
+    idx += 1
+  }
+  if meta.subtitle-note != none {
+    subtitle-mark = fnsymbols.at(idx)
+    notes.push((symbol: subtitle-mark, body: if anon { [Subtitle note] } else { meta.subtitle-note }))
+    idx += 1
+  }
+
   let seen = (:)
   let marks = ()
-  for a in authors {
+  for a in meta.authors {
     let m = ()
     if a.corresponding { m.push("✉") }
-    if a.note != none {
+    if a.note != none and not anon {
       let key = repr(a.note)
       if key not in seen {
-        seen.insert(key, fnsymbols.at(notes.len()))
+        seen.insert(key, fnsymbols.at(idx))
         notes.push((symbol: seen.at(key), body: a.note))
+        idx += 1
       }
       m.push(seen.at(key))
     }
     marks.push(m)
   }
-  (notes: notes, marks: marks)
+  (title-mark: title-mark, subtitle-mark: subtitle-mark, notes: notes, marks: marks)
 }
 
 // One author's contact entry, replaying name → affiliation fields → email in
@@ -189,7 +216,7 @@
 #let make-footnotes(cfg, meta) = {
   let fs = cfg.size.footnotesize
   let lead = comp(cfg, sz: "footnotesize")
-  let ni = collect-notes(meta.authors)
+  let ni = collect-notes(meta)
   let j = lookup-journal(meta.journal)
 
   let rule(width) = {
@@ -204,8 +231,9 @@
 
     let anon = meta.anonymous
 
-    // 1. Author notes (regular footnotes, symbol marks)
-    if not anon and ni.notes.len() > 0 {
+    // 1. Title/subtitle/author notes (regular footnotes, symbol marks). collect-notes
+    // already excludes author notes under anonymity but keeps title/subtitle notes.
+    if ni.notes.len() > 0 {
       rule(cfg.footnote-rule-short)
       for n in ni.notes {
         block(spacing: lead)[#super(n.symbol)#n.body]
@@ -255,13 +283,14 @@
 }
 
 #let make-title(cfg, meta) = {
+  let ni = collect-notes(meta)
   // --- Title (LARGE sans bold, left-aligned) ---
   block(spacing: 0pt)[
     // top-edge: cap-height places the (tall) first line's cap-top at the top
     // margin, matching LaTeX \topskip behaviour for a first line taller than it.
     #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.size.LARGE, top-edge: "cap-height")
     #set par(justify: false, leading: comp(cfg, sz: "LARGE"))
-    #meta.title
+    #meta.title#if ni.title-mark != none { super(ni.title-mark) }
   ]
   // Subtitle (\@subtitlefont = \normalsize\mdseries, inherits the sans family);
   // its own block so it gets normalsize leading, not the title's LARGE leading.
@@ -270,7 +299,7 @@
     block(spacing: tex-skip(cfg, 0pt))[
       #set text(font: cfg.fonts.sans, weight: "regular", size: cfg.font-size)
       #set par(justify: false, leading: comp(cfg))
-      #meta.subtitle
+      #meta.subtitle#if ni.subtitle-mark != none { super(ni.subtitle-mark) }
     ]
   }
 
@@ -285,10 +314,7 @@
       #set text(font: cfg.fonts.sans, size: cfg.size.large)
       #upper[Anonymous Author(s)]
     ]
-    // author box trailing \par\medskip; next block (abstract/CCS/...) is 9pt
-    v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
   } else {
-  let ni = collect-notes(meta.authors)
   let marked = meta.authors.enumerate().map(((i, a)) => {
     let a2 = a
     a2.insert("_marks", ni.marks.at(i))
@@ -315,10 +341,19 @@
       ]
     }
   ]
+  } // end non-anonymous author block
 
+  // --- Teaser figure (between authors and abstract) ---
+  // \@mkteasers appends each teaser to the title box with \par\bigskip above and
+  // a closing \medskip (acmart.dtx:7663-7671): a full-text-width figure in the
+  // one-column journal layout. With no teaser, the trailing \medskip is the normal
+  // author-box gap to the abstract.
+  if meta.teaser != none {
+    v(tex-skip(cfg, cfg.bigskip), weak: true)
+    block(width: 100%, spacing: 0pt, meta.teaser)
+  }
   // author box trailing \par\medskip; next block (abstract/CCS/...) is 9pt
   v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
-  } // end non-anonymous author block
 
   // --- Abstract (9pt, no heading label, paragraphs indented \parindent) ---
   if meta.abstract != none {
@@ -358,4 +393,48 @@
 
   // \@printendtopmatter \par\bigskip; next block is the body at 10pt
   v(tex-skip(cfg, cfg.bigskip), weak: true)
+}
+
+// Format a paper-history line for \received. acmart accumulates calls into one
+// string: the first stage defaults to "Received <date>", later stages append
+// "; <stage> <date>" (acmart.dtx:5844-5857). We accept either:
+//   - content/string -> used verbatim, or
+//   - an array of items, each a (stage, date) pair or a bare date; the first
+//     item's empty/none stage becomes "Received", later empty stages "revised".
+#let format-received(received) = {
+  if type(received) != array { return received }
+  let parts = ()
+  for (i, item) in received.enumerate() {
+    let (stage, date) = if type(item) == array { (item.at(0), item.at(1)) } else { (none, item) }
+    let s = if stage == none or stage == "" {
+      if i == 0 { "Received" } else { "revised" }
+    } else { stage }
+    parts.push([#s #date])
+  }
+  parts.join([; ])
+}
+
+// The paper-history line, printed at the very end of the document
+// (acmart \AtEndDocument, acmart.dtx:5858-5861): \par\bigskip then \small
+// \normalfont (9pt serif roman), unindented.
+#let make-received(cfg, received) = {
+  v(tex-skip(cfg, cfg.bigskip, sz: "small"), weak: true)
+  block(width: 100%, spacing: 0pt)[
+    #set text(font: cfg.fonts.serif, weight: "regular", style: "normal", size: cfg.size.small)
+    #set par(justify: false, leading: comp(cfg, sz: "small"), first-line-indent: 0pt)
+    #format-received(received)
+  ]
+}
+
+// Artifact-evaluation badges for the first-page header (acmart firstpagestyle,
+// acmsmall: \@acmBadgeL at left, \@acmBadgeR at right; acmart.dtx:8203-8206).
+// `badges` is a dict with optional `left`/`right` content (typically an image at
+// `cfg.badge-width` wide, optionally wrapped in a link). Returns header content.
+#let make-badges(cfg, badges) = {
+  if badges == none { return none }
+  let l = badges.at("left", default: none)
+  let r = badges.at("right", default: none)
+  grid(columns: (1fr, 1fr),
+    align(left + bottom, if l != none { l }),
+    align(right + bottom, if r != none { r }))
 }

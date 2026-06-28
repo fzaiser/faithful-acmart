@@ -11,10 +11,10 @@
 #import "formats/acmsmall.typ": acmsmall
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
-#import "parts/frontmatter.typ": make-title, make-footnotes, lookup-journal, pub-date, andify, normalize-author
+#import "parts/frontmatter.typ": make-title, make-footnotes, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
 #import "parts/body.typ": apply-body
-#import "parts/theorems.typ": cfg-state, thm-counter
-#import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof
+#import "parts/theorems.typ": cfg-state, anon-state, thm-counter
+#import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
 
 #let _formats = (
   acmsmall: acmsmall,
@@ -24,10 +24,15 @@
   format: "acmsmall",
   title: none,
   subtitle: none,
+  title-note: none,
+  subtitle-note: none,
   authors: (),
   abstract: none,
   ccs: none,
   keywords: none,
+  teaser: none,
+  received: none,
+  badges: none,
   // publication metadata. LaTeX-faithful defaults (acmart.dtx): \acmVolume{1},
   // \acmNumber{1}, \acmYear{\the\year}, \acmMonth{\the\month}. The system clock
   // (datetime.today) is only read when the date arg is omitted, so documents that
@@ -68,10 +73,13 @@
   let meta = (
     title: title,
     subtitle: subtitle,
+    title-note: title-note,
+    subtitle-note: subtitle-note,
     authors: authors,
     abstract: abstract,
     ccs: ccs,
     keywords: keywords,
+    teaser: teaser,
     journal: journal,
     acm-volume: acm-volume,
     acm-number: acm-number,
@@ -116,7 +124,12 @@
   } else { short-authors }
   let header-content = context {
     let p = here().page()
-    if p <= 1 { return }
+    // Page 1 has no running head, but may carry artifact-evaluation badges
+    // (acmart firstpagestyle: \@acmBadgeL left, \@acmBadgeR right).
+    if p <= 1 {
+      if badges != none { return make-badges(cfg, badges) }
+      return
+    }
     set text(font: cfg.fonts.sans, size: cfg.size.footnotesize)
     let article-page = if acm-article != none [#acm-article:#p] else [#p]
     if calc.odd(p) {
@@ -177,6 +190,7 @@
   } else { none })
 
   cfg-state.update(cfg) // publish config for theorem environments
+  anon-state.update(anonymous) // publish anonymity for the acks environment
 
   if meta.title != none {
     make-footnotes(cfg, meta) // place(bottom) on page 1
@@ -184,4 +198,7 @@
   }
 
   apply-body(cfg, body)
+
+  // \received history line, printed last (acmart \AtEndDocument).
+  if received != none { make-received(cfg, received) }
 }

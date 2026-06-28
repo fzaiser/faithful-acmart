@@ -103,17 +103,23 @@ A complete example is in [`template/main.typ`](template/main.typ).
 |---|---|
 | `format` | Layout format (`"acmsmall"`) |
 | `title`, `subtitle` | Paper title / subtitle |
+| `title-note`, `subtitle-note` | Footnotes anchored to the title / subtitle (symbol marks, in the page-1 footnote stack) |
 | `authors` | List of author dicts: `name`, `email`, `orcid`, `note`, `corresponding`, `affiliation` (a `(institution, city, state, country)` dict, or an array of such dicts for several affiliations) |
 | `abstract` | Abstract content |
 | `ccs` | List of `(significance, area, concept)` — ≥500 bold, ≥300 italic, else roman |
 | `keywords` | List/array of keywords |
+| `teaser` | A full-width figure placed between the authors and the abstract |
+| `badges` | Artifact-evaluation badges for the page-1 header: `(left: …, right: …)` content (e.g. a `36pt`-wide `image`) |
+| `received` | Paper history (end of document): a string, or an array of `(stage, date)` items (empty stage → "Received"/"revised") |
 | `journal`, `acm-volume`, `acm-number`, `acm-article`, `acm-year`, `acm-month`, `doi` | Publication metadata |
 | `copyright`, `copyright-year` | Copyright mode (e.g. `"acmlicensed"`) |
 | `short-title`, `short-authors` | Running-head overrides (auto-derived otherwise) |
 
 Theorem-like environments: `theorem`, `lemma`, `corollary`, `proposition`,
 `conjecture`, `definition`, `example`, `remark`, `proof`. They share one counter
-numbered within the section, e.g. `#theorem(name: "Optional")[…]`.
+numbered within the section, e.g. `#theorem(name: "Optional")[…]`. The `acks`
+function emits the unnumbered "Acknowledgments" section (`#acks[…]`; suppressed
+under `anonymous`).
 
 ## Development & validation
 

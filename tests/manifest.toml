@@ -69,6 +69,21 @@ uniform_pitch = true
 # in-text range collapsing), so the reference list reflows — which is why line
 # count is reported, not gated. Margins/pitch are still held to the same bar.
 
+[tests.notes-test]
+kind = "twin"
+pages = 1
+# Title/subtitle/author notes, corresponding mark, received line, and acks. The
+# title block and footnote stack mix leadings, so pitch is reported, not gated.
+
+[tests.feature-test]
+kind = "smoke"
+pages = 1
+page_parity = false
+metrics = false
+# No LaTeX twin: badges/teaser use synthetic shapes. Compiled (warning-free) and
+# golden-hashed only, to guard the title-note/subtitle-note/teaser/badges paths
+# that notes-test (text-only) and the sample don't all exercise together.
+
 [tests.sample-acmsmall]
 kind = "upstream-ref"
 reference = "acmsmall"

@@ -26,11 +26,14 @@ DIFF   := tests/out/diff
 
 # Matched twins: NAME.tex (real LaTeX) + NAME.typ (ours) share a stem and are
 # diffed/compared page-by-page.
-MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test
+MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test
 # End-to-end ports: full Typst documents with NO hand-written twin — compared
 # against the upstream sample reference built by `make reference` (see the
 # stem->reference map in the diff target and reference= in tests/manifest.toml).
 E2E := sample-acmsmall
+# Smoke-only Typst docs: no LaTeX twin (synthetic assets), compiled + golden-hashed
+# but not geometry-compared. Exercise feature paths the matched tests do not.
+SMOKE := feature-test
 
 .PHONY: probe reference example test test-references check accept diff validate clean
 
@@ -61,7 +64,7 @@ example:
 
 test: reference test-references
 	@mkdir -p $(TYPST)
-	@for t in $(MATCHED) $(E2E); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
+	@for t in $(MATCHED) $(E2E) $(SMOKE); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
 	$(TC) compile template/main.typ $(TYPST)/main.pdf
 	@echo "All Typst tests built into $(TYPST)/."
 
@@ -78,7 +81,7 @@ check: test
 # the current Typst output is.
 accept:
 	@mkdir -p $(TYPST)
-	@for t in $(MATCHED) $(E2E); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
+	@for t in $(MATCHED) $(E2E) $(SMOKE); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
 	$(PY) tools/check_golden.py --accept
 
 # Diff a Typst output against its LaTeX reference. Override STEM/PAGES:

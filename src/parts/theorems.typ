@@ -14,6 +14,10 @@
 // (which users call directly) can read format-specific measurements.
 #let cfg-state = state("acmart-cfg", none)
 
+// Whether the document is anonymized (acmart `anonymous` option), published by
+// acmart() so body-level environments can suppress identity-revealing content.
+#let anon-state = state("acmart-anon", false)
+
 #let thm-counter = counter("acm-thm")
 
 #let _section-number() = {
@@ -62,6 +66,16 @@
 #let definition = _theorem-env([Definition], "italic", "normal")
 #let example = _theorem-env([Example], "italic", "normal")
 #let remark = _theorem-env([Remark], "italic", "normal")
+
+// acks: the acknowledgments environment (acmart.dtx:8850). An unnumbered section
+// titled "Acknowledgments" (\acksname, acmart.dtx:8839); the global heading show
+// rule supplies the sans-bold section styling. Suppressed entirely in anonymous
+// mode, where acmart `\excludecomment{acks}` drops the block (acmart.dtx:8896).
+#let acks(body) = context {
+  if anon-state.get() { return }
+  heading(level: 1, numbering: none)[Acknowledgments]
+  body
+}
 
 // proof: unnumbered, small-caps "Proof." head, roman body, trailing QED.
 #let proof(body, name: [Proof]) = {

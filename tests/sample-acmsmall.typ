@@ -6,13 +6,13 @@
 //
 // Known gaps vs the LaTeX sample (the lib doesn't model these yet; see CLAUDE.md
 // "Not done yet" — they will drift the diff and are expected, not spacing bugs):
-//   - \received dates (3 lines under the ref block) — omitted.
-//   - \acks / Ethics use real acmart environments (acks env, \section*); here
-//     they are plain unnumbered headings, which is close but not byte-identical.
+//   - \received dates: now modelled via the `received:` argument (end of doc).
+//   - \acks: now the real `acks` environment; the Ethics statement is a plain
+//     unnumbered heading (\section*), which is byte-identical to acmart's.
 //   - \appendix lettering is emulated with `set heading(numbering: "A.1")`.
 //   - Wide floats (table*) collapse to normal floats (acmsmall is single-column,
 //     so this matches in practice).
-#import "../src/lib.typ": acmart, theorem, proof
+#import "../src/lib.typ": acmart, theorem, proof, acks
 
 #show: acmart.with(
   format: "acmsmall",
@@ -62,6 +62,13 @@
     (300, "Do Not Use This Code", "Generate the Correct Terms for Your Paper"),
     (100, "Do Not Use This Code", "Generate the Correct Terms for Your Paper"),
     (100, "Do Not Use This Code", "Generate the Correct Terms for Your Paper"),
+  ),
+  // \received{20 February 2007}\received[revised]{...}\received[accepted]{...}
+  // (samples.dtx:378-380), printed at end of document.
+  received: (
+    ("", "20 February 2007"),
+    ("revised", "12 March 2009"),
+    ("accepted", "5 June 2009"),
   ),
 )
 
@@ -471,11 +478,9 @@ review @Baggett2025. A couple of citations with DOIs:
 @2004:ITE:1009386.1010128 @Kirschmer:2010:AEI:1958016.1958018. Online citations:
 @TUGInstmem @Thornburg01 @CTANacmart. Artifacts: @R and @UMassCitations.
 
-// GAP: \acks is a dedicated acmart environment; rendered here as a plain
-// unnumbered heading. Content matches; metadata tagging does not.
-#heading(numbering: none, level: 1)[Acknowledgments]
-
-To Robert, for the bagels and explaining CMYK and color spaces.
+#acks[
+  To Robert, for the bagels and explaining CMYK and color spaces.
+]
 
 // GAP: \section*{} unnumbered section.
 #heading(numbering: none, level: 1)[Ethics and Privacy Statement]

@@ -67,6 +67,9 @@
   list-leftmargin: 24.5 * tp,
   list-leftmargin-ii: 8.5 * tp,
   runin-sep: 3.5 * tp, // |afterskip| for run-in headings (subsubsection/paragraph)
+  // Artifact-evaluation badges in the first-page header (acmart.dtx:5581/5603):
+  // each badge image is 3pc wide, consecutive badges separated by 1pt.
+  badge-width: 3 * 12 * tp, badge-skip: 1 * tp,
   heading-numbering: "1.1.1", // secnumdepth=3 (paragraphs unnumbered, handled in show rule)
   fonts: (
     serif: "Libertinus Serif",

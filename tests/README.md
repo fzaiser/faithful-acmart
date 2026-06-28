@@ -20,13 +20,20 @@ e.g. `make diff STEM=full-test PAGES=1-2`.
 | `fn-test` | twin | body footnotes + code/verbatim |
 | `full-test` | twin | multi-page cumulative spacing (reveals the `\flushbottom` difference) |
 | `title-test` | twin | frontmatter in isolation: title block, author fields, abstract, CCS, keywords |
+| `notes-test` | twin | top-matter footnotes (title/subtitle/author note symbols), corresponding mark, `received`, `acks` |
 | `bib-test` | twin | bibliography (ACM CSL vs `ACM-Reference-Format.bst` — see note) |
 | `sample-acmsmall` | e2e | full port of the upstream `acmsmall` sample, vs `out/latex/acmsmall.pdf` |
+| `feature-test` | smoke | compile + golden only (no twin): teaser, badges, title/subtitle notes via synthetic assets |
 
 `sample-acmsmall` has no `.tex`; `make reference` builds its upstream reference,
-and `make diff STEM=sample-acmsmall` maps to it automatically. The port carries
-documented gaps (received dates, `acks`/`appendix`/teaser environments) — see the
-header of `sample-acmsmall.typ`.
+and `make diff STEM=sample-acmsmall` maps to it automatically. It now uses the
+real `received` / `acks` features; remaining documented gaps (`appendix`
+lettering, wide floats) are listed in the header of `sample-acmsmall.typ`.
+
+`feature-test` is a *smoke-only* doc (kind `smoke`): it has no LaTeX twin because
+badges/teaser use synthetic shapes, so it is compiled (warning-free) and
+golden-hashed but not geometry-compared (`metrics = false`). It guards the
+title-note / subtitle-note / teaser / badges paths that the text-only twins skip.
 
 **bib note:** the ACM CSL and the LaTeX `.bst` are independent implementations of
 the same style and diverge in content (access dates, "Doctoral dissertation" vs

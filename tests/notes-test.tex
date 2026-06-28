@@ -1,0 +1,66 @@
+%% notes-test — frontmatter footnote isolator (LaTeX twin of notes-test.typ).
+%% Exercises the SHARED footnote-symbol counter across the top matter: a title
+%% note (*), a subtitle note (dagger), and an author note (double-dagger), in the
+%% order acmart emits them (titlenote, subtitlenote, authornote). A separate
+%% corresponding-author envelope sits on the OTHER author so no single name mixes
+%% the envelope with a note symbol (that ordering is a documented approximation).
+%% Also exercises \received (end of document) and the acks environment.
+\documentclass[acmsmall]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmMonth{8}
+
+\begin{document}
+
+\title{A Title With a Note}
+\titlenote{This funding note is attached to the title.}
+\subtitle{A Subtitle With a Note}
+\subtitlenote{And this one is attached to the subtitle.}
+
+\author{Alice Researcher}
+\authornote{Alice did the experiments.}
+\email{alice@example.edu}
+\affiliation{%
+  \institution{Example University}
+  \city{Townsville}
+  \country{USA}}
+
+\author{Bob Scientist}
+\correspondingauthor
+\email{bob@example.edu}
+\affiliation{%
+  \institution{Sample Institute}
+  \city{Metropolis}
+  \country{USA}}
+
+\renewcommand{\shortauthors}{Researcher and Scientist}
+
+\begin{abstract}
+  A short abstract anchoring the front matter so the footnote stack, the title
+  and subtitle notes, the author note, and the corresponding-author mark can be
+  compared between the LaTeX and Typst renderings.
+\end{abstract}
+
+\received{20 February 2007}
+\received[revised]{12 March 2009}
+\received[accepted]{5 June 2009}
+
+\maketitle
+
+\section{Introduction}
+This document isolates the top-matter footnotes so the shared symbol sequence
+(title, subtitle, then author notes) can be compared between the LaTeX and Typst
+renderings, along with the paper-history line and the acknowledgments section.
+
+\begin{acks}
+We thank the anonymous reviewers for their helpful comments.
+\end{acks}
+
+\end{document}
