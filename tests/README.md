@@ -31,6 +31,7 @@ e.g. `make diff STEM=full-test PAGES=1-2`.
 | `sample-acmsmall` | e2e | full port of the upstream `acmsmall` sample, vs `out/latex/acmsmall.pdf` |
 | `feature-test` | smoke | compile + golden only (no twin): teaser, badges, title/subtitle notes via synthetic assets |
 | `draft-test` | smoke | compile-only (no golden/metrics): author-draft = timestamp footer + watermark + copyright overlay + review line numbers; output embeds the compile date so it can't be hash-pinned |
+| `urlbreak-test` | smoke | `urlbreakonhyphens: false`: a long hyphenated URL must not break at its hyphens; Typst-only (golden), since cross-engine break points differ |
 
 `sample-acmsmall` has no `.tex`; `make reference` builds its upstream reference,
 and `make diff STEM=sample-acmsmall` maps to it automatically. It now uses the

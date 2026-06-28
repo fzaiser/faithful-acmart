@@ -148,6 +148,15 @@ golden = false
 # (datetime.today), so the output is non-deterministic — compile-only (Tier 0):
 # no golden hash, no geometry gate, no LaTeX twin.
 
+[tests.urlbreak-test]
+kind = "smoke"
+pages = 1
+page_parity = false
+metrics = false
+# `urlbreakonhyphens: false`. Not a twin — LaTeX and Typst pick different URL
+# break points, so only the Typst output is pinned (golden) to prove the long
+# hyphenated URL no longer breaks at its hyphens. Deterministic, so golden-hashed.
+
 [tests.feature-test]
 kind = "smoke"
 pages = 1

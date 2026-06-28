@@ -96,11 +96,15 @@
   authors-per-row: 0,
   article-type: none,
   acmthm: true,
+  // Implemented: whether long URLs may break after a literal hyphen (acmart
+  // \do@url@hyp, acmart.dtx:3631). Typst's line-breaker already breaks URLs at
+  // hyphens, so `true` is native; `false` re-renders hyphens in link text as
+  // U+2011 to forbid those breaks (see the `show link` rule below).
+  urlbreakonhyphens: true,
   // Recognized but NOT yet modelled for acmsmall. Accepted so the option is
   // reserved, but a non-default value raises an explicit error rather than being
   // silently ignored (see the assert loop below). Implement + drop from there
   // when modelled.
-  urlbreakonhyphens: true,// break URLs on hyphens (we don't custom-control URL breaking)
   draft: false,           // amsart draft mode (overfull-box rules)
   // Implemented: base font size, one of 8pt/9pt/10pt/11pt/12pt (acmsmall default
   // 10pt). Scales the typography via the amsart \@typesizes ladder; geometry is
@@ -126,7 +130,6 @@
   // accepted as documented no-ops in the signature above, not listed here. Each
   // tuple is (name, value, default).
   for (opt-name, val, default) in (
-    ("urlbreakonhyphens", urlbreakonhyphens, true),
     ("draft", draft, false),
   ) {
     assert(
@@ -328,9 +331,22 @@
   // for URLs). Without it, links stay black as in print acmart.
   let acm-purple = cmyk(55%, 100%, 0%, 15%)
   let acm-dark-blue = cmyk(100%, 58%, 0%, 21%)
-  show link: it => if screen {
-    text(fill: if type(it.dest) == str { acm-dark-blue } else { acm-purple }, it)
-  } else { it }
+  let colorize = (dest, body) => if screen {
+    text(fill: if type(dest) == str { acm-dark-blue } else { acm-purple }, body)
+  } else { body }
+  // `urlbreakonhyphens` (default true): acmart adds `-` to hyperref's URL break
+  // set (\do@url@hyp, acmart.dtx:3631), and Typst's line-breaker already breaks
+  // URLs after hyphens — so the default needs nothing and stays the plain `it`.
+  // When false, re-render literal hyphens in the link text as U+2011 (a
+  // non-breaking hyphen, visually identical) to forbid those breaks, while `/`
+  // and `.` stay breakable, exactly as acmart's `urlbreakonhyphens=false`.
+  show link: it => if urlbreakonhyphens {
+    colorize(it.dest, it)
+  } else {
+    // Transform `it` in place (a nested string show rule); reconstructing a
+    // `link` element here would re-trigger this rule and recurse.
+    colorize(it.dest, { show "-": "\u{2011}"; it })
+  }
 
   // `review`: number every line in the left margin (acmart uses \color{red}
   // \scriptsize — 7pt at this base size; acmart.dtx:7862).
