@@ -101,11 +101,12 @@
   // hyphens, so `true` is native; `false` re-renders hyphens in link text as
   // U+2011 to forbid those breaks (see the `show link` rule below).
   urlbreakonhyphens: true,
-  // Recognized but NOT yet modelled for acmsmall. Accepted so the option is
-  // reserved, but a non-default value raises an explicit error rather than being
-  // silently ignored (see the assert loop below). Implement + drop from there
-  // when modelled.
-  draft: false,           // amsart draft mode (overfull-box rules)
+  // Recognized but intentionally inert — and rejected (not silently ignored) so
+  // the user isn't misled. `draft` only sets \overfullrule in acmart (a rule
+  // marking overfull lines, acmart.dtx:2865); Typst has no equivalent, and no
+  // custom-warning API to flag the gap, so a non-default value errors with that
+  // rationale (see the assert below).
+  draft: false,
   // Implemented: base font size, one of 8pt/9pt/10pt/11pt/12pt (acmsmall default
   // 10pt). Scales the typography via the amsart \@typesizes ladder; geometry is
   // font-size-independent (acmart.dtx:3750). See formats/acmsmall.typ.
@@ -121,25 +122,25 @@
   // ladder — geometry is font-size-independent, acmart.dtx:3750).
   let cfg = (_formats.at(format))(font-size: font-size)
 
-  // Refuse to silently ignore recognized-but-unimplemented options: setting one
-  // to a non-default value would otherwise quietly diverge from LaTeX, so we
-  // assert instead. Membership rule: an option belongs here iff it would change
-  // acmsmall output in real acmart but we don't model that change yet — and this
-  // is unrelated to the one/two-column split. Options that are simply inert in
-  // acmsmall (balance/pbalance/natbib/authors-per-row/article-type/acmthm) are
-  // accepted as documented no-ops in the signature above, not listed here. Each
-  // tuple is (name, value, default).
-  for (opt-name, val, default) in (
-    ("draft", draft, false),
-  ) {
-    assert(
-      val == default,
-      message: "acmart: option `" + opt-name + "` is recognized but not yet "
-        + "implemented for the acmsmall format (got " + repr(val) + "). It is "
-        + "reserved so the name isn't forgotten; leave it at its default "
-        + repr(default) + " for now.",
-    )
-  }
+  // `draft` is recognized but has no faithful realization here: its sole effect
+  // in acmart is to pass `draft` to amsart/article, which only sets
+  // \overfullrule=5pt — a rule drawn beside overfull lines (acmart.dtx:2865).
+  // Typst has no overfull-hbox concept or API to draw such markers (it reports
+  // overflow as compiler warnings), and no custom-warning API to flag the gap at
+  // compile time. Rather than accept it silently (which would let the user think
+  // it did something), we reject it loudly with that rationale. Other options
+  // that are simply inert in acmsmall (balance/pbalance/natbib/authors-per-row/
+  // article-type/acmthm) genuinely produce identical output, so they stay
+  // documented no-ops in the signature above; `draft` is different only in that
+  // its non-default value is meant to be visible, and here it can't be.
+  assert(
+    draft == false,
+    message: "acmart: option `draft` has no effect in this Typst port, so it is "
+      + "rejected rather than silently ignored. In acmart `draft` only marks "
+      + "overfull lines with a rule (acmart.dtx:2865); Typst has no equivalent "
+      + "and instead reports overflow as compiler warnings. Remove `draft` to "
+      + "compile.",
+  )
 
   // \settopmatter{printacmref} defaults true; nonacm flips it off unless the
   // author forces it back on with show-ref: true (acmart.dtx:2717).
