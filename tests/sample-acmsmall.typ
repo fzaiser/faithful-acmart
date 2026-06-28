@@ -23,10 +23,11 @@
   copyright: "acmlicensed", copyright-year: 2018,
   short-authors: "Trovato et al.",
   authors: (
+    // Trovato carries NO affiliation; Tobin holds the shared one, so acmart's
+    // structural rule andifies them onto one line (samples.dtx:181-194 does the
+    // same — only Tobin has \affiliation). See group-authors in frontmatter.typ.
     (name: "Ben Trovato", note: [Both authors contributed equally to this research.],
-     email: "trovato@corporation.com", orcid: "1234-5678-9012",
-     affiliation: (institution: "Institute for Clarity in Documentation",
-                   city: "Dublin", state: "Ohio", country: "USA")),
+     email: "trovato@corporation.com", orcid: "1234-5678-9012"),
     (name: "G.K.M. Tobin", note: [Both authors contributed equally to this research.],
      corresponding: true, email: "webmaster@marysville-ohio.com",
      affiliation: (institution: "Institute for Clarity in Documentation",

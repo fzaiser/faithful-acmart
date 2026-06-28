@@ -2,7 +2,8 @@
 //
 // Mirrors acmart's \maketitle for the journal formats: title (LARGE sans bold,
 // left aligned), author lines (large sans uppercase names + small serif
-// affiliation, grouped by shared affiliation), then abstract / CCS / keywords /
+// affiliation, grouped structurally per acmart — see group-authors), then
+// abstract / CCS / keywords /
 // ACM reference format. See the acmsmall-frontmatter-specs memory for sources.
 
 #import "copyright.typ": permission-text, copyright-owner
@@ -68,15 +69,28 @@
   if affs.len() == 0 { none } else { affs.join(" and ") }
 }
 
-// Group consecutive authors that share an identical affiliation.
+// Group authors exactly as acmart's \@mkauthors@i does (acmart.dtx:7337-7371) —
+// the unconditional rule for journal formats incl. acmsmall (the \@mkauthors
+// \ifcase routes acmsmall to @i, acmart.dtx:7160). Authors accumulate onto one
+// line; an \affiliation closes that line and attaches itself to EVERY author
+// accumulated so far, then the next author starts a fresh line. Consequences,
+// matching acmart and NOT a value comparison (acmart never compares affiliations):
+//   - an author with no affiliation is andified onto the following author(s);
+//   - authors that each carry an affiliation get their own line, even when the
+//     affiliations are identical;
+//   - trailing affiliation-less authors share a final, affiliation-less line.
 #let group-authors(authors) = {
   let groups = ()
+  let pending = ()
   for a in authors {
-    if groups.len() > 0 and groups.last().affiliation == a.affiliation {
-      groups.last().authors.push(a)
-    } else {
-      groups.push((affiliation: a.affiliation, authors: (a,)))
+    pending.push(a)
+    if a.affiliation != none {
+      groups.push((affiliation: a.affiliation, authors: pending))
+      pending = ()
     }
+  }
+  if pending.len() > 0 {
+    groups.push((affiliation: none, authors: pending))
   }
   groups
 }
@@ -316,7 +330,7 @@
   // the author lines (at \large). So the gap is \bigskip + \medskip before 10.95pt.
   v(tex-skip(cfg, cfg.bigskip + cfg.medskip, sz: "large"), weak: true)
 
-  // --- Authors (grouped by affiliation) ---
+  // --- Authors (grouped structurally per acmart; see group-authors) ---
   // Anonymous review: replace the whole author strip with "Anonymous Author(s)".
   if meta.anonymous {
     block(spacing: 0pt)[

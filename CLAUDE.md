@@ -61,9 +61,11 @@ separate single-column `manuscript` format. Top-matter commands `\titlenote`/
 `\subtitlenote`, `\received`, the `acks` environment, teaser figures, and author
 badges ARE now modelled (params `title-note`/`subtitle-note`/`received`/`teaser`/
 `badges` and the `acks` function; validated by `tests/notes-test` + the sample).
-See DESIGN.md "Deliberate approximations" / "Known limitations" for the full list
-(incl. the author-grouping rule, which is by affiliation value, not acmart's
-structural one).
+See DESIGN.md "Deliberate approximations" / "Known limitations" for the full list.
+Author *line grouping* now follows acmart's exact structural rule (an
+affiliation-less author andifies onto the next; affiliations are never compared —
+`group-authors`); the remaining author-side approximation is contact-info *field
+order* (we emit affiliation-then-email, not source-declaration order).
 
 ## Git workflow
 

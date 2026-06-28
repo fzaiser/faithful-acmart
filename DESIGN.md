@@ -139,16 +139,19 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   (`acmart.dtx:5430`). What differs is *ordering* — we emit ✉-then-note in a fixed
   order, not LaTeX's source-declaration order, because our author model stores a
   boolean `corresponding` and a `note` with no declaration order to honour.
-- **Author grouping is by affiliation *value*, not acmart's structural rule.**
-  acmart groups consecutive authors onto one line when the earlier ones carry no
-  `\affiliation` at all (the affiliation is given once, on the last of the group;
-  `\@mkauthors@i` flushes a line whenever an `\affiliation` token is seen,
-  `acmart.dtx:7337`). We instead merge consecutive authors whose affiliation
-  *values* are equal (`group-authors`, `frontmatter.typ`) — the natural Typst
-  input is to give each author their affiliation. Both yield the same output for
-  the common "shared affiliation" case (and the upstream sample); they diverge
-  only if a doc repeats an *identical* affiliation on each author expecting
-  acmart's repeat-the-line behaviour, or relies on a blank affiliation to merge.
+- **Author *contact-info* field order is fixed (affiliation, then email last),
+  not source order.** acmart's `\@mkauthorsaddresses` replays each author's fields
+  in the order they were declared, so an author who wrote `\email` before
+  `\affiliation` shows the email first. Our author dict has no declaration order,
+  so we always emit affiliation-then-email (the common acmart convention; the
+  upstream sample's Tobin, who declares email first, is the lone exception).
+- Author *line grouping* IS faithful (not an approximation): `group-authors`
+  (`frontmatter.typ`) implements acmart's exact `\@mkauthors@i` rule
+  (`acmart.dtx:7337`) — authors accumulate onto a line and an `\affiliation`
+  closes it for everyone accumulated so far; affiliation values are never
+  compared. To put two authors on one shared-affiliation line, give the
+  affiliation to the *second* and omit it on the first (the acmart idiom; see the
+  Trovato/Tobin pair in `sample-acmsmall.typ`).
 - Lists: body indents are tuned to land at `\leftmargin` (24.5pt, level 1) for the
   common single-level case, but Typst has no fixed hanging-label box (LaTeX's
   `\llap`), so on deeply nested or width-varied markers the body drifts with the
