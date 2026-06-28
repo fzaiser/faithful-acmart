@@ -60,5 +60,7 @@ figures, and author badges (use ordinary Typst headings/notes). See DESIGN.md
 ## Git workflow
 
 **Work on `main` directly — do NOT create feature branches in this repo.** Commit
-straight to `main` (this overrides the usual "branch off the default branch
-first" default). Commit/push only when asked.
+straight to `main` (this overrides the usual "branch off the default branch first"
+default). **Commit proactively** after each significant, logically coherent chunk
+of work, with a descriptive message — don't wait to be asked. Only `push` when
+asked.
