@@ -90,10 +90,18 @@
   )
   let cfg = _formats.at(format)
 
-  // Refuse to silently ignore recognized-but-unimplemented options: a non-default
-  // value would otherwise quietly diverge from LaTeX. Each tuple is
-  // (name, value, default). (balance/pbalance/natbib are intentionally absent —
-  // they are genuine no-ops in the single-column layout, not unimplemented.)
+  // Refuse to silently ignore recognized-but-unimplemented options: setting one
+  // to a non-default value would otherwise quietly diverge from LaTeX, so we
+  // assert instead. Membership rule: an option belongs here iff it would change
+  // acmsmall output in real acmart but we don't model that change yet — e.g.
+  // `language` (translated title/abstract) or `font-size` (a different base
+  // size). This is unrelated to the one/two-column split. Each tuple is
+  // (name, value, default).
+  //
+  // Deliberately NOT here, because they produce no acmsmall change in real
+  // acmart either (so they're accepted as documented no-ops, not errors):
+  // balance/pbalance (column balancing — a two-column-only feature) and natbib
+  // (selects the LaTeX citation package — moot, bibliography is CSL-driven here).
   for (opt-name, val, default) in (
     ("author-version", author-version, false),
     ("timestamp", timestamp, false),
