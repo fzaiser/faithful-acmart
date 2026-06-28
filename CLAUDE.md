@@ -56,3 +56,9 @@ separate single-column `manuscript` format. Unmodelled top-matter commands:
 `\titlenote`/`\subtitlenote`, `\received`, the `acks` environment, teaser
 figures, and author badges (use ordinary Typst headings/notes). See DESIGN.md
 "Deliberate approximations" / "Known limitations" for the full list.
+
+## Git workflow
+
+**Work on `main` directly — do NOT create feature branches in this repo.** Commit
+straight to `main` (this overrides the usual "branch off the default branch
+first" default). Commit/push only when asked.
