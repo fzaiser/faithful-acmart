@@ -72,6 +72,15 @@ pages = 1
 # format=acmlarge: large single-column journal geometry (10pt) with the
 # \sffamily\large (regular-weight) section headings (acmart.dtx:8424).
 
+[tests.sigconf-test]
+kind = "twin"
+pages = 1
+page1_only = true
+# format=sigconf: two-column proceedings. Spanning centered title + author grid,
+# first-column copyright block, serif-bold Large sections. Two columns of
+# justified text break differently across engines (higher pixel mismatch is
+# expected); page1_only gates absolute positions on the title page only.
+
 [tests.fontsize-8-test]
 kind = "twin"
 pages = 1

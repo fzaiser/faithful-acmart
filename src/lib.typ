@@ -11,9 +11,10 @@
 #import "formats/acmsmall.typ": acmsmall
 #import "formats/manuscript.typ": manuscript
 #import "formats/acmlarge.typ": acmlarge
+#import "formats/sigconf.typ": sigconf
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
-#import "parts/frontmatter.typ": make-title, make-footnotes, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
+#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
 #import "parts/body.typ": apply-body
 #import "parts/strings.typ": resolve-language, lang-record
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
@@ -23,6 +24,7 @@
   manuscript: manuscript,
   acmsmall: acmsmall,
   acmlarge: acmlarge,
+  sigconf: sigconf,
 )
 
 #let acmart(
@@ -60,6 +62,13 @@
   acm-year: datetime.today().year(),
   acm-month: datetime.today().month(),
   doi: none,
+  // Conference metadata (proceedings formats; acmart \acmConference / \acmBooktitle
+  // / \acmISBN). `conference` is a dict (name / short / venue / date); the
+  // conference copyright block prints "<short>, <venue>" (acmart.dtx:6620) and the
+  // ISBN line (acmart.dtx:6654). Ignored by the journal formats.
+  conference: none,
+  booktitle: none,
+  isbn: none,
   copyright: "acmlicensed",
   copyright-year: none,
   cc-type: "by",
@@ -217,6 +226,12 @@
     acm-year: acm-year,
     acm-month: acm-month,
     doi: doi,
+    conference: conference,
+    booktitle: booktitle,
+    isbn: isbn,
+    conf-footer: cfg.conf-footer,
+    bibstrip: cfg.bibstrip,
+    authors-per-row: authors-per-row,
     copyright: copyright,
     copyright-year: copyright-year,
     cc-type: cc-type,
@@ -305,12 +320,18 @@
     width: cfg.paper.width,
     height: cfg.paper.height,
     margin: cfg.margin,
+    columns: cfg.columns, // proceedings/acmtog set 2 (acmart.dtx:6849 \twocolumn)
     header-ascent: cfg.head.sep + comp(cfg, sz: "footnotesize"),
     footer-descent: cfg.foot.skip - cfg.size.footnotesize,
     header: header-content,
     footer: footer-content,
     background: if watermark != none { align(center + horizon, watermark) },
   )
+  // Exact inter-column gutter (\columnsep; acmart sets 24pt/2pc). Typst's page
+  // `columns` otherwise defaults to a 4%-of-width gutter. A no-op for the
+  // single-column formats (no columns element is split), so set unconditionally
+  // — a `set` inside an `if` would only scope to that block, not the body.
+  set columns(gutter: cfg.columnsep)
 
   // Pin the line box to the font size (top-edge - bottom-edge = 1em) so that the
   // baseline-to-baseline distance is font-metric-independent and equals
@@ -369,8 +390,22 @@
   anon-state.update(anonymous) // publish anonymity for the acks environment
 
   if meta.title != none {
-    make-footnotes(cfg, meta) // place(bottom) on page 1
-    make-title(cfg, meta)
+    // Page-1 footnote stack (author notes / contact info / copyright). A
+    // place(bottom, float) — full-width in one column, first-column-scoped in two
+    // (the conference \footnotetextcopyrightpermission block, acmart.dtx:6605).
+    make-footnotes(cfg, meta)
+    if cfg.columns > 1 {
+      // \twocolumn[\box\mktitle@bx] (acmart.dtx:6849): only the title/author box
+      // spans both columns; the abstract/CCS/keywords (\@mkabstract et seq.,
+      // acmart.dtx:6665) follow it in the FIRST column. scope: "parent" escapes the
+      // column to span the full text width; clearance is the box's trailing
+      // \par\bigskip before the columns start.
+      place(top, scope: "parent", float: true, clearance: tex-skip(cfg, cfg.bigskip),
+        make-title-head(cfg, meta))
+      make-title-body(cfg, meta) // flows in column 1, beneath the spanning box
+    } else {
+      make-title(cfg, meta)
+    }
   }
 
   apply-body(cfg, body)
