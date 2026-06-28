@@ -23,9 +23,15 @@ DIFF = T.TESTS / "out" / "diff"
 
 
 def current_hashes() -> dict:
-    """{name: [page hashes]} for every test, rasterized at the golden DPI."""
+    """{name: [page hashes]} for every test, rasterized at the golden DPI.
+
+    Tests with `golden = false` are skipped — their output is non-deterministic
+    (e.g. timestamp mode embeds the compile date), so a stable hash is impossible.
+    """
     result = {}
-    for name in T.tests(T.load_manifest()):
+    for name, cfg in T.tests(T.load_manifest()).items():
+        if cfg.get("golden", True) is False:
+            continue
         pdf = T.typst_pdf(name)
         if not pdf.exists():
             continue
@@ -73,7 +79,10 @@ def main() -> int:
 
     cur = current_hashes()
     failures = []
-    for name in T.tests(man):
+    for name, cfg in T.tests(man).items():
+        if cfg.get("golden", True) is False:
+            print(f"skip {name} (golden disabled)")
+            continue
         g = golden.get(name)
         c = cur.get(name)
         if g is None:

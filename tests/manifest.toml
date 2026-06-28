@@ -91,6 +91,16 @@ pages = 1
 # ... Version of Record" notice). Title block + footnote stack mix leadings, so
 # pitch is reported, not gated.
 
+[tests.draft-test]
+kind = "smoke"
+pages = 1
+page_parity = false
+metrics = false
+golden = false
+# author-draft / timestamp mode. The timestamp footer embeds the compile date
+# (datetime.today), so the output is non-deterministic — compile-only (Tier 0):
+# no golden hash, no geometry gate, no LaTeX twin.
+
 [tests.feature-test]
 kind = "smoke"
 pages = 1

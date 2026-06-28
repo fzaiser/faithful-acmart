@@ -63,6 +63,12 @@
   anonymous: false,       // blind-review author strip
   nonacm: false,          // drop the ACM journal footer + reference format
   author-version: false,  // authorversion: author's-version copyright block
+  // timestamp: draft timestamp footer on the inner edge (acmart.dtx:7945). acmart
+  // prints "<date> <HH>:<MM>. Page p of start--total."; Typst has no wall-clock
+  // access, so we print the compile date (datetime.today) and omit the time.
+  timestamp: false,
+  author-draft: false,    // authordraft = timestamp + review + draft watermark/overlay
+  submission-id: none,    // \acmSubmissionID — shown in the timestamp + anon. header
   // No effect in the single-column acmsmall layout — accepted for API parity (so
   // the names aren't forgotten) but inert here, exactly as in real acmart:
   //   balance/pbalance — column balancing, a two-column-only feature
@@ -82,8 +88,6 @@
   // reserved, but a non-default value raises an explicit error rather than being
   // silently ignored (see the assert loop below). Implement + drop from there
   // when modelled.
-  timestamp: false,       // draft timestamp in the footer (wall-clock; non-reproducible)
-  author-draft: false,    // authordraft = timestamp + review (blocked on timestamp)
   urlbreakonhyphens: true,// break URLs on hyphens (we don't custom-control URL breaking)
   language: none,         // additional languages (translated title/abstract) — needs API design
   draft: false,           // amsart draft mode (overfull-box rules)
@@ -105,8 +109,6 @@
   // accepted as documented no-ops in the signature above, not listed here. Each
   // tuple is (name, value, default).
   for (opt-name, val, default) in (
-    ("timestamp", timestamp, false),
-    ("author-draft", author-draft, false),
     ("urlbreakonhyphens", urlbreakonhyphens, true),
     ("language", language, none),
     ("draft", draft, false),
@@ -124,6 +126,10 @@
   // \settopmatter{printacmref} defaults true; nonacm flips it off unless the
   // author forces it back on with show-ref: true (acmart.dtx:2717).
   let show-ref = if show-ref == auto { not nonacm } else { show-ref }
+  // authordraft turns on timestamp + review (acmart.dtx:2819-2820); resolve those
+  // first so the downstream folio/line-number/footer logic sees the effective values.
+  let timestamp = timestamp or author-draft
+  let review = review or author-draft
   // review mode forces folios on (acmart.dtx:2683, \@ACM@printfoliostrue).
   let print-folios = print-folios or review
 
@@ -158,23 +164,35 @@
     print-ccs: print-ccs,
     nonacm: nonacm,
     author-version: author-version,
+    author-draft: author-draft,
     anonymous: anonymous,
   )
 
-  // Running footer: "<short>, Vol. V, No. N, Article A. Publication date: M Y."
-  // Right-aligned on odd pages, left on even (acmart fancyfoot[RO,LE]).
-  // nonacm suppresses the ACM journal bibstrip footer (acmart.dtx:8198/8036).
-  let footer-content = {
+  // Running footer. The ACM journal bibstrip sits on the OUTER edge (acmart
+  // fancyfoot[RO,LE]): right on odd pages, left on even; nonacm suppresses it
+  // (acmart.dtx:8198/8036). In timestamp/authordraft mode a draft timestamp sits
+  // on the INNER edge (fancyfoot[LO,RE], acmart.dtx:8119/8245), opposite the
+  // bibstrip. acmart's stamp is "<date> <HH>:<MM>. Page p of start--total."; Typst
+  // can't read the wall clock, so we print the compile date and omit the time.
+  let footer-content = context {
+    set text(font: cfg.fonts.serif, size: cfg.size.footnotesize)
+    let odd = calc.odd(here().page())
     let j = lookup-journal(journal)
-    if not nonacm and j.short != none {
-      context {
-        set text(font: cfg.fonts.serif, size: cfg.size.footnotesize)
-        // \@acmArticle defaults to empty (acmart.dtx:5477), so the article
-        // number may be absent (#acm-article renders nothing for none):
-        // "..., Article . Publication date: ..."
-        let txt = [#j.short, Vol. #acm-volume, No. #acm-number, Article #acm-article. Publication date: #pub-date(meta).]
-        if calc.odd(here().page()) { align(right, txt) } else { align(left, txt) }
-      }
+    // \@acmArticle defaults to empty (acmart.dtx:5477), so the article number may
+    // be absent (#acm-article renders nothing for none).
+    let bib = if not nonacm and j.short != none {
+      [#j.short, Vol. #acm-volume, No. #acm-number, Article #acm-article. Publication date: #pub-date(meta).]
+    }
+    if timestamp {
+      let total = counter(page).final().first()
+      let date = datetime.today().display("[year]-[month]-[day]")
+      // \@startPage defaults to 1 (acmart.dtx:6823).
+      let ts = [#if submission-id != none { [Submission ID: #submission-id. ] }#date. Page #here().page() of 1--#total.]
+      // inner edge [LO,RE]: odd -> left, even -> right (bibstrip takes the other side)
+      if odd { grid(columns: (1fr, 1fr), align(left, ts), align(right, bib)) }
+      else { grid(columns: (1fr, 1fr), align(left, bib), align(right, ts)) }
+    } else if bib != none {
+      if odd { align(right, bib) } else { align(left, bib) }
     }
   }
 
@@ -186,7 +204,10 @@
   // \shortauthors default = the full author names, andified (acmart.dtx:5215);
   // anonymous mode sets \shortauthors to "Anon." (acmart.dtx:5210/7966). Pass
   // `short-authors:` to override (the acmart `\author[short]{full}` mechanism).
-  let sa = if anonymous { "Anon." } else if short-authors == auto {
+  let sa = if anonymous {
+    // anonymous header is "Anon." plus the submission id when given (acmart.dtx:7967).
+    if submission-id != none [Anon. Submission Id: #submission-id] else [Anon.]
+  } else if short-authors == auto {
     if authors.len() == 0 { none } else { andify(authors.map(a => a.name)) }
   } else { short-authors }
   let header-content = context {
@@ -210,6 +231,15 @@
     }
   }
 
+  // authordraft stamps every page with a light-grey diagonal watermark
+  // (draftwatermark: 0.5in, gray 0.9; acmart.dtx:3720-3726).
+  let watermark = if author-draft {
+    rotate(-45deg, reflow: false, text(size: 0.5in, fill: luma(90%))[
+      #set par(leading: 0.2em, justify: false)
+      #align(center)[Unpublished working draft.\ Not for distribution.]
+    ])
+  }
+
   set page(
     width: cfg.paper.width,
     height: cfg.paper.height,
@@ -218,6 +248,7 @@
     footer-descent: cfg.foot.skip - cfg.size.footnotesize,
     header: header-content,
     footer: footer-content,
+    background: if watermark != none { align(center + horizon, watermark) },
   )
 
   // Pin the line box to the font size (top-edge - bottom-edge = 1em) so that the

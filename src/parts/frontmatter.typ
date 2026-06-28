@@ -224,6 +224,11 @@
   parts.join(", ")
 }
 
+// authordraft stamps the page-1 copyright block with a black large-bold notice
+// overlaying the (greyed) copyright text (acmart.dtx:6606-6610). place() gives it
+// zero size, so the copyright lines flow behind it.
+#let draft-stamp(cfg) = place(top + left, text(size: cfg.size.large, weight: "bold")[Unpublished working draft. Not for distribution.])
+
 // The page-1 footnote stack: author notes, authors' contact information, and the
 // copyright/permission block, each with a rule above. Placed at the bottom of
 // the first page's text area.
@@ -280,6 +285,8 @@
       // (inherited from the footnote stack) rather than ragged.
       rule(100%)
       block(spacing: lead, {
+        if meta.author-draft { draft-stamp(cfg) }
+        set text(fill: if meta.author-draft { luma(90%) } else { black })
         let owner = copyright-owner(mode)
         if owner != none { [© #meta.copyright-year #owner] } else { [#meta.copyright-year.] }
         linebreak()
@@ -291,6 +298,8 @@
     } else {
       rule(100%)
       block(spacing: lead, {
+        if meta.author-draft { draft-stamp(cfg) }
+        set text(fill: if meta.author-draft { luma(90%) } else { black })
         if ptext != none { ptext; parbreak() }
         set par(justify: false)
         // © <year> <owner>  (copyright-year always has a value; see acmart() in lib.typ)
