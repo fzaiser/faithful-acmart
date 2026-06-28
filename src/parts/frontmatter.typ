@@ -6,6 +6,7 @@
 // ACM reference format. See the acmsmall-frontmatter-specs memory for sources.
 
 #import "copyright.typ": permission-text, copyright-owner
+#import "spacing.typ": comp, tex-skip
 
 #let fnsymbols = ("*", "†", "‡", "§", "¶", "‖", "**", "††", "‡‡")
 
@@ -47,13 +48,24 @@
   names.slice(0, n - 1).join(", ") + ", and " + names.at(n - 1)
 }
 
+// An author's `affiliation` may be a single dict or an array of dicts (a person
+// with several affiliations, like LaTeX's repeated \affiliation). Normalize to a
+// list of dicts; none -> empty list.
+#let affil-list(aff) = {
+  if aff == none { () } else if type(aff) == array { aff } else { (aff,) }
+}
+
 // Title-block affiliation: institution, country (city/state go to contact info).
+// Multiple affiliations are joined with " and ", as LaTeX joins institutions.
 #let affil-short(aff) = {
-  if aff == none { return none }
-  let parts = ()
-  if "institution" in aff and aff.institution != none { parts.push(aff.institution) }
-  if "country" in aff and aff.country != none { parts.push(aff.country) }
-  parts.join(", ")
+  let one(a) = {
+    let parts = ()
+    if a.at("institution", default: none) != none { parts.push(a.institution) }
+    if a.at("country", default: none) != none { parts.push(a.country) }
+    parts.join(", ")
+  }
+  let s = affil-list(aff).map(one).filter(p => p != "").join(" and ")
+  if s == "" { none } else { s }
 }
 
 // Group consecutive authors that share an identical affiliation.
@@ -94,8 +106,10 @@
     else if s.sig >= 300 { emph(s.spec) }
     else { s.spec }
   }
+  // \ccsdesc separates every concept (areas and specifics) with "; " and ends
+  // with "." (acmart.dtx:5994-6006), so areas are joined by "; " too.
   for (i, area) in areas.enumerate() {
-    if i > 0 { [ ] }
+    if i > 0 { [; ] }
     [• #strong(area)]
     let specs = by-area.at(area)
     if specs.len() > 0 {
@@ -107,12 +121,14 @@
 }
 
 // A 9pt "Label: content" line used for CCS Concepts and Keywords.
+// \@specialsection does `\par\medskip\small ...`, so the gap is \medskip before
+// 9pt text (tex-skip with sz: "small"). See DESIGN.md "block vertical spacing".
 #let special-line(cfg, label, content) = {
-  v(cfg.medskip, weak: true)
-  block(width: 100%, spacing: cfg.bls.small - cfg.size.small)[
+  let lead = comp(cfg, sz: "small")
+  v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
+  block(width: 100%, spacing: lead)[
     #set text(font: cfg.fonts.serif, size: cfg.size.small)
-    #set par(justify: false, leading: cfg.bls.small - cfg.size.small,
-      first-line-indent: 0pt, spacing: cfg.bls.small - cfg.size.small)
+    #set par(justify: false, leading: lead, first-line-indent: 0pt, spacing: lead)
     #label: #content
   ]
 }
@@ -140,22 +156,22 @@
   (notes: notes, marks: marks)
 }
 
-// Full contact line for one affiliation group: "Name, email" per author joined
-// with "; ", then the shared affiliation appended after the last author.
-#let contact-group(g) = {
-  let aff = g.affiliation
-  let people = g.authors.map(a => {
-    let bits = (a.name,)
-    if a.at("email", default: none) != none { bits.push(a.email) }
-    bits.join(", ")
-  }).join("; ")
-  let affbits = ()
-  if aff != none {
-    for k in ("institution", "city", "state", "country") {
-      if k in aff and aff.at(k) != none { affbits.push(aff.at(k)) }
-    }
-  }
-  if affbits.len() > 0 { people + ", " + affbits.join(", ") } else { people }
+// One author's contact entry, replaying name → affiliation fields → email in
+// that order (email LAST), matching LaTeX \@mkauthorsaddresses (acmart.dtx:7588).
+// Authors are listed individually in source order with the affiliation repeated
+// per author — NOT grouped. (LaTeX also allows multiple affiliations per author,
+// joined by " and "; our data model carries one affiliation each.)
+#let contact-line(a) = {
+  let parts = (a.name,)
+  // each affiliation as "institution, city, state, country"; several joined by
+  // " and " (LaTeX's institution separator), then email last.
+  let affs = affil-list(a.at("affiliation", default: none)).map(aff => {
+    ("institution", "city", "state", "country")
+      .map(k => aff.at(k, default: none)).filter(v => v != none).join(", ")
+  }).filter(s => s != "")
+  if affs.len() > 0 { parts.push(affs.join(" and ")) }
+  if a.at("email", default: none) != none { parts.push(a.email) }
+  parts.join(", ")
 }
 
 // The page-1 footnote stack: author notes, authors' contact information, and the
@@ -163,7 +179,7 @@
 // the first page's text area.
 #let make-footnotes(cfg, meta) = {
   let fs = cfg.size.footnotesize
-  let lead = cfg.bls.footnotesize - fs
+  let lead = comp(cfg, sz: "footnotesize")
   let ni = collect-notes(meta.authors)
   let j = lookup-journal(meta.journal)
 
@@ -191,8 +207,8 @@
     if not anon and meta.authors.len() > 0 and meta.authors.any(a => a.at("affiliation", default: none) != none or a.at("email", default: none) != none) {
       rule(100%)
       let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
-      let groups = group-authors(meta.authors).map(contact-group).join("; ")
-      block(spacing: lead)[#label #groups.]
+      let contacts = meta.authors.map(contact-line).join("; ")
+      block(spacing: lead)[#label #contacts.]
     }
 
     // 3. Copyright / permission (faithful to acmart's assembly)
@@ -231,16 +247,23 @@
     // top-edge: cap-height places the (tall) first line's cap-top at the top
     // margin, matching LaTeX \topskip behaviour for a first line taller than it.
     #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.size.LARGE, top-edge: "cap-height")
-    #set par(justify: false, leading: cfg.bls.LARGE - cfg.size.LARGE)
+    #set par(justify: false, leading: comp(cfg, sz: "LARGE"))
     #meta.title
-    #if meta.subtitle != none {
-      parbreak()
-      set text(font: cfg.fonts.sans, weight: "regular", size: cfg.font-size)
-      meta.subtitle
-    }
   ]
+  // Subtitle (\@subtitlefont = \normalsize\mdseries, inherits the sans family);
+  // its own block so it gets normalsize leading, not the title's LARGE leading.
+  // LaTeX `\par` puts it one normalsize baselineskip below the title.
+  if meta.subtitle != none {
+    block(spacing: tex-skip(cfg, 0pt))[
+      #set text(font: cfg.fonts.sans, weight: "regular", size: cfg.font-size)
+      #set par(justify: false, leading: comp(cfg))
+      #meta.subtitle
+    ]
+  }
 
-  v(cfg.bigskip + cfg.smallskip, weak: true) // title \bigskip then \medskip (less Typst box-edge overlap)
+  // Title box ends with \par\bigskip; \@mkauthors@i prepends \par\medskip before
+  // the author lines (at \large). So the gap is \bigskip + \medskip before 10.95pt.
+  v(tex-skip(cfg, cfg.bigskip + cfg.medskip, sz: "large"), weak: true)
 
   // --- Authors (grouped by affiliation) ---
   // Anonymous review: replace the whole author strip with "Anonymous Author(s)".
@@ -249,7 +272,8 @@
       #set text(font: cfg.fonts.sans, size: cfg.size.large)
       #upper[Anonymous Author(s)]
     ]
-    v(cfg.medskip, weak: true)
+    // author box trailing \par\medskip; next block (abstract/CCS/...) is 9pt
+    v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
   } else {
   let ni = collect-notes(meta.authors)
   let marked = meta.authors.enumerate().map(((i, a)) => {
@@ -258,7 +282,7 @@
     a2
   })
   block(spacing: 0pt)[
-    #set par(justify: false, leading: cfg.bls.large - cfg.size.large, spacing: 0pt)
+    #set par(justify: false, leading: comp(cfg, sz: "large"), spacing: 0pt)
     #for g in group-authors(marked) {
       let names = g.authors.map(a => {
         upper(a.name)
@@ -267,7 +291,7 @@
           if m == "✉" { super(text(size: 0.72em)[#m]) } else { super(m) }
         }
       })
-      block(spacing: cfg.bls.large - cfg.size.large)[
+      block(spacing: comp(cfg, sz: "large"))[
         #text(font: cfg.fonts.sans, size: cfg.size.large)[#{
           // join names with "and"/", and" while preserving content marks
           let n = names.len()
@@ -289,16 +313,17 @@
     }
   ]
 
-  v(cfg.medskip, weak: true) // authors \par\medskip
+  // author box trailing \par\medskip; next block (abstract/CCS/...) is 9pt
+  v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
   } // end non-anonymous author block
 
   // --- Abstract (9pt, no heading label, first line not indented) ---
   if meta.abstract != none {
     block(width: 100%, spacing: 0pt)[
       #set text(font: cfg.fonts.serif, size: cfg.size.small)
-      #set par(justify: true, leading: cfg.bls.small - cfg.size.small,
+      #set par(justify: true, leading: comp(cfg, sz: "small"),
         first-line-indent: (amount: cfg.parindent, all: false),
-        spacing: cfg.bls.small - cfg.size.small)
+        spacing: comp(cfg, sz: "small"))
       #meta.abstract
     ]
   }
@@ -311,19 +336,22 @@
   // --- Keywords ---
   if meta.keywords != none {
     let kw = if type(meta.keywords) == array { meta.keywords.join(", ") } else { meta.keywords }
-    special-line(cfg, [Keywords], kw)
+    // journals use \keywordsname = "Additional Key Words and Phrases" (acmart.dtx:3294);
+    // plain "Keywords" is only for the conference formats.
+    special-line(cfg, [Additional Key Words and Phrases], kw)
   }
 
   // --- ACM Reference Format ---
   if meta.show-ref {
     let j = lookup-journal(meta.journal)
-    v(cfg.medskip, weak: true)
+    // \@mkbibcitation does `\par\medskip\small ...`; next block is 9pt
+    v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
     context {
       let total = counter(page).final().first()
       block(width: 100%, spacing: 0pt)[
         #set text(font: cfg.fonts.serif, size: cfg.size.small)
-        #set par(justify: true, leading: cfg.bls.small - cfg.size.small,
-          first-line-indent: 0pt, spacing: cfg.bls.small - cfg.size.small)
+        #set par(justify: true, leading: comp(cfg, sz: "small"),
+          first-line-indent: 0pt, spacing: comp(cfg, sz: "small"))
         #strong[ACM Reference Format:]\
         #{ if meta.at("anonymous", default: false) [Anonymous Author(s)] else { andify(meta.authors.map(a => a.name)) } }. #str(meta.acm-year). #meta.title#{
           if meta.subtitle != none [: #meta.subtitle]
@@ -339,5 +367,6 @@
     }
   }
 
-  v(cfg.bigskip, weak: true) // \@printendtopmatter \par\bigskip
+  // \@printendtopmatter \par\bigskip; next block is the body at 10pt
+  v(tex-skip(cfg, cfg.bigskip), weak: true)
 }

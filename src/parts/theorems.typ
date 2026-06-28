@@ -8,6 +8,8 @@
 //   proof: head "Proof." small caps, roman body, trailing QED square.
 // All share one counter, numbered within the section: 1.1, 1.2, ...
 
+#import "spacing.typ": tex-skip
+
 // Active format config, published by acmart() so the environment functions
 // (which users call directly) can read format-specific measurements.
 #let cfg-state = state("acmart-cfg", none)
@@ -35,7 +37,10 @@
         if name != none { h = [#h (#name)] }
         if head-style == "smallcaps" { smallcaps(h) } else { emph(h) }
       }
-      block(above: 0.5 * bls, below: 0.5 * bls, width: 100%)[
+      // amsthm sets the env in a trivlist whose \topsep is the style's "space
+      // above/below" (.5bl); the baseline pitch is \baselineskip + \topsep, so
+      // tex-skip() converts it to the block gap (cf. \@startsection headings).
+      block(above: tex-skip(cfg, 0.5 * bls), below: tex-skip(cfg, 0.5 * bls), width: 100%)[
         #set par(first-line-indent: 0pt)
         #h(cfg.parindent)
         #head.#h(0.5em)
@@ -61,7 +66,8 @@
 #let proof(body, name: [Proof]) = {
   context {
     let cfg = cfg-state.get()
-    block(above: 0.5 * cfg.baselineskip, below: 0.5 * cfg.baselineskip, width: 100%)[
+    // proof uses \topsep 6pt (= .5bl); same conversion as theorems.
+    block(above: tex-skip(cfg, 0.5 * cfg.baselineskip), below: tex-skip(cfg, 0.5 * cfg.baselineskip), width: 100%)[
       #set par(first-line-indent: 0pt)
       #h(cfg.parindent)
       #smallcaps(name).#h(0.5em)

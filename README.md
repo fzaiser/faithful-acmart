@@ -21,9 +21,9 @@ works for `acmsmall`:
 - Body elements: figure/table captions, theorem environments
   (theorem/lemma/…/definition/proof with QED), lists, footnotes, code
 - Bibliography via the official ACM CSL
-- Copyright modes (acmcopyright/acmlicensed/rightsretained/usgov/usgovmixed/CC)
-  and options (`review`, `screen`, `anonymous`) — validated against LaTeX with
-  `make validate`
+- All copyright modes (acmcopyright/acmlicensed/rightsretained, the US/Canada/other
+  -gov family, iw3c2w3[g], and Creative Commons with its licence badge) and options
+  (`review`, `screen`, `anonymous`) — validated against LaTeX with `make validate`
 
 Known differences from LaTeX (engine limits, not spacing errors — see
 [DESIGN.md](DESIGN.md)):
@@ -33,8 +33,8 @@ Known differences from LaTeX (engine limits, not spacing errors — see
   `\raggedbottom`).
 - Line/page breaking differs between engines → horizontal word drift on dense
   pages and different page breaks.
-- Minor: ACM-CSL vs `.bst` details; CC badge image omitted; contact-info field
-  order.
+- Minor: ACM-CSL vs `.bst` details; author note/✉ mark order; list hanging-label
+  indent (no LaTeX `\llap`); `screen` link colour ~1/255 (Typst 8-bit CMYK).
 
 Not yet implemented: other formats (sigconf/sigplan/… — need two-column), math
 fidelity tuning, the separate single-column `manuscript` format.
@@ -103,7 +103,7 @@ A complete example is in [`template/main.typ`](template/main.typ).
 |---|---|
 | `format` | Layout format (`"acmsmall"`) |
 | `title`, `subtitle` | Paper title / subtitle |
-| `authors` | List of author dicts: `name`, `email`, `orcid`, `note`, `corresponding`, `affiliation: (institution, city, state, country)` |
+| `authors` | List of author dicts: `name`, `email`, `orcid`, `note`, `corresponding`, `affiliation` (a `(institution, city, state, country)` dict, or an array of such dicts for several affiliations) |
 | `abstract` | Abstract content |
 | `ccs` | List of `(significance, area, concept)` — ≥500 bold, ≥300 italic, else roman |
 | `keywords` | List/array of keywords |
@@ -140,10 +140,13 @@ tests/out/diff/    visual-diff images
 
 Pieces:
 
-- `tools/build-reference.sh` — generates `acmart.cls` from `acmart/`, extracts the
-  sample sources, and compiles a sample to `tests/out/latex/<name>.pdf`.
+- `tools/build-reference.sh` — extracts the sample sources from `acmart/` and
+  compiles a sample to `tests/out/latex/<name>.pdf`.
 - `tools/latex-build.sh` — compile any `.tex` to a *stable* PDF (reruns until
-  `TotPages`/labels settle; fails on a surviving "Temporary page").
+  `TotPages`/labels settle; fails on a surviving "Temporary page"). Builds against
+  the `acmart.cls` generated from the bundled `acmart/`, never the system install.
+- `tools/probe.tex` (`make probe`) — dump acmsmall's geometry / sizes / skips from
+  the bundled class to audit `src/formats/acmsmall.typ`.
 - `tools/pdfdiff.py` — per-page side-by-side + red/blue overlay diff and a
   numeric mismatch %.
 - `tools/linepitch.py` — measure baseline pitch / first-line position in a PDF.

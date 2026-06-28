@@ -32,7 +32,13 @@ short version that must not be missed.
 - **Leading/baseline:** `set text(top-edge: 1em, bottom-edge: 0pt)` +
   `leading = baselineskip - font-size` reproduces TeX's rigid `\baselineskip`.
   Block gaps that should be "`\baselineskip + skip`" must be set to
-  `skip + (baselineskip - font-size)` (Typst's line box is 1em, not baselineskip).
+  `skip + (baselineskip - font-size)`. This conversion is centralized as
+  `comp()`/`tex-skip()` in `src/parts/spacing.typ` — route new leadings/gaps
+  through them rather than re-deriving (Typst's line box is 1em, not baselineskip).
+- **amsart skips are 2.1/4.2/8.4pt, NOT 3/6/12.** acmsmall loads `amsart`, which
+  scales `\small/\med/\bigskip` to 0.7× the article defaults. Float spacing
+  (`\intextsep`/`\abovecaptionskip` = 12pt) is a *separate* constant. `make probe`
+  re-dumps these from the bundled class — don't hardcode the article values.
 - **Section titles are MIXED CASE**, not uppercased (author *names* are uppercased
   — different thing). pdftotext is misleading here; check rendered pixels.
 - **`\flushbottom` is unreplicable.** acmsmall vertically justifies *full* pages;

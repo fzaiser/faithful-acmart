@@ -9,8 +9,9 @@
 // and bibliography styling come later.
 
 #import "formats/acmsmall.typ": acmsmall
+#import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
-#import "parts/frontmatter.typ": make-title, make-footnotes, lookup-journal, pub-date
+#import "parts/frontmatter.typ": make-title, make-footnotes, lookup-journal, pub-date, andify
 #import "parts/body.typ": apply-body
 #import "parts/theorems.typ": cfg-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture
@@ -96,12 +97,11 @@
   //   odd:  [LO] short title         [RO] article:page
   // in sans footnotesize (\@headfootfont).
   let st = if short-title == auto { title } else { short-title }
-  let sa = if anonymous { "Anonymous Author(s)" } else if short-authors == auto {
-    let lastname(n) = n.split(" ").last()
-    if authors.len() == 0 { none }
-    else if authors.len() == 1 { lastname(authors.at(0).name) }
-    else if authors.len() == 2 { lastname(authors.at(0).name) + " and " + lastname(authors.at(1).name) }
-    else { lastname(authors.at(0).name) + " et al." }
+  // \shortauthors default = the full author names, andified (acmart.dtx:5215);
+  // anonymous mode sets \shortauthors to "Anon." (acmart.dtx:5210/7966). Pass
+  // `short-authors:` to override (the acmart `\author[short]{full}` mechanism).
+  let sa = if anonymous { "Anon." } else if short-authors == auto {
+    if authors.len() == 0 { none } else { andify(authors.map(a => a.name)) }
   } else { short-authors }
   let header-content = context {
     let p = here().page()
@@ -119,7 +119,7 @@
     width: cfg.paper.width,
     height: cfg.paper.height,
     margin: cfg.margin,
-    header-ascent: cfg.head.sep + (cfg.bls.footnotesize - cfg.size.footnotesize),
+    header-ascent: cfg.head.sep + comp(cfg, sz: "footnotesize"),
     footer-descent: cfg.foot.skip - cfg.size.footnotesize,
     header: header-content,
     footer: footer-content,
@@ -139,9 +139,9 @@
   )
 
   set par(
-    leading: cfg.baselineskip - cfg.font-size,
+    leading: comp(cfg), // intra-paragraph: baseline pitch = baselineskip
     first-line-indent: (amount: cfg.parindent, all: false),
-    spacing: cfg.baselineskip - cfg.font-size, // inter-paragraph = one blank baselineskip step (parskip=0)
+    spacing: tex-skip(cfg, cfg.parskip), // inter-paragraph = parskip (0) above one baselineskip step
     justify: true,
   )
 
@@ -159,9 +159,10 @@
     text(fill: if type(it.dest) == str { acm-dark-blue } else { acm-purple }, it)
   } else { it }
 
-  // `review`: number every line in the left margin (red, small), as acmart does.
+  // `review`: number every line in the left margin (acmart uses \color{red}
+  // \scriptsize — 7pt at this base size; acmart.dtx:7862).
   set par.line(numbering: if review {
-    n => text(fill: red, size: cfg.size.footnotesize)[#n]
+    n => text(fill: red, size: cfg.size.scriptsize)[#n]
   } else { none })
 
   cfg-state.update(cfg) // publish config for theorem environments

@@ -17,6 +17,19 @@ mkdir -p "$outdir"
 
 srcdir="$(cd "$(dirname "$f")" && pwd)"
 base="$(basename "$f" .tex)"
+
+# Always build against the acmart.cls BUNDLED in this repo (acmart/), never the
+# version installed in the system TeX tree — the two can differ (e.g. section-title
+# uppercasing). Generate it into $outdir from the bundled .ins/.dtx if missing or
+# stale, plus the bundled bibliography style. TEXINPUTS below puts $outdir first,
+# so this local copy wins over any system acmart.
+if [ ! -f "$outdir/acmart.cls" ] || [ "$ROOT/acmart/acmart.dtx" -nt "$outdir/acmart.cls" ]; then
+  cp "$ROOT/acmart/acmart.ins" "$ROOT/acmart/acmart.dtx" "$outdir/"
+  ( cd "$outdir" && pdflatex -interaction=nonstopmode acmart.ins >/dev/null 2>&1 || true )
+fi
+[ -f "$outdir/ACM-Reference-Format.bst" ] || \
+  cp "$ROOT/acmart/ACM-Reference-Format.bst" "$outdir/" 2>/dev/null || true
+
 # Find acmart.cls (in the output dir) and the source's own inputs.
 export TEXINPUTS="$outdir:$srcdir:"
 export BIBINPUTS="$outdir:$srcdir:"

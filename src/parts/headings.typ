@@ -2,13 +2,16 @@
 //
 // acmsmall uses amsart's \@startsection skips with acmart's fonts (the acmsmall
 // per-format override is empty, so the generic acmart definitions apply):
-//   section (1):       sffamily bfseries, UPPERCASE, before .75bl, after .25bl
-//   subsection (2):    sffamily bfseries,            before .75bl, after .25bl
+//   section (1):       sffamily bfseries, mixed case, before .75bl, after .25bl
+//   subsection (2):    sffamily bfseries, mixed case, before .75bl, after .25bl
 //   subsubsection (3): sffamily itshape, run-in (negative afterskip), dot
 //   paragraph (4):     itshape (serif),  run-in, indented \parindent, dot
 // where bl = \baselineskip. Section number is followed by \quad (1em). secnumdepth
 // is 3, so paragraphs (level 4) are unnumbered. The paragraph after a heading is
-// not indented (Typst handles this via first-line-indent (all: false)).
+// not indented (Typst handles this via first-line-indent (all: false)). (acmart
+// stopped uppercasing section titles in v2.08; the bundled class is v2.18.)
+
+#import "spacing.typ": comp, tex-skip
 
 #let heading-number(it) = {
   if it.numbering != none {
@@ -36,29 +39,25 @@
 
   // \@startsection puts a heading a full \baselineskip + |beforeskip| below the
   // previous baseline, and the body a \baselineskip + afterskip below the
-  // heading. Typst's line box is 1em (= font-size), not \baselineskip, so each
-  // block gap is short by (\baselineskip - font-size); add it back so the
-  // baseline-to-baseline gaps equal LaTeX's exactly.
-  let comp = bls - cfg.font-size
-
+  // heading; tex-skip() converts those skips to Typst block gaps (the heading and
+  // body lines are at the body size, so the default "normalsize" applies).
   if lvl <= 2 {
-    // display heading: own line, sans bold, ragged right, mixed case as written
-    // (acmsmall does not uppercase section titles — verified against the sample).
+    // display heading: own line, sans bold, ragged right, mixed case as written.
     // section/subsection both: before .75bl, after .25bl.
     let title = it.body
-    block(above: 0.75 * bls + comp, below: 0.25 * bls + comp, sticky: true)[
+    block(above: tex-skip(cfg, 0.75 * bls), below: tex-skip(cfg, 0.25 * bls), sticky: true)[
       #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.font-size)
-      #set par(justify: false, leading: bls - cfg.font-size)
+      #set par(justify: false, leading: comp(cfg))
       #if num != none [#num#h(1em)]
       #title
     ]
   } else if lvl == 3 {
     // subsubsection: before .5bl, run-in
-    run-in-heading(it, cfg, before: 0.5 * bls + comp, indent: 0pt,
+    run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: 0pt,
       font: cfg.fonts.sans, style: "italic", num: num)
   } else {
     // paragraph: serif italic, indented, run-in, before .5bl
-    run-in-heading(it, cfg, before: 0.5 * bls + comp, indent: cfg.parindent,
+    run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: cfg.parindent,
       font: cfg.fonts.serif, style: "italic", num: none)
   }
 }

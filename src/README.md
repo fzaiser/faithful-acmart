@@ -10,6 +10,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 |---|---|
 | `lib.typ` | public `acmart()` entry: page setup, global text/par rules, header/footer, options (review/screen/anonymous), wires up the parts; re-exports `theorem`/`lemma`/…/`proof` |
 | `formats/acmsmall.typ` | **all** acmsmall measurements as a data dict (geometry, font-size steps, skips, fonts). Built on `tp = 72/72.27*1pt` (TeX→PS point conversion) |
+| `parts/spacing.typ` | `comp()` / `tex-skip()` — the TeX→Typst baseline-grid conversion used by every `leading` and vertical gap (see DESIGN.md) |
 | `parts/headings.typ` | section / subsection / run-in heading show rule |
 | `parts/frontmatter.typ` | title, authors+affiliations, abstract, CCS, keywords, ACM reference format, page-1 footnote stack, journal table |
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |

@@ -22,6 +22,7 @@ src/lib.typ            public acmart() entry; page setup; show/set rules; re-exp
 src/formats/
   acmsmall.typ         ALL acmsmall measurements as a data dict (the only format yet)
 src/parts/
+  spacing.typ          comp() / tex-skip() — the TeX→Typst baseline-grid helpers
   headings.typ         section / run-in heading show rule
   frontmatter.typ      title, authors, abstract, CCS, keywords, ref format, page-1 footnotes
   copyright.typ        permission text + © owner per copyright mode (incl. CC)
@@ -74,6 +75,26 @@ Verified against a descender-free probe: before-gap 20.92 vs LaTeX 20.96pt,
 after-gap 14.94 vs 14.90pt — exact. (The same `(bl − font-size)` term is why the
 inter-paragraph `spacing` is `bl − font-size`, giving a solid 12pt grid.)
 
+The **same compensation applies to every `\baselineskip + skip` gap**, not just
+`\@startsection` headings: amsthm theorem/proof environments (trivlist `\topsep`,
+`theorems.typ`) and the frontmatter `\medskip`/`\bigskip` gaps (`frontmatter.typ`)
+all add `(bl_next − size_next)` to the explicit skip. `bl_next`/`size_next` are
+the *following* block's baselineskip/size (the interline glue uses the new line's
+metrics), so e.g. a `\medskip` before 9pt text uses `4.2pt + (11 − 9)`.
+
+Both pieces are centralized in [`src/parts/spacing.typ`](src/parts/spacing.typ):
+`comp(cfg, sz)` = `bl − size` (the intra-block `leading`, and the compensation
+term) and `tex-skip(cfg, skip, sz)` = `skip + comp` (a TeX skip as a Typst block /
+`v()` gap). `sz` names the following line's size step (default `"normalsize"`).
+Every `leading`, block gap, and `v()` in the template goes through these, so the
+baseline model lives in exactly one place.
+
+> **The amsart skips are NOT the article defaults.** acmsmall loads `amsart`,
+> which sets `\smallskip`/`\medskip`/`\bigskip` to **2.1 / 4.2 / 8.4pt** (0.7× the
+> familiar 3 / 6 / 12pt). `src/formats/acmsmall.typ` encodes the amsart values;
+> run `make probe` to re-confirm. Float spacing (`\intextsep`, `\abovecaptionskip`
+> = 12pt) is kept as its own constant so it does not ride on the `\bigskip` value.
+
 ### Run-in headings
 subsubsection/paragraph headings flow inline with the following text. A heading
 show rule that returns *inline* content (not a block) achieves this; a weak
@@ -93,23 +114,37 @@ caption show rule.
 ## Faithful to source vs matched to output
 
 **Faithful (probed/transcribed values):** page geometry, font-size steps,
-`\baselineskip`, skips (`\bigskip` etc.), heading skips/fonts, theorem styles
-(acmplain/acmdefinition), caption setup, copyright permission texts and owner
-lines, journal name/ISSN table, link colours, line-number colour.
+`\baselineskip`, skips (amsart `\small/\med/\bigskip` = 2.1/4.2/8.4pt), float
+spacing (`\intextsep`/`\abovecaptionskip`), heading skips/fonts, the run-in
+separator (`-3.5pt`, the `\@startsection` afterskip), theorem styles
+(acmplain/acmdefinition) and their `\topsep`, title→authors gap (title `\bigskip`
++ authors `\medskip`), caption setup, copyright permission texts and owner lines,
+journal name/ISSN table, link colours, line-number colour. All of these are read
+from the class — re-derive any value with `make probe` (geometry/sizes/skips) or
+by reading the relevant macro in [`acmart/acmart.dtx`](acmart/acmart.dtx).
 
 **Matched to rendered output (empirical, because TeX glue ≠ Typst spacing):**
-title→authors gap, figure/caption float spacing, run-in separator width.
+the first-baseline placement of the (taller-than-`\topskip`) title line.
 
-> Section titles are **mixed case** (bold sans), not uppercased — verified
-> against the rendered sample. (An earlier version wrongly uppercased them; the
-> variant-validation harness, `tools/validate-variants.py`, caught it.)
+> Section titles are **mixed case** (bold sans), not uppercased — this matches
+> the **bundled** acmart (v2.18; uppercasing was removed in v2.08). Beware: the
+> system-installed acmart may be older (e.g. v2.03) and *does* uppercase level-1
+> titles, so always validate against the bundled class — the LaTeX build is wired
+> to generate it from [`acmart/`](acmart/) (see `tools/latex-build.sh`).
 
 **Deliberate approximations:**
 - Bibliography uses Typst's built-in ACM CSL, not `ACM-Reference-Format.bst`.
-- Authors' contact-info field order is consistent (name, email, affiliation); it
-  does not reproduce LaTeX's source-order quirk.
-- CC licence badge image (88×31) is omitted; the linked text statement is kept.
-- Canada/other-gov copyright variants fall back to the acmlicensed wording.
+- Author note / corresponding-✉ superscript marks are emitted ✉-then-note in a
+  fixed order, not LaTeX's source-declaration order — our author model stores a
+  boolean `corresponding` and a `note`, so there is no declaration order to honour.
+- Lists: body indents are tuned to land at `\leftmargin` (24.5pt, level 1) for the
+  common single-level case, but Typst has no fixed hanging-label box (LaTeX's
+  `\llap`), so on deeply nested or width-varied markers the body drifts with the
+  marker width. Labels/markers, item spacing, and the level-1 indent do match.
+- `screen` link colours are stored as CMYK (`ACMPurple`/`ACMDarkBlue`, faithful to
+  acmart). Typst writes CMYK 8-bit in the PDF (58% → 148/255), so the rendered
+  on-screen RGB can differ from LaTeX's full-precision CMYK by ~1/255 per channel —
+  imperceptible, and not "fixed" to RGB because that would lose print-CMYK fidelity.
 
 ## Known limitations / not done
 
@@ -138,9 +173,21 @@ with an unresolved `TotPages`, producing a spurious extra page — the builder
 prevents that from polluting diffs. `tools/build-reference.sh` and the Makefile
 `test`/`test-references` targets all route through it.
 
+`latex-build.sh` also **generates `acmart.cls` from the bundled [`acmart/`](acmart/)
+sources** (into `tests/out/latex/`) and prepends that dir to `TEXINPUTS`, so every
+reference is built against the repo's acmart, never whatever is installed in the
+system TeX tree. This keeps the Typst target and the validator on the same class
+version (see the section-title note above).
+
 ## Validation
 
 See the [README](README.md#development--validation) and the `Makefile`. The loop
 is: build the LaTeX reference (`make reference`), build the Typst output, and diff
 page-by-page (`tools/pdfdiff.py`) / measure (`tools/linepitch.py`). Fonts come
 from the bundled OTFs via `tools/tc` (see the README "Fonts" section).
+
+To audit the *numbers* in `src/formats/acmsmall.typ` against the class itself, run
+**`make probe`**: it compiles [`tools/probe.tex`](tools/probe.tex) against the
+bundled acmart and dumps the geometry, font-size steps, baselineskips, and skips
+(`PROBE …`/`SIZE …` lines). Every length in the format dict should trace back to a
+probe line or a macro in `acmart/acmart.dtx` — prefer that over eyeballing pixels.

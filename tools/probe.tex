@@ -1,0 +1,39 @@
+% Layout probe for acmart format=acmsmall.
+%
+% Dumps the ground-truth dimensions that src/formats/acmsmall.typ encodes, read
+% straight from the compiled class so the Typst values can be audited against
+% LaTeX instead of eyeballed. Run via `make probe` (which compiles this against
+% the acmart.cls BUNDLED in acmart/, not the system one) — the PROBE/SIZE lines
+% are printed to the terminal. Lengths are TeX points (1pt = 1/72.27in); Typst's
+% pt is 1/72in, so acmsmall.typ multiplies each by `tp = 72/72.27`.
+%
+% To target a different format, change the `format=` option below.
+\documentclass[format=acmsmall, screen=true, review=false]{acmart}
+\begin{document}
+\makeatletter
+\newcommand\PROBE[1]{\typeout{PROBE \string#1 = \the#1}}
+\newcommand\SZ[2]{{#1\typeout{SIZE #2 fsize=\f@size\space baselineskip=\f@baselineskip}}}
+
+\typeout{=====PROBE START=====}
+% --- page geometry ---
+\PROBE\paperwidth   \PROBE\paperheight
+\PROBE\textwidth    \PROBE\textheight
+\PROBE\topmargin    \PROBE\headheight \PROBE\headsep \PROBE\footskip
+\PROBE\oddsidemargin \PROBE\evensidemargin
+\PROBE\marginparwidth \PROBE\topskip \PROBE\columnsep
+% --- paragraph / leading ---
+\PROBE\parindent \PROBE\parskip \PROBE\baselineskip \PROBE\normalbaselineskip
+% --- amsart skips (NB: 2.1/4.2/8.4, not the article 3/6/12) ---
+\PROBE\smallskipamount \PROBE\medskipamount \PROBE\bigskipamount
+% --- floats / captions / footnotes ---
+\PROBE\abovecaptionskip \PROBE\belowcaptionskip
+\PROBE\intextsep \PROBE\floatsep \PROBE\textfloatsep \PROBE\footnotesep
+
+% --- font-size steps (size / baselineskip) ---
+\SZ\footnotesize{footnotesize} \SZ\small{small} \SZ\normalsize{normalsize}
+\SZ\large{large} \SZ\Large{Large} \SZ\LARGE{LARGE}
+\SZ\huge{huge} \SZ\Huge{Huge}
+\typeout{=====PROBE END=====}
+
+\makeatother
+\end{document}

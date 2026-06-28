@@ -131,12 +131,18 @@ def main():
         note = ""
         if name == "screen":
             # sample the darkest coloured (non-gray) pixel as the link colour proxy
-            for tag, img in (("ref", ref), ("our", our)):
+            def link_rgb(img):
                 rgb = img.reshape(-1, 3).astype(int)
                 colourful = rgb[(rgb.max(1) - rgb.min(1)) > 40]
-                if len(colourful):
-                    c = colourful[colourful.sum(1).argmin()]
-                    note += f"{tag} link rgb~{tuple(c)} "
+                return colourful[colourful.sum(1).argmin()] if len(colourful) else None
+            rc, oc = link_rgb(ref), link_rgb(our)
+            if rc is not None and oc is not None:
+                d = int(max(abs(rc - oc)))
+                # Only flag a real colour difference. A ±1-2/channel delta is
+                # expected: Typst writes CMYK as 8-bit in the PDF (e.g. 58% -> 148/255)
+                # while LaTeX keeps full precision, so poppler renders them ~1 apart.
+                if d > 2:
+                    note += f"link rgb ref~{tuple(rc)} our~{tuple(oc)} (Δ{d}) "
         print(f"{name:16} {mismatch(ref, our):9.2f}   {note}")
     print(f"\nside-by-sides: {DIFF}/var-*-side.png")
 

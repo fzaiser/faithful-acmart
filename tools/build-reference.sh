@@ -20,18 +20,17 @@ cd "$OUT"
 # compiled to stability by tools/latex-build.sh (resolves TotPages / temp pages).
 gen() { pdflatex -interaction=nonstopmode "$1" >/dev/null 2>&1 || true; }
 
-# 1. Generate acmart.cls from the .ins/.dtx (idempotent).
-if [ ! -f acmart.cls ] || [ "$SRC/acmart.dtx" -nt acmart.cls ]; then
-  cp "$SRC/acmart.ins" "$SRC/acmart.dtx" .
-  gen acmart.ins
-fi
+# acmart.cls is generated from the bundled acmart/ sources by tools/latex-build.sh
+# (step 3), which guarantees every LaTeX build uses the repo's version, not the
+# system one.
 
-# 2. Extract the sample .tex sources and copy supporting files.
+# Extract the sample .tex sources and copy supporting files.
 if [ ! -f "$SAMPLE.tex" ]; then
   cp "$SRC/samples/samples.ins" "$SRC/samples/samples.dtx" .
   cp "$SRC/samples/"*.bib "$SRC/ACM-Reference-Format.bst" "$SRC/samples/"*.png . 2>/dev/null || true
   gen samples.ins
 fi
 
-# 3. Compile the chosen sample to a stable PDF (no temp page, resolved TotPages).
+# Compile the chosen sample to a stable PDF (no temp page, resolved TotPages).
+# latex-build.sh generates the bundled acmart.cls into $OUT before compiling.
 "$ROOT/tools/latex-build.sh" "$OUT/$SAMPLE.tex" "$OUT"

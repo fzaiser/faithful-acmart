@@ -1,5 +1,6 @@
 # typst-acmart — build and validation targets.
 #
+#   make probe              dump the bundled acmart's acmsmall dimensions (audit src/formats)
 #   make reference          build the LaTeX acmart reference PDF (tests/out/latex/acmsmall.pdf)
 #   make example            build the Typst example (tests/out/typst/main.pdf)
 #   make test               build the reference + all Typst test PDFs (+ LaTeX test refs)
@@ -24,7 +25,16 @@ DIFF   := tests/out/diff
 # Typst documents that have a matched LaTeX reference (.tex + .typ share a stem).
 MATCHED := body-test head-test body2-test fn-test full-test
 
-.PHONY: reference example test test-references diff validate clean
+.PHONY: probe reference example test test-references diff validate clean
+
+# Dump acmsmall's ground-truth dimensions from the BUNDLED acmart.cls (generated
+# into tests/out/latex by latex-build.sh) so src/formats/acmsmall.typ can be
+# audited against LaTeX. Prints PROBE/SIZE lines; no PDF is kept.
+probe:
+	@mkdir -p $(LATEX)
+	@cp tools/probe.tex $(LATEX)/probe.tex
+	@tools/latex-build.sh $(LATEX)/probe.tex $(LATEX) >/dev/null 2>&1 || true
+	@grep -hE '^(PROBE|SIZE) ' $(LATEX)/probe.log
 
 # Validate copyright modes + document options (review/screen/anonymous) against
 # matched LaTeX references, the same standard as the default path.
