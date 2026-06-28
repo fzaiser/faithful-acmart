@@ -9,6 +9,8 @@
 // and bibliography styling come later.
 
 #import "formats/acmsmall.typ": acmsmall
+#import "formats/manuscript.typ": manuscript
+#import "formats/acmlarge.typ": acmlarge
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
 #import "parts/frontmatter.typ": make-title, make-footnotes, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
@@ -18,7 +20,9 @@
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
 
 #let _formats = (
+  manuscript: manuscript,
   acmsmall: acmsmall,
+  acmlarge: acmlarge,
 )
 
 #let acmart(

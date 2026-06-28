@@ -7,7 +7,8 @@
 % are printed to the terminal. Lengths are TeX points (1pt = 1/72.27in); Typst's
 % pt is 1/72in, so acmsmall.typ multiplies each by `tp = 72/72.27`.
 %
-% To target a different format, change the `format=` option below.
+% To target a different format, run `make probe FORMAT=<name>` (which seds the
+% `format=acmsmall` below) or change the `format=` option here directly.
 \documentclass[format=acmsmall, screen=true, review=false]{acmart}
 \begin{document}
 \makeatletter

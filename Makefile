@@ -26,7 +26,7 @@ DIFF   := tests/out/diff
 
 # Matched twins: NAME.tex (real LaTeX) + NAME.typ (ours) share a stem and are
 # diffed/compared page-by-page.
-MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test options-test authorversion-test language-test language-de-test language-es-test fontsize-8-test fontsize-9-test fontsize-11-test fontsize-12-test
+MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test options-test authorversion-test language-test language-de-test language-es-test fontsize-8-test fontsize-9-test fontsize-11-test fontsize-12-test manuscript-test acmlarge-test
 # End-to-end ports: full Typst documents with NO hand-written twin — compared
 # against the upstream sample reference built by `make reference` (see the
 # stem->reference map in the diff target and reference= in tests/manifest.toml).
@@ -37,14 +37,16 @@ SMOKE := feature-test draft-test urlbreak-test
 
 .PHONY: probe reference example test test-references check accept diff validate clean
 
-# Dump acmsmall's ground-truth dimensions from the BUNDLED acmart.cls (generated
-# into tests/out/latex by latex-build.sh) so src/formats/acmsmall.typ can be
-# audited against LaTeX. Prints PROBE/SIZE lines; no PDF is kept.
+# Dump a format's ground-truth dimensions from the BUNDLED acmart.cls (generated
+# into tests/out/latex by latex-build.sh) so src/formats/<fmt>.typ can be audited
+# against LaTeX. Prints PROBE/SIZE lines; no PDF is kept. Override the format:
+#   make probe FORMAT=sigconf
+FORMAT ?= acmsmall
 probe:
 	@mkdir -p $(LATEX)
-	@cp tools/probe.tex $(LATEX)/probe.tex
-	@tools/latex-build.sh $(LATEX)/probe.tex $(LATEX) >/dev/null 2>&1 || true
-	@grep -hE '^(PROBE|SIZE) ' $(LATEX)/probe.log
+	@sed 's/format=acmsmall/format=$(FORMAT)/' tools/probe.tex > $(LATEX)/probe-$(FORMAT).tex
+	@tools/latex-build.sh $(LATEX)/probe-$(FORMAT).tex $(LATEX) >/dev/null 2>&1 || true
+	@grep -hE '^(PROBE|SIZE) ' $(LATEX)/probe-$(FORMAT).log
 
 # Validate copyright modes + document options (review/screen/anonymous) against
 # matched LaTeX references, the same standard as the default path.

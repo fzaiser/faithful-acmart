@@ -333,12 +333,16 @@
 
 #let make-title(cfg, meta) = {
   let ni = collect-notes(meta)
-  // --- Title (LARGE sans bold, left-aligned) ---
+  // \@titlefont / \@subtitlefont differ per format (acmart.dtx:6911/6946); the
+  // family/weight/size come from the format dict.
+  let tf = cfg.title-font
+  let sf = cfg.subtitle-font
+  // --- Title (journal @i: left-aligned; font per format) ---
   block(spacing: 0pt)[
     // top-edge: cap-height places the (tall) first line's cap-top at the top
     // margin, matching LaTeX \topskip behaviour for a first line taller than it.
-    #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.size.LARGE, top-edge: "cap-height")
-    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: "LARGE"), spacing: comp(cfg, sz: "LARGE"))
+    #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), top-edge: "cap-height")
+    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: tf.size), spacing: comp(cfg, sz: tf.size))
     #meta.title#if ni.title-mark != none { super(ni.title-mark) }
     // \@translatedtitle: each secondary title is a new \par in the title font
     // (acmart.dtx:3374/6994), one baselineskip below (par spacing = leading).
@@ -352,8 +356,8 @@
   // LaTeX `\par` puts it one normalsize baselineskip below the title.
   if meta.subtitle != none {
     block(spacing: tex-skip(cfg, 0pt))[
-      #set text(font: cfg.fonts.sans, weight: "regular", size: cfg.font-size)
-      #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: comp(cfg))
+      #set text(font: cfg.fonts.at(sf.family), weight: sf.weight, size: cfg.size.at(sf.size))
+      #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: sf.size), spacing: comp(cfg, sz: sf.size))
       #meta.subtitle#if ni.subtitle-mark != none { super(ni.subtitle-mark) }
       // \@translatedsubtitle: each in the subtitle font (acmart.dtx:3391/6996).
       #for (l, t) in meta.translated-subtitle {

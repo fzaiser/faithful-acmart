@@ -62,3 +62,103 @@
     smallskip: bigskip / 4,
   )
 }
+
+// The generic acmart section fonts (acmart.dtx:8415, the definitions that apply
+// when a format's \ifcase branch is empty — e.g. acmsmall/manuscript). family is
+// a role into `fonts`; size is a step name in `size`. Per-format builders pass a
+// modified copy (e.g. sf `large` headings for acmlarge/acmtog, serif `Large`
+// bold for sigconf).
+#let generic-sec-fonts = (
+  section:       (family: "sans", weight: "bold", style: "normal", size: "normalsize"),
+  subsection:    (family: "sans", weight: "bold", style: "normal", size: "normalsize"),
+  subsubsection: (family: "sans", weight: "regular", style: "italic", size: "normalsize"),
+  paragraph:     (family: "serif", weight: "regular", style: "italic", size: "normalsize"),
+)
+
+// A heading numbering pattern for a given secnumdepth (acmart.dtx:8419). secnum
+// depth 3 numbers through subsubsection; deeper paragraphs stay unnumbered (the
+// show rule omits level-4 numbers). <=0 means no section numbers at all.
+#let numbering-for-depth(depth) = if depth <= 0 { none } else { ("1", "1.1", "1.1.1").at(calc.min(depth, 3) - 1) }
+
+// Assemble a full format dict from the per-format distinctions plus the shared,
+// format-independent constants (float spacing, list geometry, footnote rules,
+// badges, fonts). Every acmart format is amsart with geometry/columns layered on
+// (acmart.dtx:3090/3754); only the named arguments below actually differ.
+#let make-format(
+  name: none,
+  ladder: none,            // result of size-ladder()
+  default-font-size: none,
+  paper: none,
+  margin: none,            // dict: top/bottom + inside/outside (or left/right)
+  twoside: true,
+  head-skip: 58 * tp,      // geometry `top` key (paper top -> head top); informational
+  foot-skip: 24 * tp,      // \footskip
+  columns: 1,
+  columnsep: 0pt,
+  parindent: 10 * tp,
+  title-style: "journal-left", // \@mktitle@i / @iii / @iv
+  author-style: "list",        // \@mkauthors@i / @iii
+  // \@titlefont / \@subtitlefont per format (acmart.dtx:6911/6946). family is a
+  // role into `fonts`; size is a step name. Default = the journal @i style
+  // (\LARGE\sffamily\bfseries title, \normalsize\mdseries subtitle).
+  title-font: (family: "sans", weight: "bold", size: "LARGE"),
+  subtitle-font: (family: "sans", weight: "regular", size: "normalsize"),
+  bibstrip: true,              // journal footer (\if@ACM@journal)
+  conf-footer: false,          // first-column conference copyright block
+  sans-default: false,
+  flushbottom: false,
+  urlstyle-sans: false,
+  secnumdepth: 3,
+  sec-fonts: generic-sec-fonts,
+) = {
+  let l = ladder
+  (
+    name: name,
+    twoside: twoside,
+    columns: columns,
+    columnsep: columnsep,
+    default-font-size: default-font-size,
+    paper: paper,
+    margin: margin,
+    head: (height: 13 * tp, sep: 14 * tp, skip: head-skip),
+    foot: (skip: foot-skip),
+    // typography (scales with the base font size)
+    font-size: l.font-size,
+    baselineskip: l.baselineskip,
+    size: l.size,
+    bls: l.bls,
+    smallskip: l.smallskip, medskip: l.medskip, bigskip: l.bigskip,
+    // float spacing, list geometry, footnote rules and badges are
+    // format-independent (acmart.dtx:3906/4426/5581).
+    intextsep: 12 * tp, abovecaptionskip: 12 * tp,
+    footnote-rule-short: 4 * 12 * tp,
+    footnote-rule-kern-above: 3 * tp, footnote-rule-kern-below: 2.6 * tp,
+    footins-skip: 7 * tp,
+    parindent: parindent,
+    parskip: 0pt,
+    list-labelsep: 4 * tp,
+    list-leftmargin: 24.5 * tp,
+    list-leftmargin-ii: 8.5 * tp,
+    runin-sep: 3.5 * tp,
+    badge-width: 3 * 12 * tp, badge-skip: 1 * tp,
+    heading-numbering: numbering-for-depth(secnumdepth),
+    secnumdepth: secnumdepth,
+    // format-specific layout flags (the acmart \ifcase\ACM@format@nr switch)
+    title-style: title-style,
+    author-style: author-style,
+    title-font: title-font,
+    subtitle-font: subtitle-font,
+    bibstrip: bibstrip,
+    conf-footer: conf-footer,
+    sans-default: sans-default,
+    flushbottom: flushbottom,
+    urlstyle-sans: urlstyle-sans,
+    sec-fonts: sec-fonts,
+    fonts: (
+      serif: "Libertinus Serif",
+      sans: "Libertinus Sans",
+      mono: "Inconsolatazi4", // acmart uses zi4 (Inconsolata) for \texttt
+      math: "Libertinus Math",
+    ),
+  )
+}

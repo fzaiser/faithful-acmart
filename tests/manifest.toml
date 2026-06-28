@@ -60,6 +60,18 @@ uniform_pitch = true
 kind = "twin"
 pages = 1
 
+[tests.manuscript-test]
+kind = "twin"
+pages = 1
+# format=manuscript: single-column draft geometry (letterpaper, 9pt default) with
+# the generic sans-bold section fonts shared with acmsmall.
+
+[tests.acmlarge-test]
+kind = "twin"
+pages = 1
+# format=acmlarge: large single-column journal geometry (10pt) with the
+# \sffamily\large (regular-weight) section headings (acmart.dtx:8424).
+
 [tests.fontsize-8-test]
 kind = "twin"
 pages = 1
