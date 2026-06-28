@@ -248,33 +248,42 @@
       block(spacing: lead)[#label #contacts.]
     }
 
-    // 3. Copyright / permission (faithful to acmart's assembly)
-    rule(100%)
-    block(spacing: lead, {
-      let mode = meta.copyright
-      let ptext = permission-text(mode, cc-type: meta.cc-type, cc-version: meta.cc-version)
-      if ptext != none { ptext; parbreak() }
-      set par(justify: false)
-      // © <year> <owner>  (copyright-year always has a value; see acmart() in lib.typ)
-      let owner = copyright-owner(mode)
-      if owner != none {
-        [© #meta.copyright-year #owner]
-        linebreak()
-      } else {
-        [#meta.copyright-year. ]
+    // 3. Copyright / permission (faithful to acmart's assembly). nonacm
+    // suppresses this whole block — including the © line and ACM bibstrip —
+    // except cc mode, which still prints its permission text (acmart.dtx:6599-6661).
+    let mode = meta.copyright
+    let ptext = permission-text(mode, cc-type: meta.cc-type, cc-version: meta.cc-version)
+    if meta.nonacm {
+      if mode == "cc" and ptext != none {
+        rule(100%)
+        block(spacing: lead, ptext)
       }
-      // journal bibstrip: ACM <issn>/<year>/<month>-ART<article> then DOI
-      // (acmart.dtx:6651). \@acmArticle defaults to empty, so ART may have no number.
-      // str() on the month delimits the number from the following "-ART" (markup
-      // would otherwise read "acm-month-ART" as one hyphenated identifier).
-      [ACM #j.issn/#str(meta.acm-year)/#str(meta.acm-month)-ART#{
-        if meta.acm-article != none { str(meta.acm-article) }
-      }]
-      if meta.doi != none {
-        linebreak()
-        link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
-      }
-    })
+    } else {
+      rule(100%)
+      block(spacing: lead, {
+        if ptext != none { ptext; parbreak() }
+        set par(justify: false)
+        // © <year> <owner>  (copyright-year always has a value; see acmart() in lib.typ)
+        let owner = copyright-owner(mode)
+        if owner != none {
+          [© #meta.copyright-year #owner]
+          linebreak()
+        } else {
+          [#meta.copyright-year. ]
+        }
+        // journal bibstrip: ACM <issn>/<year>/<month>-ART<article> then DOI
+        // (acmart.dtx:6651). \@acmArticle defaults to empty, so ART may have no number.
+        // str() on the month delimits the number from the following "-ART" (markup
+        // would otherwise read "acm-month-ART" as one hyphenated identifier).
+        [ACM #j.issn/#str(meta.acm-year)/#str(meta.acm-month)-ART#{
+          if meta.acm-article != none { str(meta.acm-article) }
+        }]
+        if meta.doi != none {
+          linebreak()
+          link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
+        }
+      })
+    }
   }
 
   // float: true so the block reserves space at the bottom of the first page and
@@ -360,8 +369,8 @@
     fm-block(cfg, meta.abstract, indent: cfg.parindent)
   }
 
-  // --- CCS Concepts ---
-  if meta.ccs != none {
+  // --- CCS Concepts (suppressed by \settopmatter{printccs=false}) ---
+  if meta.ccs != none and meta.print-ccs {
     special-line(cfg, [CCS Concepts], render-ccs-concepts(meta.ccs))
   }
 

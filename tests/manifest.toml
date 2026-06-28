@@ -75,6 +75,15 @@ pages = 1
 # Title/subtitle/author notes, corresponding mark, received line, and acks. The
 # title block and footnote stack mix leadings, so pitch is reported, not gated.
 
+[tests.options-test]
+kind = "twin"
+pages = 2
+page1_only = true
+# Toggles nonacm / printccs=false / printfolios=false plus the single-column
+# no-ops balance=false / natbib=false. Two pages so page 2 shows the suppressed
+# folios in the running head. Title block + footnote stack mix leadings (title,
+# abstract, contact line), so pitch is reported, not gated.
+
 [tests.feature-test]
 kind = "smoke"
 pages = 1

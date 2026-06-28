@@ -8,7 +8,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 
 | file | role |
 |---|---|
-| `lib.typ` | public `acmart()` entry: page setup, global text/par rules, header/footer, options (review/screen/anonymous), wires up the parts; re-exports `theorem`/`lemma`/…/`proof` |
+| `lib.typ` | public `acmart()` entry: page setup, global text/par rules, header/footer, document options (review/screen/anonymous/nonacm/print-ccs/print-folios + the full acmart option set, recognized-but-unimplemented ones asserted not silently dropped), wires up the parts; re-exports `theorem`/`lemma`/…/`proof` |
 | `formats/acmsmall.typ` | **all** acmsmall measurements as a data dict (geometry, font-size steps, skips, fonts). Built on `tp = 72/72.27*1pt` (TeX→PS point conversion) |
 | `parts/spacing.typ` | `comp()` / `tex-skip()` — the TeX→Typst baseline-grid conversion used by every `leading` and vertical gap (see DESIGN.md) |
 | `parts/headings.typ` | section / subsection / run-in heading show rule |

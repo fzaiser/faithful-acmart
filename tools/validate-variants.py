@@ -74,6 +74,9 @@ VARIANTS = {
     "screen":    (",screen", r"\setcopyright{acmlicensed}", '  screen: true,\n'),
     "review":    (",review", r"\setcopyright{acmlicensed}", '  review: true,\n'),
     "anonymous": (",anonymous", r"\setcopyright{acmlicensed}", '  anonymous: true,\n'),
+    # nonacm drops the journal footer line and, for non-cc copyright, the whole
+    # page-1 copyright/permission block (acmart.dtx:6599) — both visible on page 1.
+    "nonacm":    (",nonacm", r"\setcopyright{acmlicensed}", '  nonacm: true,\n'),
 }
 
 

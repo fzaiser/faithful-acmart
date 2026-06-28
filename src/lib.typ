@@ -48,14 +48,40 @@
   copyright-year: none,
   cc-type: "by",
   cc-version: "4.0",
-  show-ref: true,
+  // \settopmatter keys (acmart.dtx:1076). show-ref is acmart's `printacmref`;
+  // `auto` resolves to `not nonacm` below (nonacm flips the bibstrip off by
+  // default, re-enableable with show-ref: true).
+  show-ref: auto,
+  print-ccs: true,
+  print-folios: true,
   short-title: auto,
   short-authors: auto,
-  // document options
-  review: false,
-  screen: false,
-  anonymous: false,
-  ..rest,
+  // --- acmart class & \settopmatter options ---
+  // Implemented for the acmsmall (single-column journal) layout:
+  review: false,          // line numbers in the margin + folios forced on
+  screen: false,          // colour hyperlinks
+  anonymous: false,       // blind-review author strip
+  nonacm: false,          // drop the ACM journal footer + reference format
+  // Genuine no-ops in the single-column acmsmall layout — accepted for API
+  // parity (so the names aren't forgotten), but real acmart also produces no
+  // acmsmall change for these, so we don't error on them either:
+  balance: true,          // last-page column balancing — two-column formats only
+  pbalance: false,        // per-page column balancing — two-column formats only
+  natbib: true,           // LaTeX citation package — bibliography is CSL-driven here
+  // Recognized but NOT yet modelled for acmsmall. Accepted so the option is
+  // reserved, but a non-default value raises an explicit error rather than being
+  // silently ignored (see the assert loop below). Implement + drop from there
+  // when modelled.
+  author-version: false,  // authorversion: author's-version copyright block
+  timestamp: false,       // draft timestamp in the footer (wall-clock; non-reproducible)
+  author-draft: false,    // authordraft = timestamp + review
+  acmthm: true,           // acmthm=false suppresses the built-in theorem environments
+  urlbreakonhyphens: true,// break URLs on hyphens
+  language: none,         // additional languages (translated title/abstract)
+  draft: false,           // amsart draft mode (overfull-box rules)
+  font-size: "10pt",      // base size 8/9/10/11/12pt (acmsmall geometry assumes 10pt)
+  authors-per-row: 0,     // \settopmatter{authorsperrow} (0 = auto)
+  article-type: none,     // \acmArticleType: Research/Review/... (acmcp/acmengage)
   body,
 ) = {
   assert(
@@ -63,6 +89,37 @@
     message: "unknown/unimplemented acmart format: " + format,
   )
   let cfg = _formats.at(format)
+
+  // Refuse to silently ignore recognized-but-unimplemented options: a non-default
+  // value would otherwise quietly diverge from LaTeX. Each tuple is
+  // (name, value, default). (balance/pbalance/natbib are intentionally absent —
+  // they are genuine no-ops in the single-column layout, not unimplemented.)
+  for (opt-name, val, default) in (
+    ("author-version", author-version, false),
+    ("timestamp", timestamp, false),
+    ("author-draft", author-draft, false),
+    ("acmthm", acmthm, true),
+    ("urlbreakonhyphens", urlbreakonhyphens, true),
+    ("language", language, none),
+    ("draft", draft, false),
+    ("font-size", font-size, "10pt"),
+    ("authors-per-row", authors-per-row, 0),
+    ("article-type", article-type, none),
+  ) {
+    assert(
+      val == default,
+      message: "acmart: option `" + opt-name + "` is recognized but not yet "
+        + "implemented for the acmsmall format (got " + repr(val) + "). It is "
+        + "reserved so the name isn't forgotten; leave it at its default "
+        + repr(default) + " for now.",
+    )
+  }
+
+  // \settopmatter{printacmref} defaults true; nonacm flips it off unless the
+  // author forces it back on with show-ref: true (acmart.dtx:2717).
+  let show-ref = if show-ref == auto { not nonacm } else { show-ref }
+  // review mode forces folios on (acmart.dtx:2683, \@ACM@printfoliostrue).
+  let print-folios = print-folios or review
 
   // \copyrightyear defaults to \@acmYear; it can't be a signature default because
   // it references another parameter.
@@ -92,14 +149,17 @@
     cc-type: cc-type,
     cc-version: cc-version,
     show-ref: show-ref,
+    print-ccs: print-ccs,
+    nonacm: nonacm,
     anonymous: anonymous,
   )
 
   // Running footer: "<short>, Vol. V, No. N, Article A. Publication date: M Y."
   // Right-aligned on odd pages, left on even (acmart fancyfoot[RO,LE]).
+  // nonacm suppresses the ACM journal bibstrip footer (acmart.dtx:8198/8036).
   let footer-content = {
     let j = lookup-journal(journal)
-    if j.short != none {
+    if not nonacm and j.short != none {
       context {
         set text(font: cfg.fonts.serif, size: cfg.size.footnotesize)
         // \@acmArticle defaults to empty (acmart.dtx:5477), so the article
@@ -131,7 +191,11 @@
       return
     }
     set text(font: cfg.fonts.sans, size: cfg.size.footnotesize)
-    let article-page = if acm-article != none [#acm-article:#p] else [#p]
+    // \@acmArticlePage (acmart.dtx:8014): "<article>:<page>", dropping ":<page>"
+    // when folios are off, and the article number itself when it is empty.
+    let article-page = if acm-article != none {
+      if print-folios [#acm-article:#p] else [#acm-article]
+    } else if print-folios [#p]
     if calc.odd(p) {
       grid(columns: (1fr, auto), align(left, st), align(right, article-page))
     } else {
