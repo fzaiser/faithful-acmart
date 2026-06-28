@@ -1,0 +1,73 @@
+%% language-de-test — German multilingual paper (acmart `language=german`).
+%% German main language with an English translated title/keywords. Verifies the
+%% German fixed strings — \keywordsname ("Zusätzliche Schlagwörter und Phrasen"),
+%% \proofname ("Beweis"), \acksname ("Danksagungen"), \tablename ("Tabelle") —
+%% while the figure name stays "Fig." (acmart sets it globally, acmart.dtx:4199).
+%% Twin of language-de-test.typ.
+\documentclass[acmsmall,language=german]{acmart}
+
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmYear{2018}
+\acmMonth{8}
+\acmDOI{XXXXXXX.XXXXXXX}
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+
+\begin{document}
+
+\title{Eine Notiz über Berechnungskomplexität}
+\translatedtitle{english}{A note on computational complexity}
+
+\author{Hans Müller}
+\email{mueller@example.de}
+\affiliation{%
+  \institution{Forschungsinstitut}
+  \city{Berlin}
+  \country{Germany}}
+
+\renewcommand{\shortauthors}{Müller}
+
+\begin{abstract}
+  Eine kurze Notiz auf Deutsch, um den mehrsprachigen Modus der Klasse acmart mit
+  übersetzten Zeichenketten zu prüfen.
+\end{abstract}
+
+\keywords{Komplexität, Algorithmen, Berechnung}
+\translatedkeywords{english}{complexity, algorithms, computation}
+
+\maketitle
+
+\section{Einleitung}
+Dieses Dokument prüft, dass die lokalisierten Zeichenketten zwischen der
+LaTeX-Klasse und der Typst-Portierung übereinstimmen.
+
+\begin{figure}[h]
+\centering
+\rule{4cm}{2cm}
+\caption{Eine Abbildung; das Etikett bleibt englisch.}
+\end{figure}
+
+\begin{table}[h]
+\caption{Eine Tabelle mit lokalisiertem Etikett.}
+\centering
+\begin{tabular}{ll}
+\toprule
+A & B\\
+\midrule
+1 & 2\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{proof}
+Ein kurzer Beweis, der mit einem QED-Quadrat endet.
+\end{proof}
+
+\begin{acks}
+Wir danken den Gutachtern.
+\end{acks}
+
+\end{document}

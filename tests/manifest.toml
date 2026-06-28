@@ -99,6 +99,20 @@ pages = 1
 # strings (keywordsname/acksname/proofname) and French hyphenation. Title block +
 # footnote stack mix leadings, so pitch is reported, not gated.
 
+[tests.language-de-test]
+kind = "twin"
+pages = 1
+# German `language=german`: keywordsname/acksname/proofname + tablename
+# ("Tabelle") localized, figure label still "Fig." Mixed leadings -> pitch
+# reported, not gated.
+
+[tests.language-es-test]
+kind = "twin"
+pages = 1
+# Spanish `language=spanish`: keywordsname/acksname/proofname + tablename
+# ("Cuadro") localized, figure label still "Fig." Mixed leadings -> pitch
+# reported, not gated.
+
 [tests.draft-test]
 kind = "smoke"
 pages = 1

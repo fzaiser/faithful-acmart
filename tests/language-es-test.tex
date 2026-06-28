@@ -1,0 +1,73 @@
+%% language-es-test — Spanish multilingual paper (acmart `language=spanish`).
+%% Spanish main language with an English translated title/keywords. Verifies the
+%% Spanish fixed strings — \keywordsname ("Palabras y Frases Claves
+%% Adicionales"), \proofname ("Demostración"), \acksname ("Expresiones de
+%% gratitud"), \tablename ("Cuadro") — while the figure name stays "Fig."
+%% (acmart sets it globally, acmart.dtx:4199). Twin of language-es-test.typ.
+\documentclass[acmsmall,language=spanish]{acmart}
+
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmYear{2018}
+\acmMonth{8}
+\acmDOI{XXXXXXX.XXXXXXX}
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+
+\begin{document}
+
+\title{Una nota sobre la complejidad computacional}
+\translatedtitle{english}{A note on computational complexity}
+
+\author{Juan Pérez}
+\email{perez@example.es}
+\affiliation{%
+  \institution{Instituto de Investigación}
+  \city{Madrid}
+  \country{Spain}}
+
+\renewcommand{\shortauthors}{Pérez}
+
+\begin{abstract}
+  Una breve nota en español para ejercitar el modo multilingüe de la clase acmart
+  con cadenas de caracteres traducidas.
+\end{abstract}
+
+\keywords{complejidad, algoritmos, cómputo}
+\translatedkeywords{english}{complexity, algorithms, computation}
+
+\maketitle
+
+\section{Introducción}
+Este documento comprueba que las cadenas localizadas coinciden entre la clase
+LaTeX y el porte de Typst.
+
+\begin{figure}[h]
+\centering
+\rule{4cm}{2cm}
+\caption{Una figura; la etiqueta permanece en inglés.}
+\end{figure}
+
+\begin{table}[h]
+\caption{Un cuadro con etiqueta localizada.}
+\centering
+\begin{tabular}{ll}
+\toprule
+A & B\\
+\midrule
+1 & 2\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{proof}
+Una breve demostración que termina con un cuadrado CQD.
+\end{proof}
+
+\begin{acks}
+Agradecemos a los revisores.
+\end{acks}
+
+\end{document}
