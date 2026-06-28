@@ -5,7 +5,7 @@
 // The caption package's singlelinecheck centers captions that fit one line and
 // left-justifies longer ones. Enumerate labels are parenthesized: (1), (2), ...
 
-#import "spacing.typ": comp
+#import "spacing.typ": comp, tex-skip
 
 #let apply-body(cfg, body) = {
   // Figure/table supplements and caption separator
@@ -46,9 +46,17 @@
   // `indent` + marker width + `body-indent`(=\labelsep): for the wide "(1)" the
   // marker hangs at ~\parindent; for the narrow bullet we widen `indent` so its
   // body still reaches \leftmargin (= leftmargin - labelsep - bullet width). See DESIGN.
-  set enum(numbering: "(1)(a)(i)(A)", indent: cfg.parindent, body-indent: cfg.list-labelsep)
+  // Vertical spacing: amsart sets level-1 \topsep = \listisep = \smallskipamount
+  // (acmart.dtx:4446-4451) with \itemsep = \parsep = 0, i.e. items sit one
+  // \baselineskip apart (the global par leading) and the whole list is offset
+  // from the surrounding text by a \smallskip. tex-skip() converts that topsep
+  // to the block gap; tight items inherit the baseline-grid leading.
+  let list-gap = tex-skip(cfg, cfg.smallskip)
+  set enum(numbering: "(1)(a)(i)(A)", indent: cfg.parindent, body-indent: cfg.list-labelsep,
+    spacing: list-gap)
   set list(marker: ([•], text(weight: "bold")[–], [∗], [·]),
-    indent: cfg.list-leftmargin - 2 * cfg.list-labelsep, body-indent: cfg.list-labelsep)
+    indent: cfg.list-leftmargin - 2 * cfg.list-labelsep, body-indent: cfg.list-labelsep,
+    spacing: list-gap)
 
   // Monospace (Inconsolata/zi4) for inline and block code.
   show raw: set text(font: cfg.fonts.mono)

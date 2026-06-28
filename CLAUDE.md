@@ -41,13 +41,18 @@ short version that must not be missed.
   re-dumps these from the bundled class — don't hardcode the article values.
 - **Section titles are MIXED CASE**, not uppercased (author *names* are uppercased
   — different thing). pdftotext is misleading here; check rendered pixels.
-- **`\flushbottom` is unreplicable.** acmsmall vertically justifies *full* pages;
-  Typst has no equivalent, so our pages are ragged-bottom. Section spacing is
-  otherwise exact (proven vs LaTeX `\raggedbottom`). Gradual drift on full
-  multi-page documents is THIS, not a spacing bug — do not "fix" spacing to chase
-  it.
+- **Flushbottom-like fill is unreplicable.** acmsmall does NOT call `\flushbottom`
+  (only acmtog/sigconf… do); the fill comes from acmart setting `\@textbottom` to
+  `\vskip 0pt \@plus 1pt` (`acmart.dtx:3936`), so *full* pages stretch the rubber
+  section glue to the bottom margin. Typst has no equivalent, so our pages are
+  ragged-bottom. Section spacing is otherwise exact (proven vs LaTeX
+  `\raggedbottom`). Gradual drift on full multi-page documents is THIS, not a
+  spacing bug — do not "fix" spacing to chase it.
 
 ## Not done yet
 
 Other formats (sigconf/sigplan/… — need two-column), math-font fidelity, the
-separate single-column `manuscript` format.
+separate single-column `manuscript` format. Unmodelled top-matter commands:
+`\titlenote`/`\subtitlenote`, `\received`, the `acks` environment, teaser
+figures, and author badges (use ordinary Typst headings/notes). See DESIGN.md
+"Deliberate approximations" / "Known limitations" for the full list.

@@ -57,6 +57,16 @@
   )
   let cfg = _formats.at(format)
 
+  // LaTeX-faithful metadata defaults (acmart.dtx): \acmVolume{1}, \acmNumber{1},
+  // \acmYear{\the\year}, \acmMonth{\the\month} and \copyrightyear{\@acmYear}.
+  // We only consult the system clock (datetime.today) when a date is omitted, so
+  // documents that set the year/month stay reproducible.
+  let acm-volume = if acm-volume != none { acm-volume } else { 1 }
+  let acm-number = if acm-number != none { acm-number } else { 1 }
+  let acm-year = if acm-year != none { acm-year } else { datetime.today().year() }
+  let acm-month = if acm-month != none { acm-month } else { datetime.today().month() }
+  let copyright-year = if copyright-year != none { copyright-year } else { acm-year }
+
   let meta = (
     title: title,
     subtitle: subtitle,
@@ -86,7 +96,10 @@
     if j.short != none and acm-volume != none {
       context {
         set text(font: cfg.fonts.serif, size: cfg.size.footnotesize)
-        let txt = [#j.short, Vol. #str(acm-volume), No. #str(acm-number), Article #str(acm-article). Publication date: #pub-date(meta).]
+        // \@acmArticle defaults to empty (acmart.dtx:5477), so the article
+        // number may be absent: "..., Article . Publication date: ..."
+        let art = if acm-article != none { str(acm-article) }
+        let txt = [#j.short, Vol. #str(acm-volume), No. #str(acm-number), Article #art. Publication date: #pub-date(meta).]
         if calc.odd(here().page()) { align(right, txt) } else { align(left, txt) }
       }
     }

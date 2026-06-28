@@ -134,9 +134,13 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 
 **Deliberate approximations:**
 - Bibliography uses Typst's built-in ACM CSL, not `ACM-Reference-Format.bst`.
-- Author note / corresponding-✉ superscript marks are emitted ✉-then-note in a
-  fixed order, not LaTeX's source-declaration order — our author model stores a
-  boolean `corresponding` and a `note`, so there is no declaration order to honour.
+- The corresponding-author ✉ mark itself is faithful: acmart's `\correspondingauthor`
+  (new in v2.18) emits a superscript envelope `\textsuperscript{\ding{41}}`
+  (`acmart.dtx:5430`). What differs is *ordering* — we emit ✉-then-note in a fixed
+  order, not LaTeX's source-declaration order, because our author model stores a
+  boolean `corresponding` and a `note` with no declaration order to honour.
+- `\titlenote`/`\subtitlenote`, `\received`, the `acks` environment, teaser
+  figures, and author badges are not modelled; use ordinary Typst headings/notes.
 - Lists: body indents are tuned to land at `\leftmargin` (24.5pt, level 1) for the
   common single-level case, but Typst has no fixed hanging-label box (LaTeX's
   `\llap`), so on deeply nested or width-varied markers the body drifts with the
@@ -151,10 +155,15 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 - Only `acmsmall`. No `sigconf`/`sigplan`/… (no two-column support yet).
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
 - No automated pass/fail thresholds; validation is visual + mismatch %.
-- **`\flushbottom` (vertical justification) is not replicable in Typst.**
-  acmsmall inherits LaTeX's twoside default of `\flushbottom`: on a *full* page
-  it stretches the rubber glue in section skips (`.75bl \@plus -2pt` etc.) so the
-  text fills to the bottom margin. Typst has no vertical justification, so our
+- **Vertical justification (flushbottom-like fill) is not replicable in Typst.**
+  acmsmall does *not* call `\flushbottom` (only acmtog/sigconf… do — see
+  `acmart.dtx`'s `\ifcase\ACM@format@nr … \flushbottom`); nor does `amsart` or
+  the LaTeX kernel set it for this format. Instead acmart redefines, for *all*
+  formats, `\@textbottom` to `\vskip \z@ \@plus 1pt` (`acmart.dtx:3936`): the page
+  bottom can absorb at most 1pt of slack, so on a *full* page the rubber glue in
+  the section skips (`.75bl \@plus -2pt` etc.) stretches to fill the text to the
+  bottom margin — observationally identical to `\flushbottom`. Typst has no
+  vertical justification, so our
   pages are effectively ragged-bottom. Our section spacing is *exactly* correct
   — verified by forcing `\raggedbottom` in LaTeX, after which LaTeX's section
   positions match ours to within 0.2pt (increments 191.3 vs 191.3pt). The only
