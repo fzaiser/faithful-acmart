@@ -77,6 +77,11 @@ VARIANTS = {
     # nonacm drops the journal footer line and, for non-cc copyright, the whole
     # page-1 copyright/permission block (acmart.dtx:6599) — both visible on page 1.
     "nonacm":    (",nonacm", r"\setcopyright{acmlicensed}", '  nonacm: true,\n'),
+    # authorversion swaps the page-1 copyright block: no permission text, and the
+    # ACM bibstrip becomes the "author's version ... Version of Record" notice
+    # naming the full journal + DOI (acmart.dtx:6612/6634).
+    "authorversion": (",authorversion", r"\setcopyright{acmlicensed}",
+                      '  author-version: true,\n'),
 }
 
 

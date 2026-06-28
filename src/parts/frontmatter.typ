@@ -272,6 +272,22 @@
         rule(100%)
         block(spacing: lead, ptext)
       }
+    } else if meta.author-version {
+      // author-version: drop the permission text (acmart.dtx:6612) and replace
+      // the ACM bibstrip with the author's-version notice, naming the full
+      // (emphasized) journal and the DOI (acmart.dtx:6634-6647). Unlike the short
+      // bibstrip lines below, this is a running paragraph, so it stays justified
+      // (inherited from the footnote stack) rather than ragged.
+      rule(100%)
+      block(spacing: lead, {
+        let owner = copyright-owner(mode)
+        if owner != none { [© #meta.copyright-year #owner] } else { [#meta.copyright-year.] }
+        linebreak()
+        [This is the author's version of the work. It is posted here for your personal use. Not for redistribution. The definitive Version of Record was published in #emph(j.name)#{
+          if meta.doi != none [, #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi].]
+          else [.]
+        }]
+      })
     } else {
       rule(100%)
       block(spacing: lead, {

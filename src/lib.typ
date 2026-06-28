@@ -62,26 +62,32 @@
   screen: false,          // colour hyperlinks
   anonymous: false,       // blind-review author strip
   nonacm: false,          // drop the ACM journal footer + reference format
-  // Genuine no-ops in the single-column acmsmall layout — accepted for API
-  // parity (so the names aren't forgotten), but real acmart also produces no
-  // acmsmall change for these, so we don't error on them either:
-  balance: true,          // last-page column balancing — two-column formats only
-  pbalance: false,        // per-page column balancing — two-column formats only
-  natbib: true,           // LaTeX citation package — bibliography is CSL-driven here
+  author-version: false,  // authorversion: author's-version copyright block
+  // No effect in the single-column acmsmall layout — accepted for API parity (so
+  // the names aren't forgotten) but inert here, exactly as in real acmart:
+  //   balance/pbalance — column balancing, a two-column-only feature
+  //   natbib           — selects the LaTeX citation package (bibliography is CSL here)
+  //   authors-per-row  — only the conference author grid honours it (\@mkauthors@iii,
+  //                      acmart.dtx:7448); acmsmall lists authors via \@mkauthors@i
+  //   article-type     — the coloured banner is an acmcp/acmengage feature
+  //   acmthm           — suppresses the \newtheorem definitions; moot in Typst, where
+  //                      the environments are opt-in functions with no namespace to clash
+  balance: true,
+  pbalance: false,
+  natbib: true,
+  authors-per-row: 0,
+  article-type: none,
+  acmthm: true,
   // Recognized but NOT yet modelled for acmsmall. Accepted so the option is
   // reserved, but a non-default value raises an explicit error rather than being
   // silently ignored (see the assert loop below). Implement + drop from there
   // when modelled.
-  author-version: false,  // authorversion: author's-version copyright block
   timestamp: false,       // draft timestamp in the footer (wall-clock; non-reproducible)
-  author-draft: false,    // authordraft = timestamp + review
-  acmthm: true,           // acmthm=false suppresses the built-in theorem environments
-  urlbreakonhyphens: true,// break URLs on hyphens
-  language: none,         // additional languages (translated title/abstract)
+  author-draft: false,    // authordraft = timestamp + review (blocked on timestamp)
+  urlbreakonhyphens: true,// break URLs on hyphens (we don't custom-control URL breaking)
+  language: none,         // additional languages (translated title/abstract) — needs API design
   draft: false,           // amsart draft mode (overfull-box rules)
-  font-size: "10pt",      // base size 8/9/10/11/12pt (acmsmall geometry assumes 10pt)
-  authors-per-row: 0,     // \settopmatter{authorsperrow} (0 = auto)
-  article-type: none,     // \acmArticleType: Research/Review/... (acmcp/acmengage)
+  font-size: "10pt",      // base size 8/9/10/11/12pt (acmsmall geometry is probed for 10pt)
   body,
 ) = {
   assert(
@@ -93,26 +99,18 @@
   // Refuse to silently ignore recognized-but-unimplemented options: setting one
   // to a non-default value would otherwise quietly diverge from LaTeX, so we
   // assert instead. Membership rule: an option belongs here iff it would change
-  // acmsmall output in real acmart but we don't model that change yet — e.g.
-  // `language` (translated title/abstract) or `font-size` (a different base
-  // size). This is unrelated to the one/two-column split. Each tuple is
-  // (name, value, default).
-  //
-  // Deliberately NOT here, because they produce no acmsmall change in real
-  // acmart either (so they're accepted as documented no-ops, not errors):
-  // balance/pbalance (column balancing — a two-column-only feature) and natbib
-  // (selects the LaTeX citation package — moot, bibliography is CSL-driven here).
+  // acmsmall output in real acmart but we don't model that change yet — and this
+  // is unrelated to the one/two-column split. Options that are simply inert in
+  // acmsmall (balance/pbalance/natbib/authors-per-row/article-type/acmthm) are
+  // accepted as documented no-ops in the signature above, not listed here. Each
+  // tuple is (name, value, default).
   for (opt-name, val, default) in (
-    ("author-version", author-version, false),
     ("timestamp", timestamp, false),
     ("author-draft", author-draft, false),
-    ("acmthm", acmthm, true),
     ("urlbreakonhyphens", urlbreakonhyphens, true),
     ("language", language, none),
     ("draft", draft, false),
     ("font-size", font-size, "10pt"),
-    ("authors-per-row", authors-per-row, 0),
-    ("article-type", article-type, none),
   ) {
     assert(
       val == default,
@@ -159,6 +157,7 @@
     show-ref: show-ref,
     print-ccs: print-ccs,
     nonacm: nonacm,
+    author-version: author-version,
     anonymous: anonymous,
   )
 

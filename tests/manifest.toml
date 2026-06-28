@@ -84,6 +84,13 @@ page1_only = true
 # folios in the running head. Title block + footnote stack mix leadings (title,
 # abstract, contact line), so pitch is reported, not gated.
 
+[tests.authorversion-test]
+kind = "twin"
+pages = 1
+# author-version copyright block (suppressed permission text + "author's version
+# ... Version of Record" notice). Title block + footnote stack mix leadings, so
+# pitch is reported, not gated.
+
 [tests.feature-test]
 kind = "smoke"
 pages = 1

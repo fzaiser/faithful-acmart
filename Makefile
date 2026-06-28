@@ -26,7 +26,7 @@ DIFF   := tests/out/diff
 
 # Matched twins: NAME.tex (real LaTeX) + NAME.typ (ours) share a stem and are
 # diffed/compared page-by-page.
-MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test options-test
+MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test options-test authorversion-test
 # End-to-end ports: full Typst documents with NO hand-written twin — compared
 # against the upstream sample reference built by `make reference` (see the
 # stem->reference map in the diff target and reference= in tests/manifest.toml).

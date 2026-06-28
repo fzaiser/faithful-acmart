@@ -1,0 +1,41 @@
+%% authorversion-test — the author's-version copyright block (twin of the .typ).
+%% authorversion suppresses the permission text and replaces the ACM bibstrip in
+%% the page-1 copyright footnote with the "author's version ... Version of Record
+%% was published in <journal>, <doi>" notice (acmart.dtx:6612/6634).
+\documentclass[acmsmall,authorversion]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmMonth{8}
+
+\begin{document}
+
+\title{The Author's Version}
+
+\author{Ben Trovato}
+\email{trovato@corporation.com}
+\affiliation{%
+  \institution{Institute for Clarity in Documentation}
+  \city{Dublin}
+  \country{USA}}
+
+\renewcommand{\shortauthors}{Trovato}
+
+\begin{abstract}
+  A short abstract for a document compiled in author-version mode, exercising the
+  alternative page-one copyright block.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+This document checks that the author-version copyright block at the bottom of the
+first page matches between the LaTeX class and the Typst port.
+
+\end{document}
