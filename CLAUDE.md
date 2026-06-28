@@ -51,7 +51,3 @@ short version that must not be missed.
 
 Other formats (sigconf/sigplan/… — need two-column), math-font fidelity, the
 separate single-column `manuscript` format.
-
-## Conventions
-
-Branch off the default branch before committing; commit/push only when asked.
