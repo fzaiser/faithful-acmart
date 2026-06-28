@@ -32,7 +32,9 @@ fi
 
 # Find acmart.cls (in the output dir) and the source's own inputs.
 export TEXINPUTS="$outdir:$srcdir:"
-export BIBINPUTS="$outdir:$srcdir:"
+# Include the bundled sample bibliographies so test twins can \bibliography{sample-base}
+# without copying the .bib into the source tree.
+export BIBINPUTS="$outdir:$srcdir:$ROOT/acmart/samples:"
 
 run() { pdflatex -interaction=nonstopmode -output-directory="$outdir" "$srcdir/$base.tex" >/dev/null 2>&1 || true; }
 

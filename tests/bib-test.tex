@@ -1,0 +1,17 @@
+%% bib-test — self-contained bibliography isolator (LaTeX twin of bib-test.typ).
+%% Cites a spread of entry types (online, periodical, phdthesis, ...) from the
+%% bundled sample-base.bib and renders the ACM-Reference-Format bibliography.
+%% The Typst side uses the ACM CSL; this twin makes the CSL-vs-bst gap measurable.
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\begin{document}
+
+\section{Introduction}
+This sentence cites several works to exercise the bibliography style
+\cite{Ablamowicz07} \cite{JCohen96} \cite{Clarkson:1985:ACP:911891} \cite{Hollis:1999:VBD:519964} \cite{Goossens:1999:LWC:553897} \cite{Buss:1987:VTB:897367} \cite{Li:2008:PUC:1358628.1358946} \cite{Conti:2009:DDS:1555009.1555162}.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{sample-base}
+
+\end{document}

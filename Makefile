@@ -4,6 +4,8 @@
 #   make reference          build the LaTeX acmart reference PDF (tests/out/latex/acmsmall.pdf)
 #   make example            build the Typst example (tests/out/typst/main.pdf)
 #   make test               build the reference + all Typst test PDFs (+ LaTeX test refs)
+#   make check              run the regression gates (Tier 0 smoke / 1 golden / 2 metrics)
+#   make accept             rebuild Typst PDFs and refresh the Tier 1 golden hashes
 #   make diff               diff a Typst output against its LaTeX reference
 #   make clean              remove all generated output (tests/out/)
 #
@@ -22,10 +24,15 @@ LATEX  := tests/out/latex
 TYPST  := tests/out/typst
 DIFF   := tests/out/diff
 
-# Typst documents that have a matched LaTeX reference (.tex + .typ share a stem).
-MATCHED := body-test head-test body2-test fn-test full-test
+# Matched twins: NAME.tex (real LaTeX) + NAME.typ (ours) share a stem and are
+# diffed/compared page-by-page.
+MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test
+# End-to-end ports: full Typst documents with NO hand-written twin — compared
+# against the upstream sample reference built by `make reference` (see the
+# stem->reference map in the diff target and reference= in tests/manifest.toml).
+E2E := sample-acmsmall
 
-.PHONY: probe reference example test test-references diff validate clean
+.PHONY: probe reference example test test-references check accept diff validate clean
 
 # Dump acmsmall's ground-truth dimensions from the BUNDLED acmart.cls (generated
 # into tests/out/latex by latex-build.sh) so src/formats/acmsmall.typ can be
@@ -54,17 +61,35 @@ example:
 
 test: reference test-references
 	@mkdir -p $(TYPST)
-	@for t in $(MATCHED) title-test bib-test; do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
+	@for t in $(MATCHED) $(E2E); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
 	$(TC) compile template/main.typ $(TYPST)/main.pdf
 	@echo "All Typst tests built into $(TYPST)/."
 
+# Regression gates (no manual inspection). Tier 0 compiles + checks warnings and
+# page counts; Tier 1 compares Typst renders to committed golden hashes; Tier 2
+# compares cross-engine layout geometry against tests/manifest.toml tolerances.
+check: test
+	$(PY) tools/check_smoke.py
+	$(PY) tools/check_golden.py
+	$(PY) tools/metrics.py
+
+# Refresh the Tier 1 golden hashes after an intended output change (or a Typst
+# version bump). Review `make check` / `make diff` first — this blesses whatever
+# the current Typst output is.
+accept:
+	@mkdir -p $(TYPST)
+	@for t in $(MATCHED) $(E2E); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
+	$(PY) tools/check_golden.py --accept
+
 # Diff a Typst output against its LaTeX reference. Override STEM/PAGES:
 #   make diff STEM=full-test PAGES=1-2
+# E2E ports have no same-stem reference, so map them to their upstream PDF.
 STEM  ?= full-test
 PAGES ?= 1
+REF   ?= $(patsubst sample-acmsmall,acmsmall,$(STEM))
 diff:
 	@mkdir -p $(DIFF)
-	$(PY) tools/pdfdiff.py $(LATEX)/$(STEM).pdf $(TYPST)/$(STEM).pdf $(DIFF) --dpi 150 --pages $(PAGES)
+	$(PY) tools/pdfdiff.py $(LATEX)/$(REF).pdf $(TYPST)/$(STEM).pdf $(DIFF) --dpi 150 --pages $(PAGES)
 
 clean:
 	rm -rf tests/out

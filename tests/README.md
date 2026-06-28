@@ -1,22 +1,55 @@
-# tests/ — matched test documents
+# tests/ — test documents
 
-Each test is a **matched pair**: `NAME.tex` (real LaTeX acmart) and `NAME.typ`
-(our template) with identical content, so they can be diffed page-by-page. Build
-everything with `make test`, then e.g. `make diff STEM=full-test PAGES=1-2`.
+Two kinds of test:
 
-| stem | exercises |
-|---|---|
-| `body-test` | body typography: font, size, baseline grid, justification, indent |
-| `head-test` | section / subsection / subsubsection / paragraph (run-in) headings |
-| `body2-test` | figure & table captions, theorems (plain/definition/proof+QED), lists |
-| `fn-test` | body footnotes + code/verbatim |
-| `full-test` | multi-page cumulative spacing (reveals the `\flushbottom` difference) |
-| `title-test` | full frontmatter (Typst only; compared against `out/latex/acmsmall.pdf`) |
-| `bib-test` | bibliography via ACM CSL (Typst only) |
+- **Matched twins** — `NAME.tex` (real LaTeX acmart) and `NAME.typ` (ours) with
+  identical content, diffed page-by-page. Each isolates one feature so failures
+  are easy to localize.
+- **End-to-end ports** — a full Typst document with *no* hand-written twin,
+  compared against the upstream sample reference (so it tracks the real ACM
+  sample rather than a duplicate of it).
 
-`title-test`/`bib-test` have no `.tex` twin — they mirror the upstream
-`sample-acmsmall`, so diff them against `tests/out/latex/acmsmall.pdf`
-(`make reference`).
+Build everything with `make test`; gate it with `make check`; eyeball a page with
+e.g. `make diff STEM=full-test PAGES=1-2`.
+
+| stem | kind | exercises |
+|---|---|---|
+| `body-test` | twin | body typography: font, size, baseline grid, justification, indent |
+| `head-test` | twin | section / subsection / subsubsection / paragraph (run-in) headings |
+| `body2-test` | twin | figure & table captions, theorems (plain/definition/proof+QED), lists |
+| `fn-test` | twin | body footnotes + code/verbatim |
+| `full-test` | twin | multi-page cumulative spacing (reveals the `\flushbottom` difference) |
+| `title-test` | twin | frontmatter in isolation: title block, author fields, abstract, CCS, keywords |
+| `bib-test` | twin | bibliography (ACM CSL vs `ACM-Reference-Format.bst` — see note) |
+| `sample-acmsmall` | e2e | full port of the upstream `acmsmall` sample, vs `out/latex/acmsmall.pdf` |
+
+`sample-acmsmall` has no `.tex`; `make reference` builds its upstream reference,
+and `make diff STEM=sample-acmsmall` maps to it automatically. The port carries
+documented gaps (received dates, `acks`/`appendix`/teaser environments) — see the
+header of `sample-acmsmall.typ`.
+
+**bib note:** the ACM CSL and the LaTeX `.bst` are independent implementations of
+the same style and diverge in content (access dates, "Doctoral dissertation" vs
+"Ph.D.", `doi:` vs `https://doi.org/`, in-text range collapsing). The twin exists
+to make that gap measurable; the reference list reflows, so the metrics gate
+reports — but doesn't fail on — line count there.
+
+## Regression gates — `make check`
+
+`tests/manifest.toml` is the single source of truth (per-test kind, reference,
+expected page count, Tier 2 tolerances). `make check` runs three tiers with no
+manual inspection:
+
+- **Tier 0 (smoke)** — every test compiles with no warnings, page counts match,
+  twins keep LaTeX/Typst page-count parity.
+- **Tier 1 (golden)** — each Typst page raster is hashed and compared to the
+  committed `golden/typst.sha256`; any unintended output change fails. After an
+  intended change run `make accept` to refresh it (Typst is deterministic, so
+  hashes are stable for a pinned engine version + the bundled fonts).
+- **Tier 2 (metrics)** — cross-engine layout geometry (left/top margin, baseline
+  pitch) gated against manifest tolerances; right margin & line count reported only.
+
+`golden/typst.sha256` is committed; `tests/out/` is not.
 
 ## Output (all gitignored, under `tests/out/`)
 

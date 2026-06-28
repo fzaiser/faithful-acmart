@@ -1,0 +1,77 @@
+# Central test manifest — drives the regression gates (`make check`) and the
+# diff/reference resolution. One [tests.NAME] entry per test stem.
+#
+#   kind          "twin"          matched .tex/.typ pair; compared against
+#                                 tests/out/latex/<reference>.pdf
+#                 "upstream-ref"  Typst-only port; compared against the upstream
+#                                 reference PDF named by `reference`
+#   reference     LaTeX stem to compare/diff against (defaults to the test name)
+#   pages         expected Typst page count (Tier 0)
+#   page_parity   require LaTeX page count == Typst page count (Tier 0).
+#                 Default true for twins, false for upstream-ref.
+#   metrics       false to skip Tier 2 layout metrics for this test
+#   page1_only    Tier 2: gate absolute vertical positions on page 1 only
+#                 (multi-page docs drift downward via acmsmall's \flushbottom,
+#                 which Typst can't replicate — see CLAUDE.md)
+#
+# typst_version pins the engine the Tier 1 goldens were captured with; bumping
+# Typst means regenerating them (`make accept`).
+typst_version = "0.14.2"
+
+# Tier 2 gate tolerances (PDF points; both engines emit 1/72in big points).
+# Only robust, renderer-agnostic invariants are gated. Right margin and line
+# count depend on cross-engine line-breaking, so metrics.py reports them but does
+# not gate on them. See tools/metrics.py for the rationale.
+[metrics_tolerance]
+left = 1.0    # text-block left edge — true horizontal invariant, gated tightly
+top = 4.5     # first-content vertical position — loose: absorbs glyph-bbox
+              # ascent conventions and title-page variance, still catches gross shifts
+pitch = 0.6   # baseline-to-baseline pitch — gated only on uniform_pitch tests
+
+# uniform_pitch = true marks tests whose body is set on a single baseline grid,
+# so median baseline pitch is meaningful and gated. Mixed-leading documents
+# (captions, theorems, lists, title block) leave it off — pitch is reported only.
+
+[tests.body-test]
+kind = "twin"
+pages = 1
+uniform_pitch = true
+
+[tests.head-test]
+kind = "twin"
+pages = 1
+uniform_pitch = true
+
+[tests.body2-test]
+kind = "twin"
+pages = 1
+
+[tests.fn-test]
+kind = "twin"
+pages = 1
+
+[tests.full-test]
+kind = "twin"
+pages = 2
+page1_only = true
+uniform_pitch = true
+
+[tests.title-test]
+kind = "twin"
+pages = 1
+
+[tests.bib-test]
+kind = "twin"
+pages = 1
+uniform_pitch = true
+# NB: the ACM CSL and ACM-Reference-Format.bst differ in *content* (dropped
+# access dates, "Doctoral dissertation" vs "Ph.D.", doi: vs https://doi.org/,
+# in-text range collapsing), so the reference list reflows — which is why line
+# count is reported, not gated. Margins/pitch are still held to the same bar.
+
+[tests.sample-acmsmall]
+kind = "upstream-ref"
+reference = "acmsmall"
+pages = 10
+page_parity = false
+page1_only = true

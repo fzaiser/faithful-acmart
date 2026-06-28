@@ -1,0 +1,79 @@
+%% title-test — self-contained frontmatter isolator (LaTeX twin of title-test.typ).
+%% Exercises the title block alone: 3 authors with note / ORCID / corresponding /
+%% accented names / optional fields, abstract, CCS concepts, keywords.
+\documentclass[acmsmall]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmMonth{8}
+
+\begin{document}
+
+\title{The Name of the Title Is Hope}
+
+\author{Ben Trovato}
+\authornote{The first author conducted this work during a research visit.}
+\orcid{1234-5678-9012}
+\email{trovato@corporation.com}
+\affiliation{%
+  \institution{Institute for Clarity in Documentation}
+  \city{Dublin}
+  \state{Ohio}
+  \country{USA}}
+
+\author{Lars Th{\o}rv{\"a}ld}
+\correspondingauthor
+\email{larst@affiliation.org}
+\affiliation{%
+  \institution{The Th{\o}rv{\"a}ld Group}
+  \city{Hekla}
+  \country{Iceland}}
+
+\author{Valerie B\'eranger}
+\affiliation{%
+  \institution{Inria Paris-Rocquencourt}
+  \city{Rocquencourt}
+  \country{France}}
+
+\renewcommand{\shortauthors}{Trovato et al.}
+
+\begin{abstract}
+  A clear and well-documented document is presented as an article formatted for
+  publication by ACM. This short sample exercises only the frontmatter: the
+  title block, an author list with affiliations, an author note, an ORCID, a
+  corresponding author, the abstract, CCS concepts, and keywords.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+ <concept>
+  <concept_id>10010147.10010169.10010170</concept_id>
+  <concept_desc>Computing methodologies~Massively parallel algorithms</concept_desc>
+  <concept_significance>500</concept_significance>
+ </concept>
+ <concept>
+  <concept_id>10010147.10010169.10010171</concept_id>
+  <concept_desc>Computing methodologies~Concurrent algorithms</concept_desc>
+  <concept_significance>300</concept_significance>
+ </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Computing methodologies~Massively parallel algorithms}
+\ccsdesc[300]{Computing methodologies~Concurrent algorithms}
+
+\keywords{datasets, neural networks, gaze detection, text tagging}
+
+\maketitle
+
+This document isolates the article frontmatter so that the title block, author
+list, abstract, CCS concepts, and keywords can be compared between the LaTeX and
+Typst renderings.
+
+\end{document}

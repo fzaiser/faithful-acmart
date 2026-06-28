@@ -1,6 +1,10 @@
 # Python venv for diff tooling
 tools/venv/
 
+# Python bytecode cache
+__pycache__/
+*.pyc
+
 # Generated LaTeX reference build (regenerate from acmart/ via the harness)
 
 # Visual-diff outputs
