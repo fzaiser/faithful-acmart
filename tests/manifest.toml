@@ -91,6 +91,14 @@ pages = 1
 # ... Version of Record" notice). Title block + footnote stack mix leadings, so
 # pitch is reported, not gated.
 
+[tests.language-test]
+kind = "twin"
+pages = 1
+# Multilingual paper (acmart `language` option): French main language with
+# English translated title/abstract/keywords. Verifies the localized fixed
+# strings (keywordsname/acksname/proofname) and French hyphenation. Title block +
+# footnote stack mix leadings, so pitch is reported, not gated.
+
 [tests.draft-test]
 kind = "smoke"
 pages = 1

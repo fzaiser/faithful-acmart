@@ -73,14 +73,18 @@
 // mode, where acmart `\excludecomment{acks}` drops the block (acmart.dtx:8896).
 #let acks(body) = context {
   if anon-state.get() { return }
-  heading(level: 1, numbering: none)[Acknowledgments]
+  // \acksname, localized to the main language (acmart.dtx:3310-3337).
+  heading(level: 1, numbering: none)[#cfg-state.get().strings.acks]
   body
 }
 
-// proof: unnumbered, small-caps "Proof." head, roman body, trailing QED.
-#let proof(body, name: [Proof]) = {
+// proof: unnumbered, small-caps "Proof." head, roman body, trailing QED. The
+// head defaults to the localized \proofname (acmart.dtx:8753); pass `name` to
+// override (the optional argument of the LaTeX `proof` environment).
+#let proof(body, name: none) = {
   context {
     let cfg = cfg-state.get()
+    let name = if name != none { name } else { cfg.strings.proof }
     // proof uses \topsep 6pt (= .5bl); same conversion as theorems.
     block(above: tex-skip(cfg, 0.5 * cfg.baselineskip), below: tex-skip(cfg, 0.5 * cfg.baselineskip), width: 100%)[
       #set par(first-line-indent: 0pt)

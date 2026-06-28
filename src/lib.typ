@@ -13,6 +13,7 @@
 #import "parts/headings.typ": render-heading
 #import "parts/frontmatter.typ": make-title, make-footnotes, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
 #import "parts/body.typ": apply-body
+#import "parts/strings.typ": resolve-language, lang-record
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
 
@@ -33,6 +34,17 @@
   teaser: none,
   received: none,
   badges: none,
+  // Multilingual papers (acmart `language` option, acmart.dtx:2847). A babel
+  // language name or an ordered list whose LAST entry is the main language;
+  // sets hyphenation + the language-dependent fixed strings (keywords/acks/...).
+  // Supported: english, french, german, spanish. The translated-* arguments give
+  // secondary-language top matter (\translatedtitle etc., acmart.dtx:3362-3440):
+  // each is a dict keyed by language name -> content.
+  language: none,
+  translated-title: (:),
+  translated-subtitle: (:),
+  translated-keywords: (:),
+  translated-abstract: (:),
   // publication metadata. LaTeX-faithful defaults (acmart.dtx): \acmVolume{1},
   // \acmNumber{1}, \acmYear{\the\year}, \acmMonth{\the\month}. The system clock
   // (datetime.today) is only read when the date arg is omitted, so documents that
@@ -89,7 +101,6 @@
   // silently ignored (see the assert loop below). Implement + drop from there
   // when modelled.
   urlbreakonhyphens: true,// break URLs on hyphens (we don't custom-control URL breaking)
-  language: none,         // additional languages (translated title/abstract) — needs API design
   draft: false,           // amsart draft mode (overfull-box rules)
   font-size: "10pt",      // base size 8/9/10/11/12pt (acmsmall geometry is probed for 10pt)
   body,
@@ -110,7 +121,6 @@
   // tuple is (name, value, default).
   for (opt-name, val, default) in (
     ("urlbreakonhyphens", urlbreakonhyphens, true),
-    ("language", language, none),
     ("draft", draft, false),
     ("font-size", font-size, "10pt"),
   ) {
@@ -133,6 +143,33 @@
   // review mode forces folios on (acmart.dtx:2683, \@ACM@printfoliostrue).
   let print-folios = print-folios or review
 
+  // Resolve the language: main lang code (hyphenation) + translated fixed
+  // strings. Carried on cfg so every part (frontmatter, body captions, theorems
+  // via cfg-state) reads one resolved string set.
+  let lang = resolve-language(language)
+  let cfg = cfg + (strings: (keywords: lang.keywords, acks: lang.acks,
+    proof: lang.proof, table: lang.table), lang: lang.code)
+
+  // The translated-* top matter requires `language` (acmart \ACM@lang@check,
+  // acmart.dtx:3346) — a secondary-language block is meaningless monolingual.
+  // Normalize each to an ordered (lang, content) list and check the language is
+  // declared, mirroring babel's \selectlanguage.
+  let norm-translated(name, val) = {
+    if val == none or val == (:) { return () }
+    assert(language != none, message: "acmart: `" + name + "` needs the "
+      + "`language` option set (it typesets secondary-language top matter).")
+    for (l, content) in val {
+      let _ = lang-record(l) // validate the language name
+      assert(l in lang.all, message: "acmart: `" + name + "` uses language "
+        + repr(l) + ", which is not in `language` " + repr(lang.all) + ".")
+    }
+    val.pairs()
+  }
+  let translated-title = norm-translated("translated-title", translated-title)
+  let translated-subtitle = norm-translated("translated-subtitle", translated-subtitle)
+  let translated-keywords = norm-translated("translated-keywords", translated-keywords)
+  let translated-abstract = norm-translated("translated-abstract", translated-abstract)
+
   // \copyrightyear defaults to \@acmYear; it can't be a signature default because
   // it references another parameter.
   let copyright-year = if copyright-year != none { copyright-year } else { acm-year }
@@ -148,6 +185,11 @@
     abstract: abstract,
     ccs: ccs,
     keywords: keywords,
+    strings: cfg.strings,
+    translated-title: translated-title,
+    translated-subtitle: translated-subtitle,
+    translated-keywords: translated-keywords,
+    translated-abstract: translated-abstract,
     teaser: teaser,
     journal: journal,
     acm-volume: acm-volume,
@@ -261,7 +303,7 @@
     size: cfg.font-size,
     top-edge: 1em,
     bottom-edge: 0pt,
-    lang: "en",
+    lang: cfg.lang, // main language (acmart `language`); drives hyphenation
   )
 
   set par(

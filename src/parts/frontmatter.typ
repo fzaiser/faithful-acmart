@@ -9,6 +9,7 @@
 #import "copyright.typ": permission-text, copyright-owner
 #import "spacing.typ": comp, tex-skip
 #import "journals.typ": lookup-journal
+#import "strings.typ": lang-record
 
 #let fnsymbols = ("*", "†", "‡", "§", "¶", "‖", "**", "††", "‡‡")
 
@@ -337,8 +338,14 @@
     // top-edge: cap-height places the (tall) first line's cap-top at the top
     // margin, matching LaTeX \topskip behaviour for a first line taller than it.
     #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.size.LARGE, top-edge: "cap-height")
-    #set par(justify: false, leading: comp(cfg, sz: "LARGE"))
+    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: "LARGE"), spacing: comp(cfg, sz: "LARGE"))
     #meta.title#if ni.title-mark != none { super(ni.title-mark) }
+    // \@translatedtitle: each secondary title is a new \par in the title font
+    // (acmart.dtx:3374/6994), one baselineskip below (par spacing = leading).
+    #for (l, t) in meta.translated-title {
+      parbreak()
+      text(lang: lang-record(l).code, t)
+    }
   ]
   // Subtitle (\@subtitlefont = \normalsize\mdseries, inherits the sans family);
   // its own block so it gets normalsize leading, not the title's LARGE leading.
@@ -346,8 +353,13 @@
   if meta.subtitle != none {
     block(spacing: tex-skip(cfg, 0pt))[
       #set text(font: cfg.fonts.sans, weight: "regular", size: cfg.font-size)
-      #set par(justify: false, leading: comp(cfg))
+      #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: comp(cfg))
       #meta.subtitle#if ni.subtitle-mark != none { super(ni.subtitle-mark) }
+      // \@translatedsubtitle: each in the subtitle font (acmart.dtx:3391/6996).
+      #for (l, t) in meta.translated-subtitle {
+        parbreak()
+        text(lang: lang-record(l).code, t)
+      }
     ]
   }
 
@@ -407,6 +419,11 @@
   if meta.abstract != none {
     fm-block(cfg, meta.abstract, indent: cfg.parindent)
   }
+  // Translated abstracts: each is another 9pt block in its own language, right
+  // after the main one (journals print no \abstractname; acmart.dtx:6666/7706).
+  for (l, ab) in meta.translated-abstract {
+    fm-block(cfg, text(lang: lang-record(l).code, ab), indent: cfg.parindent)
+  }
 
   // --- CCS Concepts (suppressed by \settopmatter{printccs=false}) ---
   if meta.ccs != none and meta.print-ccs {
@@ -414,11 +431,18 @@
   }
 
   // --- Keywords ---
+  // journals use \keywordsname = "Additional Key Words and Phrases" (acmart.dtx:3294);
+  // plain "Keywords" is only for the conference formats. The label is localized
+  // to the main language (meta.strings.keywords).
+  let kw-join = kw => if type(kw) == array { kw.join(", ") } else { kw }
   if meta.keywords != none {
-    let kw = if type(meta.keywords) == array { meta.keywords.join(", ") } else { meta.keywords }
-    // journals use \keywordsname = "Additional Key Words and Phrases" (acmart.dtx:3294);
-    // plain "Keywords" is only for the conference formats.
-    special-line(cfg, [Additional Key Words and Phrases], kw)
+    special-line(cfg, meta.strings.keywords, kw-join(meta.keywords))
+  }
+  // Translated keywords (secondary languages): each block carries \keywordsname
+  // in its own language and sets that language for hyphenation (acmart.dtx:5338).
+  for (l, kw) in meta.translated-keywords {
+    let rec = lang-record(l)
+    special-line(cfg, rec.keywords, text(lang: rec.code, kw-join(kw)))
   }
 
   // --- ACM Reference Format ---

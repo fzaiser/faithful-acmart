@@ -1,0 +1,61 @@
+%% language-test — multilingual paper (acmart `language` option).
+%% Main language French (last in the babel list, after the auto-seeded english),
+%% with an English secondary title, abstract and keywords via \translatedtitle /
+%% translatedabstract / \translatedkeywords. Exercises the localized fixed
+%% strings — \keywordsname ("Mots Clés et Phrases Supplémentaires"), \proofname
+%% ("Démonstration"), \acksname ("Remerciements") — plus French hyphenation.
+%% Twin of language-test.typ.
+\documentclass[acmsmall,language=french]{acmart}
+
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmYear{2018}
+\acmMonth{8}
+\acmDOI{XXXXXXX.XXXXXXX}
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+
+\begin{document}
+
+\title{Une note sur la complexité de calcul}
+\translatedtitle{english}{A note on computational complexity}
+
+\author{Jean Dupont}
+\email{dupont@example.fr}
+\affiliation{%
+  \institution{Institut de Recherche}
+  \city{Paris}
+  \country{France}}
+
+\renewcommand{\shortauthors}{Dupont}
+
+\begin{abstract}
+  Nous présentons une courte note en français afin d'exercer le mode multilingue
+  de la classe acmart, avec des chaînes de caractères traduites.
+\end{abstract}
+
+\begin{translatedabstract}{english}
+  We present a short note, in English, to exercise the multilingual mode of the
+  acmart class with translated fixed strings.
+\end{translatedabstract}
+
+\keywords{complexité, algorithmes, calcul}
+\translatedkeywords{english}{complexity, algorithms, computation}
+
+\maketitle
+
+\section{Introduction}
+Ce document vérifie que les chaînes localisées et le contenu traduit du haut de
+page correspondent entre la classe LaTeX et le portage Typst.
+
+\begin{proof}
+Voici une démonstration qui se termine par un carré CQFD.
+\end{proof}
+
+\begin{acks}
+Nous remercions les relecteurs.
+\end{acks}
+
+\end{document}

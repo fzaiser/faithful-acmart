@@ -14,6 +14,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/headings.typ` | section / subsection / run-in heading show rule |
 | `parts/frontmatter.typ` | title, authors+affiliations, abstract, CCS, keywords, ACM reference format, page-1 footnote stack |
 | `parts/journals.typ` | the ACM journal table (key → name/short/issn) + `lookup-journal`, transcribed from acmart.dtx |
+| `parts/strings.typ` | localization for the `language` option: per-language fixed strings (keywords/acks/proof/table) + babel-name→Typst-lang map, transcribed from acmart.dtx |
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |
 | `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography (ACM CSL) |
 | `parts/theorems.typ` | theorem-like environments + shared counter; reads the active format via `state` (`cfg-state`) since users call them in the body |

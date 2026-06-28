@@ -23,6 +23,7 @@ e.g. `make diff STEM=full-test PAGES=1-2`.
 | `notes-test` | twin | top-matter footnotes (title/subtitle/author note symbols), corresponding mark, `received`, `acks` |
 | `options-test` | twin | document options with a single-column effect: `nonacm`, `print-ccs`, `print-folios`, plus the no-ops `balance`/`natbib` |
 | `authorversion-test` | twin | `author-version` page-1 copyright block (suppressed permission text + "author's version … Version of Record" notice) |
+| `language-test` | twin | `language` option: French main language + English translated title/abstract/keywords; localized fixed strings (keywords/acks/proof) + hyphenation |
 | `bib-test` | twin | bibliography (ACM CSL vs `ACM-Reference-Format.bst` — see note) |
 | `sample-acmsmall` | e2e | full port of the upstream `acmsmall` sample, vs `out/latex/acmsmall.pdf` |
 | `feature-test` | smoke | compile + golden only (no twin): teaser, badges, title/subtitle notes via synthetic assets |

@@ -9,8 +9,10 @@
 
 #let apply-body(cfg, body) = {
   // Figure/table supplements and caption separator
+  // Figure name is "Fig." in every language (acmart sets it globally, not via a
+  // babel caption; acmart.dtx:4199). The table name follows the main language.
   show figure.where(kind: image): set figure(supplement: [Fig.])
-  show figure.where(kind: table): set figure(supplement: [Table])
+  show figure.where(kind: table): set figure(supplement: cfg.strings.table)
   show figure.where(kind: table): set figure.caption(position: top)
   set figure.caption(separator: [. ])
 
