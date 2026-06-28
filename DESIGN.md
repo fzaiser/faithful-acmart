@@ -20,7 +20,7 @@ generates `acmart.cls`, itself built on `amsart`). Every measurement was either
 ```
 src/lib.typ            public acmart() entry; page setup; show/set rules; re-exports
 src/formats/
-  acmsmall.typ         ALL acmsmall measurements as a data dict (the only format yet)
+  acmsmall.typ         acmsmall measurements as a builder fn of the base font size
 src/parts/
   spacing.typ          comp() / tex-skip() — the TeX→Typst baseline-grid helpers
   headings.typ         section / run-in heading show rule
@@ -30,9 +30,23 @@ src/parts/
   body.typ             captions, lists, table, code, footnote, bibliography rules
 ```
 
-**Format-as-data.** A format is a dict of measurements (`src/formats/acmsmall.typ`).
-`lib.typ` is format-agnostic; adding `sigconf` etc. means adding a dict (and
-handling two-column in `lib.typ`), not rewriting the parts.
+**Format-as-data.** A format is a dict of measurements built by a function of the
+base font size (`src/formats/acmsmall.typ`). `lib.typ` is format-agnostic; adding
+`sigconf` etc. means adding a builder (and handling two-column in `lib.typ`), not
+rewriting the parts.
+
+### Configurable base font size
+acmart selects a base size via the `8pt|9pt|10pt|11pt|12pt` option and passes it
+to amsart (`\LoadClass[\ACM@fontsize]{amsart}`, acmart.dtx:3090). The size steps
+(`scriptsize`…`Huge`) and their baselineskips come from amsart's `\@typesizes`
+table — a clamped window into one master font ladder with `normalsize` at the
+chosen base; the amsart `\small`/`\med`/`\bigskip` are then `0.7·baselineskip`
+halved (amsart's `\@adjustvertspacing`). `acmsmall(font-size:)` computes all of
+this; **geometry, margins, and `\parindent` do NOT scale** — acmart fixes them
+across font sizes (acmart.dtx:3750). Because every part already reads sizes from
+the format dict (`cfg.font-size`/`cfg.baselineskip`/`cfg.size`/`cfg.bls` and the
+skip fields), nothing else changes. Default is 10pt, so 10pt output is unchanged;
+8/9/11/12pt are validated against LaTeX twins (`tests/fontsize-*-test`).
 
 **Config plumbing.** `acmart()` collects all user metadata into a `meta` dict
 passed to the part functions. The format dict `cfg` is passed alongside, and also

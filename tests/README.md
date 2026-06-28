@@ -26,6 +26,7 @@ e.g. `make diff STEM=full-test PAGES=1-2`.
 | `language-test` | twin | `language` option: French main language + English translated title/abstract/keywords; localized fixed strings (keywords/acks/proof) + hyphenation |
 | `language-de-test` | twin | `language=german`: localized keywords/acks/proof + table label "Tabelle"; figure label stays "Fig." |
 | `language-es-test` | twin | `language=spanish`: localized keywords/acks/proof + table label "Cuadro"; figure label stays "Fig." |
+| `fontsize-{8,9,11,12}-test` | twin | `font-size` option: non-default base sizes scale the amsart `\@typesizes` ladder + baselineskip-derived heading/skip spacing (10pt is the default, covered by every other test) |
 | `bib-test` | twin | bibliography (ACM CSL vs `ACM-Reference-Format.bst` — see note) |
 | `sample-acmsmall` | e2e | full port of the upstream `acmsmall` sample, vs `out/latex/acmsmall.pdf` |
 | `feature-test` | smoke | compile + golden only (no twin): teaser, badges, title/subtitle notes via synthetic assets |

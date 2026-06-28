@@ -102,14 +102,20 @@
   // when modelled.
   urlbreakonhyphens: true,// break URLs on hyphens (we don't custom-control URL breaking)
   draft: false,           // amsart draft mode (overfull-box rules)
-  font-size: "10pt",      // base size 8/9/10/11/12pt (acmsmall geometry is probed for 10pt)
+  // Implemented: base font size, one of 8pt/9pt/10pt/11pt/12pt (acmsmall default
+  // 10pt). Scales the typography via the amsart \@typesizes ladder; geometry is
+  // font-size-independent (acmart.dtx:3750). See formats/acmsmall.typ.
+  font-size: "10pt",
   body,
 ) = {
   assert(
     format in _formats,
     message: "unknown/unimplemented acmart format: " + format,
   )
-  let cfg = _formats.at(format)
+  // The format entry is a builder; the base font size (8pt..12pt) parameterizes
+  // the typography (it validates font-size and computes the size/baselineskip
+  // ladder — geometry is font-size-independent, acmart.dtx:3750).
+  let cfg = (_formats.at(format))(font-size: font-size)
 
   // Refuse to silently ignore recognized-but-unimplemented options: setting one
   // to a non-default value would otherwise quietly diverge from LaTeX, so we
@@ -122,7 +128,6 @@
   for (opt-name, val, default) in (
     ("urlbreakonhyphens", urlbreakonhyphens, true),
     ("draft", draft, false),
-    ("font-size", font-size, "10pt"),
   ) {
     assert(
       val == default,

@@ -60,6 +60,31 @@ uniform_pitch = true
 kind = "twin"
 pages = 1
 
+[tests.fontsize-8-test]
+kind = "twin"
+pages = 1
+uniform_pitch = true
+# Base font-size option `8pt`: amsart \@typesizes ladder + baselineskip-derived
+# heading/skip scaling. Body is on one grid, so pitch is gated.
+
+[tests.fontsize-9-test]
+kind = "twin"
+pages = 1
+uniform_pitch = true
+# Base font-size option `9pt`.
+
+[tests.fontsize-11-test]
+kind = "twin"
+pages = 1
+uniform_pitch = true
+# Base font-size option `11pt`.
+
+[tests.fontsize-12-test]
+kind = "twin"
+pages = 1
+uniform_pitch = true
+# Base font-size option `12pt`.
+
 [tests.bib-test]
 kind = "twin"
 pages = 1
