@@ -1,27 +1,9 @@
 // acmsmall format — single-column journal layout.
 //
 // All measurements are taken from the real acmart.cls (format=acmsmall) via a
-// layout probe (tools/probe.tex; run `make probe`). LaTeX reports lengths in TeX points
-// (1pt = 1/72.27in); Typst's pt is a PostScript point (1/72in). `tp` converts a
-// TeX-point count into Typst length so the geometry matches exactly.
-#let tp = 72.0 / 72.27 * 1pt
-
-// --- Font-size ladder (amsart's \@typesizes; amsart.cls) -------------------
-//
-// acmart selects a base size via the `8pt|9pt|10pt|11pt|12pt` option and passes
-// it to amsart (`\LoadClass[\ACM@fontsize]{amsart}`). amsart's `\@typesizes`
-// table is a clamped 11-entry window into a single master font ladder, with
-// `normalsize` at the entry for the chosen base. The master ladder's (size,
-// baselineskip) pairs, in TeX points (sizes are the \@viipt…\@xxvpt step
-// macros: 10.95/14.4/17.28/20.74/24.88), 0-indexed:
-#let _ladder-size = (5, 6, 7, 8, 9, 10, 10.95, 12, 14.4, 17.28, 20.74, 24.88)
-#let _ladder-bls = (6, 7, 8, 10, 11, 12, 13, 14, 17, 20, 24, 30)
-// Our 9 named steps are amsart \@typesizes indices 3..11, i.e. offsets -3..+5
-// from `normalsize`. (Indices 1/2 — Tiny/tiny — are unused here.)
-#let _step-offset = (
-  scriptsize: -3, footnotesize: -2, small: -1, normalsize: 0,
-  large: 1, Large: 2, LARGE: 3, huge: 4, Huge: 5,
-)
+// layout probe (tools/probe.tex; run `make probe`). The shared font-size ladder
+// and TeX->PS point conversion live in `_base.typ`.
+#import "_base.typ": tp, size-ladder
 
 // Build the acmsmall format dict for a given base font size (one of
 // "8pt".."12pt"; acmsmall's own default is 10pt — acmart.dtx:3068). Geometry,
@@ -30,28 +12,7 @@
 // font size option"); only the typography (font-size, baselineskip, the
 // size/bls step tables, and the amsart \small/\med/\bigskip) scales.
 #let acmsmall(font-size: "10pt") = {
-  assert(
-    font-size in ("8pt", "9pt", "10pt", "11pt", "12pt"),
-    message: "acmart: option `font-size` must be one of 8pt/9pt/10pt/11pt/12pt "
-      + "for the acmsmall format (got " + repr(font-size) + ").",
-  )
-  let base = int(font-size.slice(0, -2)) // "10pt" -> 10
-  // 0-based index of `normalsize` in the master ladder (10pt -> index 5 = 10/12).
-  let ni = base - 5
-  // Map a named step to a (clamped) ladder entry.
-  let pick(arr, step) = arr.at(calc.clamp(ni + _step-offset.at(step), 0, _ladder-size.len() - 1))
-  let size = (:)
-  let bls = (:)
-  for step in _step-offset.keys() {
-    size.insert(step, pick(_ladder-size, step) * tp)
-    bls.insert(step, pick(_ladder-bls, step) * tp)
-  }
-  // amsart's \@adjustvertspacing derives the skips from the normalsize
-  // baselineskip: \bigskip = .7\baselineskip, \medskip = \bigskip/2,
-  // \smallskip = \medskip/2. At 10pt (bls 12) this is 8.4 / 4.2 / 2.1.
-  let bigskip = 0.7 * bls.normalsize
-  let medskip = bigskip / 2
-  let smallskip = medskip / 2
+  let l = size-ladder(font-size, format: "acmsmall")
 
   // Ground-truth geometry (in TeX points) from the probe — font-size-independent:
   //   paper 6.75in x 10in
@@ -65,6 +26,8 @@
     name: "acmsmall",
     twoside: true,
     columns: 1,
+    columnsep: 0pt,
+    default-font-size: "10pt",
     paper: (width: 6.75in, height: 10in),
     // body text box position/size, expressed via page margins
     margin: (
@@ -76,14 +39,14 @@
     head: (height: 13 * tp, sep: 14 * tp, skip: 58 * tp),
     foot: (skip: 24 * tp),
     // typography (scales with the base font size)
-    font-size: size.normalsize,
-    baselineskip: bls.normalsize,
-    size: size,
-    bls: bls,
+    font-size: l.font-size,
+    baselineskip: l.baselineskip,
+    size: l.size,
+    bls: l.bls,
     // amsart skips (derived from the normalsize baselineskip via
     // \@adjustvertspacing; 0.7x the standard article values). At 10pt:
     // 2.1/4.2/8.4pt — NOT the article 3/6/12.
-    smallskip: smallskip, medskip: medskip, bigskip: bigskip,
+    smallskip: l.smallskip, medskip: l.medskip, bigskip: l.bigskip,
     // float spacing (independent of the \bigskip value above, which they used to
     // coincide with): \intextsep around in-text floats, \abovecaptionskip between
     // a figure body and its caption. Both 12pt for acmsmall.
@@ -107,6 +70,26 @@
     // each badge image is 3pc wide, consecutive badges separated by 1pt.
     badge-width: 3 * 12 * tp, badge-skip: 1 * tp,
     heading-numbering: "1.1.1", // secnumdepth=3 (paragraphs unnumbered, handled in show rule)
+    secnumdepth: 3,
+    // --- Format-specific layout flags (the acmart \ifcase\ACM@format@nr switch) ---
+    // acmsmall is the generic single-column journal: left title, author list,
+    // journal bibstrip footer, generic section fonts (acmart.dtx:8415).
+    title-style: "journal-left",   // \@mktitle@i (acmart.dtx:6877)
+    author-style: "list",          // \@mkauthors@i (acmart.dtx:7337)
+    bibstrip: true,                // journal footer (\if@ACM@journal, acmart.dtx:2982)
+    conf-footer: false,            // no first-column conference copyright block
+    sans-default: false,
+    flushbottom: false,            // doc-only marker (Typst can't flushbottom)
+    urlstyle-sans: false,
+    // Per-level section fonts (acmart.dtx:8415, generic definitions). family is a
+    // role into `fonts`; size is a step name in `size`. The level structure
+    // (skips/run-in/indent) is shared in headings.typ.
+    sec-fonts: (
+      section:       (family: "sans", weight: "bold", style: "normal", size: "normalsize"),
+      subsection:    (family: "sans", weight: "bold", style: "normal", size: "normalsize"),
+      subsubsection: (family: "sans", weight: "regular", style: "italic", size: "normalsize"),
+      paragraph:     (family: "serif", weight: "regular", style: "italic", size: "normalsize"),
+    ),
     fonts: (
       serif: "Libertinus Serif",
       sans: "Libertinus Sans",

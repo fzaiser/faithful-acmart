@@ -19,14 +19,23 @@
   }
 }
 
+// Resolve a per-level entry of cfg.sec-fonts (family role -> actual font, size
+// step -> length). Each format supplies its own \@secfont/\@subsecfont/… via the
+// format dict (acmart.dtx:8415); the level STRUCTURE (skips, run-in, indent) is
+// format-independent (acmart.dtx:8356), so only the fonts come from data.
+#let sec-font(cfg, level) = {
+  let f = cfg.sec-fonts.at(level)
+  (font: cfg.fonts.at(f.family), weight: f.weight, style: f.style, size: cfg.size.at(f.size))
+}
+
 // Run-in heading: heading text flows inline, the following paragraph continues
 // on the same line. Returning inline content from the show rule achieves this;
 // a weak v() supplies the vertical space before without breaking the run-in.
-#let run-in-heading(it, cfg, before: 0pt, indent: 0pt, font: none, style: "normal", num: none) = {
+#let run-in-heading(it, cfg, before: 0pt, indent: 0pt, f: (:), num: none) = {
   v(before, weak: true)
   // Cancel the automatic first-line indent down to the desired `indent`.
   h(indent - cfg.parindent)
-  set text(font: font, style: style, weight: "regular", size: cfg.font-size)
+  set text(font: f.font, style: f.style, weight: f.weight, size: f.size)
   if num != none [#num#h(1em)]
   [#it.body.]
   h(cfg.runin-sep) // horizontal gap to the body text (|afterskip|)
@@ -42,11 +51,12 @@
   // heading; tex-skip() converts those skips to Typst block gaps (the heading and
   // body lines are at the body size, so the default "normalsize" applies).
   if lvl <= 2 {
-    // display heading: own line, sans bold, ragged right, mixed case as written.
-    // section/subsection both: before .75bl, after .25bl.
+    // display heading: own line, ragged right, mixed case as written. Font per
+    // format (acmsmall sf bold; sigconf serif Large bold; …). before .75bl, after .25bl.
+    let f = sec-font(cfg, if lvl == 1 { "section" } else { "subsection" })
     let title = it.body
     block(above: tex-skip(cfg, 0.75 * bls), below: tex-skip(cfg, 0.25 * bls), sticky: true)[
-      #set text(font: cfg.fonts.sans, weight: "bold", size: cfg.font-size)
+      #set text(font: f.font, weight: f.weight, style: f.style, size: f.size)
       #set par(justify: false, leading: comp(cfg))
       #if num != none [#num#h(1em)]
       #title
@@ -54,10 +64,10 @@
   } else if lvl == 3 {
     // subsubsection: before .5bl, run-in
     run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: 0pt,
-      font: cfg.fonts.sans, style: "italic", num: num)
+      f: sec-font(cfg, "subsubsection"), num: num)
   } else {
-    // paragraph: serif italic, indented, run-in, before .5bl
+    // paragraph: indented, run-in, before .5bl, unnumbered (secnumdepth 3)
     run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: cfg.parindent,
-      font: cfg.fonts.serif, style: "italic", num: none)
+      f: sec-font(cfg, "paragraph"), num: none)
   }
 }

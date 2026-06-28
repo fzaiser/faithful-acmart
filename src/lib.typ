@@ -107,10 +107,11 @@
   // custom-warning API to flag the gap, so a non-default value errors with that
   // rationale (see the assert below).
   draft: false,
-  // Implemented: base font size, one of 8pt/9pt/10pt/11pt/12pt (acmsmall default
-  // 10pt). Scales the typography via the amsart \@typesizes ladder; geometry is
-  // font-size-independent (acmart.dtx:3750). See formats/acmsmall.typ.
-  font-size: "10pt",
+  // Implemented: base font size, one of 8pt/9pt/10pt/11pt/12pt. `auto` uses the
+  // format's own default (acmart.dtx:3063 — acmsmall/acmlarge/sigplan 10pt,
+  // manuscript/acmtog/sigconf/… 9pt). Scales the typography via the amsart
+  // \@typesizes ladder; geometry is font-size-independent (acmart.dtx:3750).
+  font-size: auto,
   body,
 ) = {
   assert(
@@ -119,8 +120,13 @@
   )
   // The format entry is a builder; the base font size (8pt..12pt) parameterizes
   // the typography (it validates font-size and computes the size/baselineskip
-  // ladder — geometry is font-size-independent, acmart.dtx:3750).
-  let cfg = (_formats.at(format))(font-size: font-size)
+  // ladder — geometry is font-size-independent, acmart.dtx:3750). `auto` defers
+  // to the builder's own per-format default size.
+  let cfg = if font-size == auto {
+    (_formats.at(format))()
+  } else {
+    (_formats.at(format))(font-size: font-size)
+  }
 
   // `draft` is recognized but has no faithful realization here: its sole effect
   // in acmart is to pass `draft` to amsart/article, which only sets
