@@ -22,8 +22,9 @@
 }
 
 #let _theorem-env(default-name, head-style, body-style) = (
-  (body, name: none, title: none) => {
-    let nm = if title != none { title } else { default-name }
+  // `title` overrides the displayed environment name; it defaults to the env's
+  // own name (default-name is captured from the enclosing scope).
+  (body, name: none, title: default-name) => {
     thm-counter.step()
     context {
       let cfg = cfg-state.get()
@@ -33,7 +34,7 @@
       let number = if sec != none { [#sec.#n] } else { [#n] }
 
       let head = {
-        let h = [#nm #number]
+        let h = [#title #number]
         if name != none { h = [#h (#name)] }
         if head-style == "smallcaps" { smallcaps(h) } else { emph(h) }
       }

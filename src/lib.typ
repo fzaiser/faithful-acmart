@@ -11,11 +11,10 @@
 #import "formats/acmsmall.typ": acmsmall
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
-#import "parts/frontmatter.typ": make-title, make-footnotes, lookup-journal, pub-date, andify
+#import "parts/frontmatter.typ": make-title, make-footnotes, lookup-journal, pub-date, andify, normalize-author
 #import "parts/body.typ": apply-body
 #import "parts/theorems.typ": cfg-state, thm-counter
-#import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture
-#import "parts/theorems.typ": definition, example, remark, proof
+#import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof
 
 #let _formats = (
   acmsmall: acmsmall,
@@ -29,13 +28,16 @@
   abstract: none,
   ccs: none,
   keywords: none,
-  // publication metadata
+  // publication metadata. LaTeX-faithful defaults (acmart.dtx): \acmVolume{1},
+  // \acmNumber{1}, \acmYear{\the\year}, \acmMonth{\the\month}. The system clock
+  // (datetime.today) is only read when the date arg is omitted, so documents that
+  // set the year/month stay reproducible.
   journal: none,
-  acm-volume: none,
-  acm-number: none,
+  acm-volume: 1,
+  acm-number: 1,
   acm-article: none,
-  acm-year: none,
-  acm-month: none,
+  acm-year: datetime.today().year(),
+  acm-month: datetime.today().month(),
   doi: none,
   copyright: "acmlicensed",
   copyright-year: none,
@@ -57,15 +59,11 @@
   )
   let cfg = _formats.at(format)
 
-  // LaTeX-faithful metadata defaults (acmart.dtx): \acmVolume{1}, \acmNumber{1},
-  // \acmYear{\the\year}, \acmMonth{\the\month} and \copyrightyear{\@acmYear}.
-  // We only consult the system clock (datetime.today) when a date is omitted, so
-  // documents that set the year/month stay reproducible.
-  let acm-volume = if acm-volume != none { acm-volume } else { 1 }
-  let acm-number = if acm-number != none { acm-number } else { 1 }
-  let acm-year = if acm-year != none { acm-year } else { datetime.today().year() }
-  let acm-month = if acm-month != none { acm-month } else { datetime.today().month() }
+  // \copyrightyear defaults to \@acmYear; it can't be a signature default because
+  // it references another parameter.
   let copyright-year = if copyright-year != none { copyright-year } else { acm-year }
+  // Fill in optional author fields up front (see normalize-author).
+  let authors = authors.map(normalize-author)
 
   let meta = (
     title: title,
@@ -93,13 +91,13 @@
   // Right-aligned on odd pages, left on even (acmart fancyfoot[RO,LE]).
   let footer-content = {
     let j = lookup-journal(journal)
-    if j.short != none and acm-volume != none {
+    if j.short != none {
       context {
         set text(font: cfg.fonts.serif, size: cfg.size.footnotesize)
         // \@acmArticle defaults to empty (acmart.dtx:5477), so the article
-        // number may be absent: "..., Article . Publication date: ..."
-        let art = if acm-article != none { str(acm-article) }
-        let txt = [#j.short, Vol. #str(acm-volume), No. #str(acm-number), Article #art. Publication date: #pub-date(meta).]
+        // number may be absent (#acm-article renders nothing for none):
+        // "..., Article . Publication date: ..."
+        let txt = [#j.short, Vol. #acm-volume, No. #acm-number, Article #acm-article. Publication date: #pub-date(meta).]
         if calc.odd(here().page()) { align(right, txt) } else { align(left, txt) }
       }
     }
@@ -120,7 +118,7 @@
     let p = here().page()
     if p <= 1 { return }
     set text(font: cfg.fonts.sans, size: cfg.size.footnotesize)
-    let article-page = if acm-article != none [#str(acm-article):#p] else [#p]
+    let article-page = if acm-article != none [#acm-article:#p] else [#p]
     if calc.odd(p) {
       grid(columns: (1fr, auto), align(left, st), align(right, article-page))
     } else {

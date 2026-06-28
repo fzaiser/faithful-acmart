@@ -24,6 +24,11 @@ short version that must not be missed.
   adds a spurious "Temporary page").
 - **Tests are matched pairs:** `tests/NAME.tex` (LaTeX) vs `tests/NAME.typ`
   (ours), identical content, diffed page-by-page.
+- **Keep it idiomatic.** When touching code, apply the simplification checklist in
+  [`src/README.md`](src/README.md) ("Idioms / simplifications") — resolve defaults
+  in the signature, don't guard/`str()` bare values rendered into content (`none`
+  is empty content), assemble content rather than concatenating strings, and
+  centralize optional-field access. The golden gate must stay byte-identical.
 
 ## Gotchas — easy to get wrong, verified against LaTeX (don't re-break)
 

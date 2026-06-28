@@ -12,7 +12,8 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `formats/acmsmall.typ` | **all** acmsmall measurements as a data dict (geometry, font-size steps, skips, fonts). Built on `tp = 72/72.27*1pt` (TeX→PS point conversion) |
 | `parts/spacing.typ` | `comp()` / `tex-skip()` — the TeX→Typst baseline-grid conversion used by every `leading` and vertical gap (see DESIGN.md) |
 | `parts/headings.typ` | section / subsection / run-in heading show rule |
-| `parts/frontmatter.typ` | title, authors+affiliations, abstract, CCS, keywords, ACM reference format, page-1 footnote stack, journal table |
+| `parts/frontmatter.typ` | title, authors+affiliations, abstract, CCS, keywords, ACM reference format, page-1 footnote stack |
+| `parts/journals.typ` | the ACM journal table (key → name/short/issn) + `lookup-journal`, transcribed from acmart.dtx |
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |
 | `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography (ACM CSL) |
 | `parts/theorems.typ` | theorem-like environments + shared counter; reads the active format via `state` (`cfg-state`) since users call them in the body |
@@ -23,6 +24,36 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 format (e.g. `sigconf`) means adding `formats/sigconf.typ` and registering it in
 `_formats` in `lib.typ` — plus handling two-column in `lib.typ` for the proceedings
 formats. The `parts/` need no changes for single-column formats.
+
+## Idioms / simplifications to keep the code clean
+
+Recurring cleanups worth applying as you touch this code (all verified against the
+golden gate, which must stay byte-identical):
+
+- **Resolve defaults in the signature, not the body.** Typst evaluates a default
+  expression lazily per call, so `acm-year: datetime.today().year()` belongs in
+  the parameter list — not `acm-year: none` + `if … != none` in the body. The
+  only exceptions are defaults that reference *another* parameter (e.g.
+  `copyright-year` → `acm-year`), which must stay `none`/`auto` and resolve in the
+  body. A closure can default a param to a captured outer value too (theorems'
+  `title: default-name`).
+- **`none` renders as empty content.** `[#none]` produces nothing, so a `!= none`
+  guard around a *bare* value is pointless. Guards are only justified when they
+  suppress *surrounding literal text* (the `": "` before a subtitle, the
+  `" (note)"` parens) — and those mirror acmart's own `\ifx…\@empty` tests, so
+  keep them.
+- **Don't `str()` a number that's rendered into content** — ints interpolate
+  directly (`[#vol]`). Keep `str()` only for (a) string concatenation with `+`,
+  or (b) delimiting a number before a following letter/`-` in markup (e.g.
+  `#str(month)-ART`, else `month-ART` parses as one identifier).
+- **Assemble with content `[…]`, not string `+`/`str()`,** when the result is only
+  ever rendered (see `pub-date`).
+- **Centralize optional-field access.** Normalize input dicts once
+  (`normalize-author`, `join-fields`/`affil-strings`) so the rest of the code uses
+  plain `a.email` and a single absence rule (`none`), not scattered
+  `.at(k, default: …)` and mixed `none`/`""` sentinels.
+- **Factor repeated styled blocks / joins** into helpers (`fm-block`, `andify`),
+  and **keep large static data in its own file** (`journals.typ`, `copyright.typ`).
 
 ## Gotchas (see DESIGN.md / the `typst-acmart-modeling` memory)
 

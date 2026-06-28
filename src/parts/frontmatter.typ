@@ -7,6 +7,7 @@
 
 #import "copyright.typ": permission-text, copyright-owner
 #import "spacing.typ": comp, tex-skip
+#import "journals.typ": lookup-journal
 
 #let fnsymbols = ("*", "†", "‡", "§", "¶", "‖", "**", "††", "‡‡")
 
@@ -15,111 +16,31 @@
   "July", "August", "September", "October", "November", "December",
 )
 
-// journal key -> (name, short, issn). issn is acmart's \@permissionCodeTwo
-// (falling back to \@permissionCodeOne when Two is absent), used in the
-// "ACM <issn>/<year>/<month>-ART<article>" copyright line; `short` is the
-// running-head/footer abbreviation. Transcribed in full from acmart.dtx's
-// \acmJournal choice table (the dummy FACMP fallback is intentionally omitted).
-#let journals = (
-  ACMJCSS: (name: "ACM Journal on Computing and Sustainable Societies", short: "ACM J. Comput. Sustain. Soc.", issn: "2834-5533"),
-  ACMJDS: (name: "ACM Journal of Data Science", short: "ACM J. Data Sci.", issn: "3069-3497"),
-  AILET: (name: "ACM AI Letters", short: "ACM AI Lett.", issn: "3068-8590"),
-  CIE: (name: "ACM Computers in Entertainment", short: "ACM Comput. Entertain.", issn: "1544-3574"),
-  CSUR: (name: "ACM Computing Surveys", short: "ACM Comput. Surv.", issn: "1557-7341"),
-  DGOV: (name: "Digital Government: Research and Practice", short: "Digit. Gov. Res. Pract.", issn: "2639-0175"),
-  DLT: (name: "Distributed Ledger Technologies: Research and Practice", short: "Distrib. Ledger Technol.", issn: "2769-6480"),
-  DTRAP: (name: "Digital Threats: Research and Practice", short: "Digit. Threat. Res. Pract.", issn: "2576-5337"),
-  FAC: (name: "Formal Aspects of Computing", short: "Form. Asp. Comput.", issn: "1433-299X"),
-  GAMES: (name: "ACM Games: Research and Practice", short: "ACM Games", issn: "2832-5516"),
-  HEALTH: (name: "ACM Transactions on Computing for Healthcare", short: "ACM Trans. Comput. Healthcare", issn: "2637-8051"),
-  IMWUT: (name: "Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies", short: "Proc. ACM Interact. Mob. Wearable Ubiquitous Technol.", issn: "2474-9567"),
-  JACM: (name: "Journal of the ACM", short: "J. ACM", issn: "1557-735X"),
-  JATS: (name: "Journal on Autonomous Transportation Systems", short: "ACM J. Auton. Transport. Syst.", issn: "2833-0528"),
-  JDIQ: (name: "ACM Journal of Data and Information Quality", short: "ACM J. Data Inform. Quality", issn: "1936-1963"),
-  JDS: (name: "ACM Journal of Data Science", short: "ACM J. Data Sci.", issn: "2831-3194"),
-  JEA: (name: "ACM Journal of Experimental Algorithmics", short: "ACM J. Exp. Algor.", issn: "1084-6654"),
-  JERIC: (name: "ACM Journal of Educational Resources in Computing", short: "ACM J. Edu. Resources in Comput.", issn: "1073-0516"),
-  JETC: (name: "ACM Journal on Emerging Technologies in Computing Systems", short: "ACM J. Emerg. Technol. Comput. Syst.", issn: "1550-4840"),
-  JOCCH: (name: "ACM Journal on Computing and Cultural Heritage", short: "ACM J. Comput. Cult. Herit.", issn: "1556-4711"),
-  JRC: (name: "ACM Journal on Responsible Computing", short: "ACM J. Responsib. Comput.", issn: "2832-0565"),
-  PACMCGIT: (name: "Proceedings of the ACM on Computer Graphics and Interactive Techniques", short: "Proc. ACM Comput. Graph. Interact. Tech.", issn: "2577-6193"),
-  PACMHCI: (name: "Proceedings of the ACM on Human-Computer Interaction", short: "Proc. ACM Hum.-Comput. Interact.", issn: "2573-0142"),
-  PACMMOD: (name: "Proceedings of the ACM on Management of Data", short: "Proc. ACM Manag. Data", issn: "2836-6573"),
-  PACMNET: (name: "Proceedings of the ACM on Networking", short: "Proc. ACM Netw.", issn: "2834-5509"),
-  PACMPL: (name: "Proceedings of the ACM on Programming Languages", short: "Proc. ACM Program. Lang.", issn: "2475-1421"),
-  PACMSE: (name: "Proceedings of the ACM on Software Engineering", short: "Proc. ACM Softw. Eng.", issn: "2994-970X"),
-  POMACS: (name: "Proceedings of the ACM on Measurement and Analysis of Computing Systems", short: "Proc. ACM Meas. Anal. Comput. Syst.", issn: "2476-1249"),
-  TAAS: (name: "ACM Transactions on Autonomous and Adaptive Systems", short: "ACM Trans. Autonom. Adapt. Syst.", issn: "1556-4703"),
-  TACCESS: (name: "ACM Transactions on Accessible Computing", short: "ACM Trans. Access. Comput.", issn: "1936-7236"),
-  TACO: (name: "ACM Transactions on Architecture and Code Optimization", short: "ACM Trans. Arch. Code Optim.", issn: "1544-3973"),
-  TAIS: (name: "ACM Transactions on AI for Science", short: "ACM Trans. AI Sci.", issn: "3066-4438"),
-  TAISAP: (name: "ACM Transactions on AI Security and Privacy", short: "ACM Trans. AI Secur. Priv.", issn: "3068-3564"),
-  TALG: (name: "ACM Transactions on Algorithms", short: "ACM Trans. Algor.", issn: "1549-6333"),
-  TALLIP: (name: "ACM Transactions on Asian and Low-Resource Language Information Processing", short: "ACM Trans. Asian Low-Resour. Lang. Inf. Process.", issn: "2375-4702"),
-  TAP: (name: "ACM Transactions on Applied Perception", short: "ACM Trans. Appl. Percept.", issn: "1544-3965"),
-  TCPS: (name: "ACM Transactions on Cyber-Physical Systems", short: "ACM Trans. Cyber-Phys. Syst.", issn: "2378-9638"),
-  TDS: (name: "ACM Transactions on Data Science", short: "ACM Trans. Data Sci.", issn: "2577-3224"),
-  TEAC: (name: "ACM Transactions on Economics and Computation", short: "ACM Trans. Econ. Comput.", issn: "2167-8383"),
-  TECS: (name: "ACM Transactions on Embedded Computing Systems", short: "ACM Trans. Embedd. Comput. Syst.", issn: "1558-3465"),
-  TELO: (name: "ACM Transactions on Evolutionary Learning and Optimization", short: "ACM Trans. Evol. Learn. Optim.", issn: "2688-3007"),
-  THRI: (name: "ACM Transactions on Human-Robot Interaction", short: "ACM Trans. Hum.-Robot Interact.", issn: "2573-9522"),
-  TIIS: (name: "ACM Transactions on Interactive Intelligent Systems", short: "ACM Trans. Interact. Intell. Syst.", issn: "2160-6463"),
-  TIOT: (name: "ACM Transactions on Internet of Things", short: "ACM Trans. Internet Things", issn: "2577-6207"),
-  TISSEC: (name: "ACM Transactions on Information and System Security", short: "ACM Trans. Info. Syst. Sec.", issn: "1094-9224"),
-  TIST: (name: "ACM Transactions on Intelligent Systems and Technology", short: "ACM Trans. Intell. Syst. Technol.", issn: "2157-6912"),
-  TKDD: (name: "ACM Transactions on Knowledge Discovery from Data", short: "ACM Trans. Knowl. Discov. Data.", issn: "1556-472X"),
-  TMIS: (name: "ACM Transactions on Management Information Systems", short: "ACM Trans. Manag. Inform. Syst.", issn: "2158-6578"),
-  TOCE: (name: "ACM Transactions on Computing Education", short: "ACM Trans. Comput. Educ.", issn: "1946-6226"),
-  TOCHI: (name: "ACM Transactions on Computer-Human Interaction", short: "ACM Trans. Comput.-Hum. Interact.", issn: "1557-7325"),
-  TOCL: (name: "ACM Transactions on Computational Logic", short: "ACM Trans. Comput. Logic", issn: "1557-945X"),
-  TOCS: (name: "ACM Transactions on Computer Systems", short: "ACM Trans. Comput. Syst.", issn: "1557-7333"),
-  TOCT: (name: "ACM Transactions on Computation Theory", short: "ACM Trans. Comput. Theory", issn: "1942-3462"),
-  TODAES: (name: "ACM Transactions on Design Automation of Electronic Systems", short: "ACM Trans. Des. Autom. Electron. Syst.", issn: "1557-7309"),
-  TODS: (name: "ACM Transactions on Database Systems", short: "ACM Trans. Datab. Syst.", issn: "1557-4644"),
-  TOG: (name: "ACM Transactions on Graphics", short: "ACM Trans. Graph.", issn: "1557-7368"),
-  TOIS: (name: "ACM Transactions on Information Systems", short: "ACM Trans. Inf. Syst.", issn: "1558-2868"),
-  TOIT: (name: "ACM Transactions on Internet Technology", short: "ACM Trans. Internet Technol.", issn: "1557-6051"),
-  TOMACS: (name: "ACM Transactions on Modeling and Computer Simulation", short: "ACM Trans. Model. Comput. Simul.", issn: "1558-1195"),
-  TOMM: (name: "ACM Transactions on Multimedia Computing, Communications and Applications", short: "ACM Trans. Multimedia Comput. Commun. Appl.", issn: "1551-6865"),
-  TOMPECS: (name: "ACM Transactions on Modeling and Performance Evaluation of Computing Systems", short: "ACM Trans. Model. Perform. Eval. Comput. Syst.", issn: "2376-3647"),
-  TOMS: (name: "ACM Transactions on Mathematical Software", short: "ACM Trans. Math. Softw.", issn: "1557-7295"),
-  TOPC: (name: "ACM Transactions on Parallel Computing", short: "ACM Trans. Parallel Comput.", issn: "2329-4957"),
-  TOPLAS: (name: "ACM Transactions on Programming Languages and Systems", short: "ACM Trans. Program. Lang. Syst.", issn: "1558-4593"),
-  TOPML: (name: "ACM Transactions on Probabilistic Machine Learning", short: "ACM Trans. Probab. Mach. Learn.", issn: "2836-8924"),
-  TOPS: (name: "ACM Transactions on Privacy and Security", short: "ACM Trans. Priv. Sec.", issn: "2471-2574"),
-  TORS: (name: "ACM Transactions on Recommender Systems", short: "ACM Trans. Recomm. Syst.", issn: "2770-6699"),
-  TOS: (name: "ACM Transactions on Storage", short: "ACM Trans. Storage", issn: "1553-3093"),
-  TOSEM: (name: "ACM Transactions on Software Engineering and Methodology", short: "ACM Trans. Softw. Eng. Methodol.", issn: "1557-7392"),
-  TOSN: (name: "ACM Transactions on Sensor Networks", short: "ACM Trans. Sensor Netw.", issn: "1550-4867"),
-  TQC: (name: "ACM Transactions on Quantum Computing", short: "ACM Trans. Quantum Comput.", issn: "2643-6817"),
-  TRETS: (name: "ACM Transactions on Reconfigurable Technology and Systems", short: "ACM Trans. Reconfig. Technol. Syst.", issn: "1936-7414"),
-  TSAS: (name: "ACM Transactions on Spatial Algorithms and Systems", short: "ACM Trans. Spatial Algorithms Syst.", issn: "2374-0361"),
-  TSC: (name: "ACM Transactions on Social Computing", short: "ACM Trans. Soc. Comput.", issn: "2469-7826"),
-  TSLP: (name: "ACM Transactions on Speech and Language Processing", short: "ACM Trans. Speech Lang. Process.", issn: "2329-9304"),
-  TWEB: (name: "ACM Transactions on the Web", short: "ACM Trans. Web", issn: "1559-114X"),
-)
+// acm-month/acm-year always carry a value (acmart defaults \acmMonth/\acmYear to
+// the current date; see acmart() in lib.typ), so no presence check is needed.
+// Assembled as content (not a joined string) so the year int renders directly.
+#let pub-date(meta) = [#month-names.at(meta.acm-month - 1) #meta.acm-year]
 
-#let lookup-journal(key) = {
-  if key == none { return (name: none, short: none, issn: "XXXX-XXXX") }
-  let s = str(key)
-  journals.at(s, default: (name: s, short: s, issn: "XXXX-XXXX"))
-}
-
-#let pub-date(meta) = {
-  let parts = ()
-  if meta.acm-month != none { parts.push(month-names.at(meta.acm-month - 1)) }
-  if meta.acm-year != none { parts.push(str(meta.acm-year)) }
-  parts.join(" ")
-}
-
-// Join a list of name strings the ACM/amsart "andify" way.
-#let andify(names) = {
-  let n = names.len()
+// Join a list of names the ACM/amsart "andify" way ("a", "a and b",
+// "a, b, and c"). Items may be strings (author names) or content (names carrying
+// superscript note marks); the result is content in either case.
+#let andify(items) = {
+  let n = items.len()
   if n == 0 { return none }
-  if n == 1 { return names.at(0) }
-  if n == 2 { return names.at(0) + " and " + names.at(1) }
-  names.slice(0, n - 1).join(", ") + ", and " + names.at(n - 1)
+  if n == 1 { return items.at(0) }
+  if n == 2 { return items.slice(0, 2).join([ and ]) }
+  (items.slice(0, n - 1).join([, ]), items.at(n - 1)).join([, and ])
 }
+
+// Fill in the optional author fields so the rest of the code can use plain field
+// access (a.email, a.note, ...) instead of defensive `.at(..., default:)`.
+#let normalize-author(a) = (
+  name: a.name,
+  affiliation: a.at("affiliation", default: none),
+  email: a.at("email", default: none),
+  note: a.at("note", default: none),
+  corresponding: a.at("corresponding", default: false),
+)
 
 // An author's `affiliation` may be a single dict or an array of dicts (a person
 // with several affiliations, like LaTeX's repeated \affiliation). Normalize to a
@@ -128,28 +49,33 @@
   if aff == none { () } else if type(aff) == array { aff } else { (aff,) }
 }
 
+// Join the present (non-none) values of `keys` from dict `d` with ", ". Returns
+// none — not "" — when no field is present, so absence is *always* `none` (a
+// single rule the callers can filter on uniformly).
+#let join-fields(d, keys) = {
+  let vals = keys.map(k => d.at(k, default: none)).filter(v => v != none)
+  if vals.len() == 0 { none } else { vals.join(", ") }
+}
+
+// The present affiliation strings of `aff` (one ", "-joined run of `keys` per
+// affiliation dict, empty affiliations dropped via join-fields' none).
+#let affil-strings(aff, keys) = affil-list(aff).map(a => join-fields(a, keys)).filter(v => v != none)
+
 // Title-block affiliation: institution, country (city/state go to contact info).
 // Multiple affiliations are joined with " and ", as LaTeX joins institutions.
 #let affil-short(aff) = {
-  let one(a) = {
-    let parts = ()
-    if a.at("institution", default: none) != none { parts.push(a.institution) }
-    if a.at("country", default: none) != none { parts.push(a.country) }
-    parts.join(", ")
-  }
-  let s = affil-list(aff).map(one).filter(p => p != "").join(" and ")
-  if s == "" { none } else { s }
+  let affs = affil-strings(aff, ("institution", "country"))
+  if affs.len() == 0 { none } else { affs.join(" and ") }
 }
 
 // Group consecutive authors that share an identical affiliation.
 #let group-authors(authors) = {
   let groups = ()
   for a in authors {
-    let aff = a.at("affiliation", default: none)
-    if groups.len() > 0 and groups.last().affiliation == aff {
+    if groups.len() > 0 and groups.last().affiliation == a.affiliation {
       groups.last().authors.push(a)
     } else {
-      groups.push((affiliation: aff, authors: (a,)))
+      groups.push((affiliation: a.affiliation, authors: (a,)))
     }
   }
   groups
@@ -193,17 +119,31 @@
   [.]
 }
 
+// A full-width frontmatter text block at one font-size step (default "small" =
+// 9pt), with intra-block leading and inter-paragraph spacing on the baseline
+// grid (comp()). `indent` sets the first-line indent (0pt = none); `spacing` is
+// the outer block gap to neighbours. Used for the abstract, CCS/keywords lines,
+// and the ACM reference format.
+#let fm-block(cfg, body, sz: "small", justify: true, indent: 0pt, spacing: 0pt) = {
+  let lead = comp(cfg, sz: sz)
+  block(width: 100%, spacing: spacing)[
+    #set text(font: cfg.fonts.serif, size: cfg.size.at(sz))
+    #set par(
+      justify: justify,
+      leading: lead,
+      first-line-indent: if indent == 0pt { 0pt } else { (amount: indent, all: false) },
+      spacing: lead,
+    )
+    #body
+  ]
+}
+
 // A 9pt "Label: content" line used for CCS Concepts and Keywords.
 // \@specialsection does `\par\medskip\small ...`, so the gap is \medskip before
 // 9pt text (tex-skip with sz: "small"). See DESIGN.md "block vertical spacing".
 #let special-line(cfg, label, content) = {
-  let lead = comp(cfg, sz: "small")
   v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
-  block(width: 100%, spacing: lead)[
-    #set text(font: cfg.fonts.serif, size: cfg.size.small)
-    #set par(justify: false, leading: lead, first-line-indent: 0pt, spacing: lead)
-    #label: #content
-  ]
+  fm-block(cfg, [#label: #content], justify: false, spacing: comp(cfg, sz: "small"))
 }
 
 // Assign footnote symbols to author notes (deduplicating identical notes), and
@@ -214,13 +154,12 @@
   let marks = ()
   for a in authors {
     let m = ()
-    if a.at("corresponding", default: false) { m.push("✉") }
-    let note = a.at("note", default: none)
-    if note != none {
-      let key = repr(note)
+    if a.corresponding { m.push("✉") }
+    if a.note != none {
+      let key = repr(a.note)
       if key not in seen {
         seen.insert(key, fnsymbols.at(notes.len()))
-        notes.push((symbol: seen.at(key), body: note))
+        notes.push((symbol: seen.at(key), body: a.note))
       }
       m.push(seen.at(key))
     }
@@ -238,12 +177,9 @@
   let parts = (a.name,)
   // each affiliation as "institution, city, state, country"; several joined by
   // " and " (LaTeX's institution separator), then email last.
-  let affs = affil-list(a.at("affiliation", default: none)).map(aff => {
-    ("institution", "city", "state", "country")
-      .map(k => aff.at(k, default: none)).filter(v => v != none).join(", ")
-  }).filter(s => s != "")
+  let affs = affil-strings(a.affiliation, ("institution", "city", "state", "country"))
   if affs.len() > 0 { parts.push(affs.join(" and ")) }
-  if a.at("email", default: none) != none { parts.push(a.email) }
+  if a.email != none { parts.push(a.email) }
   parts.join(", ")
 }
 
@@ -266,7 +202,7 @@
     set text(font: cfg.fonts.serif, size: fs)
     set par(justify: true, leading: lead, first-line-indent: 0pt, spacing: lead)
 
-    let anon = meta.at("anonymous", default: false)
+    let anon = meta.anonymous
 
     // 1. Author notes (regular footnotes, symbol marks)
     if not anon and ni.notes.len() > 0 {
@@ -277,7 +213,7 @@
     }
 
     // 2. Authors' Contact Information (suppressed in anonymous mode)
-    if not anon and meta.authors.len() > 0 and meta.authors.any(a => a.at("affiliation", default: none) != none or a.at("email", default: none) != none) {
+    if not anon and meta.authors.len() > 0 and meta.authors.any(a => a.affiliation != none or a.email != none) {
       rule(100%)
       let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
       let contacts = meta.authors.map(contact-line).join("; ")
@@ -291,17 +227,18 @@
       let ptext = permission-text(mode, cc-type: meta.cc-type, cc-version: meta.cc-version)
       if ptext != none { ptext; parbreak() }
       set par(justify: false)
-      // © <year> <owner>
+      // © <year> <owner>  (copyright-year always has a value; see acmart() in lib.typ)
       let owner = copyright-owner(mode)
       if owner != none {
-        let y = if meta.copyright-year != none { str(meta.copyright-year) } else { "" }
-        [© #y #owner]
+        [© #meta.copyright-year #owner]
         linebreak()
-      } else if meta.copyright-year != none {
-        [#str(meta.copyright-year). ]
+      } else {
+        [#meta.copyright-year. ]
       }
       // journal bibstrip: ACM <issn>/<year>/<month>-ART<article> then DOI
       // (acmart.dtx:6651). \@acmArticle defaults to empty, so ART may have no number.
+      // str() on the month delimits the number from the following "-ART" (markup
+      // would otherwise read "acm-month-ART" as one hyphenated identifier).
       [ACM #j.issn/#str(meta.acm-year)/#str(meta.acm-month)-ART#{
         if meta.acm-article != none { str(meta.acm-article) }
       }]
@@ -343,7 +280,7 @@
 
   // --- Authors (grouped by affiliation) ---
   // Anonymous review: replace the whole author strip with "Anonymous Author(s)".
-  if meta.at("anonymous", default: false) {
+  if meta.anonymous {
     block(spacing: 0pt)[
       #set text(font: cfg.fonts.sans, size: cfg.size.large)
       #upper[Anonymous Author(s)]
@@ -368,18 +305,8 @@
         }
       })
       block(spacing: comp(cfg, sz: "large"))[
-        #text(font: cfg.fonts.sans, size: cfg.size.large)[#{
-          // join names with "and"/", and" while preserving content marks
-          let n = names.len()
-          if n == 1 { names.at(0) }
-          else if n == 2 { names.at(0) + " and " + names.at(1) }
-          else {
-            for (i, nm) in names.enumerate() {
-              nm
-              if i < n - 2 { ", " } else if i == n - 2 { ", and " }
-            }
-          }
-        }]#{
+        // andify preserves the per-name content marks (superscript symbols).
+        #text(font: cfg.fonts.sans, size: cfg.size.large)[#andify(names)]#{
           let aff = affil-short(g.affiliation)
           if aff != none {
             text(font: cfg.fonts.serif, size: cfg.size.small)[, #aff]
@@ -393,15 +320,9 @@
   v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
   } // end non-anonymous author block
 
-  // --- Abstract (9pt, no heading label, first line not indented) ---
+  // --- Abstract (9pt, no heading label, paragraphs indented \parindent) ---
   if meta.abstract != none {
-    block(width: 100%, spacing: 0pt)[
-      #set text(font: cfg.fonts.serif, size: cfg.size.small)
-      #set par(justify: true, leading: comp(cfg, sz: "small"),
-        first-line-indent: (amount: cfg.parindent, all: false),
-        spacing: comp(cfg, sz: "small"))
-      #meta.abstract
-    ]
+    fm-block(cfg, meta.abstract, indent: cfg.parindent)
   }
 
   // --- CCS Concepts ---
@@ -424,22 +345,14 @@
     v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
     context {
       let total = counter(page).final().first()
-      block(width: 100%, spacing: 0pt)[
-        #set text(font: cfg.fonts.serif, size: cfg.size.small)
-        #set par(justify: true, leading: comp(cfg, sz: "small"),
-          first-line-indent: 0pt, spacing: comp(cfg, sz: "small"))
+      fm-block(cfg, [
         #strong[ACM Reference Format:]\
-        #{ if meta.at("anonymous", default: false) [Anonymous Author(s)] else { andify(meta.authors.map(a => a.name)) } }. #str(meta.acm-year). #meta.title#{
+        #{ if meta.anonymous [Anonymous Author(s)] else { andify(meta.authors.map(a => a.name)) } }. #meta.acm-year. #meta.title#{
           if meta.subtitle != none [: #meta.subtitle]
-        }. #if j.short != none { emph(j.short) + " " }#{
-          let parts = ()
-          if meta.acm-volume != none { parts.push(str(meta.acm-volume)) }
-          if meta.acm-number != none { parts.push(str(meta.acm-number)) }
-          parts.join(", ")
-        }#if meta.acm-article != none [, Article #str(meta.acm-article)] (#pub-date(meta)), #total #if total == 1 [page] else [pages].#{
+        }. #if j.short != none { emph(j.short) + " " }#meta.acm-volume, #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta)), #total #if total == 1 [page] else [pages].#{
           if meta.doi != none [ #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]]
         }
-      ]
+      ])
     }
   }
 
