@@ -90,6 +90,13 @@ class Test:
         return self.reference if self.reference is not None else ""
 
     @property
+    def subdir(self) -> str:
+        """Tests live in tests/<subdir>/: ``twins`` for the matched
+        ``NAME.tex``+``NAME.typ`` pairs, ``typst-only`` for everything else
+        (smoke docs and the upstream-ref port, which have no local ``.tex``)."""
+        return "twins" if self.kind == "twin" else "typst-only"
+
+    @property
     def page_parity(self) -> bool:
         if self._page_parity is not None:
             return self._page_parity

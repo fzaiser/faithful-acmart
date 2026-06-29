@@ -29,8 +29,11 @@ missed.
   builds LaTeX against the `acmart.cls` generated from the bundled `acmart/`
   (never the system install) and reruns pdflatex to stability — a single pass
   leaves acmart's `TotPages` unresolved and adds a spurious "Temporary page".
-- **Tests are matched pairs:** `tests/NAME.tex` (LaTeX) vs `tests/NAME.typ`
-  (ours), identical content, diffed page-by-page. Register new tests in
+- **Tests are matched pairs:** `tests/twins/NAME.tex` (LaTeX) vs
+  `tests/twins/NAME.typ` (ours), identical content, diffed page-by-page.
+  Typst-only docs (smoke tests + the upstream-ref port) live in
+  `tests/typst-only/`; the harness picks the directory from each test's `kind`
+  (`Test.subdir` in `test_matrix.py`). Register new tests in
   `tools/test_matrix.py`.
 - **Keep it idiomatic.** When touching code, apply the simplification checklist in
   [`src/README.md`](src/README.md) ("Idioms / simplifications") — resolve defaults

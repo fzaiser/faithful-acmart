@@ -192,8 +192,8 @@ def compile_all_typst() -> dict[str, tuple[int, str]]:
     """
     TYPST.mkdir(parents=True, exist_ok=True)
     results: dict[str, tuple[int, str]] = {}
-    for name in TESTS:
-        results[name] = compile_typst(TESTS_DIR / f"{name}.typ", typst_pdf(name))
+    for name, t in TESTS.items():
+        results[name] = compile_typst(TESTS_DIR / t.subdir / f"{name}.typ", typst_pdf(name))
     return results
 
 
@@ -309,7 +309,7 @@ def build_all_latex() -> None:
         if t.kind != "twin":
             continue
         print(f"  latex {name}")
-        latex_build(TESTS_DIR / f"{name}.tex")
+        latex_build(TESTS_DIR / t.subdir / f"{name}.tex")
 
 
 # ---------------------------------------------------------------------------

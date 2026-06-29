@@ -58,7 +58,7 @@
 
 // CC license statement (\@copyrightpermission case cc): the 88x31 licence badge
 // (linked) on its own line, then the linked text statement. acmart draws the
-// badge at height=5ex (~2.15x x-height); the SVGs live in assets/cc/.
+// badge at height=5ex (~2.15x x-height); the SVGs live in src/assets/cc/.
 #let cc-statement(cc-type, cc-version) = {
   assert(cc-type in _cc-names,
     message: "acmart: unsupported Creative Commons type " + repr(cc-type)
@@ -75,7 +75,7 @@
   let suffix = if cc-type == "zero" { "" } else {
     " " + (if cc-version == "4.0" { "4.0 International" } else { "3.0 Unported" })
   }
-  link(url, box(image("/assets/cc/cc-" + cc-type + ".svg", height: 2.15em)))
+  link(url, box(image("/src/assets/cc/cc-" + cc-type + ".svg", height: 2.15em)))
   linebreak()
   link(url)[This work is licensed under a Creative Commons #name#suffix License.]
 }

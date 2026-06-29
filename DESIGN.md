@@ -83,7 +83,7 @@ this; **geometry, margins, and `\parindent` do NOT scale** — acmart fixes them
 across font sizes (acmart.dtx:3750). Because every part already reads sizes from
 the format dict (`cfg.font-size`/`cfg.baselineskip`/`cfg.size`/`cfg.bls` and the
 skip fields), nothing else changes. Default is 10pt, so 10pt output is unchanged;
-8/9/11/12pt are validated against LaTeX twins (`tests/fontsize-*-test`).
+8/9/11/12pt are validated against LaTeX twins (`tests/twins/fontsize-*-test`).
 
 **Config plumbing.** `acmart()` collects all user metadata into a `meta` dict
 passed to the part functions. The format dict `cfg` is passed alongside, and also
@@ -232,7 +232,7 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   Each page's content and spacing are *exactly* correct — verified by forcing
   `\raggedbottom` in LaTeX, after which section positions match ours to within
   0.2pt (increments 191.3 vs 191.3pt). Only the bottom-fill stretch is missing; it
-  shows as gradual downward drift on *full* pages (e.g. `tests/full-test` page 1)
+  shows as gradual downward drift on *full* pages (e.g. `tests/twins/full-test` page 1)
   but not on partial/last pages (page 2 matches). No clean Typst workaround exists.
 - **`sigchi-a`** (best-effort): geometry, sans default, the 2pt-rule title,
   unnumbered sections and the "Legacy document" watermark are reproduced; footnotes

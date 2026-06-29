@@ -19,6 +19,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |
 | `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography (ACM CSL) |
 | `parts/theorems.typ` | theorem-like environments + shared counter; reads the active format via `state` (`cfg-state`) since users call them in the body |
+| `assets/` | bundled image assets, addressed root-absolute (`/src/assets/…`): `acm-jdslogo.png` (acmcp cover) and `cc/` (Creative Commons licence badges) |
 
 ## Format-as-data
 
