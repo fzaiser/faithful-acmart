@@ -311,6 +311,19 @@ TESTS: dict[str, Test] = {
              "reflows slightly and line count is reported, not gated. Margins/pitch are "
              "held to the same bar.",
     ),
+    "bib-all": Test(
+        kind="twin", pages=1,
+        note="Every ACM-Reference-Format entry type via the `bst` bibliography backend "
+             "(acmart.with(bibliography-backend=\"bst\") + acm-cite/acm-bibliography). A "
+             "pure-Typst port of ACM-Reference-Format.bst (src/parts/{bibtex,acmref}.typ) "
+             "that reproduces the .bst's reference text exactly — char bag gated with NO "
+             "exemption (contrast bib-test's CSL gaps). One representative of each handler: "
+             "article, periodical, book, inbook, incollection, inproceedings, mastersthesis, "
+             "phdthesis, techreport, online, misc, manual, presentation, underreview, "
+             "preprint, software, dataset, proceedings, booklet. Reads sample-base.bib plus "
+             "the crafted tests/twins/bib-all-extra.bib (clean proceedings/booklet/manual). "
+             "Pitch reported, not gated (heading + hanging-indent grid mix leadings).",
+    ),
     "notes-test": Test(
         kind="twin", pages=1,
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "

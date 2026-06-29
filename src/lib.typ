@@ -25,6 +25,19 @@
 #import "parts/strings.typ": resolve-language, lang-record
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
+#import "parts/acmref.typ": bbl-cite, bbl-bibliography
+
+// "bst" bibliography backend (pure-Typst ACM-Reference-Format port). Use these in
+// place of `@key` / `#bibliography(...)` when `bibliography-backend: "bst"`.
+#let acm-cite = bbl-cite
+#let acm-bibliography(path, title: [References]) = context {
+  let cfg = cfg-state.get()
+  if cfg == none {
+    bbl-bibliography(path, title: title)
+  } else {
+    bbl-bibliography(path, title: title, size: cfg.size.footnotesize, leading: comp(cfg, sz: "footnotesize"))
+  }
+}
 
 #let _formats = (
   manuscript: manuscript,
@@ -104,6 +117,12 @@
   show-ref: auto,
   print-ccs: true,
   print-folios: auto,
+  // Bibliography engine. "csl" (default) uses Typst's native bibliography() with
+  // the vendored ACM CSL — idiomatic, but bounded by hayagriva's BibTeX->CSL data
+  // mapping. "bst" uses the pure-Typst port of ACM-Reference-Format.bst (no extra
+  // dependencies), reached via the acm-cite / acm-bibliography functions; it
+  // reproduces the .bst's reference text exactly. See DESIGN.md.
+  bibliography-backend: "csl",
   short-title: auto,
   short-authors: auto,
   // --- acmart class & \settopmatter options ---
@@ -217,7 +236,9 @@
     acks: lang.acks,
     proof: lang.proof,
     table: lang.table,
-  ), lang: lang.code)
+  ), lang: lang.code, bib-backend: bibliography-backend)
+  assert(bibliography-backend in ("csl", "bst"),
+    message: "acmart: `bibliography-backend` must be \"csl\" or \"bst\".")
 
   // The translated-* top matter requires `language` (acmart \ACM@lang@check,
   // acmart.dtx:3346) — a secondary-language block is meaningless monolingual.

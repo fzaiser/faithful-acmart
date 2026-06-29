@@ -1,0 +1,18 @@
+%% bib-all — exercises every ACM-Reference-Format entry type through the "bst"
+%% bibliography backend (LaTeX twin of bib-all.typ). One representative of each
+%% handler: article, periodical, book, inbook, incollection, inproceedings,
+%% mastersthesis, phdthesis, techreport, online, misc, manual, presentation,
+%% underreview, preprint, software, dataset, proceedings, booklet.
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\begin{document}
+\thispagestyle{empty}% titleless body-only fixture: re-assert empty (acmart re-installs the folio at \begin{document}).
+
+\section{Introduction}
+Every entry type, exercised through the bst backend \cite{Cohen07,JCohen96,Kosiur01,Editor00,Editor00a,Spector90,Andler79,anisi03,Clarkson85,Harel78,Thornburg01,Poker06,CleanManual,Reiser2014,Baggett2025,Bornmann2019,R,UMassCitations,CleanProc20,CleanBooklet}.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{sample-base,bib-all-extra}
+
+\end{document}

@@ -184,16 +184,35 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 > titles, so always validate against the bundled class — the LaTeX build is wired
 > to generate it from [`acmart/`](acmart/) (see `tools/test.py`'s `ensure_class`).
 
-**Deliberate approximations:**
-- Bibliography uses a CSL style, not `ACM-Reference-Format.bst`. We vendor a fork
-  of the upstream ACM CSL at [`src/styles/acm-reference-format.csl`](src/styles/acm-reference-format.csl),
+**Bibliography — two backends (`bibliography-backend`):**
+- **`"csl"` (default)** — idiomatic Typst: native `bibliography()` with a vendored
+  fork of the upstream ACM CSL at [`src/styles/acm-reference-format.csl`](src/styles/acm-reference-format.csl),
   edited to track the bundled `.bst` (DOI prints `doi:<id>`, abbreviated months,
   report genre label, thesis trailing note, conference-location parens — see the
-  file's header). The residual divergences are hayagriva BibTeX→CSL *data-mapping*
-  limits, not style choices, so they're unreachable from the CSL: dropped
-  `lastaccessed` access dates, `@periodical` journal names, thesis `school`/advisor,
-  conference `address`, the `genre` wording (`Doctoral dissertation` vs the .bst's
-  `Ph. D. Dissertation`), and full-URL `doi` fields the .bst's `strip.doi` would trim.
+  file's header). Native `@key` citations work. The residual divergences are
+  hayagriva BibTeX→CSL *data-mapping* limits, not style choices, so they're
+  unreachable from the CSL: dropped `lastaccessed` access dates, `@periodical`
+  journal names, thesis `school`/advisor, conference `address`, the `genre` wording
+  (`Doctoral dissertation` vs the .bst's `Ph. D. Dissertation`), and full-URL `doi`
+  fields the .bst's `strip.doi` would trim.
+- **`"bst"` — exact, no extra dependencies.** A pure-Typst port of
+  `ACM-Reference-Format.bst`: [`parts/bibtex.typ`](src/parts/bibtex.typ) parses the
+  `.bib` (via `read()`), [`parts/acmref.typ`](src/parts/acmref.typ) reimplements the
+  `.bst`'s output state machine + `format.*` helpers + every entry-type handler +
+  the sort/cite layer (native `state`/`query`). It reproduces the `.bst`'s *visible*
+  reference text exactly — the `bib-all` twin gates the full char bag against real
+  bibtex output across all 19 handlers (article, periodical, book, inbook,
+  incollection, inproceedings, mastersthesis, phdthesis, techreport, online, misc,
+  manual, presentation, underreview, preprint, software, dataset, proceedings,
+  booklet) with **no exemption**. Reached via the exported `acm-cite` /
+  `acm-bibliography` functions instead of `@key` / `#bibliography` (Typst exposes no
+  hook to drive native citation numbering from a custom renderer, so the backend
+  owns its own cite layer). Accepted gaps: ISBN/ISSN/CODEN/LCCN render invisibly in
+  acmsmall (as in real acmart) and are omitted; the `journal.canon.abbrev` table is
+  not transcribed (sample data is pre-abbreviated); `\natexlab` year-disambiguation
+  is computed but only shows in author-year citation modes. The `\LaTeX`/`\TeX`
+  *logos* are the one rendering caveat — pdftotext extracts the LaTeX logo as
+  `LATEX`, so logo-bearing entries would not char-match; the twin avoids them.
 - The corresponding-author ✉ mark itself is faithful: acmart's `\correspondingauthor`
   (new in v2.18) emits a superscript envelope `\textsuperscript{\ding{41}}`
   (`acmart.dtx:5430`). What differs is *ordering* — we emit ✉-then-note in a fixed

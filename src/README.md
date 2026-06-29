@@ -19,6 +19,8 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |
 | `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography (vendored ACM CSL in `styles/`) |
 | `parts/theorems.typ` | theorem-like environments + shared counter; reads the active format via `state` (`cfg-state`) since users call them in the body |
+| `parts/bibtex.typ` | pure-Typst BibTeX reader (`.bib` → field dicts) for the `"bst"` bibliography backend |
+| `parts/acmref.typ` | pure-Typst port of `ACM-Reference-Format.bst` (output state machine + `format.*` helpers + per-type handlers + sort/cite layer); exported as `acm-cite` / `acm-bibliography`. Reproduces the `.bst`'s reference text exactly — gated by the `bib-all` twin |
 | `assets/` | bundled image assets, addressed root-absolute (`/src/assets/…`): `acm-jdslogo.png` (acmcp cover) and `cc/` (Creative Commons licence badges) |
 | `styles/` | `acm-reference-format.csl` — vendored fork of the upstream ACM CSL, edited to track the bundled `ACM-Reference-Format.bst` (see the file header for the deltas) |
 

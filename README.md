@@ -25,8 +25,11 @@ Validated page-by-page against real LaTeX acmart output (see `tools/`). Covered:
   and suppressed normal copyright/contact footnotes
 - Body elements: figure/table captions, theorem environments
   (theorem/lemma/…/definition/proof with QED), lists, footnotes, code
-- Bibliography via a vendored ACM CSL (`src/styles/`), forked from the upstream
-  style to track `ACM-Reference-Format.bst`
+- Bibliography, two backends (`bibliography-backend`): `"csl"` (default) — native
+  Typst + a vendored ACM CSL (`src/styles/`) forked to track `ACM-Reference-Format.bst`;
+  or `"bst"` — a pure-Typst port of the `.bst` itself (`src/parts/{bibtex,acmref}.typ`,
+  no extra dependencies) that reproduces the bibtex reference text *exactly* across
+  every entry type, used via `acm-cite` / `acm-bibliography` (see DESIGN.md)
 - All copyright modes (acmcopyright/acmlicensed/rightsretained, the US/Canada/other
   -gov family, iw3c2w3[g], and Creative Commons with its licence badge). Unknown
   copyright modes, CC types, and unsupported CC versions are rejected.
