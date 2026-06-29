@@ -39,7 +39,11 @@ METRICS_TOLERANCE = {
     "left": 1.0,   # text-block left edge — true horizontal invariant, gated tightly
     "top": 4.5,    # first-content vertical position — loose: absorbs glyph-bbox
                    # ascent conventions and title-page variance, still catches gross shifts
-    "pitch": 0.6,  # baseline-to-baseline pitch — gated only on uniform_pitch tests
+    "pitch": 0.6,  # median baseline-to-baseline pitch — gated only on uniform_pitch tests
+    "line_pitch": 0.8,  # max single-line pitch deviation — gated on uniform_pitch tests
+                        # whose lines break identically across engines (so the per-line
+                        # pitch sequences align). Catches one mis-spaced line that the
+                        # median absorbs; skipped when line counts diverge.
 }
 
 

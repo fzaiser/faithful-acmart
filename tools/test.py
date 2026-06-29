@@ -140,7 +140,14 @@ def page_metrics(page: dict) -> dict | None:
             line_tops.append(y)
     gaps = [b - a for a, b in zip(line_tops, line_tops[1:])]
     pitch = statistics.median(gaps) if gaps else 0.0
-    return {"left": left, "right": right, "top": top, "lines": len(line_tops), "pitch": pitch}
+    # Per-line text pitches: drop page-spanning gaps (the last body line -> page
+    # footer is a ~400pt jump, not a baseline pitch). Heading skips (~1.5-2x the
+    # body pitch) are kept, so two single-column pages whose lines break the same
+    # way can be compared pitch-for-pitch, catching a single mis-spaced line that
+    # the median hides.
+    grid = [g for g in gaps if g <= 3 * pitch] if pitch else []
+    return {"left": left, "right": right, "top": top, "lines": len(line_tops),
+            "pitch": pitch, "pitches": grid}
 
 
 def pdf_text(pdf: Path, page: int | None = None) -> str:
@@ -575,6 +582,19 @@ def _metrics_for(pdf: Path) -> dict:
     return {n: page_metrics(p) for n, p in words(pdf).items()}
 
 
+def _line_pitch_drift(a: list[float], b: list[float]) -> tuple[float, int]:
+    """(worst per-line pitch difference, #lines compared) for two pitch sequences.
+
+    Returns (0.0, 0) when the sequences can't be paired one-to-one — i.e. the two
+    engines broke the page into a different number of text lines, so position i in
+    one isn't the same line as position i in the other. The caller then leans on
+    the median-pitch gate instead.
+    """
+    if not a or len(a) != len(b):
+        return 0.0, 0
+    return max(abs(x - y) for x, y in zip(a, b)), len(a)
+
+
 def gate_metrics(report: bool = False) -> list[str]:
     """Tier 2 — cross-engine layout metrics."""
     tol = M.METRICS_TOLERANCE
@@ -601,18 +621,26 @@ def gate_metrics(report: bool = False) -> list[str]:
             a, b = lm.get(p), tm.get(p)
             if a is None or b is None:
                 continue
+            lpd = _line_pitch_drift(a["pitches"], b["pitches"]) if t.uniform_pitch else None
             if report:
+                lpd_s = (f"  line-pitch {lpd[0]:.2f}pt×{lpd[1]}" if lpd and lpd[1]
+                         else "  line-pitch n/a (lines differ)" if t.uniform_pitch else "")
                 print(f"  {name} p{p}: "
                       f"L {a['left']:.1f}/{b['left']:.1f}  R {a['right']:.1f}/{b['right']:.1f}  "
                       f"T {a['top']:.1f}/{b['top']:.1f}  "
                       f"lines {a['lines']}/{b['lines']}  pitch {a['pitch']:.2f}/{b['pitch']:.2f}"
-                      "   (L/T/pitch gated; R/lines report-only)")
+                      f"{lpd_s}   (L/T/pitch/line-pitch gated; R/lines report-only)")
                 continue
             for key, lim, label in gated:
                 d = abs(a[key] - b[key])
                 if d > lim:
                     local.append(f"{name} p{p}: {label} Δ={d:.2f}pt (LaTeX {a[key]:.2f} vs "
                                  f"Typst {b[key]:.2f}, tol {lim})")
+            # Per-line pitch: only when the line-break structure matches (aligned
+            # pitch sequences); otherwise the median pitch above is the gate.
+            if lpd and lpd[1] and lpd[0] > tol["line_pitch"]:
+                local.append(f"{name} p{p}: single-line pitch Δ={lpd[0]:.2f}pt over {lpd[1]} "
+                             f"lines (tol {tol['line_pitch']}) — a line is off the body grid")
         if not report and not local:
             print(f"ok   {name}")
         failures.extend(local)
