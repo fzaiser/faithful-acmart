@@ -4,9 +4,12 @@
 //   #import "@preview/acmart:0.0.1": acmart
 //   #show: acmart.with(format: "acmsmall", title: [...], ...)
 //
-// Status: early. Only the `acmsmall` format is implemented, and only page
-// geometry + body typography so far (Phase 1/2). Title block, theorems, floats,
-// and bibliography styling come later.
+// All 11 acmart formats are implemented (see _formats below): the single-column
+// journals (manuscript/acmsmall/acmlarge), the two-column journal (acmtog), the
+// two-column proceedings (sigconf/siggraph/sigplan/sigchi/acmengage), and the
+// bespoke sigchi-a (landscape) / acmcp (cover page, best-effort). A format is a
+// data dict built in formats/; lib.typ is format-agnostic (two-column handling
+// is the spanning-title float + page columns below). See DESIGN.md.
 
 #import "formats/acmsmall.typ": acmsmall
 #import "formats/manuscript.typ": manuscript

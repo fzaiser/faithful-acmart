@@ -6,10 +6,25 @@ empirically**. Read this before changing layout code.
 
 ## Goal & approach
 
-Reproduce LaTeX `acmart` (format `acmsmall` so far) closely enough that a reader
-can't easily tell the Typst and LaTeX outputs apart: same fonts, sizes, margins,
-and spacing. We do **not** chase identical line/page breaks — the engines break
-differently, and that's accepted.
+Reproduce LaTeX `acmart` closely enough that a reader can't easily tell the Typst
+and LaTeX outputs apart: same fonts, sizes, margins, and spacing. We do **not**
+chase identical line/page breaks — the engines break differently, and that's
+accepted.
+
+**All 11 acmart formats are implemented.** They split into three families that
+share the `parts/` machinery and differ only by a data dict in `formats/`:
+
+| family | formats | columns | top matter |
+|---|---|---|---|
+| single-column journal | manuscript, acmsmall, acmlarge | 1 | `@i` left title + author list, ACM bibstrip |
+| two-column journal | acmtog | 2 | `@i` left title + author list, ACM bibstrip (spanning) |
+| two-column proceedings | sigconf, siggraph, sigplan, sigchi, acmengage | 2 | `@iii` centered title + author grid, first-column copyright block |
+| bespoke | sigchi-a (landscape), acmcp (cover) | 1 | best-effort (see Known limitations) |
+
+Each format's geometry is **probed** from the bundled class (`make probe
+FORMAT=<name>`) via the kernel relation `body-top = 1in + topmargin + headheight
++ headsep` (validated exact against acmsmall's known 85/46/46/63.7); fonts and the
+`\ifcase\ACM@format@nr` flags are **read** from `acmart.dtx`.
 
 The spec is the upstream class in [`acmart/`](acmart/) (`acmart.dtx`, which
 generates `acmart.cls`, itself built on `amsart`). Every measurement was either
@@ -20,7 +35,9 @@ generates `acmart.cls`, itself built on `amsart`). Every measurement was either
 ```
 src/lib.typ            public acmart() entry; page setup; show/set rules; re-exports
 src/formats/
-  acmsmall.typ         acmsmall measurements as a builder fn of the base font size
+  _base.typ            shared font-size ladder + make-format() dict constructor
+  <format>.typ         one builder per format (acmsmall, sigconf, …): probed
+                       geometry + the format flags, everything else from _base
 src/parts/
   spacing.typ          comp() / tex-skip() — the TeX→Typst baseline-grid helpers
   headings.typ         section / run-in heading show rule
@@ -31,9 +48,27 @@ src/parts/
 ```
 
 **Format-as-data.** A format is a dict of measurements built by a function of the
-base font size (`src/formats/acmsmall.typ`). `lib.typ` is format-agnostic; adding
-`sigconf` etc. means adding a builder (and handling two-column in `lib.typ`), not
-rewriting the parts.
+base font size. The shared font-size ladder and the `make-format()` constructor
+(which fills the format-independent constants — float/list/footnote/badge
+geometry, fonts) live in `formats/_base.typ`; each `formats/<name>.typ` passes
+only what differs (probed geometry + the `\ifcase` flags: `columns`,
+`title-style`, `author-style`, `sec-fonts`, `bibstrip`/`conf-footer`,
+`secnumdepth`, the title/author/affiliation fonts, …). `lib.typ` is
+format-agnostic; the only format-shaped logic there is the two-column branch
+(below).
+
+### Two-column layout
+`set page(columns: cfg.columns)` + `set columns(gutter: cfg.columnsep)` gives the
+exact `\columnsep`. The title/author box spans both columns via
+`place(top, scope: "parent", float: true, …)` — Typst's `scope: "parent"` escapes
+the column to the full text width, reproducing LaTeX's `\twocolumn[\box\mktitle@bx]`
+(acmart.dtx:6849). The abstract/CCS/keywords (`\@mkabstract` et seq.,
+acmart.dtx:6665) follow the box in the **first column**, so `make-title` is split
+into `make-title-head` (spanning) and `make-title-body` (in-column); for one
+column the two are contiguous and the output is render-identical to before. The
+conference copyright block (`\footnotetextcopyrightpermission`) is a column-scoped
+`place(bottom, float: true)` so it lands at the bottom of the first column; the
+journal bibstrip (acmtog) is instead the page footer, exactly as in print.
 
 ### Configurable base font size
 acmart selects a base size via the `8pt|9pt|10pt|11pt|12pt` option and passes it
@@ -177,7 +212,27 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 
 ## Known limitations / not done
 
-- Only `acmsmall`. No `sigconf`/`sigplan`/… (no two-column support yet).
+- **Two-column vertical fill / `\flushbottom`** is not replicable (same root cause
+  as the acmsmall note below): the proceedings + acmtog formats call `\flushbottom`,
+  but Typst has no vertical justification, so their columns are ragged-bottom and
+  the two columns of a page may differ in height. Last-column balancing (`balance`)
+  is likewise absent. Each page's content/spacing is correct; only the bottom-fill
+  stretch is missing.
+- **Conference author grid** spacing is approximate: the box widths follow acmart's
+  `(textwidth − sep)/N − sep`, but a partial last row is left-aligned by Typst's
+  grid rather than centred (acmart centres every row).
+- **`sigchi-a`** (best-effort): geometry, sans default, the 2pt-rule title and
+  unnumbered sections are reproduced; footnotes are **not** moved into the margin
+  (`\marginpar`, acmart.dtx:3533), the `@iv` 5pc title leftskip is omitted, and the
+  "Legacy document" watermark is not drawn.
+- **`acmcp`** (best-effort): geometry, unnumbered sections and the suppressed ACM
+  reference format are reproduced; the JDS cover infobox (logo, colour frame,
+  code/data links — acmart.dtx:6724) is **not** drawn.
+- **Conference Huge title vertical position** differs from LaTeX by ~4–5pt of
+  glyph-bbox overshoot: we pin the title cap-top to the top margin (the faithful
+  `\topskip` model, as for acmsmall), whereas LaTeX places the baseline and lets
+  the cap-top fall where the font's cap height puts it. Imperceptible; the sigplan
+  twin marks its Tier-2 top check report-only for this reason.
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
 - No automated pass/fail thresholds; validation is visual + mismatch %.
 - **Vertical justification (flushbottom-like fill) is not replicable in Typst.**

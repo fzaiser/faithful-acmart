@@ -1,9 +1,12 @@
 # CLAUDE.md — guidance for AI assistants working in this repo
 
 A Typst port of the LaTeX **acmart** class. Goal: idiomatic Typst that renders as
-close as possible to LaTeX + acmart. Only the **`acmsmall`** format is
-implemented so far. The upstream spec being matched is in [`acmart/`](acmart/)
-(`acmart.dtx`); read it when matching behaviour.
+close as possible to LaTeX + acmart. **All 11 formats** are implemented
+(single-column journals manuscript/acmsmall/acmlarge, two-column journal acmtog,
+two-column proceedings sigconf/siggraph/sigplan/sigchi/acmengage, best-effort
+sigchi-a/acmcp); each is a data dict in [`src/formats/`](src/formats/) built by
+`make-format()` in `_base.typ`. The upstream spec being matched is in
+[`acmart/`](acmart/) (`acmart.dtx`); read it when matching behaviour.
 
 Full detail: [DESIGN.md](DESIGN.md) (architecture + Typst-vs-LaTeX modeling) and
 the per-directory READMEs ([`src/`](src/README.md), [`tools/`](tools/README.md),
@@ -56,12 +59,15 @@ short version that must not be missed.
 
 ## Not done yet
 
-Other formats (sigconf/sigplan/… — need two-column), math-font fidelity, the
-separate single-column `manuscript` format. Top-matter commands `\titlenote`/
-`\subtitlenote`, `\received`, the `acks` environment, teaser figures, and author
-badges ARE now modelled (params `title-note`/`subtitle-note`/`received`/`teaser`/
-`badges` and the `acks` function; validated by `tests/notes-test` + the sample).
-See DESIGN.md "Deliberate approximations" / "Known limitations" for the full list.
+All 11 formats are implemented, but with accepted approximations: two-column
+vertical fill (`\flushbottom`) and last-column balancing are unreplicable in
+Typst (ragged-bottom columns); the conference author grid's partial last row is
+left-aligned not centred; `sigchi-a` omits margin-note footnotes / the legacy
+watermark; `acmcp` omits the JDS cover infobox. Also outstanding: math-font
+fidelity. Top-matter commands `\titlenote`/`\subtitlenote`, `\received`, the
+`acks` environment, teaser figures, author badges, and the conference metadata
+(`conference`/`booktitle`/`isbn`) ARE modelled. See DESIGN.md "Deliberate
+approximations" / "Known limitations" for the full list.
 Author *line grouping* now follows acmart's exact structural rule (an
 affiliation-less author andifies onto the next; affiliations are never compared —
 `group-authors`); the remaining author-side approximation is contact-info *field
