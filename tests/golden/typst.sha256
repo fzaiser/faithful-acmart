@@ -1,6 +1,6 @@
 # Tier 1 golden raster hashes — Typst 0.14.2 @ 150dpi
 # regenerate with: make accept
-acmcp-test 1 936dc74daf342bdefa1624431472a1c536af93482c0ac1be025e808489edbe0e
+acmcp-test 1 611f425eb98c58f3015fe0b55ec79ec5e57b0040f0dec3bd62dfb4c4016f04af
 acmengage-test 1 c60c1fb3e231e66dea38c4cc47e66badbcc8176ec5d5ad7265a7c1095847c7f0
 acmlarge-test 1 dea4dc83b67acb3fb5e244446318763e99da236d7042b76e823c240bd7ebd726
 acmtog-test 1 f03ff9f4686ea384769f11b1f98be785bc1d1db7275f64b48bb273a3e986e4dc

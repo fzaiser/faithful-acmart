@@ -70,6 +70,9 @@
   if affs.len() == 0 { none } else { affs.join(" and ") }
 }
 
+// Keywords may be an array (joined with ", ") or a ready string/content.
+#let kw-join(kw) = if type(kw) == array { kw.join(", ") } else { kw }
+
 // Group authors exactly as acmart's \@mkauthors@i does (acmart.dtx:7337-7371) —
 // the unconditional rule for journal formats incl. acmsmall (the \@mkauthors
 // \ifcase routes acmsmall to @i, acmart.dtx:7160). Authors accumulate onto one
@@ -367,6 +370,25 @@
   place(bottom, float: true, block(width: 100%, spacing: 0pt, stack))
 }
 
+// acmcp cover infobox (\set@ACM@acmcpbox, acmart.dtx:6725): a 5pc-wide box in the
+// top-right corner of page 1 (\fancyhead[R]\makebox[\z@][r], acmart.dtx:8129) —
+// the JDS logo over optional code/data links, keywords and a contributions
+// statement, in scriptsize. The acmcp title is narrowed by 6pc
+// (cfg.title-width-reduction) so it clears the box. Author addresses, which
+// acmart also packs here, stay in the contact-info footnote (so they are not
+// duplicated). place() leaves it out of flow, overlaying the top-right margin.
+#let make-acmcp-infobox(cfg, meta) = {
+  let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
+  place(top + right, box(width: 60pt /* 5pc */)[
+    #image("../assets/acm-jdslogo.png", width: 100%)
+    #set text(size: cfg.size.scriptsize)
+    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: "scriptsize"))
+    #if meta.code-data-link != none { v(big, weak: true); [Code and data links:\ #meta.code-data-link] }
+    #if meta.keywords != none { v(big, weak: true); [Keywords: #kw-join(meta.keywords)] }
+    #if meta.contributions != none { v(big, weak: true); meta.contributions }
+  ])
+}
+
 // The journal @i spanning head (acmart.dtx:6986): left-aligned title/subtitle,
 // then the andified author *list* with short affiliations. Used by the single-
 // column journals and by acmtog (two-column journal). The conference formats use
@@ -600,7 +622,6 @@
   // journals use \keywordsname = "Additional Key Words and Phrases" (acmart.dtx:3294);
   // plain "Keywords" is only for the conference formats. The label is localized
   // to the main language (meta.strings.keywords).
-  let kw-join = kw => if type(kw) == array { kw.join(", ") } else { kw }
   if meta.keywords != none {
     special-line(cfg, meta.strings.keywords, kw-join(meta.keywords))
   }

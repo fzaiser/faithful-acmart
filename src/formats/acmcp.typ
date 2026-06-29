@@ -17,5 +17,6 @@
   head-skip: 58 * tp,
   foot-skip: 24 * tp,
   secnumdepth: -1,         // no section numbers (acmart.dtx:8501)
+  title-width-reduction: 6 * 12 * tp, // narrow the title by 6pc to clear the infobox
   // journal single-column top matter + generic sf-bold sections (acmsmall-like).
 )

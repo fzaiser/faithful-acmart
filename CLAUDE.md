@@ -62,9 +62,9 @@ short version that must not be missed.
 All 11 formats are implemented, but with accepted approximations: two-column
 vertical fill (`\flushbottom`) and last-column balancing are unreplicable in
 Typst (ragged-bottom columns); `sigchi-a` omits margin-note footnotes
-(`\marginpar`); `acmcp` reproduces the tinted cover frame but not the JDS-logo
-infobox (the logo is a bundled asset we don't ship). Also outstanding: math-font
-fidelity. Top-matter commands `\titlenote`/`\subtitlenote`, `\received`, the
+(`\marginpar`); `acmcp`'s cover infobox is anchored to the top-right corner
+rather than `zref`-positioned against the frame bottom. Also outstanding:
+math-font fidelity. Top-matter commands `\titlenote`/`\subtitlenote`, `\received`, the
 `acks` environment, teaser figures, author badges, and the conference metadata
 (`conference`/`booktitle`/`isbn`) ARE modelled. See DESIGN.md "Deliberate
 approximations" / "Known limitations" for the full list.

@@ -24,7 +24,7 @@
 #import "formats/acmcp.typ": acmcp
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
-#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
+#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
 #import "parts/body.typ": apply-body
 #import "parts/strings.typ": resolve-language, lang-record
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
@@ -86,6 +86,10 @@
   conference: none,
   booktitle: none,
   isbn: none,
+  // acmcp cover-page infobox content (acmart \acmCodeLink / \acmContributions,
+  // acmart.dtx:5914/5929). Both optional; shown in the top-right JDS-logo box.
+  code-data-link: none,
+  contributions: none,
   copyright: "acmlicensed",
   copyright-year: none,
   cc-type: "by",
@@ -247,6 +251,8 @@
     conference: conference,
     booktitle: booktitle,
     isbn: isbn,
+    code-data-link: code-data-link,
+    contributions: contributions,
     conf-footer: cfg.conf-footer,
     bibstrip: cfg.bibstrip,
     authors-per-row: authors-per-row,
@@ -442,6 +448,8 @@
     // place(bottom, float) — full-width in one column, first-column-scoped in two
     // (the conference \footnotetextcopyrightpermission block, acmart.dtx:6605).
     make-footnotes(cfg, meta)
+    // acmcp draws the JDS-logo cover infobox in the top-right corner of page 1.
+    if cfg.name == "acmcp" { make-acmcp-infobox(cfg, meta) }
     if cfg.columns > 1 {
       // \twocolumn[\box\mktitle@bx] (acmart.dtx:6849): only the title/author box
       // spans both columns; the abstract/CCS/keywords (\@mkabstract et seq.,
@@ -451,6 +459,11 @@
       place(top, scope: "parent", float: true, clearance: tex-skip(cfg, cfg.bigskip),
         make-title-head(cfg, meta))
       make-title-body(cfg, meta) // flows in column 1, beneath the spanning box
+    } else if cfg.title-width-reduction != 0pt {
+      // acmcp: the whole top matter is narrowed (acmart's framed \hsize reduction,
+      // acmart.dtx:5902) so it clears the top-right cover infobox. The body
+      // sections below the box flow full width.
+      block(width: 100% - cfg.title-width-reduction, make-title(cfg, meta))
     } else {
       make-title(cfg, meta)
     }

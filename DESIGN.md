@@ -222,11 +222,16 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   unnumbered sections and the "Legacy document" watermark are reproduced; footnotes
   are **not** moved into the margin (`\marginpar`, acmart.dtx:3533) and the `@iv`
   5pc title leftskip is omitted.
-- **`acmcp`** (best-effort): geometry, unnumbered sections, the suppressed ACM
-  reference format, and the light-tinted cover **frame** (`@ACM@Article@color!10!
-  white`, default ACMBlue — acmart.dtx:5899) are reproduced; the right-column
-  infobox (the **JDS logo** is a bundled asset we don't ship, plus code/data links
-  set via `zref` two-pass positioning — acmart.dtx:6724) is **not** drawn.
+- **`acmcp`**: geometry, unnumbered sections, the suppressed ACM reference format,
+  the light-tinted cover **frame** (`@ACM@Article@color!10!white`, default ACMBlue
+  — acmart.dtx:5899), and the top-right cover **infobox** — the bundled JDS logo
+  (`src/assets/acm-jdslogo.png`, from acmart's `acm-jdslogo.png`) over the optional
+  `code-data-link` / `keywords` / `contributions` — are reproduced; the top matter
+  is narrowed by 6pc to clear the box. The only approximation is the box's vertical
+  position: acmart uses two-pass `zref` measurement (acmart.dtx:6733) to butt it
+  against the frame bottom on short documents; we anchor it to the top-right
+  corner. Author addresses (which acmart also packs into the box) stay in the
+  contact-info footnote rather than being duplicated.
 - **Conference Huge title vertical position** differs from LaTeX by ~4–5pt of
   glyph-bbox overshoot: we pin the title cap-top to the top margin (the faithful
   `\topskip` model, as for acmsmall), whereas LaTeX places the baseline and lets

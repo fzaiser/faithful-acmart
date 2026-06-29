@@ -114,6 +114,9 @@
   flushbottom: false,
   urlstyle-sans: false,
   secnumdepth: 3,
+  // acmcp narrows the @i title by 6pc to clear the top-right cover infobox
+  // (\advance\hsize by -6pc, acmart.dtx:6988); 0 for every other format.
+  title-width-reduction: 0pt,
   sec-fonts: generic-sec-fonts,
 ) = {
   let l = ladder
@@ -160,6 +163,7 @@
     sans-default: sans-default,
     flushbottom: flushbottom,
     urlstyle-sans: urlstyle-sans,
+    title-width-reduction: title-width-reduction,
     sec-fonts: sec-fonts,
     fonts: (
       serif: "Libertinus Serif",
