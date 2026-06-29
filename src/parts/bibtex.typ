@@ -80,6 +80,80 @@
 
 #let collapse-ws(s) = s.replace(regex("\s+"), " ").trim()
 
+// TeX accent command -> combining diacritic on the following letter (NFC composes
+// downstream; the text gate NFKC-folds). Symbol-named (\"o) and letter-named
+// (\H{o}, \v s) accents; letter-named ones need a brace/space argument.
+#let symbol-accent = (
+  "\"": "\u{0308}", "'": "\u{0301}", "`": "\u{0300}", "^": "\u{0302}",
+  "~": "\u{0303}", "=": "\u{0304}", ".": "\u{0307}",
+)
+#let letter-accent = (
+  "H": "\u{030B}", "v": "\u{030C}", "u": "\u{0306}", "r": "\u{030A}",
+  "k": "\u{0328}", "c": "\u{0327}", "b": "\u{0331}", "d": "\u{0323}",
+)
+#let special-letters = (
+  "ss": "ß", "SS": "ẞ", "ae": "æ", "AE": "Æ", "oe": "œ", "OE": "Œ",
+  "aa": "å", "AA": "Å", "o": "ø", "O": "Ø", "l": "ł", "L": "Ł", "i": "ı", "j": "ȷ",
+)
+#let is-letter(c) = c != "" and lower(c) != upper(c)
+
+// Read an accent's argument starting at i: skip spaces, then a {group} or one char.
+// Returns (decoded-argument, next-index).
+#let read-accent-arg(cp, i) = {
+  i = skip-ws(cp, i)
+  if i >= cp.len() { return ("", i) }
+  if cp.at(i) == "{" {
+    let j = match-brace(cp, i)
+    (cp.slice(i + 1, j).join(""), j + 1)   // inner is a single letter (or \i)
+  } else {
+    (cp.at(i), i + 1)
+  }
+}
+
+// Single-pass TeX decoder: on `\`, read the FULL command name and look it up, so
+// `\u{a}` (breve) and `\url` (command "url") never collide. Decodes accents and
+// special letters only; unknown commands (\url, \emph, \&, …) pass through intact
+// for the formatter. Runs in the parser, before name tokenizing, so "Stra\ss e"
+// becomes one token "Straße" rather than splitting at the macro.
+#let decode-tex(s) = {
+  if not s.contains("\\") { return s }
+  let cp = s.codepoints()
+  let n = cp.len()
+  let out = ""
+  let i = 0
+  while i < n {
+    let c = cp.at(i)
+    if c != "\\" { out += c; i += 1; continue }
+    i += 1
+    if i >= n { out += "\\"; break }
+    let d = cp.at(i)
+    if is-letter(d) {
+      let j = i
+      while j < n and is-letter(cp.at(j)) { j += 1 }
+      let name = cp.slice(i, j).join("")
+      i = j
+      if name in special-letters {
+        out += special-letters.at(name)
+        if i + 1 < n and cp.at(i) == "{" and cp.at(i + 1) == "}" { i += 2 }
+      } else if name in letter-accent {
+        let (arg, ni) = read-accent-arg(cp, i)
+        out += decode-tex(arg) + letter-accent.at(name)
+        i = ni
+      } else {
+        out += "\\" + name        // unknown control word: leave for the formatter
+      }
+    } else if d in symbol-accent {
+      let (arg, ni) = read-accent-arg(cp, i + 1)
+      out += decode-tex(arg) + symbol-accent.at(d)
+      i = ni
+    } else {
+      out += "\\" + d             // \& \, \% … : leave for the formatter
+      i += 1
+    }
+  }
+  out
+}
+
 // ---- name parsing ----
 #let split-and(raw) = {
   let cp = raw.codepoints()
@@ -112,10 +186,13 @@
   } else {
     let vonlast = parts.at(0)
     if parts.len() == 2 { first = parts.at(1) } else { jr = parts.at(1); first = parts.at(2) }
+    // BibTeX von = the LEADING run of lowercase-initial words (never the last word);
+    // last = the rest. (Not "every lowercase word" — "Straß e" is all Last.)
     let toks = vonlast.split(regex("\s+")).filter(t => t != "")
-    von = toks.filter(is-lower-tok).join(" ")
-    last = toks.filter(t => not is-lower-tok(t)).join(" ")
-    if last == "" { last = toks.join(" ") }
+    let i = 0
+    while i < toks.len() - 1 and is-lower-tok(toks.at(i)) { i += 1 }
+    von = toks.slice(0, i).join(" ")
+    last = toks.slice(i).join(" ")
   }
   (first: first, von: von, last: last, jr: jr)
 }
@@ -142,7 +219,7 @@
     let eq = skip-ws(cp, s)
     if eq >= cp.len() or cp.at(eq) != "=" { break }
     let (val, ni) = read-value(cp, eq + 1, macros)
-    fields.insert(name, collapse-ws(val))
+    fields.insert(name, decode-tex(collapse-ws(val)))
     i = skip-ws(cp, ni)
     while i < cp.len() and cp.at(i) == "," { i = skip-ws(cp, i + 1) }
   }

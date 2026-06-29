@@ -333,8 +333,9 @@ TESTS: dict[str, Test] = {
              "hit, each source-audited against ACM-Reference-Format.bst: strip.doi host "
              "prefix, reduce.pages.to.page.count, format.bookpages, book \"pages\" label, "
              "issue, howpublished in article/inproceedings, format.key fallback, journal "
-             "MACRO + canon.abbrev, @string/# concatenation, von-name parsing, unpublished. "
-             "Char bag gated, no exemption; pitch reported, not gated.",
+             "MACRO + canon.abbrev, @string/# concatenation, von-name parsing, unpublished, "
+             "and TeX accent/special-letter decoding (\\\"o->ö, \\H{o}->ő, \\ss->ß) via the "
+             "single-pass lexer in bibtex.typ. Char bag gated, no exemption; pitch reported.",
         link_check=True,
         # Word-level guards for things the whitespace-free char bag can't see.
         text_assertions=(

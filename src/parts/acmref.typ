@@ -18,6 +18,7 @@
 #let canon-abbrev(j) = journal-canon.at(j, default: j)
 
 // ---- TeX text ligatures the .bst output relies on -------------------------
+// (TeX accents \"o etc. are already decoded in the parser, before name tokenizing.)
 #let tx(s) = {
   if type(s) != str { return s }
   // strip the few TeX macros that survive parsing into field values
