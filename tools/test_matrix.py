@@ -70,6 +70,14 @@ class Test:
     acmsmall's \\flushbottom, which Typst can't replicate). ``text_equal`` /
     ``text_reason`` / ``text_assertions`` drive Tier 1.5. ``note`` is
     documentation only.
+
+    ``text_equal`` selects the Tier 1.5 whole-document text gate:
+    ``True`` exact normalized-sequence equality (strictest; single-column docs
+    whose lines extract in the same order); ``"bag"`` exact word-MULTISET equality
+    — order-independent, for twins whose blocks reorder under extraction (two
+    -column flow, footnotes, the acmcp cover infobox), but still catches any single
+    word that goes missing or appears; ``False`` not gated (give ``text_reason``);
+    ``None`` unset.
     """
 
     kind: str
@@ -80,7 +88,7 @@ class Test:
     golden: bool = True
     page1_only: bool = False
     uniform_pitch: bool = False
-    text_equal: bool | None = None
+    text_equal: bool | str | None = None
     text_reason: str | None = None
     text_assertions: tuple[Assertion, ...] = ()
     note: str = ""
@@ -143,13 +151,13 @@ TESTS: dict[str, Test] = {
              "with the generic sans-bold section fonts shared with acmsmall.",
     ),
     "manuscript-pages-test": Test(
-        kind="twin", pages=2, page1_only=True, text_equal=False,
-        text_reason="Continuation-page header/footer extraction is the point; "
-                    "body flow differs across engines.",
+        kind="twin", pages=2, page1_only=True, text_equal="bag",
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="Manuscript submitted to ACM"),
         ),
+        note="Continuation-page header/footer + multi-page body. Body flow reorders "
+             "across engines, so text is gated order-independently (word-bag).",
     ),
     "acmlarge-test": Test(
         kind="twin", pages=1,
@@ -157,14 +165,14 @@ TESTS: dict[str, Test] = {
              "\\sffamily\\large (regular-weight) section headings (acmart.dtx:8424).",
     ),
     "acmlarge-pages-test": Test(
-        kind="twin", pages=2, page1_only=True, text_equal=False,
-        text_reason="Continuation-page header/footer extraction is the point; "
-                    "body flow differs across engines.",
+        kind="twin", pages=2, page1_only=True, text_equal="bag",
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="111:2"),
             Assertion(engine="both", page=2, text="J. ACM, Vol. 37, No. 4, Article 111"),
         ),
+        note="acmlarge continuation page header/footer; body reorders, so text is "
+             "gated order-independently (word-bag).",
     ),
     "acmtog-test": Test(
         kind="twin", pages=1, page1_only=True,
@@ -173,20 +181,18 @@ TESTS: dict[str, Test] = {
              "sans-large sections.",
     ),
     "acmtog-pages-test": Test(
-        kind="twin", pages=2, page1_only=True, text_equal=False,
-        text_reason="Continuation-page header/footer extraction is the point; "
-                    "two-column extraction order differs.",
+        kind="twin", pages=2, page1_only=True, text_equal="bag",
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="111:2"),
             Assertion(engine="both", page=2,
                       text="ACM Trans. Graph., Vol. 37, No. 4, Article 111"),
         ),
+        note="acmtog two-column continuation page; column order differs under "
+             "extraction, so text is gated order-independently (word-bag).",
     ),
     "sigconf-test": Test(
-        kind="twin", pages=1, page1_only=True, text_equal=False,
-        text_reason="Two-column author-grid and copyright-block extraction order differs; "
-                    "assert proceedings top-matter semantics.",
+        kind="twin", pages=1, page1_only=True, text_equal="bag",
         text_assertions=(
             Assertion(engine="both", text="Abstract"),
             Assertion(engine="both", text="Keywords"),
@@ -201,14 +207,14 @@ TESTS: dict[str, Test] = {
              "page1_only gates absolute positions on the title page only.",
     ),
     "sigconf-pages-test": Test(
-        kind="twin", pages=2, page1_only=True, text_equal=False,
-        text_reason="Continuation-page header/footer extraction is the point; "
-                    "two-column extraction order differs.",
+        kind="twin", pages=2, page1_only=True, text_equal="bag",
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2,
                       text="Conference'17, June 2018, Washington, DC, USA"),
         ),
+        note="sigconf two-column continuation page; column order differs under "
+             "extraction, so text is gated order-independently (word-bag).",
     ),
     "sigconf-authors-test": Test(
         kind="twin", pages=1, page1_only=True,
@@ -231,9 +237,7 @@ TESTS: dict[str, Test] = {
              "edge matches.",
     ),
     "acmcp-test": Test(
-        kind="twin", pages=1, metrics=False, text_equal=False,
-        text_reason="acmcp uses an absolutely positioned cover infobox whose extraction "
-                    "order differs.",
+        kind="twin", pages=1, metrics=False, text_equal="bag",
         text_assertions=(
             Assertion(engine="both", text="Research Article"),
             Assertion(engine="both", text="Keywords: datasets"),

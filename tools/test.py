@@ -41,6 +41,7 @@ import subprocess
 import sys
 import tempfile
 import unicodedata
+from collections import Counter
 from pathlib import Path
 
 import test_matrix as M
@@ -169,6 +170,39 @@ def normalize(text: str) -> str:
     text = re.sub(r"(?m)^\s*\d+\s*$", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+
+# Edge punctuation stripped from each token before the word-bag comparison: we
+# compare word *content*, so a trailing `,` vs `;` (where contact-info field
+# separators or author-list joins differ between engines) is not a mismatch.
+_EDGE_PUNCT = ".,;:!?()[]{}\"'*•-/"
+# A hyphen at a line break (soft hyphen or a printable hyphen + EOL) is a
+# typesetting artifact, not part of the word: rejoin `confer-\nence` -> `conference`
+# so cross-engine line-breaking doesn't split one word into two tokens.
+_EOL_HYPHEN = re.compile(r"[­‐‑-]\s*\n\s*")
+
+
+def bag_tokens(raw: str) -> Counter:
+    """Token multiset for order-independent text comparison of a raw pdftotext dump."""
+    text = normalize(_EOL_HYPHEN.sub("", raw))
+    # Drop URL scheme prefixes: where a URL gets a break opportunity after the
+    # scheme, pdftotext splits `https://` off as its own token, and acmart vs our
+    # port disagree on whether the scheme is even shown — both are cosmetic, the
+    # path that follows is what matters.
+    text = re.sub(r"https?://", "", text)
+    return Counter(t for w in text.split() if (t := w.strip(_EDGE_PUNCT)))
+
+
+def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
+    """Fraction of tokens that agree as MULTISETS, plus the LaTeX-only / Typst-only rests.
+
+    1.0 means identical bags regardless of order; lower means tokens went missing
+    or appeared. Insensitive to block reordering, line breaks, and edge punctuation.
+    """
+    ca, cb = bag_tokens(a), bag_tokens(b)
+    miss, extra = ca - cb, cb - ca
+    total = sum(ca.values()) + sum(cb.values())
+    return 1 - sum((miss + extra).values()) / max(1, total), miss, extra
 
 
 # ---------------------------------------------------------------------------
@@ -460,6 +494,15 @@ def gate_text(report: bool = False) -> list[str]:
                 local.append(f"{name}: normalized text differs\n    {_first_diff(ltext, ttext)}")
             elif report:
                 print(f"equal {name}")
+        elif t.text_equal == "bag":
+            cov, miss, extra = bag_coverage(pdf_text(lref), pdf_text(tpdf))
+            if miss or extra:
+                local.append(
+                    f"{name}: word bags differ ({cov * 100:.2f}% common)\n"
+                    f"    only in LaTeX: {', '.join(list(miss)[:12])}\n"
+                    f"    only in Typst: {', '.join(list(extra)[:12])}")
+            elif report:
+                print(f"bag   {name}: exact (order-independent)")
         elif t.text_equal is False:
             if not t.text_reason:
                 local.append(f"{name}: text_equal=false requires text_reason")
@@ -858,6 +901,8 @@ def cmd_list(_args) -> int:
             flags.append("uniform_pitch")
         if t.text_equal is True:
             flags.append("text_equal")
+        elif t.text_equal == "bag":
+            flags.append("text_bag")
         if t.text_assertions:
             flags.append(f"assert×{len(t.text_assertions)}")
         if not t.metrics:

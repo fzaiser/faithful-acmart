@@ -9,7 +9,6 @@
 \acmISBN{978-1-4503-XXXX-X/2018/06}
 \acmConference[Conference'17]{Proceedings of ACM Conference}{June 2018}{Washington, DC, USA}
 \acmBooktitle{Proceedings of ACM Conference (Conference'17)}
-\renewcommand{\shortauthors}{Lovelace and Hopper}
 
 \newcommand{\fillpara}{This continuation paragraph keeps the document flowing onto the next page so the running page style can be compared between the LaTeX and Typst renderings. The text is deliberately plain and avoids figures, tables, lists, and citations.}
 
@@ -30,6 +29,10 @@ A short abstract for a continuation-page proceedings test.
 \end{abstract}
 
 \keywords{running heads, folios}
+
+% Set \shortauthors AFTER \author: acmart accumulates each \author onto
+% \shortauthors, so a preamble \renewcommand would be appended to, not replaced.
+\renewcommand{\shortauthors}{Lovelace and Hopper}
 
 \maketitle
 
