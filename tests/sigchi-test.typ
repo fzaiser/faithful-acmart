@@ -1,7 +1,7 @@
-// sigchi-test — two-column proceedings format (golden-smoke / twin).
-// Matched twin: sigconf-test.tex. Exercises the two-column layout: the spanning
-// centered conference title, the centered author grid, the first-column copyright
-// block (conference info + permission + ISBN), and the serif-bold Large sections.
+// sigchi-test — obsolete public option that aliases to sigconf.
+// Matched twin: sigchi-test.tex. Exercises that the alias follows the sigconf
+// proceedings path: centered title, author grid, proceedings top matter, and
+// first-column copyright block.
 #import "../src/lib.typ": acmart
 
 #show: acmart.with(

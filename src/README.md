@@ -10,7 +10,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 |---|---|
 | `lib.typ` | public `acmart()` entry: page setup, global text/par rules, header/footer, document options (review/screen/anonymous/nonacm/print-ccs/print-folios + the full acmart option set, recognized-but-unimplemented ones asserted not silently dropped), wires up the parts; re-exports `theorem`/`lemma`/…/`proof` |
 | `formats/_base.typ` | shared font-size ladder (amsart `\@typesizes`) + `make-format()`, the dict constructor that fills format-independent constants. `tp = 72/72.27*1pt` (TeX→PS point conversion) lives here |
-| `formats/<name>.typ` | one builder per format (acmsmall, manuscript, acmlarge, acmtog, sigconf, siggraph, sigplan, sigchi, acmengage, sigchi-a, acmcp): probed geometry + the format flags, all shared values from `make-format` |
+| `formats/<name>.typ` | active format builders (acmsmall, manuscript, acmlarge, acmtog, sigconf, sigplan, acmengage, sigchi-a, acmcp): probed geometry + the format flags, all shared values from `make-format` |
 | `parts/spacing.typ` | `comp()` / `tex-skip()` — the TeX→Typst baseline-grid conversion used by every `leading` and vertical gap (see DESIGN.md) |
 | `parts/headings.typ` | section / subsection / run-in heading show rule |
 | `parts/frontmatter.typ` | title, authors+affiliations, abstract, CCS, keywords, ACM reference format, page-1 footnote stack |
@@ -24,14 +24,15 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 
 `lib.typ` is format-agnostic; a format is just a dict in `formats/`, built by
 `make-format()` in `formats/_base.typ` (which fills the format-independent
-constants). All 11 acmart formats are implemented: each `formats/<name>.typ`
-passes its probed geometry + the `\ifcase` flags (`columns`, `title-style`,
-`author-style`, `sec-fonts`, `bibstrip`/`conf-footer`, `secnumdepth`, the
-title/author/affiliation fonts). To add or audit one, run `make probe
-FORMAT=<name>` and register the builder in `_formats` in `lib.typ`. Two-column is
-handled once in `lib.typ` (page columns + the spanning-title float); the `parts/`
-need no per-format changes — `frontmatter.typ` dispatches the title/author layout
-on `cfg.title-style`/`author-style`, and `headings.typ` reads `cfg.sec-fonts`.
+constants). All public acmart formats are accepted; `siggraph` and `sigchi` map
+to the `sigconf` builder, because the bundled LaTeX class treats them as obsolete
+aliases. Each active `formats/<name>.typ` passes its probed geometry + the
+`\ifcase` flags (`columns`, `title-style`, `author-style`, `sec-fonts`,
+`bibstrip`/`conf-footer`, `secnumdepth`, the title/author/affiliation fonts). To
+add or audit one, run `make probe FORMAT=<name>` and register the builder in
+`_formats` in `lib.typ`. Two-column is handled once in `lib.typ` (page columns +
+the spanning-title float); frontmatter/title rendering dispatches on
+`cfg.title-style`/`author-style`, and `headings.typ` reads `cfg.sec-fonts`.
 
 ## Idioms / simplifications to keep the code clean
 

@@ -1,10 +1,11 @@
 # CLAUDE.md — guidance for AI assistants working in this repo
 
 A Typst port of the LaTeX **acmart** class. Goal: idiomatic Typst that renders as
-close as possible to LaTeX + acmart. **All 11 formats** are implemented
+close as possible to LaTeX + acmart. All public formats are accepted
 (single-column journals manuscript/acmsmall/acmlarge, two-column journal acmtog,
-two-column proceedings sigconf/siggraph/sigplan/sigchi/acmengage, best-effort
-sigchi-a/acmcp); each is a data dict in [`src/formats/`](src/formats/) built by
+two-column proceedings sigconf/sigplan/acmengage, best-effort sigchi-a/acmcp);
+obsolete `siggraph` and `sigchi` are aliases to `sigconf`, matching bundled
+LaTeX. Active formats are data dicts in [`src/formats/`](src/formats/) built by
 `make-format()` in `_base.typ`. The upstream spec being matched is in
 [`acmart/`](acmart/) (`acmart.dtx`); read it when matching behaviour.
 
@@ -20,11 +21,13 @@ short version that must not be missed.
   --ignore-system-fonts`). System Libertinus is often feature-stripped (no small
   caps/ligatures/kerning) and silently degrades output.
 - **Validate against real LaTeX.** `make reference` (LaTeX), `make test` (all
-  Typst + LaTeX refs), `make validate` (copyright modes + options), then
-  `make diff STEM=<name> PAGES=<n>`. Output goes to `tests/out/{latex,typst,diff}`
-  (gitignored). LaTeX must be built via `tools/latex-build.sh` (reruns to
-  stability; a single pdflatex pass leaves acmart's `TotPages` unresolved and
-  adds a spurious "Temporary page").
+  Typst + LaTeX refs), `make check` (smoke/golden/text/errors/metrics),
+  `make validate` (copyright modes + options), then `make diff STEM=<name>
+  PAGES=<n>` when visual inspection is needed. Output goes to
+  `tests/out/{latex,typst,diff}` (gitignored). LaTeX must be built via
+  `tools/latex-build.sh` (reruns to stability and fails on final LaTeX errors;
+  a single pdflatex pass leaves acmart's `TotPages` unresolved and adds a
+  spurious "Temporary page").
 - **Tests are matched pairs:** `tests/NAME.tex` (LaTeX) vs `tests/NAME.typ`
   (ours), identical content, diffed page-by-page.
 - **Keep it idiomatic.** When touching code, apply the simplification checklist in
@@ -59,14 +62,16 @@ short version that must not be missed.
 
 ## Not done yet
 
-All 11 formats are implemented, but with accepted approximations: two-column
+All public formats are accepted, but with accepted approximations: two-column
 vertical fill (`\flushbottom`) and last-column balancing are unreplicable in
 Typst (ragged-bottom columns); `sigchi-a` omits margin-note footnotes
 (`\marginpar`); `acmcp`'s cover infobox is anchored to the top-right corner
-rather than `zref`-positioned against the frame bottom. Also outstanding:
-math-font fidelity. Top-matter commands `\titlenote`/`\subtitlenote`, `\received`, the
-`acks` environment, teaser figures, author badges, and the conference metadata
-(`conference`/`booktitle`/`isbn`) ARE modelled. See DESIGN.md "Deliberate
+rather than `zref`-positioned against the frame bottom. Its keywords,
+contributions, code/data link, and author contact info are in the cover infobox,
+while normal contact/copyright footnotes are suppressed. Also outstanding:
+math-font fidelity. Top-matter commands `\titlenote`/`\subtitlenote`,
+`\received`, the `acks` environment, teaser figures, author badges, and the
+conference metadata (`conference`/`booktitle`/`isbn`) ARE modelled. See DESIGN.md "Deliberate
 approximations" / "Known limitations" for the full list.
 Author *line grouping* now follows acmart's exact structural rule (an
 affiliation-less author andifies onto the next; affiliations are never compared —

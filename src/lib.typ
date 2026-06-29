@@ -4,20 +4,16 @@
 //   #import "@preview/acmart:0.0.1": acmart
 //   #show: acmart.with(format: "acmsmall", title: [...], ...)
 //
-// All 11 acmart formats are implemented (see _formats below): the single-column
+// All public acmart formats are accepted (see _formats below): the single-column
 // journals (manuscript/acmsmall/acmlarge), the two-column journal (acmtog), the
-// two-column proceedings (sigconf/siggraph/sigplan/sigchi/acmengage), and the
-// bespoke sigchi-a (landscape) / acmcp (cover page, best-effort). A format is a
-// data dict built in formats/; lib.typ is format-agnostic (two-column handling
-// is the spanning-title float + page columns below). See DESIGN.md.
+// two-column proceedings (sigconf/sigplan/acmengage), obsolete siggraph/sigchi
+// aliases to sigconf, and bespoke sigchi-a (landscape) / acmcp (cover page).
 
 #import "formats/acmsmall.typ": acmsmall
 #import "formats/manuscript.typ": manuscript
 #import "formats/acmlarge.typ": acmlarge
 #import "formats/acmtog.typ": acmtog
 #import "formats/sigconf.typ": sigconf
-#import "formats/siggraph.typ": siggraph
-#import "formats/sigchi.typ": sigchi
 #import "formats/sigplan.typ": sigplan
 #import "formats/acmengage.typ": acmengage
 #import "formats/sigchi-a.typ": sigchia
@@ -36,12 +32,20 @@
   acmlarge: acmlarge,
   acmtog: acmtog,
   sigconf: sigconf,
-  siggraph: siggraph,
-  sigchi: sigchi,
+  siggraph: sigconf,
+  sigchi: sigconf,
   sigplan: sigplan,
   acmengage: acmengage,
   "sigchi-a": sigchia,
   acmcp: acmcp,
+)
+
+#let _acmcp-article-types = (
+  "Research": (nr: 0, color: cmyk(100%, 10%, 0%, 10%)),
+  "Review": (nr: 1, color: cmyk(0%, 42%, 100%, 1%)),
+  "Discussion": (nr: 2, color: cmyk(20%, 0%, 100%, 19%)),
+  "Invited": (nr: 3, color: cmyk(55%, 100%, 0%, 15%)),
+  "Position": (nr: 4, color: cmyk(0%, 90%, 86%, 0%)),
 )
 
 #let acmart(
@@ -99,7 +103,7 @@
   // default, re-enableable with show-ref: true).
   show-ref: auto,
   print-ccs: true,
-  print-folios: true,
+  print-folios: auto,
   short-title: auto,
   short-authors: auto,
   // --- acmart class & \settopmatter options ---
@@ -115,13 +119,13 @@
   timestamp: false,
   author-draft: false,    // authordraft = timestamp + review + draft watermark/overlay
   submission-id: none,    // \acmSubmissionID — shown in the timestamp + anon. header
-  // No effect in the single-column acmsmall layout — accepted for API parity (so
+  // No effect outside their relevant formats — accepted for API parity (so
   // the names aren't forgotten) but inert here, exactly as in real acmart:
   //   balance/pbalance — column balancing, a two-column-only feature
   //   natbib           — selects the LaTeX citation package (bibliography is CSL here)
   //   authors-per-row  — only the conference author grid honours it (\@mkauthors@iii,
   //                      acmart.dtx:7448); acmsmall lists authors via \@mkauthors@i
-  //   article-type     — the coloured banner is an acmcp/acmengage feature
+  //   article-type     — the coloured banner is an acmcp feature
   //   acmthm           — suppresses the \newtheorem definitions; moot in Typst, where
   //                      the environments are opt-in functions with no namespace to clash
   balance: true,
@@ -190,15 +194,30 @@
   // first so the downstream folio/line-number/footer logic sees the effective values.
   let timestamp = timestamp or author-draft
   let review = review or author-draft
-  // review mode forces folios on (acmart.dtx:2683, \@ACM@printfoliostrue).
+  // \settopmatter{printfolios} defaults true for manuscript/journal/acmcp and
+  // false for proceedings; review mode forces it on (acmart.dtx:5822-5828/2683).
+  let print-folios = if print-folios == auto {
+    cfg.name in ("manuscript", "acmsmall", "acmlarge", "acmtog", "acmcp")
+  } else { print-folios }
   let print-folios = print-folios or review
+
+  let article-type = if article-type == none { "Research" } else { article-type }
+  if cfg.name == "acmcp" {
+    assert(article-type in _acmcp-article-types,
+      message: "acmart: Article Type must be Research, Review, Discussion, Invited, or Position")
+  }
 
   // Resolve the language: main lang code (hyphenation) + translated fixed
   // strings. Carried on cfg so every part (frontmatter, body captions, theorems
   // via cfg-state) reads one resolved string set.
   let lang = resolve-language(language)
-  let cfg = cfg + (strings: (keywords: lang.keywords, acks: lang.acks,
-    proof: lang.proof, table: lang.table), lang: lang.code)
+  let cfg = cfg + (strings: (
+    keywords: lang.keywords,
+    keywords_proceedings: lang.keywords_proceedings,
+    acks: lang.acks,
+    proof: lang.proof,
+    table: lang.table,
+  ), lang: lang.code)
 
   // The translated-* top matter requires `language` (acmart \ACM@lang@check,
   // acmart.dtx:3346) — a secondary-language block is meaningless monolingual.
@@ -253,6 +272,7 @@
     isbn: isbn,
     code-data-link: code-data-link,
     contributions: contributions,
+    article-type: article-type,
     conf-footer: cfg.conf-footer,
     bibstrip: cfg.bibstrip,
     authors-per-row: authors-per-row,
@@ -268,6 +288,35 @@
     anonymous: anonymous,
   )
 
+  let article-page(p) = {
+    if acm-article != none {
+      if print-folios [#acm-article:#p] else [#acm-article]
+    } else if print-folios [#p]
+  }
+  let journal-footer = {
+    let j = lookup-journal(journal)
+    if not nonacm and j.short != none {
+      [#j.short, Vol. #acm-volume, No. #acm-number#if acm-article != none [, Article #acm-article]. Publication date: #pub-date(meta).]
+    }
+  }
+  let manuscript-footer = if not nonacm [Manuscript submitted to ACM]
+  let conference-line = {
+    if cfg.name == "acmengage" {
+      [EngageCSEdu.#if doi != none { [ https:\/\/doi.org\/#doi] }]
+    } else if conference != none {
+      let short = conference.at("short", default: conference.at("name", default: none))
+      let date = conference.at("date", default: none)
+      let venue = conference.at("venue", default: none)
+      let parts = (short, date, venue).filter(x => x != none)
+      if parts.len() > 0 { parts.join(", ") }
+    }
+  }
+  let footer-row(l: none, c: none, r: none) = grid(
+    columns: (1fr, auto, 1fr),
+    align(left, if l != none { l }),
+    align(center, if c != none { c }),
+    align(right, if r != none { r }),
+  )
   // Running footer. The ACM journal bibstrip sits on the OUTER edge (acmart
   // fancyfoot[RO,LE]): right on odd pages, left on even; nonacm suppresses it
   // (acmart.dtx:8198/8036). In timestamp/authordraft mode a draft timestamp sits
@@ -277,12 +326,17 @@
   let footer-content = context {
     set text(font: cfg.fonts.serif, size: cfg.size.footnotesize)
     let odd = calc.odd(here().page())
-    let j = lookup-journal(journal)
-    // \@acmArticle defaults to empty (acmart.dtx:5477), so the article number may
-    // be absent (#acm-article renders nothing for none).
-    let bib = if not nonacm and j.short != none {
-      [#j.short, Vol. #acm-volume, No. #acm-number, Article #acm-article. Publication date: #pub-date(meta).]
+    let bib = if cfg.name == "acmcp" {
+      let j = lookup-journal(journal)
+      if j.short != none {
+        [#j.name, Volume #acm-volume, Issue #acm-number#if acm-article != none [, Article #acm-article] (#pub-date(meta))#if doi != none { linebreak(); link("https://doi.org/" + doi)[https:\/\/doi.org\/#doi] }]
+      }
+    } else if cfg.name in ("acmsmall", "acmlarge", "acmtog") {
+      journal-footer
+    } else if cfg.name == "manuscript" {
+      manuscript-footer
     }
+    let folio = if print-folios { [#here().page()] }
     if timestamp {
       let total = counter(page).final().first()
       let date = datetime.today().display("[year]-[month]-[day]")
@@ -291,6 +345,12 @@
       // inner edge [LO,RE]: odd -> left, even -> right (bibstrip takes the other side)
       if odd { grid(columns: (1fr, 1fr), align(left, ts), align(right, bib)) }
       else { grid(columns: (1fr, 1fr), align(left, bib), align(right, ts)) }
+    } else if cfg.name == "acmcp" {
+      footer-row(r: bib)
+    } else if cfg.name == "manuscript" and here().page() == 1 {
+      if odd { footer-row(l: bib, r: folio) } else { footer-row(l: folio, r: bib) }
+    } else if cfg.name in ("sigconf", "sigplan", "acmengage", "sigchi-a") {
+      footer-row(c: folio)
     } else if bib != none {
       if odd { align(right, bib) } else { align(left, bib) }
     }
@@ -319,15 +379,26 @@
       return
     }
     set text(font: cfg.fonts.sans, size: cfg.size.footnotesize)
-    // \@acmArticlePage (acmart.dtx:8014): "<article>:<page>", dropping ":<page>"
-    // when folios are off, and the article number itself when it is empty.
-    let article-page = if acm-article != none {
-      if print-folios [#acm-article:#p] else [#acm-article]
-    } else if print-folios [#p]
-    if calc.odd(p) {
-      grid(columns: (1fr, auto), align(left, st), align(right, article-page))
+    let ap = article-page(p)
+    let odd = calc.odd(p)
+    if cfg.name == "manuscript" {
+      if odd { grid(columns: (1fr, auto), align(left, st), align(right, if print-folios { [#p] })) }
+      else { grid(columns: (auto, 1fr), align(left, if print-folios { [#p] }), align(right, sa)) }
+    } else if cfg.name == "acmsmall" {
+      if odd { grid(columns: (1fr, auto), align(left, st), align(right, ap)) }
+      else { grid(columns: (auto, 1fr), align(left, ap), align(right, sa)) }
+    } else if cfg.name in ("acmlarge", "acmtog") {
+      if odd { align(right, [#st • #ap]) }
+      else { align(left, [#ap • #sa]) }
+    } else if cfg.name in ("sigconf", "sigplan", "acmengage", "sigchi-a") {
+      let conf = conference-line
+      if odd {
+        grid(columns: (1fr, 1fr), align(left, st), align(right, if not nonacm { conf }))
+      } else {
+        grid(columns: (1fr, 1fr), align(left, if not nonacm { conf }), align(right, sa))
+      }
     } else {
-      grid(columns: (auto, 1fr), align(left, article-page), align(right, sa))
+      none
     }
   }
 
@@ -355,12 +426,20 @@
   // their vertical position is approximated, anchored to the top-right corner
   // rather than zref-positioned against the frame bottom.)
   let acmcp-frame = if cfg.name == "acmcp" {
-    let tint = cmyk(100%, 10%, 0%, 10%).lighten(90%) // ACMBlue!10!white
+    let article = _acmcp-article-types.at(article-type)
+    let tint = article.color.lighten(90%)
     place(top + left, dy: cfg.margin.top, rect(
       width: cfg.paper.width - cfg.margin.outside,
       height: cfg.paper.height - cfg.margin.top - cfg.margin.bottom,
       fill: tint,
     ))
+  }
+  let acmcp-label = if cfg.name == "acmcp" {
+    let article = _acmcp-article-types.at(article-type)
+    place(top + left, dx: -4pt, dy: cfg.margin.top + 0.22 * (cfg.paper.height - cfg.margin.top - cfg.margin.bottom),
+      rotate(90deg, reflow: false, rect(fill: article.color, outset: (x: 3pt, y: 2pt))[
+        #text(font: cfg.fonts.sans, size: cfg.size.footnotesize, fill: white)[#article-type Article]
+      ]))
   }
 
   set page(
@@ -374,6 +453,7 @@
     footer: footer-content,
     background: {
       acmcp-frame // behind the body (drawn first so the watermark sits on top)
+      acmcp-label
       if watermark != none { align(center + horizon, watermark) }
     },
   )

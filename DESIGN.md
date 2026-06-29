@@ -11,14 +11,16 @@ and LaTeX outputs apart: same fonts, sizes, margins, and spacing. We do **not**
 chase identical line/page breaks — the engines break differently, and that's
 accepted.
 
-**All 11 acmart formats are implemented.** They split into three families that
-share the `parts/` machinery and differ only by a data dict in `formats/`:
+All public acmart formats are accepted. They split into three families that
+share the `parts/` machinery and mostly differ by a data dict in `formats/`; the
+obsolete public names `siggraph` and `sigchi` are aliases to `sigconf`, matching
+the bundled LaTeX class.
 
 | family | formats | columns | top matter |
 |---|---|---|---|
 | single-column journal | manuscript, acmsmall, acmlarge | 1 | `@i` left title + author list, ACM bibstrip |
 | two-column journal | acmtog | 2 | `@i` left title + author list, ACM bibstrip (spanning) |
-| two-column proceedings | sigconf, siggraph, sigplan, sigchi, acmengage | 2 | `@iii` centered title + author grid, first-column copyright block |
+| two-column proceedings | sigconf, sigplan, acmengage (`siggraph`/`sigchi` alias to `sigconf`) | 2 | `@iii` centered title + author grid, first-column copyright block |
 | bespoke | sigchi-a (landscape), acmcp (cover) | 1 | best-effort (see Known limitations) |
 
 Each format's geometry is **probed** from the bundled class (`make probe
@@ -239,28 +241,27 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   the light-tinted cover **frame** (`@ACM@Article@color!10!white`, default ACMBlue
   — acmart.dtx:5899), and the top-right cover **infobox** — the bundled JDS logo
   (`src/assets/acm-jdslogo.png`, from acmart's `acm-jdslogo.png`) over the optional
-  `code-data-link` / `keywords` / `contributions` — are reproduced; the top matter
-  is narrowed by 6pc to clear the box. The only approximation is the box's vertical
-  position: acmart uses two-pass `zref` measurement (acmart.dtx:6733) to butt it
-  against the frame bottom on short documents; we anchor it to the top-right
-  corner. Author addresses (which acmart also packs into the box) stay in the
-  contact-info footnote rather than being duplicated.
+  `code-data-link` / `keywords` / `contributions` / author contact information —
+  are reproduced; the top matter is narrowed by 6pc to clear the box. The only
+  approximation is the box's vertical position: acmart uses two-pass `zref`
+  measurement (acmart.dtx:6733) to butt it against the frame bottom on short
+  documents; we anchor it to the top-right corner. Normal contact/copyright
+  footnotes and normal keyword top matter are suppressed for `acmcp`, as in LaTeX.
 - **Conference Huge title vertical position** differs from LaTeX by ~4–5pt of
   glyph-bbox overshoot: we pin the title cap-top to the top margin (the faithful
   `\topskip` model, as for acmsmall), whereas LaTeX places the baseline and lets
   the cap-top fall where the font's cap height puts it. Imperceptible; the sigplan
   twin marks its Tier-2 top check report-only for this reason.
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
-- No automated pass/fail thresholds; validation is visual + mismatch %.
 
 ## Test harness robustness
 
 LaTeX references are built via `tools/latex-build.sh`, which **reruns pdflatex
-until stable** (cross-references / `TotPages` / lastpage resolved) and **fails if
-a "Temporary page!" placeholder survives**. A single pdflatex pass leaves acmart
-with an unresolved `TotPages`, producing a spurious extra page — the builder
-prevents that from polluting diffs. `tools/build-reference.sh` and the Makefile
-`test`/`test-references` targets all route through it.
+until stable** (cross-references / `TotPages` / lastpage resolved) and fails on
+surviving "Temporary page!" placeholders or final LaTeX errors. A single pdflatex
+pass leaves acmart with an unresolved `TotPages`, producing a spurious extra page
+— the builder prevents that from polluting diffs. `tools/build-reference.sh` and
+the Makefile `test`/`test-references` targets all route through it.
 
 `latex-build.sh` also **generates `acmart.cls` from the bundled [`acmart/`](acmart/)
 sources** (into `tests/out/latex/`) and prepends that dir to `TEXINPUTS`, so every
@@ -270,10 +271,13 @@ version (see the section-title note above).
 
 ## Validation
 
-See the [README](README.md#development--validation) and the `Makefile`. The loop
-is: build the LaTeX reference (`make reference`), build the Typst output, and diff
-page-by-page (`tools/pdfdiff.py`) / measure (`tools/linepitch.py`). Fonts come
-from the bundled OTFs via `tools/tc` (see the README "Fonts" section).
+See the [README](README.md#development--validation) and the `Makefile`. The main
+loop is: build LaTeX references and Typst output (`make test`), then run
+`make check`. The gate covers warning/page-count smoke checks, Typst raster
+goldens, extracted-text equality/semantic assertions, expected compile errors,
+and cross-engine layout metrics. `make validate` separately builds copyright and
+option variants and reports page-1 mismatch percentages. Fonts come from the
+bundled OTFs via `tools/tc` (see the README "Fonts" section).
 
 To audit the *numbers* in `src/formats/acmsmall.typ` against the class itself, run
 **`make probe`**: it compiles [`tools/probe.tex`](tools/probe.tex) against the

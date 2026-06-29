@@ -28,6 +28,11 @@ e.g. `make diff STEM=full-test PAGES=1-2`.
 | `language-es-test` | twin | `language=spanish`: localized keywords/acks/proof + table label "Cuadro"; figure label stays "Fig." |
 | `fontsize-{8,9,11,12}-test` | twin | `font-size` option: non-default base sizes scale the amsart `\@typesizes` ladder + baselineskip-derived heading/skip spacing (10pt is the default, covered by every other test) |
 | `bib-test` | twin | bibliography (ACM CSL vs `ACM-Reference-Format.bst` — see note) |
+| `manuscript-test`, `acmlarge-test`, `acmtog-test` | twin | non-default journal formats and their title/body geometry |
+| `sigconf-test`, `sigplan-test`, `acmengage-test` | twin | proceedings title grids, top matter, copyright blocks, and two-column body |
+| `siggraph-test`, `sigchi-test` | twin | obsolete public format names; both alias to `sigconf` like bundled LaTeX |
+| `acmcp-test`, `sigchi-a-test` | twin | bespoke formats and their documented approximations |
+| `*-pages-test` | twin | continuation-page running heads/footers for manuscript, acmlarge, acmtog, and sigconf |
 | `sample-acmsmall` | e2e | full port of the upstream `acmsmall` sample, vs `out/latex/acmsmall.pdf` |
 | `feature-test` | smoke | compile + golden only (no twin): teaser, badges, title/subtitle notes via synthetic assets |
 | `draft-test` | smoke | compile-only (no golden/metrics): author-draft = timestamp footer + watermark + copyright overlay + review line numbers; output embeds the compile date so it can't be hash-pinned |
@@ -52,8 +57,8 @@ reports — but doesn't fail on — line count there.
 ## Regression gates — `make check`
 
 `tests/manifest.toml` is the single source of truth (per-test kind, reference,
-expected page count, Tier 2 tolerances). `make check` runs three tiers with no
-manual inspection:
+expected page count, text assertions, and Tier 2 tolerances). `make check` runs
+the gates with no manual inspection:
 
 - **Tier 0 (smoke)** — every test compiles with no warnings, page counts match,
   twins keep LaTeX/Typst page-count parity.
@@ -61,6 +66,11 @@ manual inspection:
   committed `golden/typst.sha256`; any unintended output change fails. After an
   intended change run `make accept` to refresh it (Typst is deterministic, so
   hashes are stable for a pinned engine version + the bundled fonts).
+- **Tier 1.5 (text)** — `pdftotext` extraction is normalized and compared exactly
+  for stable twins (`text_equal = true`). Noisy PDFs use targeted manifest
+  `text_assertions` with a required `text_reason`.
+- **Tier 1.6 (expected errors)** — invalid option cases must fail with the
+  intended diagnostic.
 - **Tier 2 (metrics)** — cross-engine layout geometry (left/top margin, baseline
   pitch) gated against manifest tolerances; right margin & line count reported only.
 

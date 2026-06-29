@@ -5,9 +5,10 @@
 // for translated top matter). We model the same: `language` is a babel language
 // name or an ordered list whose final entry is the main language.
 //
-// Only a handful of fixed strings are language-dependent in acmsmall output, and
-// acmart itself renews just two of them per language — \keywordsname and
-// \acksname (acmart.dtx:3304-3338). \proofname and \tablename come from babel;
+// Only a handful of fixed strings are language-dependent in output, and acmart
+// itself renews just two of them per language — \keywordsname and \acksname
+// (acmart.dtx:3304-3338). \keywordsname differs between journal and proceedings
+// formats; \proofname and \tablename come from babel;
 // CCS Concepts, the ACM Reference Format block, theorem names (\newtheorem...
 // {Theorem}, never wrapped in a babel caption) and the permission text all stay
 // English regardless of language (acmart.dtx:1238 — "CCS concepts are always
@@ -18,15 +19,19 @@
 #let _langs = (
   english: (code: "en",
     keywords: "Additional Key Words and Phrases",
+    keywords_proceedings: "Keywords",
     acks: "Acknowledgements", proof: "Proof", table: "Table"),
   french: (code: "fr",
     keywords: "Mots Clés et Phrases Supplémentaires",
+    keywords_proceedings: "Mots clés",
     acks: "Remerciements", proof: "Démonstration", table: "Table"),
   german: (code: "de",
     keywords: "Zusätzliche Schlagwörter und Phrasen",
+    keywords_proceedings: "Schlagwörter",
     acks: "Danksagungen", proof: "Beweis", table: "Tabelle"),
   spanish: (code: "es",
     keywords: "Palabras y Frases Claves Adicionales",
+    keywords_proceedings: "Palabras claves",
     acks: "Expresiones de gratitud", proof: "Demostración", table: "Cuadro"),
 )
 
@@ -37,6 +42,7 @@
 #let default-strings = (
   code: "en",
   keywords: "Additional Key Words and Phrases",
+  keywords_proceedings: "Keywords",
   acks: "Acknowledgments", proof: "Proof", table: "Table",
 )
 

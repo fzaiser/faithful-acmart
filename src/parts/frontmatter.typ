@@ -281,7 +281,7 @@
     // 2. Authors' Contact Information — only the journal/tog formats print this
     // footnote (\if@ACM@journal@bibstrip@or@tog, acmart.dtx:6592); the conference
     // formats carry contact info in the author grid instead. Suppressed if anon.
-    if meta.bibstrip and not anon and meta.authors.len() > 0 and meta.authors.any(a => a.affiliation != none or a.email != none) {
+    if cfg.name != "acmcp" and meta.bibstrip and not anon and meta.authors.len() > 0 and meta.authors.any(a => a.affiliation != none or a.email != none) {
       rule(100%)
       let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
       let contacts = meta.authors.map(contact-line).join("; ")
@@ -293,7 +293,10 @@
     // except cc mode, which still prints its permission text (acmart.dtx:6599-6661).
     let mode = meta.copyright
     let ptext = permission-text(mode, cc-type: meta.cc-type, cc-version: meta.cc-version)
-    if meta.nonacm {
+    if cfg.name == "acmcp" {
+      // acmcp routes contact data to the cover infobox and suppresses the normal
+      // copyright footnote block (acmart.dtx:6589/6604).
+    } else if meta.nonacm {
       if mode == "cc" and ptext != none {
         rule(100%)
         block(spacing: lead, ptext)
@@ -372,11 +375,10 @@
 
 // acmcp cover infobox (\set@ACM@acmcpbox, acmart.dtx:6725): a 5pc-wide box in the
 // top-right corner of page 1 (\fancyhead[R]\makebox[\z@][r], acmart.dtx:8129) —
-// the JDS logo over optional code/data links, keywords and a contributions
-// statement, in scriptsize. The acmcp title is narrowed by 6pc
-// (cfg.title-width-reduction) so it clears the box. Author addresses, which
-// acmart also packs here, stay in the contact-info footnote (so they are not
-// duplicated). place() leaves it out of flow, overlaying the top-right margin.
+// the JDS logo over optional code/data links, keywords, contributions and author
+// contact information, in scriptsize. The acmcp title is narrowed by 6pc
+// (cfg.title-width-reduction) so it clears the box. place() leaves the box out of
+// flow; its vertical anchor is the known approximation versus LaTeX's zref logic.
 #let make-acmcp-infobox(cfg, meta) = {
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
   place(top + right, box(width: 60pt /* 5pc */)[
@@ -386,6 +388,12 @@
     #if meta.code-data-link != none { v(big, weak: true); [Code and data links:\ #meta.code-data-link] }
     #if meta.keywords != none { v(big, weak: true); [Keywords: #kw-join(meta.keywords)] }
     #if meta.contributions != none { v(big, weak: true); meta.contributions }
+    #let contacts = meta.authors.map(contact-line).filter(x => x != none)
+    #if contacts.len() > 0 {
+      v(big, weak: true)
+      let label = if contacts.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
+      [#label #contacts.join([; ]).]
+    }
   ])
 }
 
@@ -583,38 +591,64 @@
   journal-title-head(cfg, meta)
 }
 
+// acmart's \@specialsection is small run-in text for journals and sigplan, but a
+// real unnumbered section for the other proceedings (acmart.dtx:6763-6817).
+#let special-section(cfg, label, content, lang: none) = {
+  if cfg.bibstrip or cfg.name == "sigplan" {
+    special-line(cfg, label, if lang != none { text(lang: lang, content) } else { content })
+  } else {
+    heading(numbering: none, outlined: false)[#label]
+    fm-block(cfg, if lang != none { text(lang: lang, content) } else { content }, justify: false)
+  }
+}
+
 // In-column top matter: abstract / CCS / keywords / ACM reference format. In
 // two-column formats these follow \@printtopmatter (acmart.dtx:6665) and so flow
 // in the FIRST column beneath the spanning title box; in one column they are
 // contiguous with the head. The leading weak skip collapses at a column top.
 #let make-title-body(cfg, meta) = {
-  // --- Abstract (9pt, no heading label, paragraphs indented \parindent) ---
+  let abstract-name = if cfg.name == "acmengage" { "Synopsis" } else { "Abstract" }
+
+  // --- Abstract ---
   if meta.abstract != none {
-    fm-block(cfg, meta.abstract, indent: cfg.parindent)
+    if meta.bibstrip {
+      fm-block(cfg, meta.abstract, indent: cfg.parindent)
+    } else {
+      heading(numbering: none, outlined: false)[#abstract-name]
+      fm-block(cfg, meta.abstract, indent: cfg.parindent)
+    }
   }
   // Translated abstracts: each is another 9pt block in its own language, right
-  // after the main one (journals print no \abstractname; acmart.dtx:6666/7706).
+  // after the main one; proceedings repeat the abstract heading per language.
   for (l, ab) in meta.translated-abstract {
-    fm-block(cfg, text(lang: lang-record(l).code, ab), indent: cfg.parindent)
+    let rec = lang-record(l)
+    if meta.bibstrip {
+      fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent)
+    } else {
+      heading(numbering: none, outlined: false)[#abstract-name]
+      fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent)
+    }
   }
 
   // --- CCS Concepts (suppressed by \settopmatter{printccs=false}) ---
   if meta.ccs != none and meta.print-ccs {
-    special-line(cfg, [CCS Concepts], render-ccs-concepts(meta.ccs))
+    special-section(cfg, [CCS Concepts], render-ccs-concepts(meta.ccs))
   }
 
   // --- Keywords ---
-  // journals use \keywordsname = "Additional Key Words and Phrases" (acmart.dtx:3294);
-  // plain "Keywords" is only for the conference formats. The label is localized
-  // to the main language (meta.strings.keywords).
-  if meta.keywords != none {
-    special-line(cfg, meta.strings.keywords, kw-join(meta.keywords))
+  // acmcp suppresses normal keyword top matter; the infobox prints it instead.
+  if meta.keywords != none and cfg.name != "acmcp" {
+    let label = if meta.bibstrip { meta.strings.keywords } else { meta.strings.keywords_proceedings }
+    special-section(cfg, label, kw-join(meta.keywords))
   }
   // Translated keywords (secondary languages): each block carries \keywordsname
   // in its own language and sets that language for hyphenation (acmart.dtx:5338).
-  for (l, kw) in meta.translated-keywords {
-    let rec = lang-record(l)
-    special-line(cfg, rec.keywords, text(lang: rec.code, kw-join(kw)))
+  if cfg.name != "acmcp" {
+    for (l, kw) in meta.translated-keywords {
+      let rec = lang-record(l)
+      let label = if meta.bibstrip { rec.keywords } else { rec.keywords_proceedings }
+      special-section(cfg, label, kw-join(kw), lang: rec.code)
+    }
   }
 
   // --- ACM Reference Format ---
@@ -628,7 +662,14 @@
         #strong[ACM Reference Format:]\
         #{ if meta.anonymous [Anonymous Author(s)] else { andify(meta.authors.map(a => a.name)) } }. #meta.acm-year. #meta.title#{
           if meta.subtitle != none [: #meta.subtitle]
-        }. #if j.short != none { emph(j.short) + " " }#meta.acm-volume, #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta)), #total #if total == 1 [page] else [pages].#{
+        }. #if not meta.nonacm {
+          if meta.bibstrip {
+            [#if j.short != none { emph(j.short) + " " }#meta.acm-volume, #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta)), #total #if total == 1 [page] else [pages].]
+          } else {
+            let bt = if meta.booktitle != none { meta.booktitle } else if meta.conference != none { meta.conference.at("name", default: none) }
+            [In #emph(bt). ACM, New York, NY, USA#if meta.acm-article != none [, Article #meta.acm-article], #total #if total == 1 [page] else [pages].]
+          }
+        }#{
           if meta.doi != none [ #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]]
         }
       ])

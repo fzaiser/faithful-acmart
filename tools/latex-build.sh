@@ -29,6 +29,8 @@ if [ ! -f "$outdir/acmart.cls" ] || [ "$ROOT/acmart/acmart.dtx" -nt "$outdir/acm
 fi
 [ -f "$outdir/ACM-Reference-Format.bst" ] || \
   cp "$ROOT/acmart/ACM-Reference-Format.bst" "$outdir/" 2>/dev/null || true
+[ -f "$outdir/acm-jdslogo.png" ] || \
+  cp "$ROOT/acmart/acm-jdslogo.png" "$outdir/" 2>/dev/null || true
 
 # Find acmart.cls (in the output dir) and the source's own inputs.
 export TEXINPUTS="$outdir:$srcdir:"
@@ -55,6 +57,10 @@ done
 
 if [ ! -f "$outdir/$base.pdf" ]; then
   echo "ERROR: $outdir/$base.pdf was not produced (see $outdir/$base.log)." >&2
+  exit 1
+fi
+if grep -qE '^! |Emergency stop|Fatal error occurred|No output PDF file produced' "$outdir/$base.log"; then
+  echo "ERROR: LaTeX reported an error while building $base (see $outdir/$base.log)." >&2
   exit 1
 fi
 if pdftotext "$outdir/$base.pdf" - 2>/dev/null | grep -q 'Temporary page'; then

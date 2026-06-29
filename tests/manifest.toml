@@ -36,6 +36,7 @@ pitch = 0.6   # baseline-to-baseline pitch — gated only on uniform_pitch tests
 kind = "twin"
 pages = 1
 uniform_pitch = true
+text_equal = true
 
 [tests.head-test]
 kind = "twin"
@@ -66,11 +67,34 @@ pages = 1
 # format=manuscript: single-column draft geometry (letterpaper, 9pt default) with
 # the generic sans-bold section fonts shared with acmsmall.
 
+[tests.manuscript-pages-test]
+kind = "twin"
+pages = 2
+page1_only = true
+text_equal = false
+text_reason = "Continuation-page header/footer extraction is the point; body flow differs across engines."
+text_assertions = [
+  { engine = "both", kind = "contains", page = 2, text = "Lovelace and Hopper" },
+  { engine = "both", kind = "contains", page = 2, text = "Manuscript submitted to ACM" },
+]
+
 [tests.acmlarge-test]
 kind = "twin"
 pages = 1
 # format=acmlarge: large single-column journal geometry (10pt) with the
 # \sffamily\large (regular-weight) section headings (acmart.dtx:8424).
+
+[tests.acmlarge-pages-test]
+kind = "twin"
+pages = 2
+page1_only = true
+text_equal = false
+text_reason = "Continuation-page header/footer extraction is the point; body flow differs across engines."
+text_assertions = [
+  { engine = "both", kind = "contains", page = 2, text = "Lovelace and Hopper" },
+  { engine = "both", kind = "contains", page = 2, text = "111:2" },
+  { engine = "both", kind = "contains", page = 2, text = "J. ACM, Vol. 37, No. 4, Article 111" },
+]
 
 [tests.acmtog-test]
 kind = "twin"
@@ -80,14 +104,47 @@ page1_only = true
 # contact-info footnote + ACM bibstrip + journal footer (journal/tog top matter in
 # two columns), 9pt parindent, sans-large sections.
 
+[tests.acmtog-pages-test]
+kind = "twin"
+pages = 2
+page1_only = true
+text_equal = false
+text_reason = "Continuation-page header/footer extraction is the point; two-column extraction order differs."
+text_assertions = [
+  { engine = "both", kind = "contains", page = 2, text = "Lovelace and Hopper" },
+  { engine = "both", kind = "contains", page = 2, text = "111:2" },
+  { engine = "both", kind = "contains", page = 2, text = "ACM Trans. Graph., Vol. 37, No. 4, Article 111" },
+]
+
 [tests.sigconf-test]
 kind = "twin"
 pages = 1
 page1_only = true
+text_equal = false
+text_reason = "Two-column author-grid and copyright-block extraction order differs; assert proceedings top-matter semantics."
+text_assertions = [
+  { engine = "both", kind = "contains", text = "Abstract" },
+  { engine = "both", kind = "contains", text = "Keywords" },
+  { engine = "both", kind = "contains", text = "In Proceedings of ACM Conference" },
+  { engine = "both", kind = "contains", text = "ACM, New York, NY, USA" },
+  { engine = "both", kind = "absent", text = "Additional Key Words and Phrases" },
+  { engine = "typst", kind = "absent", text = "Journal of the ACM" },
+]
 # format=sigconf: two-column proceedings. Spanning centered title + author grid,
 # first-column copyright block, serif-bold Large sections. Two columns of
 # justified text break differently across engines (higher pixel mismatch is
 # expected); page1_only gates absolute positions on the title page only.
+
+[tests.sigconf-pages-test]
+kind = "twin"
+pages = 2
+page1_only = true
+text_equal = false
+text_reason = "Continuation-page header/footer extraction is the point; two-column extraction order differs."
+text_assertions = [
+  { engine = "both", kind = "contains", page = 2, text = "Lovelace and Hopper" },
+  { engine = "both", kind = "contains", page = 2, text = "Conference'17, June 2018, Washington, DC, USA" },
+]
 
 [tests.sigconf-authors-test]
 kind = "twin"
@@ -112,15 +169,31 @@ metrics = false
 kind = "twin"
 pages = 1
 page1_only = true
-# format=siggraph: sigconf variant (normalsize serif authors, sans-bold Large
-# sections). Shares the sigconf two-column path; twin of siggraph-test.tex.
+text_equal = false
+text_reason = "Obsolete alias to sigconf; two-column extraction order remains noisy."
+text_assertions = [
+  { engine = "both", kind = "contains", text = "Abstract" },
+  { engine = "both", kind = "contains", text = "Keywords" },
+  { engine = "both", kind = "contains", text = "In Proceedings of ACM Conference" },
+  { engine = "both", kind = "absent", text = "Additional Key Words and Phrases" },
+]
+# format=siggraph: obsolete public option; bundled LaTeX maps it to sigconf.
+# This twin guards that alias behavior and the proceedings top matter.
 
 [tests.sigchi-test]
 kind = "twin"
 pages = 1
 page1_only = true
-# format=sigchi: sigconf variant — secnumdepth=1 (subsections unnumbered), bold
-# serif author names. Twin of sigchi-test.tex.
+text_equal = false
+text_reason = "Obsolete alias to sigconf; two-column extraction order remains noisy."
+text_assertions = [
+  { engine = "both", kind = "contains", text = "Abstract" },
+  { engine = "both", kind = "contains", text = "Keywords" },
+  { engine = "both", kind = "contains", text = "In Proceedings of ACM Conference" },
+  { engine = "both", kind = "absent", text = "Additional Key Words and Phrases" },
+]
+# format=sigchi: obsolete public option; bundled LaTeX maps it to sigconf.
+# This twin guards that alias behavior and the proceedings top matter.
 
 [tests.acmengage-test]
 kind = "twin"
@@ -136,6 +209,18 @@ metrics = false
 kind = "twin"
 pages = 1
 metrics = false
+text_equal = false
+text_reason = "acmcp uses an absolutely positioned cover infobox whose extraction order differs."
+text_assertions = [
+  { engine = "both", kind = "contains", text = "Research Article" },
+  { engine = "both", kind = "contains", text = "Keywords: datasets" },
+  { engine = "both", kind = "contains", text = "BT designed the study" },
+  { engine = "both", kind = "contains", text = "Authors' Contact" },
+  { engine = "both", kind = "contains", text = "Information: Ben" },
+  { engine = "both", kind = "contains", text = "Journal of the ACM, Volume 37, Issue 4, Article 111" },
+  { engine = "typst", kind = "absent", text = "Permission to make digital or hard copies" },
+  { engine = "typst", kind = "absent", text = "Additional Key Words and Phrases" },
+]
 # format=acmcp: ACM cover page (best-effort). Single-column, unnumbered sections
 # (secnumdepth -1), ACM reference format off; the JDS cover frame + infobox ARE
 # reproduced (only the infobox's vertical anchoring is approximated). Twin of
@@ -159,6 +244,7 @@ metrics = false
 kind = "twin"
 pages = 1
 uniform_pitch = true
+text_equal = true
 # Base font-size option `8pt`: amsart \@typesizes ladder + baselineskip-derived
 # heading/skip scaling. Body is on one grid, so pitch is gated.
 
@@ -166,18 +252,21 @@ uniform_pitch = true
 kind = "twin"
 pages = 1
 uniform_pitch = true
+text_equal = true
 # Base font-size option `9pt`.
 
 [tests.fontsize-11-test]
 kind = "twin"
 pages = 1
 uniform_pitch = true
+text_equal = true
 # Base font-size option `11pt`.
 
 [tests.fontsize-12-test]
 kind = "twin"
 pages = 1
 uniform_pitch = true
+text_equal = true
 # Base font-size option `12pt`.
 
 [tests.bib-test]

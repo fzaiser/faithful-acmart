@@ -4,7 +4,7 @@
 #   make reference          build the LaTeX acmart reference PDF (tests/out/latex/acmsmall.pdf)
 #   make example            build the Typst example (tests/out/typst/main.pdf)
 #   make test               build the reference + all Typst test PDFs (+ LaTeX test refs)
-#   make check              run the regression gates (Tier 0 smoke / 1 golden / 2 metrics)
+#   make check              run the regression gates (smoke / golden / text / errors / metrics)
 #   make accept             rebuild Typst PDFs and refresh the Tier 1 golden hashes
 #   make diff               diff a Typst output against its LaTeX reference
 #   make clean              remove all generated output (tests/out/)
@@ -26,7 +26,7 @@ DIFF   := tests/out/diff
 
 # Matched twins: NAME.tex (real LaTeX) + NAME.typ (ours) share a stem and are
 # diffed/compared page-by-page.
-MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test options-test authorversion-test language-test language-de-test language-es-test fontsize-8-test fontsize-9-test fontsize-11-test fontsize-12-test manuscript-test acmlarge-test acmtog-test sigconf-test sigconf-authors-test sigplan-test siggraph-test sigchi-test acmengage-test acmcp-test sigchi-a-test
+MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test options-test authorversion-test language-test language-de-test language-es-test fontsize-8-test fontsize-9-test fontsize-11-test fontsize-12-test manuscript-test acmlarge-test acmtog-test sigconf-test sigconf-authors-test sigplan-test siggraph-test sigchi-test acmengage-test acmcp-test sigchi-a-test manuscript-pages-test acmlarge-pages-test acmtog-pages-test sigconf-pages-test
 # End-to-end ports: full Typst documents with NO hand-written twin — compared
 # against the upstream sample reference built by `make reference` (see the
 # stem->reference map in the diff target and reference= in tests/manifest.toml).
@@ -58,7 +58,7 @@ reference:
 
 # Compile each matched LaTeX test document to a stable PDF in tests/out/latex/.
 test-references:
-	@for t in $(MATCHED); do tools/latex-build.sh tests/$$t.tex; done
+	@set -e; for t in $(MATCHED); do tools/latex-build.sh tests/$$t.tex; done
 
 example:
 	@mkdir -p $(TYPST)
@@ -66,16 +66,19 @@ example:
 
 test: reference test-references
 	@mkdir -p $(TYPST)
-	@for t in $(MATCHED) $(E2E) $(SMOKE); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
+	@set -e; for t in $(MATCHED) $(E2E) $(SMOKE); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
 	$(TC) compile template/main.typ $(TYPST)/main.pdf
 	@echo "All Typst tests built into $(TYPST)/."
 
 # Regression gates (no manual inspection). Tier 0 compiles + checks warnings and
-# page counts; Tier 1 compares Typst renders to committed golden hashes; Tier 2
-# compares cross-engine layout geometry against tests/manifest.toml tolerances.
+# page counts; Tier 1 compares Typst renders to committed golden hashes; Tier 1.5
+# compares extracted text / semantic snippets; Tier 1.6 checks expected compile
+# errors; Tier 2 compares cross-engine layout geometry against manifest tolerances.
 check: test
 	$(PY) tools/check_smoke.py
 	$(PY) tools/check_golden.py
+	$(PY) tools/check_text.py
+	$(PY) tools/check_errors.py
 	$(PY) tools/metrics.py
 
 # Refresh the Tier 1 golden hashes after an intended output change (or a Typst
@@ -83,7 +86,7 @@ check: test
 # the current Typst output is.
 accept:
 	@mkdir -p $(TYPST)
-	@for t in $(MATCHED) $(E2E) $(SMOKE); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
+	@set -e; for t in $(MATCHED) $(E2E) $(SMOKE); do $(TC) compile tests/$$t.typ $(TYPST)/$$t.pdf; done
 	$(PY) tools/check_golden.py --accept
 
 # Diff a Typst output against its LaTeX reference. Override STEM/PAGES:

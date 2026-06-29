@@ -60,12 +60,18 @@
 // (linked) on its own line, then the linked text statement. acmart draws the
 // badge at height=5ex (~2.15x x-height); the SVGs live in assets/cc/.
 #let cc-statement(cc-type, cc-version) = {
+  assert(cc-type in _cc-names,
+    message: "acmart: unsupported Creative Commons type " + repr(cc-type)
+      + "; supported: " + repr(_cc-names.keys()))
+  assert(cc-version in ("3.0", "4.0"),
+    message: "acmart: unsupported Creative Commons version " + repr(cc-version)
+      + "; supported: (\"3.0\", \"4.0\")")
   let url = if cc-type == "zero" {
     "https://creativecommons.org/publicdomain/zero/1.0"
   } else {
     "https://creativecommons.org/licenses/" + cc-type + "/" + cc-version
   }
-  let name = _cc-names.at(cc-type, default: "Attribution")
+  let name = _cc-names.at(cc-type)
   let suffix = if cc-type == "zero" { "" } else {
     " " + (if cc-version == "4.0" { "4.0 International" } else { "3.0 Unported" })
   }
@@ -76,8 +82,16 @@
 
 // The full permission paragraph for a mode (CC computed from type/version).
 #let permission-text(mode, cc-type: "by", cc-version: "4.0") = {
+  assert(mode in _permission or mode == "cc",
+    message: "acmart: unsupported copyright mode " + repr(mode)
+      + "; supported: " + repr(_permission.keys() + ("cc",)))
   if mode == "cc" { cc-statement(cc-type, cc-version) }
-  else { _permission.at(mode, default: _permission.acmlicensed) }
+  else { _permission.at(mode) }
 }
 
-#let copyright-owner(mode) = _owner.at(mode, default: _owner.acmlicensed)
+#let copyright-owner(mode) = {
+  assert(mode in _owner,
+    message: "acmart: unsupported copyright mode " + repr(mode)
+      + "; supported: " + repr(_owner.keys()))
+  _owner.at(mode)
+}
