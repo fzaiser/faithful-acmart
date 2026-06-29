@@ -300,12 +300,16 @@ TESTS: dict[str, Test] = {
     ),
     "bib-test": Test(
         kind="twin", pages=1, uniform_pitch=True,
-        char_diff="ACM CSL vs ACM-Reference-Format.bst differ in content (access dates, "
-                  "Ph.D. vs dissertation, doi formatting, range collapsing)",
-        note="bibliography. The ACM CSL and ACM-Reference-Format.bst differ in content "
-             "(dropped access dates, \"Doctoral dissertation\" vs \"Ph.D.\", doi: vs "
-             "https://doi.org/, in-text range collapsing), so the list reflows and line "
-             "count is reported, not gated. Margins/pitch are held to the same bar.",
+        char_diff="vendored ACM CSL now matches the .bst on doi:/month/genre/conf-date; "
+                  "residual gaps are hayagriva BibTeX->CSL mapping limits (dropped "
+                  "lastaccessed date, @periodical journal name, thesis school+advisor and "
+                  "\"Ph. D.\" vs \"Doctoral dissertation\" wording, conference address)",
+        note="bibliography. src/styles/acm-reference-format.csl is forked to track the "
+             "bundled ACM-Reference-Format.bst (doi: prefix, abbreviated months, report "
+             "genre label, thesis note, conference-location parens). The remaining "
+             "divergences are data hayagriva never populates from the .bib, so the list "
+             "reflows slightly and line count is reported, not gated. Margins/pitch are "
+             "held to the same bar.",
     ),
     "notes-test": Test(
         kind="twin", pages=1,

@@ -185,7 +185,15 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 > to generate it from [`acmart/`](acmart/) (see `tools/test.py`'s `ensure_class`).
 
 **Deliberate approximations:**
-- Bibliography uses Typst's built-in ACM CSL, not `ACM-Reference-Format.bst`.
+- Bibliography uses a CSL style, not `ACM-Reference-Format.bst`. We vendor a fork
+  of the upstream ACM CSL at [`src/styles/acm-reference-format.csl`](src/styles/acm-reference-format.csl),
+  edited to track the bundled `.bst` (DOI prints `doi:<id>`, abbreviated months,
+  report genre label, thesis trailing note, conference-location parens — see the
+  file's header). The residual divergences are hayagriva BibTeX→CSL *data-mapping*
+  limits, not style choices, so they're unreachable from the CSL: dropped
+  `lastaccessed` access dates, `@periodical` journal names, thesis `school`/advisor,
+  conference `address`, the `genre` wording (`Doctoral dissertation` vs the .bst's
+  `Ph. D. Dissertation`), and full-URL `doi` fields the .bst's `strip.doi` would trim.
 - The corresponding-author ✉ mark itself is faithful: acmart's `\correspondingauthor`
   (new in v2.18) emits a superscript envelope `\textsuperscript{\ding{41}}`
   (`acmart.dtx:5430`). What differs is *ordering* — we emit ✉-then-note in a fixed

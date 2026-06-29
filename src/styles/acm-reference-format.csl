@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" class="in-text" version="1.0" demote-non-dropping-particle="sort-only" default-locale="en-US">
+  <info>
+    <title>Association for Computing Machinery</title>
+    <title-short>ACM</title-short>
+    <id>http://www.zotero.org/styles/association-for-computing-machinery</id>
+    <link href="http://www.zotero.org/styles/association-for-computing-machinery" rel="self"/>
+    <link href="http://www.zotero.org/styles/acm-sigchi-proceedings" rel="template"/>
+    <link href="https://www.acm.org/publications/authors/reference-formatting" rel="documentation"/>
+    <author>
+      <name>Patrick O'Brien</name>
+      <email>obrienpat86@gmail.com</email>
+    </author>
+    <contributor>
+      <name>Junliang Hu</name>
+      <email>vtta0124@gmail.com</email>
+    </contributor>
+    <category citation-format="numeric"/>
+    <category field="engineering"/>
+    <updated>2024-01-24T11:32:48+00:00</updated>
+    <rights license="http://creativecommons.org/licenses/by-sa/3.0/">This work is licensed under a Creative Commons Attribution-ShareAlike 3.0 License</rights>
+    <!--
+      typst-acmart: vendored fork of the upstream "Association for Computing
+      Machinery" CSL (citation-style-language/styles), edited to track the
+      bundled ACM-Reference-Format.bst more closely. Deltas from upstream
+      (each marked "acmart:" at the edit site):
+        1. DOI prints "doi:<id>", not "https://doi.org/<id>"   (output.doi)
+        2. journal date uses abbreviated months "Oct.", not "October"
+        3. report/book branch prepends the genre label ("Technical Report.")
+        4. paper-conference: location in "(...)", no spurious issued date
+        5. thesis branch appends the trailing note ("AAT 8506171.")
+      Residual gaps vs the .bst are hayagriva BibTeX->CSL mapping limits, not
+      style choices (dropped lastaccessed date, @periodical journal name,
+      thesis school/advisor, conference address, "Ph. D." genre wording).
+    -->
+  </info>
+  <macro name="author">
+    <group suffix=".">
+      <names variable="author">
+        <name delimiter=", " and="text" sort-separator=", "/>
+        <label form="short" text-case="capitalize-first" prefix=" (" suffix=")"/>
+        <substitute>
+          <names variable="editor"/>
+        </substitute>
+      </names>
+    </group>
+  </macro>
+  <macro name="editor">
+    <names variable="editor">
+      <name delimiter=", " and="text" delimiter-precedes-last="never"/>
+      <label form="short" prefix=" (" suffix=")"/>
+    </names>
+  </macro>
+  <macro name="title">
+    <choose>
+      <if type="bill book graphic legal_case legislation motion_picture report song" match="any">
+        <group delimiter=" ">
+          <text variable="title" font-style="italic"/>
+          <group delimiter=" " prefix="(" suffix=")">
+            <number variable="edition" form="ordinal"/>
+            <text term="edition" form="short"/>
+          </group>
+        </group>
+      </if>
+      <else>
+        <text variable="title"/>
+      </else>
+    </choose>
+  </macro>
+  <macro name="year">
+    <date variable="issued">
+      <date-part name="year"/>
+    </date>
+  </macro>
+  <macro name="journal">
+    <group delimiter=", ">
+      <group delimiter=" ">
+        <text variable="container-title" form="short" font-style="italic"/>
+        <text variable="volume" suffix=","/>
+        <group>
+          <text variable="issue" suffix=" "/>
+          <!-- acmart: abbreviated month ("Oct."), matching the .bst, not "October" -->
+          <date variable="issued" prefix="(" suffix=")">
+            <date-part name="month" form="short" suffix=" "/>
+            <date-part name="year"/>
+          </date>
+        </group>
+      </group>
+    </group>
+  </macro>
+  <macro name="edition">
+    <choose>
+      <if is-numeric="edition">
+        <group delimiter=" ">
+          <number variable="edition" form="ordinal"/>
+          <text term="edition" form="short"/>
+        </group>
+      </if>
+      <else>
+        <text variable="edition"/>
+      </else>
+    </choose>
+  </macro>
+  <macro name="book-publisher">
+    <group delimiter=", ">
+      <text variable="publisher"/>
+      <text variable="publisher-place"/>
+    </group>
+  </macro>
+  <macro name="access">
+    <choose>
+      <if variable="DOI">
+        <!-- acmart: ".bst" output.doi renders "doi:<id>", not the URL form -->
+        <text variable="DOI" prefix="doi:"/>
+      </if>
+      <else-if variable="URL">
+        <group delimiter=" ">
+          <text term="retrieved" text-case="capitalize-first"/>
+          <date variable="accessed" form="text"/>
+          <text term="from"/>
+          <text variable="URL"/>
+        </group>
+      </else-if>
+    </choose>
+  </macro>
+  <citation collapse="citation-number">
+    <sort>
+      <key variable="citation-number"/>
+    </sort>
+    <layout prefix="[" suffix="]" delimiter=", ">
+      <group delimiter=":">
+        <text variable="citation-number"/>
+        <text variable="locator"/>
+      </group>
+    </layout>
+  </citation>
+  <bibliography second-field-align="flush" entry-spacing="0">
+    <sort>
+      <key macro="author"/>
+      <key variable="issued"/>
+    </sort>
+    <layout>
+      <text variable="citation-number" prefix="[" suffix="]"/>
+      <group delimiter=". " suffix=". ">
+        <text macro="author"/>
+        <text macro="year"/>
+        <text macro="title"/>
+      </group>
+      <group suffix=".">
+        <choose>
+          <if type="bill book graphic legal_case legislation motion_picture report song" match="any">
+            <!-- acmart: prepend the genre label ("Technical Report.") like the
+                 .bst's format.tr.number; genre is empty for plain books, so
+                 this is a no-op there. -->
+            <group delimiter=". " suffix=".">
+              <text variable="genre" text-case="title"/>
+              <text macro="book-publisher"/>
+            </group>
+          </if>
+          <else-if type="paper-conference">
+            <!-- acmart: match the .bst's "In <booktitle> (<location>). <pub>,
+                 <pages>." The conference location goes in parens (the .bst's
+                 format.city); the spurious CSL issued-date is dropped (the year
+                 already leads the entry), and the post-publisher address is
+                 omitted because hayagriva keeps only one place. -->
+            <group suffix=". ">
+              <text term="in" text-case="capitalize-first" suffix=" "/>
+              <text variable="container-title" font-style="italic"/>
+              <text variable="publisher-place" prefix=" (" suffix=")"/>
+            </group>
+            <group delimiter=", " suffix=".">
+              <text variable="publisher"/>
+              <text variable="page"/>
+            </group>
+          </else-if>
+          <else-if type="chapter" match="any">
+            <group delimiter=" ">
+              <text term="in" text-case="capitalize-first"/>
+              <group delimiter=", ">
+                <group delimiter=" ">
+                  <text variable="container-title" font-style="italic"/>
+                  <text macro="edition" prefix="(" suffix=")"/>
+                </group>
+                <text macro="editor"/>
+              </group>
+            </group>
+            <group suffix="." delimiter=", " prefix=". ">
+              <text macro="book-publisher"/>
+              <text variable="page"/>
+            </group>
+          </else-if>
+          <else-if type="speech" match="any">
+            <group delimiter=". ">
+              <group delimiter=" ">
+                <text term="in" text-case="capitalize-first"/>
+                <group delimiter=", ">
+                  <group delimiter=" ">
+                    <text variable="event" font-style="italic"/>
+                    <text macro="edition" prefix="(" suffix=")"/>
+                  </group>
+                  <text macro="editor"/>
+                </group>
+              </group>
+              <group delimiter=", " suffix=".">
+                <text macro="book-publisher"/>
+                <text variable="page"/>
+              </group>
+            </group>
+          </else-if>
+          <else-if type="article-journal">
+            <group delimiter=", " suffix=".">
+              <text macro="journal"/>
+              <text variable="page"/>
+            </group>
+          </else-if>
+          <else-if type="thesis" match="any">
+            <!-- acmart: append the trailing note ("AAT 8506171.") the .bst
+                 emits via output...note. The genre wording ("Doctoral
+                 dissertation" vs the .bst's "Ph. D. Dissertation") and the
+                 dropped school/advisor are hayagriva mapping limits. -->
+            <group delimiter=". ">
+              <text variable="genre"/>
+              <text macro="book-publisher"/>
+              <text variable="note"/>
+            </group>
+          </else-if>
+          <else>
+            <group suffix="." delimiter=", ">
+              <group delimiter=" " font-style="italic">
+                <text variable="container-title"/>
+                <text variable="volume"/>
+              </group>
+              <text variable="page"/>
+            </group>
+          </else>
+        </choose>
+      </group>
+      <text macro="access" prefix=" "/>
+    </layout>
+  </bibliography>
+</style>

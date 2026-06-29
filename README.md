@@ -25,7 +25,8 @@ Validated page-by-page against real LaTeX acmart output (see `tools/`). Covered:
   and suppressed normal copyright/contact footnotes
 - Body elements: figure/table captions, theorem environments
   (theorem/lemma/…/definition/proof with QED), lists, footnotes, code
-- Bibliography via the official ACM CSL
+- Bibliography via a vendored ACM CSL (`src/styles/`), forked from the upstream
+  style to track `ACM-Reference-Format.bst`
 - All copyright modes (acmcopyright/acmlicensed/rightsretained, the US/Canada/other
   -gov family, iw3c2w3[g], and Creative Commons with its licence badge). Unknown
   copyright modes, CC types, and unsupported CC versions are rejected.
@@ -40,7 +41,8 @@ Known differences from LaTeX (engine limits, not spacing errors — see
   pages and different page breaks.
 - `sigchi-a` omits margin-note footnotes; `acmcp` anchors its infobox at the
   top-right rather than LaTeX's two-pass `zref` vertical position.
-- Minor: ACM-CSL vs `.bst` details; author note/✉ mark order; list hanging-label
+- Minor: residual ACM-CSL vs `.bst` gaps (hayagriva BibTeX→CSL data limits, see
+  DESIGN.md); author note/✉ mark order; list hanging-label
   indent (no LaTeX `\llap`); `screen` link colour ~1/255 (Typst 8-bit CMYK).
 - Math fidelity is still best-effort.
 

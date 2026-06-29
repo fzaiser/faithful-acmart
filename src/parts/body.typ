@@ -63,8 +63,9 @@
   // Monospace (Inconsolata/zi4) for inline and block code.
   show raw: set text(font: cfg.fonts.mono)
 
-  // Bibliography: ACM CSL, footnotesize (8pt), "References" heading.
-  set bibliography(style: "association-for-computing-machinery", title: [References])
+  // Bibliography: vendored ACM CSL (../styles, forked to track the bundled
+  // ACM-Reference-Format.bst — see its header), footnotesize (8pt), "References".
+  set bibliography(style: "/src/styles/acm-reference-format.csl", title: [References])
   show bibliography: set text(size: cfg.size.footnotesize)
   show bibliography: set par(leading: comp(cfg, sz: "footnotesize"))
 

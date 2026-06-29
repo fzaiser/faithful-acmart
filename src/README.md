@@ -17,9 +17,10 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/journals.typ` | the ACM journal table (key → name/short/issn) + `lookup-journal`, transcribed from acmart.dtx |
 | `parts/strings.typ` | localization for the `language` option: per-language fixed strings (keywords/acks/proof/table) + babel-name→Typst-lang map, transcribed from acmart.dtx |
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |
-| `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography (ACM CSL) |
+| `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography (vendored ACM CSL in `styles/`) |
 | `parts/theorems.typ` | theorem-like environments + shared counter; reads the active format via `state` (`cfg-state`) since users call them in the body |
 | `assets/` | bundled image assets, addressed root-absolute (`/src/assets/…`): `acm-jdslogo.png` (acmcp cover) and `cc/` (Creative Commons licence badges) |
+| `styles/` | `acm-reference-format.csl` — vendored fork of the upstream ACM CSL, edited to track the bundled `ACM-Reference-Format.bst` (see the file header for the deltas) |
 
 ## Format-as-data
 
