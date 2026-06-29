@@ -65,7 +65,7 @@
 
   // Bibliography: vendored ACM CSL (../styles, forked to track the bundled
   // ACM-Reference-Format.bst — see its header), footnotesize (8pt), "References".
-  set bibliography(style: "/src/styles/acm-reference-format.csl", title: [References])
+  set bibliography(style: "../styles/acm-reference-format.csl", title: [References])
   show bibliography: set text(size: cfg.size.footnotesize)
   show bibliography: set par(leading: comp(cfg, sz: "footnotesize"))
 

@@ -397,7 +397,7 @@
 #let make-acmcp-infobox(cfg, meta) = {
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
   place(top + right, box(width: 60pt /* 5pc */)[
-    #image("/src/assets/acm-jdslogo.png", width: 100%)
+    #image("../assets/acm-jdslogo.png", width: 100%)
     #set text(size: cfg.size.scriptsize)
     #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: "scriptsize"))
     #if meta.code-data-link != none { v(big, weak: true); [Code and data links:\ #meta.code-data-link] }

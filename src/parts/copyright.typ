@@ -75,7 +75,7 @@
   let suffix = if cc-type == "zero" { "" } else {
     " " + (if cc-version == "4.0" { "4.0 International" } else { "3.0 Unported" })
   }
-  link(url, box(image("/src/assets/cc/cc-" + cc-type + ".svg", height: 2.15em)))
+  link(url, box(image("../assets/cc/cc-" + cc-type + ".svg", height: 2.15em)))
   linebreak()
   link(url)[This work is licensed under a Creative Commons #name#suffix License.]
 }
