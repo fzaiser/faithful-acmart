@@ -349,6 +349,8 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="250 book pages"),         # format.bookpages
             Assertion(engine="both", text="Issue 7"),                # issue field
             Assertion(engine="both", text="Preprint"),               # howpublished in @article
+            Assertion(engine="both", text="Jan von der Berg"),       # comma von-name
+            Assertion(engine="both", text="Ludwig van Beethoven"),   # no-comma von-name
         ),
     ),
     "notes-test": Test(

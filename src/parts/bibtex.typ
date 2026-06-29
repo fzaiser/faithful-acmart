@@ -175,26 +175,60 @@
 
 #let is-lower-tok(t) = t != "" and lower(t.first()) == t.first() and upper(t.first()) != t.first()
 
-#let parse-one-name(raw) = {
-  let r = raw.trim()
-  let parts = r.split(",").map(p => p.trim())
-  let first = ""; let von = ""; let last = ""; let jr = ""
-  if parts.len() == 1 {
-    let toks = r.split(regex("\s+")).filter(t => t != "")
-    last = toks.at(-1, default: "")
-    first = if toks.len() > 1 { toks.slice(0, -1).join(" ") } else { "" }
-  } else {
-    let vonlast = parts.at(0)
-    if parts.len() == 2 { first = parts.at(1) } else { jr = parts.at(1); first = parts.at(2) }
-    // BibTeX von = the LEADING run of lowercase-initial words (never the last word);
-    // last = the rest. (Not "every lowercase word" — "Straß e" is all Last.)
-    let toks = vonlast.split(regex("\s+")).filter(t => t != "")
-    let i = 0
-    while i < toks.len() - 1 and is-lower-tok(toks.at(i)) { i += 1 }
-    von = toks.slice(0, i).join(" ")
-    last = toks.slice(i).join(" ")
+// indices of the first / last lowercase-initial token (none if all uppercase),
+// matching biblatex (brace-verbatim tokens count as uppercase, via is-lower-tok).
+#let lower-bounds(toks) = {
+  let first = none
+  let last = none
+  for (i, t) in toks.enumerate() {
+    if is-lower-tok(t) { if first == none { first = i }; last = i }
   }
-  (first: first, von: von, last: last, jr: jr)
+  (first, last)
+}
+
+// "von Last" (the part before the first comma). Per biblatex Person::parse:
+// von = up to AND INCLUDING the last lowercase word (when any uppercase word
+// exists), else all but the final word; last = the remainder.
+#let split-von-last(toks) = {
+  if toks.len() == 0 { return ("", "") }
+  let (_, lastlc) = lower-bounds(toks)
+  if toks.any(t => not is-lower-tok(t)) {
+    if lastlc == none { ("", toks.join(" ")) }
+    else { (toks.slice(0, lastlc + 1).join(" "), toks.slice(lastlc + 1).join(" ")) }
+  } else {
+    (toks.slice(0, -1).join(" "), toks.at(-1))
+  }
+}
+
+// "First von Last" (no comma). first = leading uppercase run; von = first..last
+// lowercase word; last = the trailing uppercase run (or the final word if none).
+#let split-first-von-last(toks) = {
+  let (firstlc, lastlc) = lower-bounds(toks)
+  if firstlc == none {
+    (toks.slice(0, -1).join(" "), "", toks.at(-1, default: ""))
+  } else {
+    let first = toks.slice(0, firstlc).join(" ")
+    if lastlc + 1 >= toks.len() {  // trailing lowercase: take the final word as Last
+      (first, toks.slice(firstlc, toks.len() - 1).join(" "), toks.at(-1))
+    } else {
+      (first, toks.slice(firstlc, lastlc + 1).join(" "), toks.slice(lastlc + 1).join(" "))
+    }
+  }
+}
+
+#let parse-one-name(raw) = {
+  let parts = raw.trim().split(",").map(p => p.trim())
+  let toks = parts.at(0).split(regex("\s+")).filter(t => t != "")
+  if parts.len() == 1 {
+    if toks.len() == 0 { return (first: "", von: "", last: "", jr: "") }
+    let (first, von, last) = split-first-von-last(toks)
+    (first: first, von: von, last: last, jr: "")
+  } else {
+    let (von, last) = split-von-last(toks)
+    let jr = if parts.len() > 2 { parts.at(1) } else { "" }
+    let first = if parts.len() > 2 { parts.at(2) } else { parts.at(1) }
+    (first: first, von: von, last: last, jr: jr)
+  }
 }
 
 #let parse-names(raw) = split-and(raw).map(parse-one-name)
