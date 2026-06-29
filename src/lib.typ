@@ -25,7 +25,7 @@
 #import "parts/strings.typ": resolve-language, lang-record
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
-#import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citeyear, bbl-citeauthor, bbl-bibliography, cite-style-state
+#import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citeyear, bbl-citeauthor, bbl-bibliography, cite-style-state, tex-macros-state
 
 // "bst" bibliography backend (pure-Typst ACM-Reference-Format port). Use these in
 // place of `@key` / `#bibliography(...)` when `bibliography-backend: "bst"`.
@@ -131,6 +131,10 @@
   // Citation style for the "bst" backend, mirroring acmart's \citestyle:
   // "numeric" (default, "[N]") or "author-year" ("[Author Year]" + a/b/c years).
   cite-style: "numeric",
+  // Extra/override TeX-command decodings for the "bst" backend, keyed by bare
+  // command name (a leading "\" is tolerated): e.g. (RR: "ℝ", "\\myunit": "kg").
+  // Applied in both text and inline math ($...$); overrides the built-in tables.
+  tex-macros: (:),
   short-title: auto,
   short-authors: auto,
   // --- acmart class & \settopmatter options ---
@@ -250,6 +254,7 @@
   assert(cite-style in ("numeric", "author-year"),
     message: "acmart: `cite-style` must be \"numeric\" or \"author-year\".")
   cite-style-state.update(cite-style)
+  tex-macros-state.update(tex-macros)
 
   // The translated-* top matter requires `language` (acmart \ACM@lang@check,
   // acmart.dtx:3346) — a secondary-language block is meaningless monolingual.

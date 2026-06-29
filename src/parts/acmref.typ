@@ -618,12 +618,15 @@
 // "numeric" (default) or "author-year" — set by the acmart show rule from the
 // `cite-style` option, mirroring acmart's \citestyle{acmnumeric|acmauthoryear}.
 #let cite-style-state = state("acmref-citestyle", "numeric")
+// user TeX-macro overrides for field decoding (acmart() `tex-macros` option)
+#let tex-macros-state = state("acmref-texmacros", (:))
 
 // accept a single path or a list of paths; later files override earlier keys
 #let read-merged(paths) = {
+  let tm = tex-macros-state.final()
   let ps = if type(paths) == array { paths } else { (paths,) }
   let db = (:)
-  for p in ps { db = db + read-bib(p) }
+  for p in ps { db = db + read-bib(p, tex-macros: tm) }
   db
 }
 

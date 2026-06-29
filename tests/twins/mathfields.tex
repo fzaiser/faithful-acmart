@@ -1,0 +1,20 @@
+%% mathfields — basic inline-math ($...$) in reference fields via the bst backend:
+%% greek letters, super/subscripts, relations and text operators map to base Unicode
+%% (which the text gate's NFKC folds to match LaTeX's math-italic output), plus the
+%% user `tex-macros` escape hatch for custom commands (\widget, \RR). LaTeX twin of
+%% mathfields.typ.
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\newcommand{\widget}{W}
+\newcommand{\RR}{\mathbb{R}}
+\begin{document}
+\thispagestyle{empty}% titleless body-only fixture: re-assert empty.
+
+\section{Introduction}
+Inline math in titles \cite{lam,greek,custom}.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{mathfields}
+
+\end{document}

@@ -237,6 +237,16 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     organization leads with its `key` — both in the reference text *and* the sort key.
   - **`distinctURL`** — the per-entry field that prints the URL alongside a DOI
     (`output.url`'s `distinctURL empty.or.zero not`).
+  - **Inline math (`$…$`) in fields** — a curated subset, enough for the maths that
+    actually appears in titles (`$\lambda$-calculus`, `$\chi^2$`, `$\Theta(n)$`,
+    `$O(n\log n)$`). `bibtex.typ`'s `decode-math` maps greek + relations + text
+    operators to **base** Unicode and `^`/`_` to Unicode super/subscripts; these
+    NFKC-fold to exactly what LaTeX's math-italic output extracts as
+    (`𝜆`→`λ`, `²`→`2`), so the `mathfields` twin gates them with no exemption.
+    Beyond the table, the **`tex-macros` option** (keyed by bare command name) lets a
+    user supply replacements for custom commands — in both text and math — covering
+    the `\newcommand` case without a TeX engine. Full equations / arbitrary nested
+    constructs are still out of scope (unknown commands pass through verbatim).
 
   **Not ported** (genuinely out of reach, or faithful to omit — the exhaustive list):
   - **ISBN / ISBN-13 / ISSN / CODEN / LCCN.** Emitted by the `.bst` but suppressed by
@@ -244,19 +254,20 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     `\unskip` fallback eats them), so omitting them is *faithful to stock acmart*. A
     user who redefines `\showISBNx` to surface them can't via this backend; the
     `show-isbn-10-and-13` branch is unimplemented because no acmart format reaches it.
-  - **Native `@key` / `#bibliography`** don't route to the bst engine — and *can't*.
-    Typst's `cite`/`bibliography` elements are closed: there is no public hook to make
-    a custom renderer supply the citation labels or the numbered list that native
-    `@key` resolves against. The backend therefore owns its own cite layer
-    (`acm-cite` & friends + `acm-bibliography`); routing `@key` through it would
-    require Typst to expose a citation-provider API that does not exist.
-  - **Arbitrary TeX in fields** beyond the decoded set — *unbounded by nature*. The
-    single-pass lexer in `bibtex.typ` decodes accents (`\"o`→ö), special letters
-    (`\ss`→ß, `\o`→ø) and leaves known macros (`\url`/`\emph`/`\&`…) to the formatter,
-    but a field can contain any TeX at all: inline math (`$x^2$`), user-defined macros
-    (`\mycmd`), nested groups, `\newcommand`s pulled from the preamble. Interpreting
-    those would mean embedding a TeX engine; we decode the finite set the ACM samples
-    actually use and pass the rest through verbatim.
+  - **Native `@key` / `#bibliography`** don't route to the bst engine — a deliberate
+    omission, **not** an impossibility. A document-level `show ref:`/`show cite:` rule
+    *can* intercept `@key` and render a custom citation (this is exactly how the
+    `alexandria` and `pergamon` packages drive their own bibliographies; verified: a
+    `show ref: it => …` rule renders `@foo` with no `bibliography()` loaded and no
+    "label not found" error). We currently expose `acm-cite` & friends +
+    `acm-bibliography` instead; wiring `@key` through a show-rule (numbering via the
+    same `state` pass we already run) is a viable future addition.
+  - **Arbitrary / full-equation TeX** beyond the `decode-math` table and `tex-macros`
+    — *unbounded by nature*. A field can contain any TeX (multi-line display math,
+    macros that expand to layout, `\newcommand`s pulled from the preamble);
+    interpreting all of it would mean embedding a TeX engine. We decode the finite set
+    titles use, let `tex-macros` patch the rest, and pass anything unknown through
+    verbatim.
   - **BibTeX warnings** (missing year, empty author, bad page ranges…) are not emitted
     — by choice, not necessity. Rendering is best-effort and silent;
     `\begin{thebibliography}{width}` label-width (`longest.label`) is moot since Typst

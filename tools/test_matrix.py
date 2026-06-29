@@ -384,6 +384,18 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Jones et al."),           # >2-author short label (\citet)
         ),
     ),
+    "mathfields": Test(
+        kind="twin", pages=1,
+        note="inline math ($...$) in reference fields via the bst backend: greek "
+             "letters, ^/_ super/subscripts, relations and text operators (\\log etc.) "
+             "decode to base Unicode in bibtex.typ's decode-math, which the char bag's "
+             "NFKC fold collapses to match LaTeX's math-italic pdftotext output (𝜆->λ, "
+             "²->2). Also exercises the `tex-macros` user escape hatch for custom "
+             "commands (\\widget, \\RR). Char bag gated, no exemption.",
+        text_assertions=(
+            Assertion(engine="both", text="-calculus"),              # $\lambda$-calculus
+        ),
+    ),
     "notes-test": Test(
         kind="twin", pages=1,
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "
