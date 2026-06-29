@@ -1,7 +1,7 @@
 # Tier 1 golden raster hashes — Typst 0.14.2 @ 150dpi
 # regenerate with: tools/test.py accept
 acmcp-test 1 418608f0affb7b91512201e58935b2aa9165c2b28a5e8401545d7f88c394bf3c
-acmengage-test 1 fc7bd7974a4272d77122feca7932edcb3a0c070510397f34aa44073d7654ec17
+acmengage-test 1 698f6c273eb1c1b496d4b1e01e387e8cb3ae6d317aea4581a753a5e0daeec950
 acmlarge-pages-test 1 1f5f8c3bd52d0768ed2920347e827594f75d60600014fe2b0acaa35e6922d0ab
 acmlarge-pages-test 2 01d9985f0555d67027917699805dd5b6de905841a115c36ae8965714f0c1ce60
 acmlarge-test 1 dea4dc83b67acb3fb5e244446318763e99da236d7042b76e823c240bd7ebd726

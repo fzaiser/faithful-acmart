@@ -189,14 +189,16 @@ _EDGE_PUNCT = ".,;:!?()[]{}\"'*•-/"
 _EOL_HYPHEN = re.compile(r"[­‐‑-]\s*\n\s*")
 
 
+# URL scheme prefix, tolerant of whitespace the engines insert at a break (LaTeX
+# can split a DOI as `https:` <newline> `//doi…`). Stripped from both bags: where
+# a URL breaks after the scheme pdftotext splits it off, and acmart vs our port
+# disagree on whether the scheme is even shown — cosmetic; the path is what counts.
+_URL_SCHEME = re.compile(r"https?\s*:\s*/\s*/")
+
+
 def bag_tokens(raw: str) -> Counter:
     """Token multiset for order-independent text comparison of a raw pdftotext dump."""
-    text = normalize(_EOL_HYPHEN.sub("", raw))
-    # Drop URL scheme prefixes: where a URL gets a break opportunity after the
-    # scheme, pdftotext splits `https://` off as its own token, and acmart vs our
-    # port disagree on whether the scheme is even shown — both are cosmetic, the
-    # path that follows is what matters.
-    text = re.sub(r"https?://", "", text)
+    text = _URL_SCHEME.sub("", normalize(_EOL_HYPHEN.sub("", raw)))
     return Counter(t for w in text.split() if (t := w.strip(_EDGE_PUNCT)))
 
 
@@ -213,14 +215,18 @@ def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
 
 
 def char_bag(raw: str) -> Counter:
-    """Whitespace-free character multiset (same normalization as the word bag).
+    """Whitespace- and digit-free character multiset (same normalization as the word bag).
 
     Order- and line-break-independent like the word bag, but it keeps punctuation
     and ignores word tokenization, so it's a stricter tripwire: a stray comma or
     period the word bag's edge-strip hides shows up here, while hyphenation still
     washes out (a broken word differs only by a space, and spaces are excluded).
+    Pure-digit runs (folios, section numbers, years — which pdftotext segments
+    onto their own line or glues to text inconsistently between engines) are
+    dropped; the word bag and assertions still check those.
     """
-    text = re.sub(r"https?://", "", normalize(_EOL_HYPHEN.sub("", raw)))
+    text = _URL_SCHEME.sub("", normalize(_EOL_HYPHEN.sub("", raw)))
+    text = re.sub(r"\b\d+\b", "", text)
     return Counter(re.sub(r"\s+", "", text))
 
 
@@ -507,32 +513,22 @@ def gate_text(report: bool = False) -> list[str]:
             continue
 
         local: list[str] = []
+        lraw, traw = pdf_text(lref), pdf_text(tpdf)
         if t.text_equal is True:
-            ltext, ttext = normalize(pdf_text(lref)), normalize(pdf_text(tpdf))
+            ltext, ttext = normalize(lraw), normalize(traw)
             if ltext != ttext:
                 local.append(f"{name}: normalized text differs\n    {_first_diff(ltext, ttext)}")
             elif report:
                 print(f"equal {name}")
         elif t.text_equal == "bag":
-            lraw, traw = pdf_text(lref), pdf_text(tpdf)
             cov, miss, extra = bag_coverage(lraw, traw)
             if miss or extra:
                 local.append(
                     f"{name}: word bags differ ({cov * 100:.2f}% common)\n"
                     f"    only in LaTeX: {', '.join(list(miss)[:12])}\n"
                     f"    only in Typst: {', '.join(list(extra)[:12])}")
-            else:
-                # Word bags match — tighten with the char bag (catches a stray
-                # comma/period the edge-strip drops). Diagnose by reading both
-                # `pdftotext` dumps; the differing characters point the way.
-                ca, cb = char_bag(lraw), char_bag(traw)
-                cm, ce = ca - cb, cb - ca
-                if cm or ce:
-                    local.append(
-                        f"{name}: word bags match but char bags differ\n"
-                        f"    only in LaTeX: {dict(cm)}\n    only in Typst: {dict(ce)}")
-                elif report:
-                    print(f"bag   {name}: word+char exact (order-independent)")
+            elif report:
+                print(f"bag   {name}: word-bag exact (order-independent)")
         elif t.text_equal is False:
             if not t.text_reason:
                 local.append(f"{name}: text_equal=false requires text_reason")
@@ -540,6 +536,23 @@ def gate_text(report: bool = False) -> list[str]:
                 print(f"skip  {name}: {t.text_reason}")
         elif report:
             print(f"skip  {name}: text equality not configured")
+
+        # Universal char-bag tripwire on top of the above: every twin's content
+        # must match as an exact character multiset (order-, line-break-, number-
+        # and scheme-independent), unless it carries a documented char_diff
+        # exemption — a known content difference or a pdftotext extraction artifact.
+        if t.char_diff:
+            if report:
+                print(f"skip  {name}: char bag exempt ({t.char_diff})")
+        else:
+            ca, cb = char_bag(lraw), char_bag(traw)
+            cm, ce = ca - cb, cb - ca
+            if cm or ce:
+                local.append(
+                    f"{name}: char bags differ (read both pdftotext dumps to locate)\n"
+                    f"    only in LaTeX: {dict(cm)}\n    only in Typst: {dict(ce)}")
+            elif report:
+                print(f"char  {name}: exact")
 
         for i, a in enumerate(t.text_assertions, 1):
             needle = normalize(a.text)
@@ -556,7 +569,8 @@ def gate_text(report: bool = False) -> list[str]:
                 elif a.kind not in ("contains", "absent"):
                     local.append(f"{name}: unknown text assertion kind {a.kind!r}")
 
-        if not local and not report and (t.text_equal is not None or t.text_assertions):
+        if not local and not report and (
+                t.text_equal is not None or t.text_assertions or not t.char_diff):
             print(f"ok   {name}")
         failures.extend(local)
     return failures

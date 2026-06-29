@@ -80,9 +80,14 @@ class Test:
     whose lines extract in the same order); ``"bag"`` exact word-MULTISET equality
     — order-independent, for twins whose blocks reorder under extraction (two
     -column flow, footnotes, the acmcp cover infobox), but still catches any single
-    word that goes missing or appears, then tightened by an exact CHAR-multiset
-    check that also catches a stray comma/period the word bag's edge-strip drops;
-    ``False`` not gated (give ``text_reason``); ``None`` unset.
+    word that goes missing or appears; ``False`` not gated (give ``text_reason``);
+    ``None`` unset.
+
+    Independently of ``text_equal``, EVERY twin is also gated by an exact char
+    -multiset check (``char_bag``) — a stricter tripwire that keeps punctuation and
+    so catches a stray comma/period the word bag's edge-strip drops. Set
+    ``char_diff`` to a one-line reason to exempt a twin whose char bags cannot
+    match (a known content difference, or a pdftotext extraction artifact).
     """
 
     kind: str
@@ -96,6 +101,7 @@ class Test:
     text_equal: bool | str | None = None
     text_reason: str | None = None
     text_assertions: tuple[Assertion, ...] = ()
+    char_diff: str = ""
     note: str = ""
 
     @property
@@ -140,6 +146,8 @@ TESTS: dict[str, Test] = {
     ),
     "fn-test": Test(
         kind="twin", pages=1,
+        char_diff="pdftotext glues the footnote-marker digit to the following word in "
+                  "one engine only (e.g. \"1This\"), so a digit survives the digit-strip",
         note="body footnotes + code/verbatim",
     ),
     "full-test": Test(
@@ -181,6 +189,8 @@ TESTS: dict[str, Test] = {
     ),
     "acmtog-test": Test(
         kind="twin", pages=1, page1_only=True,
+        char_diff="two-column fill differs (Typst lacks \\flushbottom balancing), so a "
+                  "different amount of body text lands on page 1",
         note="format=acmtog: two-column JOURNAL. Spanning left @i title + author list, "
              "contact-info footnote + ACM bibstrip + journal footer, 9pt parindent, "
              "sans-large sections.",
@@ -223,12 +233,16 @@ TESTS: dict[str, Test] = {
     ),
     "sigconf-authors-test": Test(
         kind="twin", pages=1, page1_only=True,
+        char_diff="5-author two-column grid: fill differs (no \\flushbottom), so a "
+                  "different amount of body text lands on page 1",
         note="Conference author grid with a PARTIAL last row (5 groups at 3-per-row => "
              "3 + 2). Guards make-authors-grid's per-row centering: the final row of 2 "
              "is centered, not left-aligned (validated against LaTeX).",
     ),
     "sigplan-test": Test(
         kind="twin", pages=1, metrics=False,
+        char_diff="pdftotext drops the hyphen when Typst breaks a compound "
+                  "(two-column/full-width) at it; sources are identical",
         note="format=sigplan: sigconf variant — serif-bold Huge title (no sans), 10pt, "
              "1in/0.75in margins, serif-bold sections, sans URLs. Tier 2 top-position is "
              "report-only: the Huge serif title pins its cap-top to the margin, but "
@@ -236,6 +250,8 @@ TESTS: dict[str, Test] = {
     ),
     "acmengage-test": Test(
         kind="twin", pages=1, metrics=False,
+        char_diff="pdftotext drops the hyphen when an engine breaks a compound "
+                  "(two-column/first-column) at it; sources are identical",
         note="format=acmengage: sigconf variant (10pt, booktitle copyright line). Tier 2 "
              "top-position is report-only (same reason as sigplan): the 10pt Huge title "
              "pins its cap-top to the margin but topmost-ink overshoots by ~5pt. Left "
@@ -264,6 +280,8 @@ TESTS: dict[str, Test] = {
     ),
     "sigchi-a-test": Test(
         kind="twin", pages=2, page1_only=True, metrics=False,
+        char_diff="best-effort format: marginpar footnotes omitted and the @iv title "
+                  "leftskip approximated, so body content differs",
         note="format=sigchi-a: landscape SIGCHI extended abstracts (best-effort). Sans "
              "default, wide left margin, 2pt-rule title, unnumbered sections. The legacy "
              "watermark IS reproduced; margin-note footnotes (\\marginpar) and the @iv "
@@ -289,6 +307,8 @@ TESTS: dict[str, Test] = {
     ),
     "bib-test": Test(
         kind="twin", pages=1, uniform_pitch=True,
+        char_diff="ACM CSL vs ACM-Reference-Format.bst differ in content (access dates, "
+                  "Ph.D. vs dissertation, doi formatting, range collapsing)",
         note="bibliography. The ACM CSL and ACM-Reference-Format.bst differ in content "
              "(dropped access dates, \"Doctoral dissertation\" vs \"Ph.D.\", doi: vs "
              "https://doi.org/, in-text range collapsing), so the list reflows and line "
@@ -296,11 +316,15 @@ TESTS: dict[str, Test] = {
     ),
     "notes-test": Test(
         kind="twin", pages=1,
+        char_diff="pdftotext drops the hyphen when Typst breaks 'paper-history' at it; "
+                  "sources are identical",
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "
              "The title block and footnote stack mix leadings, so pitch is reported, not gated.",
     ),
     "options-test": Test(
         kind="twin", pages=2, page1_only=True,
+        char_diff="pdftotext drops the hyphen when Typst breaks a compound at it; "
+                  "sources are identical",
         note="toggles nonacm / printccs=false / printfolios=false plus the single-column "
              "no-ops balance=false / natbib=false. Two pages so page 2 shows suppressed "
              "folios in the running head. Mixed leadings, so pitch is reported, not gated.",

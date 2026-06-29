@@ -244,18 +244,22 @@
 // zero size, so the copyright lines flow behind it.
 #let draft-stamp(cfg) = place(top + left, text(size: cfg.size.large, weight: "bold")[Unpublished working draft. Not for distribution.])
 
-// The conference info line in the copyright block (acmart.dtx:6618-6620): italic
-// "<conference short>, <conference venue>", or the engage/booktitle form
-// "<booktitle>, <year>.". none when no conference metadata was supplied.
-#let conf-info-line(meta) = {
-  if meta.conference != none {
+// The conference info line in the copyright block (acmart.dtx:6617-6621). The
+// form is format-dependent: engage prints "<booktitle>, <year>.", every other
+// conference format prints italic "<conference short>, <conference venue>".
+// none when the relevant metadata was not supplied.
+#let conf-info-line(cfg, meta) = {
+  let booktitle-form = { if meta.booktitle != none { emph[#meta.booktitle, #meta.acm-year.] } }
+  if cfg.name == "acmengage" {
+    booktitle-form
+  } else if meta.conference != none {
     let c = meta.conference
     let short = c.at("short", default: c.at("name", default: none))
     let venue = c.at("venue", default: none)
     let parts = (short, venue).filter(v => v != none)
     if parts.len() > 0 { emph(parts.join(", ")) }
-  } else if meta.booktitle != none {
-    emph[#meta.booktitle, #meta.acm-year.]
+  } else {
+    booktitle-form
   }
 }
 
@@ -341,7 +345,7 @@
         // (acmart.dtx:6615-6622): italic "<conf short>, <conf venue>", or for the
         // engage/booktitle path "<booktitle>, <year>.". Journal/tog skip it.
         if not meta.bibstrip {
-          let cl = conf-info-line(meta)
+          let cl = conf-info-line(cfg, meta)
           if cl != none { cl; linebreak() }
         }
         // © <year> <owner>  (copyright-year always has a value; see acmart() in lib.typ)
