@@ -216,12 +216,23 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   owns its own cite layer). Faithful-by-omission: acmart leaves `\showISBNx` /
   `\showISSN` / `\showCODEN` / `\showLCCN` **undefined in every format**, so the
   `.bbl`'s `\unskip` fallback suppresses them universally — we omit them likewise.
-  Deferred: author-year citation mode (`\citestyle{acmauthoryear}` + `\natexlab`
-  year-disambiguation `2019a`/`b`) — a citation-*style* feature distinct from the
-  reference-list formatting; verified to be invisible in the numeric mode we render
-  (colliding author+year entries still print a bare year). The `\LaTeX`/`\TeX`
-  *logos* are the one char-match caveat — pdftotext extracts the LaTeX logo as
-  `LATEX`, so logo-bearing entries would not char-match; the twin avoids them.
+  Source-audited against the `.bst` (not just the tests): `strip.doi` drops any
+  scheme+host prefix (`http://doi.acm.org/10.1145/X` → `10.1145/X`),
+  `reduce.pages.to.page.count` reduces a bare `1--N` range to its count but leaves
+  `n:1--n:m` / `5--12` verbatim (the `.bst`'s second `if` overwrites the first),
+  `format.bookpages` reads "N book pages", a `book` with `pages` gets a new-sentence
+  "N pages", and `format.tr.number`'s `change.case$` is a no-op on the visible text
+  because the type is brace-protected by `\bibinfo`. The `bib-all` twin pins all of
+  these. Two narrow approximations remain: the `, Article N` comma is emitted
+  unconditionally (the `.bst` keys it on output state, but every reachable call site
+  is post-`new.block`), and `distinctURL` is unsupported (URL suppressed when a DOI
+  is present — the default). Deferred: author-year citation mode
+  (`\citestyle{acmauthoryear}` + `\natexlab` year-disambiguation `2019a`/`b`) — a
+  citation-*style* feature distinct from the reference-list formatting; *verified*
+  invisible in the numeric mode we render (colliding author+year entries still print
+  a bare year). The `\LaTeX`/`\TeX` *logos* are the one char-match caveat — pdftotext
+  extracts the LaTeX logo as `LATEX`, so logo-bearing entries would not char-match;
+  the twin avoids them.
 - The corresponding-author ✉ mark itself is faithful: acmart's `\correspondingauthor`
   (new in v2.18) emits a superscript envelope `\textsuperscript{\ding{41}}`
   (`acmart.dtx:5430`). What differs is *ordering* — we emit ✉-then-note in a fixed

@@ -334,6 +334,9 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Comput. Surveys"),        # csur macro -> canon.abbrev
             Assertion(engine="both", text="Submitted to Mind"),      # @unpublished note
             Assertion(engine="both", text="Maria de la Cruz"),       # von-name parsing
+            Assertion(engine="both", kind="absent", text="doi.acm.org"),  # strip.doi drops the host prefix
+            Assertion(engine="both", text="Article 17"),             # articleno path
+            Assertion(engine="both", text="9:1"),                    # reduce.pages keeps n:1--n:m verbatim
         ),
     ),
     "notes-test": Test(

@@ -205,11 +205,13 @@
 #let dashify(s) = s.replace("--", "\u{2013}").replace("-", "\u{2013}")
 #let format-pages(e) = if has(e, "pages") { (c: dashify(fld(e, "pages")), p: false) } else { none }
 #let format-bookpages(e) = if has(e, "bookpages") {
-  (c: tx(fld(e, "bookpages")) + " pages", p: false) } else { none }
+  (c: tx(fld(e, "bookpages")) + " book pages", p: false) } else { none }
 // chapter + pages, or just pages
+// change.case$ "t": first char of the string upper, the rest lower
+#let title-case(s) = if s == "" { s } else { upper(s.slice(0, 1)) + lower(s.slice(1)) }
 #let format-chapter-pages(e) = {
   if has(e, "chapter") {
-    let ty = if has(e, "type") { tx(lower(fld(e, "type"))) } else { "Chapter" }
+    let ty = if has(e, "type") { tx(title-case(fld(e, "type"))) } else { "Chapter" }
     let r = ty + " " + fld(e, "chapter")
     if has(e, "pages") { r = r + ", " + dashify(fld(e, "pages")) }
     (c: r, p: false)
@@ -222,9 +224,24 @@
   else if has(e, "numpages") { (c: fld(e, "numpages") + " pages", p: false) }
   else { none }
 }
-// misc/periodical page count: "N pages" from numpages
-#let format-page-count(e) = if has(e, "numpages") {
-  (c: fld(e, "numpages") + " pages", p: false) } else { none }
+// reduce.pages.to.page.count: numpages wins; else parse the first three numbers of
+// `pages` — a bare "1--N" range reduces to N (its page count), anything else
+// (n:1--n:m, 5--12, ...) stays verbatim. (The .bst's second `if` overwrites the
+// first, so only the "1--N" case actually reduces.)
+#let reduce-pages(e) = {
+  if has(e, "numpages") { return fld(e, "numpages") }
+  if not has(e, "pages") { return none }
+  let p = fld(e, "pages")
+  let nums = p.matches(regex("[0-9]+"))
+  let p1 = if nums.len() > 0 { nums.at(0).text } else { none }
+  let p3 = if nums.len() > 2 { nums.at(2).text } else { none }
+  if p1 == "1" and p3 == none { nums.at(1).text } else { p }
+}
+// calc.format.page.count: "<count> pages" (misc/periodical/articleno paths)
+#let format-page-count(e) = {
+  let c = reduce-pages(e)
+  if c == none { none } else { (c: dashify(c) + " pages", p: false) }
+}
 
 // ---- date / journal -------------------------------------------------------
 #let format-day-month-year(e) = {
@@ -239,10 +256,10 @@
     (c: pre + " (" + tx(fld(e, "month")) + " " + d + fld(e, "year") + ")", p: false)
   }
 }
-// "N pages" when articleno present (numpages, or page-count reduced from pages)
+// "N pages" when articleno present (numpages, or reduced from pages)
 #let format-articleno-numpages(e) = {
   if articleno-of(e) == none { return none }
-  if has(e, "numpages") { (c: fld(e, "numpages") + " pages", p: false) } else { none }
+  format-page-count(e)
 }
 #let format-journal-block(e) = {
   if not has(e, "journal") { return none }
@@ -299,9 +316,13 @@
   V("Advisor(s) " + fld(e, "advisor")) } else { none }
 
 // ---- shared trailing block: note, doi, url --------------------------------
+// .bst strip.doi: bare DOIs start "10."; otherwise drop any scheme + host, keeping
+// the path (http://doi.acm.org/10.1145/X -> 10.1145/X).
 #let strip-doi(d) = {
-  let m = d.match(regex("(?i)^https?://(?:dx\.)?doi\.org/(.+)$"))
-  if m != none { m.captures.at(0) } else { d }
+  if d.starts-with("10.") { return d }
+  let s = d.replace(regex("(?i)^https?://"), "")
+  let parts = s.split("/")
+  if parts.len() <= 1 { d } else { parts.slice(1).join("/") }
 }
 // arXiv eprint per acmart's \showeprint: "arXiv:" + linked number + " [class]"
 // for arxiv-family prefixes, else plain "prefix:eprint".
@@ -384,8 +405,12 @@
     if t == "inbook" {
       em = out(em, format-bookpages(e))
       em = out(em, format-chapter-pages(e))
-    } else if not has(e, "pages") { em = out(em, format-bookpages(e)) }
-    else { em = out(em, format-pages(e)) }
+    } else {
+      // book: fin.sentence, then bookpages OR "<pages> pages"
+      em = nsentence(em)
+      if has(e, "pages") { em = out(em, (c: dashify(fld(e, "pages")) + " pages", p: false)) }
+      else { em = out(em, format-bookpages(e)) }
+    }
   } else if t == "incollection" {
     em = lead-author-year(em, e)
     em = nblock(em)

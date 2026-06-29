@@ -52,3 +52,13 @@
   address   = {Berlin},
   year      = {2021},
 }
+
+% Edge-case coverage (previously un-exercised .bst paths): strip.doi host prefix,
+% reduce.pages.to.page.count, book "pages" label, techreport type without number.
+@article{DoiUrl, author={A. One}, title={Doi prefix test}, journal={J. ACM}, volume={1}, number={1}, year={2020}, month=jan, doi={http://doi.acm.org/10.1145/1219092.1219093}}
+@article{ArtPages, author={B. Two}, title={Articleno with pages}, journal={J. ACM}, volume={2}, number={3}, articleno={17}, pages={1--23}, year={2020}, month=feb}
+@article{ColonPages, author={C. Three}, title={Colon pages}, journal={J. ACM}, volume={4}, number={5}, articleno={9}, pages={9:1--9:23}, year={2020}, month=mar}
+@misc{MiscPages, author={D. Four}, title={Misc with pages}, pages={5--12}, year={2020}}
+@book{BookPages, author={E. Five}, title={Book with pages}, publisher={Pub}, address={City}, pages={5--10}, year={2020}}
+@techreport{TRnoNum, author={F. Six}, title={TR without number}, institution={Inst}, type={Research Note}, address={City}, year={2020}}
+@inbook{BookPagesField, author={G. Seven}, title={Inbook with bookpages}, publisher={Pub}, address={City}, chapter={3}, bookpages={250}, year={2020}}
