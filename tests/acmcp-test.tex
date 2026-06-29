@@ -1,0 +1,57 @@
+%% acmcp-test — ACM cover-page format (LaTeX twin of acmcp-test.typ).
+\documentclass[acmcp]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmMonth{8}
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmCodeLink{https://example.com/data}
+\acmContributions{BT designed the study; VB performed it.}
+
+\begin{document}
+
+\title{An acmcp Cover Sample}
+
+\author{Ben Trovato}
+\email{trovato@corporation.com}
+\affiliation{%
+  \institution{Institute for Clarity in Documentation}
+  \city{Dublin}
+  \state{Ohio}
+  \country{USA}}
+
+\author{Valerie B\'eranger}
+\affiliation{%
+  \institution{Inria Paris-Rocquencourt}
+  \city{Rocquencourt}
+  \country{France}}
+
+\begin{abstract}
+  A short document in the manuscript format, used to compare the single-column
+  draft geometry and section typography between the LaTeX and Typst renderings.
+\end{abstract}
+
+\keywords{datasets, neural networks, gaze detection}
+
+\maketitle
+
+\section{Introduction}
+This document exercises the manuscript format's geometry and headings. The body
+text is set at the 9pt manuscript default, with the generic sans-bold section
+headings shared with acmsmall.
+
+\subsection{Background}
+A subsection to check the level-2 heading font and spacing.
+
+\subsubsection{A subsubsection}
+A run-in subsubsection heading in sans italic.
+
+\section{Method}
+A second top-level section, so the inter-section spacing is visible.
+
+\end{document}

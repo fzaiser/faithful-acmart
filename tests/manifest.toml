@@ -109,46 +109,51 @@ metrics = false
 # ~5pt of glyph-bbox overshoot — just over the loose top tolerance.
 
 [tests.siggraph-test]
-kind = "smoke"
+kind = "twin"
 pages = 1
-page_parity = false
-metrics = false
+page1_only = true
 # format=siggraph: sigconf variant (normalsize serif authors, sans-bold Large
-# sections). Typst-only golden-smoke (shares the sigconf two-column path).
+# sections). Shares the sigconf two-column path; twin of siggraph-test.tex.
 
 [tests.sigchi-test]
-kind = "smoke"
+kind = "twin"
 pages = 1
-page_parity = false
-metrics = false
+page1_only = true
 # format=sigchi: sigconf variant — secnumdepth=1 (subsections unnumbered), bold
-# serif author names. Typst-only golden-smoke.
+# serif author names. Twin of sigchi-test.tex.
 
 [tests.acmengage-test]
-kind = "smoke"
+kind = "twin"
 pages = 1
-page_parity = false
 metrics = false
-# format=acmengage: sigconf variant (10pt, booktitle copyright line). Typst-only
-# golden-smoke.
+# format=acmengage: sigconf variant (10pt, booktitle copyright line). Twin of
+# acmengage-test.tex. Tier 2 top-position is report-only here (same reason as
+# sigplan): the 10pt Huge title pins its cap-top to the margin (the faithful
+# \topskip model), but topmost-ink then overshoots LaTeX's baseline placement by
+# ~5pt of glyph bbox — just over the loose top tolerance. Left edge matches.
 
 [tests.acmcp-test]
-kind = "smoke"
+kind = "twin"
 pages = 1
-page_parity = false
 metrics = false
 # format=acmcp: ACM cover page (best-effort). Single-column, unnumbered sections
-# (secnumdepth -1), ACM reference format off. The JDS cover infobox (logo/frame)
-# is not reproduced. Typst-only golden-smoke.
+# (secnumdepth -1), ACM reference format off; the JDS cover frame + infobox ARE
+# reproduced (only the infobox's vertical anchoring is approximated). Twin of
+# acmcp-test.tex. Tier 2 is report-only: the page's first ink is the cover frame /
+# logo (whose left bleed and vertical anchor differ from LaTeX's zref placement),
+# not the text block, so cross-engine first-ink geometry isn't a meaningful gate;
+# the twin still gates page-count parity and is diffable.
 
 [tests.sigchi-a-test]
-kind = "smoke"
+kind = "twin"
 pages = 2
-page_parity = false
+page1_only = true
 metrics = false
 # format=sigchi-a: landscape SIGCHI extended abstracts (best-effort). Sans default,
 # wide left margin, 2pt-rule title, unnumbered sections. Footnotes-in-margin and
-# the legacy watermark are not reproduced. Typst-only golden-smoke.
+# the legacy watermark are not reproduced, and the @iv title omits the 5pc leftskip,
+# so cross-engine geometry is report-only (metrics off); the twin still gates
+# page-count parity and is diffable. Twin of sigchi-a-test.tex.
 
 [tests.fontsize-8-test]
 kind = "twin"

@@ -26,14 +26,14 @@ DIFF   := tests/out/diff
 
 # Matched twins: NAME.tex (real LaTeX) + NAME.typ (ours) share a stem and are
 # diffed/compared page-by-page.
-MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test options-test authorversion-test language-test language-de-test language-es-test fontsize-8-test fontsize-9-test fontsize-11-test fontsize-12-test manuscript-test acmlarge-test acmtog-test sigconf-test sigconf-authors-test sigplan-test
+MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test notes-test options-test authorversion-test language-test language-de-test language-es-test fontsize-8-test fontsize-9-test fontsize-11-test fontsize-12-test manuscript-test acmlarge-test acmtog-test sigconf-test sigconf-authors-test sigplan-test siggraph-test sigchi-test acmengage-test acmcp-test sigchi-a-test
 # End-to-end ports: full Typst documents with NO hand-written twin — compared
 # against the upstream sample reference built by `make reference` (see the
 # stem->reference map in the diff target and reference= in tests/manifest.toml).
 E2E := sample-acmsmall
 # Smoke-only Typst docs: no LaTeX twin (synthetic assets), compiled + golden-hashed
 # but not geometry-compared. Exercise feature paths the matched tests do not.
-SMOKE := feature-test draft-test urlbreak-test siggraph-test sigchi-test acmengage-test acmcp-test sigchi-a-test
+SMOKE := feature-test draft-test urlbreak-test
 
 .PHONY: probe reference example test test-references check accept diff validate clean
 
