@@ -396,6 +396,16 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="-calculus"),              # $\lambda$-calculus
         ),
     ),
+    "keycite": Test(
+        kind="twin", pages=1,
+        note="native `@key` citation routing for the bst backend: acmart installs a "
+             "`show ref:` rule (lib.typ, gated to bibliography-backend=\"bst\") that "
+             "intercepts bare `@Cohen07` refs whose target is no document label "
+             "(it.element == none) and renders them via the bst engine — the same "
+             "show-rule hook alexandria/pergamon use. The LaTeX twin uses \\cite. "
+             "Char bag gated, no exemption.",
+        link_check=True,
+    ),
     "notes-test": Test(
         kind="twin", pages=1,
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "

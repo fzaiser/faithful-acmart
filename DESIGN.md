@@ -203,12 +203,13 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   carries the `.bst`'s built-in journal MACRO table + `journal.canon.abbrev`
   (auto-extracted, so `journal = csur` → "Comput. Surveys" like bibtex). DOI / URL /
   arXiv-eprint / `\url`-in-note render as **real Typst hyperlinks** (acmart loads
-  hyperref). Reached via the exported `acm-cite` (`\citep`) / `acm-citet` /
-  `acm-citeyear` / `acm-citeauthor` / `acm-bibliography` (Typst exposes
-  no hook to drive native `@key` numbering from a custom renderer, so the backend
-  owns its cite layer). It reproduces the `.bst`'s reference text *exactly*: the
+  hyperref). Reached via native `@key` / `#cite` (a `show ref:`/`show cite:` rule
+  routes them to the engine, gated to this backend — see "Implemented" below) or the
+  exported `acm-cite` (`\citep`) / `acm-citet` / `acm-citeyear` / `acm-citeauthor` /
+  `acm-bibliography`. It reproduces the `.bst`'s reference text *exactly*: the
   `bib-all` (20 entry-type handlers), `bib-edge` (field/path edge cases),
-  `crossref` (crossref + org→key + distinctURL) and `authoryear` (author-year mode)
+  `crossref` (crossref + org→key + distinctURL), `authoryear` (author-year mode),
+  `mathfields` (inline math) and `keycite` (native `@key` routing)
   twins gate the full char bag against real bibtex with **no exemption**, plus a
   `link_check` gate on the `/URI` set and word-level assertions for what the
   whitespace-free char bag can't see. The von/Last/Jr name split follows the
@@ -237,6 +238,16 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     organization leads with its `key` — both in the reference text *and* the sort key.
   - **`distinctURL`** — the per-entry field that prints the URL alongside a DOI
     (`output.url`'s `distinctURL empty.or.zero not`).
+  - **Native `@key` / `#cite` routing.** A document-level `show ref:`/`show cite:`
+    rule (in `lib.typ`, gated to `bibliography-backend: "bst"`) intercepts citations
+    and renders them through the engine — the same show-rule hook `alexandria` /
+    `pergamon` use. A `ref` whose target resolves to no document label
+    (`it.element == none`) is a citation; real elements (figures/headings/equations)
+    pass through. Numbering reuses the `state` pass `acm-cite` already runs, so
+    `@Cohen07` and `acm-cite("Cohen07")` are interchangeable. The reference list is
+    still emitted by `acm-bibliography` (Typst's `#bibliography` element can't be fed
+    a custom renderer, only `@key`/`#cite` can). For the `csl` backend both rules are
+    the identity, so native `@key` keeps Typst's built-in behaviour.
   - **Inline math (`$…$`) in fields** — a curated subset, enough for the maths that
     actually appears in titles (`$\lambda$-calculus`, `$\chi^2$`, `$\Theta(n)$`,
     `$O(n\log n)$`). `bibtex.typ`'s `decode-math` maps greek + relations + text
@@ -254,14 +265,10 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     `\unskip` fallback eats them), so omitting them is *faithful to stock acmart*. A
     user who redefines `\showISBNx` to surface them can't via this backend; the
     `show-isbn-10-and-13` branch is unimplemented because no acmart format reaches it.
-  - **Native `@key` / `#bibliography`** don't route to the bst engine — a deliberate
-    omission, **not** an impossibility. A document-level `show ref:`/`show cite:` rule
-    *can* intercept `@key` and render a custom citation (this is exactly how the
-    `alexandria` and `pergamon` packages drive their own bibliographies; verified: a
-    `show ref: it => …` rule renders `@foo` with no `bibliography()` loaded and no
-    "label not found" error). We currently expose `acm-cite` & friends +
-    `acm-bibliography` instead; wiring `@key` through a show-rule (numbering via the
-    same `state` pass we already run) is a viable future addition.
+  - **`#bibliography` element** can't route to the bst engine — Typst exposes no hook
+    to feed the *list*-rendering element a custom renderer (unlike `@key`/`#cite`,
+    which a show rule can intercept). The reference list is emitted by
+    `acm-bibliography` instead.
   - **Arbitrary / full-equation TeX** beyond the `decode-math` table and `tex-macros`
     — *unbounded by nature*. A field can contain any TeX (multi-line display math,
     macros that expand to layout, `\newcommand`s pulled from the preamble);

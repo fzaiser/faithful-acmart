@@ -563,6 +563,18 @@
     colorize(it.dest, { show "-": "\u{2011}"; it })
   }
 
+  // "bst" backend: route bare `@key` / `#cite` through the bst engine (acm-cite),
+  // the way alexandria/pergamon hook native citations. A `ref` whose target resolves
+  // to no document label (`it.element == none`) is a citation; figures/headings/
+  // equations (a real element) pass through unchanged. `acm-cite` & friends still
+  // work too. The gate is INSIDE the closure (not an `if` block) so the rule reaches
+  // the body below; for the "csl" backend both rules are the identity, leaving
+  // Typst's native `@key` / `#cite` untouched.
+  show ref: it => if bibliography-backend == "bst" and it.element == none {
+    bbl-cite(str(it.target))
+  } else { it }
+  show cite: it => if bibliography-backend == "bst" { bbl-cite(str(it.key)) } else { it }
+
   // `review`: number every line in the left margin (acmart uses \color{red}
   // \scriptsize — 7pt at this base size; acmart.dtx:7862).
   set par.line(numbering: if review {
