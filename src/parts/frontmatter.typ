@@ -557,6 +557,12 @@
 // Dispatch the spanning head on the format's title style (acmart.dtx:6874).
 #let make-title-head(cfg, meta) = if cfg.title-style == "conf-center" {
   conf-title-head(cfg, meta)
+} else if cfg.title-style == "sigchi-rule" {
+  // sigchi-a @mktitle@iv (acmart.dtx:7039): a leading full-width 2pt rule above
+  // the ragged title. We approximate by prefixing the rule to the journal head
+  // (left/ragged title + author list); the 5pc leftskip indent is omitted.
+  block(below: comp(cfg), line(length: 100%, stroke: 2pt))
+  journal-title-head(cfg, meta)
 } else {
   journal-title-head(cfg, meta)
 }

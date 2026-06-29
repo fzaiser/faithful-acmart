@@ -17,6 +17,8 @@
 #import "formats/sigchi.typ": sigchi
 #import "formats/sigplan.typ": sigplan
 #import "formats/acmengage.typ": acmengage
+#import "formats/sigchi-a.typ": sigchia
+#import "formats/acmcp.typ": acmcp
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
 #import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
@@ -35,6 +37,8 @@
   sigchi: sigchi,
   sigplan: sigplan,
   acmengage: acmengage,
+  "sigchi-a": sigchia,
+  acmcp: acmcp,
 )
 
 #let acmart(
@@ -172,8 +176,9 @@
   )
 
   // \settopmatter{printacmref} defaults true; nonacm flips it off unless the
-  // author forces it back on with show-ref: true (acmart.dtx:2717).
-  let show-ref = if show-ref == auto { not nonacm } else { show-ref }
+  // author forces it back on with show-ref: true (acmart.dtx:2717). acmcp also
+  // forces it off (\@ACM@printacmreffalse, acmart.dtx:3006).
+  let show-ref = if show-ref == auto { not nonacm and cfg.name != "acmcp" } else { show-ref }
   // authordraft turns on timestamp + review (acmart.dtx:2819-2820); resolve those
   // first so the downstream folio/line-number/footer logic sees the effective values.
   let timestamp = timestamp or author-draft
@@ -349,7 +354,8 @@
   // matching TeX's rigid \baselineskip. top-edge = 1em also puts the first
   // baseline at `top margin + \topskip`, as LaTeX does.
   set text(
-    font: cfg.fonts.serif,
+    // sigchi-a sets the sans family as the document default (acmart.dtx:4073).
+    font: if cfg.sans-default { cfg.fonts.sans } else { cfg.fonts.serif },
     size: cfg.font-size,
     top-edge: 1em,
     bottom-edge: 0pt,

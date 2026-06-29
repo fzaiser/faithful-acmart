@@ -33,7 +33,7 @@ MATCHED := body-test head-test body2-test fn-test full-test title-test bib-test 
 E2E := sample-acmsmall
 # Smoke-only Typst docs: no LaTeX twin (synthetic assets), compiled + golden-hashed
 # but not geometry-compared. Exercise feature paths the matched tests do not.
-SMOKE := feature-test draft-test urlbreak-test siggraph-test sigchi-test acmengage-test
+SMOKE := feature-test draft-test urlbreak-test siggraph-test sigchi-test acmengage-test acmcp-test sigchi-a-test
 
 .PHONY: probe reference example test test-references check accept diff validate clean
 

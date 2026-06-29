@@ -121,8 +121,26 @@ kind = "smoke"
 pages = 1
 page_parity = false
 metrics = false
-# format=acmengage: sigconf variant (booktitle copyright line). Typst-only
+# format=acmengage: sigconf variant (10pt, booktitle copyright line). Typst-only
 # golden-smoke.
+
+[tests.acmcp-test]
+kind = "smoke"
+pages = 1
+page_parity = false
+metrics = false
+# format=acmcp: ACM cover page (best-effort). Single-column, unnumbered sections
+# (secnumdepth -1), ACM reference format off. The JDS cover infobox (logo/frame)
+# is not reproduced. Typst-only golden-smoke.
+
+[tests.sigchi-a-test]
+kind = "smoke"
+pages = 2
+page_parity = false
+metrics = false
+# format=sigchi-a: landscape SIGCHI extended abstracts (best-effort). Sans default,
+# wide left margin, 2pt-rule title, unnumbered sections. Footnotes-in-margin and
+# the legacy watermark are not reproduced. Typst-only golden-smoke.
 
 [tests.fontsize-8-test]
 kind = "twin"

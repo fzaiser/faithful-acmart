@@ -7,10 +7,10 @@
 // by conf-info-line's booktitle branch). Geometry probed from the class.
 #import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
 
-#let acmengage(font-size: "9pt") = make-format(
+#let acmengage(font-size: "10pt") = make-format(
   name: "acmengage",
   ladder: size-ladder(font-size, format: "acmengage"),
-  default-font-size: "9pt",
+  default-font-size: "10pt",
   paper: (width: 8.5in, height: 11in),
   margin: (inside: 54 * tp, outside: 54 * tp, top: 84 * tp, bottom: 88.97 * tp),
   head-skip: 57 * tp,
