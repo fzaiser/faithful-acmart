@@ -1,0 +1,19 @@
+%% authoryear — the bst backend in author-year citation mode
+%% (\citestyle{acmauthoryear}): short "Author et al. Year" labels, \natexlab a/b
+%% year disambiguation on the colliding 2020 articles, and a reference list with no
+%% leading numbers. \citep -> "[Label Year]", \citet -> "Label [Year]". LaTeX twin
+%% of authoryear.typ.
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\citestyle{acmauthoryear}
+\begin{document}
+\thispagestyle{empty}% titleless body-only fixture: re-assert empty.
+
+\section{Introduction}
+Text \citep{smithA,smithB}. Also \citet{jones} and \citep{green}.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{authoryear}
+
+\end{document}

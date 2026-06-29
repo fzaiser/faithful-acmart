@@ -353,6 +353,37 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Ludwig van Beethoven"),   # no-comma von-name
         ),
     ),
+    "crossref": Test(
+        kind="twin", pages=1,
+        note="BibTeX crossref handling reproduced by the bst backend (this is BibTeX "
+             "engine behaviour, not the .bst): field inheritance from the crossref'd "
+             "parent + the min_crossrefs=2 listing threshold. xparent is crossref'd "
+             "twice -> listed, so its children render the .bst's \"See [N]\" "
+             "(format.incoll.inproc.crossref); xlonely is crossref'd once -> not listed, "
+             "so xsolo inherits its booktitle/series/editor/publisher/address and renders "
+             "in full. Also covers the organization->key label fallback for "
+             "proceedings/manual (prockey) and the per-entry distinctURL field (durl: "
+             "url printed alongside the doi). Char bag gated, no exemption.",
+        link_check=True,
+        text_assertions=(
+            Assertion(engine="both", text="See ["),                  # crossref "See [N]"
+            Assertion(engine="both", text="Workshop on Small Things"),  # inherited booktitle (excluded parent)
+            Assertion(engine="both", text="GangOfFour"),             # proceedings org->key fallback
+        ),
+    ),
+    "authoryear": Test(
+        kind="twin", pages=1,
+        note="bst backend in author-year citation mode (\\citestyle{acmauthoryear} / "
+             "cite-style=\"author-year\"): short \"Author et al. Year\" labels "
+             "(format.lab.names), the \\natexlab a/b year disambiguation on the two "
+             "colliding 2020 articles, and a reference list with NO leading numbers. "
+             "\\citep -> \"[Label Year]\" (with natbib year compression \"2020a,b\"); "
+             "\\citet -> \"Label [Year]\". Char bag gated, no exemption.",
+        text_assertions=(
+            Assertion(engine="both", text="2020a"),                  # \natexlab suffix
+            Assertion(engine="both", text="Jones et al."),           # >2-author short label (\citet)
+        ),
+    ),
     "notes-test": Test(
         kind="twin", pages=1,
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "

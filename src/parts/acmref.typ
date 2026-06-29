@@ -11,7 +11,7 @@
 //     invisibly in acmsmall and are omitted),
 //   * sort + cite/number layer using native state/metadata/query.
 
-#import "bibtex.typ": read-bib
+#import "bibtex.typ": read-bib, parse-names
 #import "bib-data.typ": journal-canon
 
 // ACM journal.canon.abbrev: map a full journal name to its canonical abbreviation
@@ -316,6 +316,33 @@
 #let format-advisor(e) = if has(e, "advisor") {
   V("Advisor(s) " + fld(e, "advisor")) } else { none }
 
+// ---- crossref ("See [N]") --------------------------------------------------
+// `xref-cite` is the rendered citation of the crossref'd parent ("[N]" in numeric
+// mode), supplied by the context layer once the parent's number is known.
+#let von-last(n) = (n.von, n.last).filter(p => p != "").join(" ")
+// format.crossref.editor: first editor (von last); " and second" for two, " et al." for >2
+#let format-crossref-editor(e) = {
+  let eds = e.names.editor
+  let s = von-last(eds.at(0))
+  if eds.len() > 2 { s + " et al." }
+  else if eds.len() == 2 {
+    if is-others(eds.at(1)) { s + " et al." } else { s + " and " + von-last(eds.at(1)) }
+  } else { s }
+}
+#let format-article-crossref(e, xref-cite) = (c: [See] + xref-cite, p: false)   // .bst: no space
+#let format-incoll-inproc-crossref(e, xref-cite) = (c: [See ] + xref-cite, p: false)
+#let format-book-crossref(e, xref-cite) = {
+  // "Volume N of <ed/key/series> [N]" or "In <ed/key/series> [N]"
+  let pre = if has(e, "volume") { [Volume #fld(e, "volume") of ] } else { [In ] }
+  let ed-empty = not has(e, "editor") or fld(e, "editor") == fld(e, "author", d: "\u{0}")
+  let mid = if ed-empty {
+    if has(e, "key") { tx(fld(e, "key")) }
+    else if has(e, "series") { it(tx(fld(e, "series"))) }
+    else { [] }
+  } else { format-crossref-editor(e) }
+  (c: pre + mid + [ ] + xref-cite, p: false)
+}
+
 // ---- shared trailing block: note, doi, url --------------------------------
 // .bst strip.doi: bare DOIs start "10."; otherwise drop any scheme + host, keeping
 // the path (http://doi.acm.org/10.1145/X -> 10.1145/X).
@@ -353,7 +380,10 @@
     let bare = strip-doi(fld(e, "doi"))
     items.push(link("https://doi.org/" + bare)[doi:#bare])
   }
-  if has(e, "url") and not has(e, "doi") {
+  // output.url: print url when no doi, OR when the per-entry `distinctURL` field
+  // is present and not "0" (the .bst's `distinctURL empty.or.zero not`).
+  let distinct-url = has(e, "distincturl") and fld(e, "distincturl") != "0"
+  if has(e, "url") and (not has(e, "doi") or distinct-url) {
     let u = fld(e, "url")
     let r = if has(e, "lastaccessed") { [Retrieved #tx(fld(e, "lastaccessed")) from #link(u)[#u]] } else { link(u)[#u] }
     if has(e, "archived") { r = r + [, archived at \[#link(fld(e, "archived"))[#fld(e, "archived")]\]] }
@@ -371,22 +401,30 @@
 // ---- per-entry-type handlers ----------------------------------------------
 #let howpub(e) = if has(e, "howpublished") { V(fld(e, "howpublished")) } else { none }
 
-#let lead-author-year(em, e) = {
+#let lead-author-year(em, e, ysuf) = {
   em = out(em, format-authors(e), variant: "norm")
   if not has(e, "author") and has(e, "editor") { em = out(em, format-editors(e)) }
   // format.key fallback: an author-less entry shows its `key` field in that slot
   if not has(e, "author") and not has(e, "editor") and has(e, "key") { em = out(em, V(fld(e, "key"))) }
-  em = out-year(em, year-value(e))
+  em = out-year(em, ysuf(year-value(e)))
   em
 }
 
-#let handle(e) = {
+// `xref-cite`: rendered parent citation when the entry keeps a `crossref` (parent
+// is in the bibliography); `year-suffix`: \natexlab a/b/c disambiguator (author-year).
+// The suffix attaches ONLY to the lead `output.year.check` year (verified against
+// bibtex: an article's later "(2020)" journal date is NOT disambiguated).
+#let handle(e, xref-cite: none, year-suffix: "") = {
+  // append the \natexlab suffix to the lead year value (no-op in numeric mode)
+  let ysuf = v => if year-suffix == "" { v } else { (c: v.c + year-suffix, p: v.p) }
+  let lead = (em, e) => lead-author-year(em, e, ysuf)
+  let has-xref = has(e, "crossref") and xref-cite != none
   let t = e.entry-type
   let em = em-init
   // aliases
   let manual-like = ("online", "game", "video", "artifactsoftware", "artifactdataset", "software", "dataset", "preprint", "manual")
   if t == "article" or t == "underreview" {
-    em = lead-author-year(em, e)
+    em = lead(em, e)
     em = nblock(em)
     em = out(em, format-articletitle(e))
     em = nblock(em)
@@ -394,68 +432,88 @@
     em = nblock(em)
     if t == "underreview" { em = out(em, format-journal-underreview(e)) }
     else {
-      em = out(em, format-journal-block(e))
+      if has-xref { em = out(em, format-article-crossref(e, xref-cite)) }
+      else { em = out(em, format-journal-block(e)) }
       em = out(em, format-pages-noart(e))
       em = out(em, format-articleno-numpages(e))
     }
   } else if t == "book" or t == "inbook" {
     if has(e, "author") { em = out(em, format-authors(e)) } else { em = out(em, format-editors(e)) }
-    em = out-year(em, year-value(e))
+    em = out-year(em, ysuf(year-value(e)))
     em = nblock(em)
     em = out(em, format-btitle(e))
-    em = nsentence(em)
-    em = out(em, format-bvolume(e))
-    em = nblock(em)
-    em = out(em, format-number-series(e))
-    em = nsentence(em)
-    em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
-    em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
-    if t == "inbook" {
-      em = out(em, format-bookpages(e))
-      em = out(em, format-chapter-pages(e))
+    if has-xref {
+      // inbook prints chapter/pages before the crossref; book does not
+      if t == "inbook" {
+        em = out(em, format-bookpages(e))
+        em = out(em, format-chapter-pages(e))
+      }
+      em = nblock(em)
+      em = out(em, format-book-crossref(e, xref-cite))
     } else {
-      // book: fin.sentence, then bookpages OR "<pages> pages"
       em = nsentence(em)
-      if has(e, "pages") { em = out(em, (c: dashify(fld(e, "pages")) + " pages", p: false)) }
-      else { em = out(em, format-bookpages(e)) }
+      em = out(em, format-bvolume(e))
+      em = nblock(em)
+      em = out(em, format-number-series(e))
+      em = nsentence(em)
+      em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
+      em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+      if t == "inbook" {
+        em = out(em, format-bookpages(e))
+        em = out(em, format-chapter-pages(e))
+      } else {
+        // book: fin.sentence, then bookpages OR "<pages> pages"
+        em = nsentence(em)
+        if has(e, "pages") { em = out(em, (c: dashify(fld(e, "pages")) + " pages", p: false)) }
+        else { em = out(em, format-bookpages(e)) }
+      }
     }
   } else if t == "incollection" {
-    em = lead-author-year(em, e)
+    em = lead(em, e)
     em = nblock(em)
     em = out(em, format-articletitle(e))
     em = nblock(em)
-    em = out(em, format-in-ed-booktitle(e))
-    em = nsentence(em)
-    em = out(em, format-bvolume(e))
-    em = out(em, format-number-series(e))
-    em = nsentence(em)
-    em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
-    em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
-    em = out(em, format-bookpages(e))
-    em = out(em, format-chapter-pages(e))
+    if has-xref {
+      em = out(em, format-incoll-inproc-crossref(e, xref-cite))
+      em = out(em, format-chapter-pages(e))
+    } else {
+      em = out(em, format-in-ed-booktitle(e))
+      em = nsentence(em)
+      em = out(em, format-bvolume(e))
+      em = out(em, format-number-series(e))
+      em = nsentence(em)
+      em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
+      em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+      em = out(em, format-bookpages(e))
+      em = out(em, format-chapter-pages(e))
+    }
   } else if t == "inproceedings" or t == "conference" or t == "presentation" {
-    em = lead-author-year(em, e)
+    em = lead(em, e)
     em = nblock(em)
     em = out(em, format-articletitle(e))
     em = out(em, howpub(e), variant: "dotspace")
-    if t == "presentation" {
-      em = nsentence(em)
-      em = out(em, format-venue(e))
+    if has-xref {
+      em = out(em, format-incoll-inproc-crossref(e, xref-cite))
     } else {
-      em = out(em, format-in-emph-booktitle(e), variant: "dotspace")
+      if t == "presentation" {
+        em = nsentence(em)
+        em = out(em, format-venue(e))
+      } else {
+        em = out(em, format-in-emph-booktitle(e), variant: "dotspace")
+      }
+      em = out(em, format-series(e), variant: "removenospace")
+      em = out(em, format-editors-fml(e))
+      if not has(e, "series") { em = out(em, format-bvolume-noseries(e)) }
+      em = nsentence(em)
+      em = out(em, if has(e, "organization") { V(fld(e, "organization")) } else { none })
+      em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
+      em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+      em = out(em, format-bookpages(e))
     }
-    em = out(em, format-series(e), variant: "removenospace")
-    em = out(em, format-editors-fml(e))
-    if not has(e, "series") { em = out(em, format-bvolume-noseries(e)) }
-    em = nsentence(em)
-    em = out(em, if has(e, "organization") { V(fld(e, "organization")) } else { none })
-    em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
-    em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
-    em = out(em, format-bookpages(e))
     em = out(em, format-pages-noart(e))
     em = out(em, format-articleno-numpages(e))
   } else if t == "mastersthesis" or t == "phdthesis" {
-    em = lead-author-year(em, e)
+    em = lead(em, e)
     em = nblock(em)
     em = out(em, format-title-emph(e))
     em = nblock(em)
@@ -470,16 +528,18 @@
     if has(e, "editor") { em = out(em, format-editors(e)) }
     else if has(e, "organization") { em = out(em, V(fld(e, "organization"))) }
     em = nblock(em)
-    em = out-year(em, year-value(e))
+    em = out-year(em, ysuf(year-value(e)))
     em = nsentence(em)
     em = out(em, format-articletitle(e))
     em = nblock(em)
     em = out(em, format-journal-block(e))
     em = out(em, format-page-count(e))
   } else if t == "proceedings" or t == "collection" {
+    // editor, else organization, else `format.key` fallback (org & editor absent)
     if has(e, "editor") { em = out(em, format-editors(e)) }
     else if has(e, "organization") { em = out(em, V(fld(e, "organization"))) }
-    em = out-year(em, year-value(e))
+    else if has(e, "key") { em = out(em, V(fld(e, "key"))) }
+    em = out-year(em, ysuf(year-value(e)))
     em = nblock(em)
     let bt = format-btitle(e)
     if bt != none { bt = (c: bt.c + format-city(e, false), p: false) }
@@ -492,7 +552,7 @@
     em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
     em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
   } else if t == "techreport" {
-    em = lead-author-year(em, e)
+    em = lead(em, e)
     em = nblock(em)
     em = out(em, format-btitle(e))
     em = nblock(em)
@@ -503,7 +563,7 @@
     em = nsentence(em)
     em = out(em, if has(e, "pages") { (c: dashify(fld(e, "pages")) + " pages", p: false) } else { none })
   } else if t == "unpublished" {
-    em = lead-author-year(em, e)
+    em = lead(em, e)
     em = nblock(em)
     em = out(em, format-title(e))          // plain title (not emphasized)
     em = nsentence(em)
@@ -512,7 +572,7 @@
     em = out(em, format-page-count(e))
     // note is required for @unpublished and emitted by the shared trailing block
   } else if t == "misc" or t == "booklet" {
-    em = lead-author-year(em, e)
+    em = lead(em, e)
     em = nblock(em)
     em = out(em, format-title(e))
     em = nblock(em)
@@ -525,7 +585,8 @@
     if has(e, "author") { em = out(em, format-authors(e)) }
     else if has(e, "editor") { em = out(em, format-editors(e)) }
     else if has(e, "organization") { em = out(em, V(fld(e, "organization"))) }
-    em = out-year(em, year-value(e))
+    else if has(e, "key") { em = out(em, V(fld(e, "key"))) }   // format.key fallback
+    em = out-year(em, ysuf(year-value(e)))
     em = nblock(em)
     em = out(em, format-btitle(e))
     em = nblock(em)
@@ -533,7 +594,7 @@
     em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
   } else {
     // fallback: author. year. title.
-    em = lead-author-year(em, e)
+    em = lead(em, e)
     em = nblock(em)
     em = out(em, format-title(e))
   }
@@ -546,6 +607,7 @@
 #let sort-key(e) = {
   let ppl = e.names.at("author", default: e.names.at("editor", default: ()))
   let names = ppl.map(n => lower((n.von + " " + n.last + " " + n.first).trim())).join(" ")
+  if names == none { names = "" }   // ().join() is none, not ""
   if names == "" and has(e, "key") { names = lower(fld(e, "key")) }
   let y = if has(e, "year") { fld(e, "year") } else { "" }
   names + "   " + y + "   " + lower(fld(e, "title", d: ""))
@@ -553,6 +615,9 @@
 
 #let cited-state = state("acmref-cited", ())
 #let bib-path-state = state("acmref-bibpath", none)
+// "numeric" (default) or "author-year" — set by the acmart show rule from the
+// `cite-style` option, mirroring acmart's \citestyle{acmnumeric|acmauthoryear}.
+#let cite-style-state = state("acmref-citestyle", "numeric")
 
 // accept a single path or a list of paths; later files override earlier keys
 #let read-merged(paths) = {
@@ -562,10 +627,118 @@
   db
 }
 
-#let ordered-keys() = {
-  let db = read-merged(bib-path-state.final())
-  let keys = cited-state.final().filter(k => k in db)
-  keys.sorted(key: k => sort-key(db.at(k)))
+// ---- crossref resolution (BibTeX engine behaviour, not the .bst) -----------
+// BibTeX (not the .bst) inherits a crossref parent's missing fields into the
+// child, and adds the parent to the reference list only when it is crossref'd
+// >= min_crossrefs (=2) times or cited directly. A child whose parent IS listed
+// renders "See [parent]" (the .bst's format.*.crossref); a child whose parent is
+// NOT listed keeps the inherited fields and renders in full (BibTeX strips its
+// crossref). Verified against real bibtex (both thresholds + field inheritance).
+#let min-crossrefs = 2
+#let resolve-crossref(db, cited) = {
+  let counts = (:)
+  for k in cited {
+    if k not in db { continue }
+    let xr = db.at(k).fields.at("crossref", default: none)
+    if xr != none and xr in db { counts.insert(xr, counts.at(xr, default: 0) + 1) }
+  }
+  let listed = cited.filter(k => k in db)
+  for (xr, c) in counts {
+    if c >= min-crossrefs and xr not in listed { listed.push(xr) }
+  }
+  let db2 = db
+  for k in listed {
+    let e = db2.at(k)
+    let xr = e.fields.at("crossref", default: none)
+    if xr == none or xr not in db { continue }
+    let parent = db.at(xr)
+    for (fk, fv) in parent.fields {
+      if fk == "crossref" { continue }
+      if fk not in e.fields {
+        e.fields.insert(fk, fv)
+        if fk == "author" or fk == "editor" { e.names.insert(fk, parse-names(fv)) }
+      }
+    }
+    if xr not in listed { let _ = e.fields.remove("crossref") }   // parent excluded -> full render
+    db2.insert(k, e)
+  }
+  (db: db2, order: listed.sorted(key: k => sort-key(db2.at(k))))
+}
+
+// resolved (db, order) for the current cited set
+#let prepared() = resolve-crossref(read-merged(bib-path-state.final()), cited-state.final())
+
+// ---- author-year labels (format.lab.names + calc.basic.label dispatch) -----
+// short citation label: von+Last only, " and " for two, "et al." for >2 (or "and others")
+#let format-lab-names(people) = {
+  if people.len() == 0 { return "" }
+  if people.len() > 2 { return von-last(people.at(0)) + " et al." }
+  let s = von-last(people.at(0))
+  if people.len() == 2 {
+    if is-others(people.at(1)) { s = s + " et al." } else { s = s + " and " + von-last(people.at(1)) }
+  }
+  s
+}
+#let pick(arr) = { let r = arr.find(x => x != none); if r == none { "" } else { r } }
+// calc.basic.label's type dispatch: which field supplies the citation label
+#let lab-label(e) = {
+  let t = e.entry-type
+  let au = if has(e, "author") { format-lab-names(e.names.author) }
+  let ed = if has(e, "editor") { format-lab-names(e.names.editor) }
+  let org = if has(e, "organization") { tx(fld(e, "organization")) }
+  let key = if has(e, "key") { tx(fld(e, "key")) }
+  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "dataset", "preprint")
+  if t in ("book", "inbook", "article") { pick((au, ed, key)) }
+  else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key)) }
+  else if t in manual-like { pick((au, ed, org, key)) }
+  else { pick((au, key)) }
+}
+
+// \natexlab a/b/c suffixes: a..z over consecutive (label, year)-equal entries in
+// sorted order (forward.pass/reverse.pass); singletons get "".
+#let lab-dedup-key(e) = lab-label(e) + "\u{0}" + year-value(e).c
+#let extra-labels(db, order) = {
+  let res = (:)
+  let i = 0
+  while i < order.len() {
+    let k = lab-dedup-key(db.at(order.at(i)))
+    let j = i
+    while j < order.len() and lab-dedup-key(db.at(order.at(j))) == k { j += 1 }
+    let grp = order.slice(i, j)
+    if grp.len() == 1 { res.insert(grp.at(0), "") }
+    else { for (m, gk) in grp.enumerate() { res.insert(gk, str.from-unicode(97 + m)) } }
+    i = j
+  }
+  res
+}
+
+// cited keys reordered into reference-list (sorted) order
+#let cite-order(keys, order) = keys.filter(k => k in order).sorted(key: k => order.position(x => x == k))
+
+// natbib author-year \citep/\citet: group consecutive same-label entries, then
+// group their years by base year so suffixes collapse ("2020a,b,c"); ", " between
+// distinct years, "; " between author groups. \citet puts years in brackets.
+#let cite-ay(keys, db, order, extras, citet: false) = {
+  let ks = cite-order(keys, order)
+  if ks.len() == 0 { return if citet { "[?]" } else { "[?]" } }
+  let lgroups = ()
+  for k in ks {
+    let lbl = lab-label(db.at(k))
+    let yr = (base: year-value(db.at(k)).c, suf: extras.at(k, default: ""))
+    if lgroups.len() > 0 and lgroups.at(-1).label == lbl { lgroups.at(-1).years.push(yr) }
+    else { lgroups.push((label: lbl, years: (yr,))) }
+  }
+  let render-years(years) = {
+    let ybits = ()
+    for y in years {
+      if ybits.len() > 0 and ybits.at(-1).base == y.base { ybits.at(-1).sufs.push(y.suf) }
+      else { ybits.push((base: y.base, sufs: (y.suf,))) }
+    }
+    ybits.map(b => b.base + b.sufs.join(",")).join(", ")
+  }
+  let parts = lgroups.map(g => if citet { g.label + " [" + render-years(g.years) + "]" }
+    else { g.label + " " + render-years(g.years) })
+  if citet { parts.join("; ") } else { "[" + parts.join("; ") + "]" }
 }
 
 // collapse [1,2,3,5] -> "1–3, 5"
@@ -580,30 +753,88 @@
     else { g.map(str).join(", ") }).join(", ")
 }
 
+#let register-cites(ks) = cited-state.update(cur => {
+  for k in ks { if k not in cur { cur.push(k) } }
+  cur
+})
+
+// numeric: collapsed bracketed numbers; author-year: \citep "[Label Year]"
 #let bbl-cite(..keys) = {
   let ks = keys.pos()
-  cited-state.update(cur => {
-    for k in ks { if k not in cur { cur.push(k) } }
-    cur
-  })
+  register-cites(ks)
   context {
-    let order = ordered-keys()
-    let nums = ks.map(k => order.position(x => x == k)).filter(p => p != none).map(p => p + 1)
-    if nums.len() == 0 { [[?]] } else { [[#collapse(nums)]] }
+    let p = prepared()
+    if cite-style-state.get() == "author-year" {
+      cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order))
+    } else {
+      let nums = ks.map(k => p.order.position(x => x == k)).filter(x => x != none).map(x => x + 1)
+      if nums.len() == 0 { [[?]] } else { [[#collapse(nums)]] }
+    }
+  }
+}
+
+// \citet "Label [Year]" (author-year); falls back to numeric brackets otherwise
+#let bbl-citet(..keys) = {
+  let ks = keys.pos()
+  register-cites(ks)
+  context {
+    let p = prepared()
+    if cite-style-state.get() == "author-year" {
+      cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order), citet: true)
+    } else {
+      let nums = ks.map(k => p.order.position(x => x == k)).filter(x => x != none).map(x => x + 1)
+      if nums.len() == 0 { [[?]] } else { [[#collapse(nums)]] }
+    }
+  }
+}
+
+// \citeyear: just the year(s) with suffix; \citeauthor: just the label
+#let bbl-citeyear(..keys) = {
+  let ks = keys.pos()
+  register-cites(ks)
+  context {
+    let p = prepared()
+    let extras = extra-labels(p.db, p.order)
+    cite-order(ks, p.order).map(k => year-value(p.db.at(k)).c + extras.at(k, default: "")).join(", ")
+  }
+}
+#let bbl-citeauthor(..keys) = {
+  let ks = keys.pos()
+  register-cites(ks)
+  context {
+    let p = prepared()
+    cite-order(ks, p.order).map(k => lab-label(p.db.at(k))).join("; ")
   }
 }
 
 #let bbl-bibliography(path, title: [References], size: 8pt, leading: auto) = {
   bib-path-state.update(path)
   context {
-    let db = read-merged(path)
-    let order = ordered-keys()
+    let p = prepared()
+    let db = p.db
+    let order = p.order
+    let ay = cite-style-state.get() == "author-year"
+    let extras = if ay { extra-labels(db, order) } else { (:) }
+    let num-of = (:)
+    for (i, k) in order.enumerate() { num-of.insert(k, i + 1) }
     set text(size: size)
     set par(justify: true, first-line-indent: 0pt, leading: if leading == auto { 0.65em } else { leading })
     heading(level: 1, numbering: none, outlined: false, title)
     for (i, key) in order.enumerate() {
-      grid(columns: (2.4em, 1fr), gutter: 0pt,
-        [[#(i + 1)]], handle(db.at(key)))
+      let e = db.at(key)
+      // "See [parent]" citation for a child whose parent is in the list
+      let xref-cite = none
+      let xr = e.fields.at("crossref", default: none)
+      if xr != none and xr in num-of {
+        xref-cite = if ay { cite-ay((xr,), db, order, extras, citet: true) } else { [[#num-of.at(xr)]] }
+      }
+      let body = handle(e, xref-cite: xref-cite, year-suffix: extras.at(key, default: ""))
+      if ay {
+        // author-year list: no numbers, hanging indent (acmart \bibhang)
+        block(par(hanging-indent: 1.8em, body))
+      } else {
+        grid(columns: (2.4em, 1fr), gutter: 0pt, [[#(i + 1)]], body)
+      }
       v(0.2em, weak: true)
     }
   }
