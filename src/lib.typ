@@ -574,6 +574,15 @@
     bbl-cite(str(it.target))
   } else { it }
   show cite: it => if bibliography-backend == "bst" { bbl-cite(str(it.key)) } else { it }
+  // …and the reference list: a native `#bibliography(...)` is redirected to the bst
+  // renderer too, so the whole flow can be idiomatic Typst (`@key` + `#bibliography`)
+  // rather than `acm-cite`/`acm-bibliography`. `it.sources` is the path list; the
+  // title falls back to acmart's "References". (Caveat: Typst still validates the
+  // source through hayagriva when constructing the element, so a file hayagriva can't
+  // parse errors before this rule — use `acm-bibliography` to bypass that entirely.)
+  show bibliography: it => if bibliography-backend == "bst" {
+    acm-bibliography(it.sources, title: if it.title == auto { [References] } else { it.title })
+  } else { it }
 
   // `review`: number every line in the left margin (acmart uses \color{red}
   // \scriptsize — 7pt at this base size; acmart.dtx:7862).

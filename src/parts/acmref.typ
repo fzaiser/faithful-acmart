@@ -822,7 +822,7 @@
     for (i, k) in order.enumerate() { num-of.insert(k, i + 1) }
     set text(size: size)
     set par(justify: true, first-line-indent: 0pt, leading: if leading == auto { 0.65em } else { leading })
-    heading(level: 1, numbering: none, outlined: false, title)
+    if title != none { heading(level: 1, numbering: none, outlined: false, title) }
     for (i, key) in order.enumerate() {
       let e = db.at(key)
       // "See [parent]" citation for a child whose parent is in the list
