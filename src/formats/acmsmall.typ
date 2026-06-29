@@ -1,7 +1,7 @@
 // acmsmall format — single-column journal layout.
 //
 // All measurements are taken from the real acmart.cls (format=acmsmall) via a
-// layout probe (tools/probe.tex; run `make probe`). The shared font-size ladder,
+// layout probe (tools/probe.tex; run `tools/test.py probe`). The shared font-size ladder,
 // TeX->PS point conversion, and the dict constructor live in `_base.typ`.
 #import "_base.typ": tp, size-ladder, make-format
 
@@ -19,7 +19,6 @@
 #let acmsmall(font-size: "10pt") = make-format(
   name: "acmsmall",
   ladder: size-ladder(font-size, format: "acmsmall"),
-  default-font-size: "10pt",
   paper: (width: 6.75in, height: 10in),
   margin: (
     inside: 46 * tp,
@@ -27,7 +26,6 @@
     top: 85 * tp,                     // 58 (to head top) + 13 (head) + 14 (headsep)
     bottom: (722.7 - 85 - 574) * tp,  // = 63.7tp; paperheight - bodytop - textheight
   ),
-  head-skip: 58 * tp,
   foot-skip: 24 * tp,
   // single-column journal: left title, author list, journal bibstrip, generic
   // section fonts (acmart.dtx:6877/7337/2982/8415) — all make-format defaults.

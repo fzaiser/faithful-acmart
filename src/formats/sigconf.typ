@@ -10,7 +10,6 @@
 #let sigconf(font-size: "9pt") = make-format(
   name: "sigconf",
   ladder: size-ladder(font-size, format: "sigconf"),
-  default-font-size: "9pt",
   paper: (width: 8.5in, height: 11in),
   margin: (
     inside: 54 * tp,
@@ -18,17 +17,14 @@
     top: 84 * tp,          // geometry top=57 + 13 + 14
     bottom: 84.97 * tp,
   ),
-  head-skip: 57 * tp,
   foot-skip: 12 * tp,
   columns: 2,
   columnsep: 24 * tp,      // 2pc
   // conference top matter (acmart.dtx:6884/7167): centered title + author grid,
-  // first-column copyright block, no journal footer.
+  // first-column copyright block (conf-info-line), no journal footer (bibstrip
+  // false). acmart \flushbottom-justifies these pages; Typst can't (ragged-bottom).
   title-style: "conf-center",
-  author-style: "grid",
   bibstrip: false,
-  conf-footer: true,
-  flushbottom: true,       // doc-only marker (Typst can't flushbottom)
   // \@titlefont \Huge\sffamily\bfseries ; \@subtitlefont \LARGE\mdseries (sans)
   title-font: (family: "sans", weight: "bold", size: "Huge"),
   subtitle-font: (family: "sans", weight: "regular", size: "LARGE"),

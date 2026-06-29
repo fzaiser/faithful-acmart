@@ -12,19 +12,16 @@
 #let acmtog(font-size: "9pt") = make-format(
   name: "acmtog",
   ladder: size-ladder(font-size, format: "acmtog"),
-  default-font-size: "9pt",
   paper: (width: 8.5in, height: 11in),
-  margin: (inside: 52 * tp, outside: 52 * tp, top: 79 * tp, bottom: 100.97 * tp),
-  head-skip: 52 * tp,
+  margin: (inside: 52 * tp, outside: 52 * tp, top: 79 * tp, bottom: 100.97 * tp), // head top 52
   foot-skip: 24 * tp,
   columns: 2,
   columnsep: 24 * tp,
   parindent: 9 * tp,       // acmart.dtx:3846
   // journal top matter in two columns: left title spanning both columns, author
-  // list, contact-info footnote + ACM bibstrip (bibstrip true, conf-footer false).
+  // list, contact-info footnote + ACM bibstrip (bibstrip true). acmart
+  // \flushbottom-justifies these pages; Typst can't (ragged-bottom).
   title-style: "journal-left",
-  author-style: "list",
-  flushbottom: true,
   // \@titlefont \Huge\sffamily (no bold) ; \@subtitlefont \LARGE (sans)
   title-font: (family: "sans", weight: "regular", size: "Huge"),
   subtitle-font: (family: "sans", weight: "regular", size: "LARGE"),

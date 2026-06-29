@@ -23,8 +23,8 @@ the bundled LaTeX class.
 | two-column proceedings | sigconf, sigplan, acmengage (`siggraph`/`sigchi` alias to `sigconf`) | 2 | `@iii` centered title + author grid, first-column copyright block |
 | bespoke | sigchi-a (landscape), acmcp (cover) | 1 | best-effort (see Known limitations) |
 
-Each format's geometry is **probed** from the bundled class (`make probe
-FORMAT=<name>`) via the kernel relation `body-top = 1in + topmargin + headheight
+Each format's geometry is **probed** from the bundled class (`tools/test.py probe
+--format <name>`) via the kernel relation `body-top = 1in + topmargin + headheight
 + headsep` (validated exact against acmsmall's known 85/46/46/63.7); fonts and the
 `\ifcase\ACM@format@nr` flags are **read** from `acmart.dtx`.
 
@@ -112,7 +112,7 @@ set par(leading: baselineskip - font-size)   // => baseline pitch == baselineski
 matches LaTeX. The **title** overrides `top-edge: "cap-height"` so its (tall)
 first line's cap-top sits at the top margin, matching TeX's `\topskip` behaviour
 for a first line taller than `\topskip`. This is **matched to output**, verified
-with `tools/linepitch.py` (pitch 11.94 vs 11.95pt; first baseline 92.07pt exact).
+with `tools/test.py linepitch` (pitch 11.94 vs 11.95pt; first baseline 92.07pt exact).
 
 ### Heading / block vertical spacing (the line-box compensation)
 `\@startsection` places a heading a full `\baselineskip` **plus** `beforeskip`
@@ -143,7 +143,7 @@ baseline model lives in exactly one place.
 > **The amsart skips are NOT the article defaults.** acmsmall loads `amsart`,
 > which sets `\smallskip`/`\medskip`/`\bigskip` to **2.1 / 4.2 / 8.4pt** (0.7× the
 > familiar 3 / 6 / 12pt). `src/formats/acmsmall.typ` encodes the amsart values;
-> run `make probe` to re-confirm. Float spacing (`\intextsep`, `\abovecaptionskip`
+> run `tools/test.py probe` to re-confirm. Float spacing (`\intextsep`, `\abovecaptionskip`
 > = 12pt) is kept as its own constant so it does not ride on the `\bigskip` value.
 
 ### Run-in headings
@@ -171,8 +171,9 @@ separator (`-3.5pt`, the `\@startsection` afterskip), theorem styles
 (acmplain/acmdefinition) and their `\topsep`, title→authors gap (title `\bigskip`
 + authors `\medskip`), caption setup, copyright permission texts and owner lines,
 journal name/ISSN table, link colours, line-number colour. All of these are read
-from the class — re-derive any value with `make probe` (geometry/sizes/skips) or
-by reading the relevant macro in [`acmart/acmart.dtx`](acmart/acmart.dtx).
+from the class — re-derive any value with `tools/test.py probe`
+(geometry/sizes/skips) or by reading the relevant macro in
+[`acmart/acmart.dtx`](acmart/acmart.dtx).
 
 **Matched to rendered output (empirical, because TeX glue ≠ Typst spacing):**
 the first-baseline placement of the (taller-than-`\topskip`) title line.
@@ -181,7 +182,7 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 > the **bundled** acmart (v2.18; uppercasing was removed in v2.08). Beware: the
 > system-installed acmart may be older (e.g. v2.03) and *does* uppercase level-1
 > titles, so always validate against the bundled class — the LaTeX build is wired
-> to generate it from [`acmart/`](acmart/) (see `tools/latex-build.sh`).
+> to generate it from [`acmart/`](acmart/) (see `tools/test.py`'s `ensure_class`).
 
 **Deliberate approximations:**
 - Bibliography uses Typst's built-in ACM CSL, not `ACM-Reference-Format.bst`.
@@ -256,14 +257,14 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 
 ## Test harness robustness
 
-LaTeX references are built via `tools/latex-build.sh`, which **reruns pdflatex
-until stable** (cross-references / `TotPages` / lastpage resolved) and fails on
-surviving "Temporary page!" placeholders or final LaTeX errors. A single pdflatex
-pass leaves acmart with an unresolved `TotPages`, producing a spurious extra page
-— the builder prevents that from polluting diffs. `tools/build-reference.sh` and
-the Makefile `test`/`test-references` targets all route through it.
+LaTeX references are built by `tools/test.py`'s `latex_build` helper, which
+**reruns pdflatex until stable** (cross-references / `TotPages` / lastpage
+resolved) and fails on surviving "Temporary page!" placeholders or final LaTeX
+errors. A single pdflatex pass leaves acmart with an unresolved `TotPages`,
+producing a spurious extra page — the builder prevents that from polluting diffs.
+The sample-reference and `build`/`check` paths all route through it.
 
-`latex-build.sh` also **generates `acmart.cls` from the bundled [`acmart/`](acmart/)
+The harness also **generates `acmart.cls` from the bundled [`acmart/`](acmart/)
 sources** (into `tests/out/latex/`) and prepends that dir to `TEXINPUTS`, so every
 reference is built against the repo's acmart, never whatever is installed in the
 system TeX tree. This keeps the Typst target and the validator on the same class
@@ -271,16 +272,18 @@ version (see the section-title note above).
 
 ## Validation
 
-See the [README](README.md#development--validation) and the `Makefile`. The main
-loop is: build LaTeX references and Typst output (`make test`), then run
-`make check`. The gate covers warning/page-count smoke checks, Typst raster
-goldens, extracted-text equality/semantic assertions, expected compile errors,
-and cross-engine layout metrics. `make validate` separately builds copyright and
-option variants and reports page-1 mismatch percentages. Fonts come from the
-bundled OTFs via `tools/tc` (see the README "Fonts" section).
+See the [README](README.md#development--validation). The harness is one Python
+program, `tools/test.py`, driven by the matrix in `tools/test_matrix.py`. The
+main loop is `tools/test.py check`: it builds the LaTeX references, compiles every
+Typst test once, then runs the gates (warning/page-count smoke checks, Typst
+raster goldens, extracted-text equality/semantic assertions, expected compile
+errors, and cross-engine layout metrics). `tools/test.py validate` separately
+builds copyright and option variants and reports page-1 mismatch percentages.
+Fonts come from the bundled OTFs via `tools/tc` (see the README "Fonts" section).
 
 To audit the *numbers* in `src/formats/acmsmall.typ` against the class itself, run
-**`make probe`**: it compiles [`tools/probe.tex`](tools/probe.tex) against the
-bundled acmart and dumps the geometry, font-size steps, baselineskips, and skips
-(`PROBE …`/`SIZE …` lines). Every length in the format dict should trace back to a
-probe line or a macro in `acmart/acmart.dtx` — prefer that over eyeballing pixels.
+**`tools/test.py probe`**: it compiles [`tools/probe.tex`](tools/probe.tex)
+against the bundled acmart and dumps the geometry, font-size steps, baselineskips,
+and skips (`PROBE …`/`SIZE …` lines). Every length in the format dict should trace
+back to a probe line or a macro in `acmart/acmart.dtx` — prefer that over
+eyeballing pixels.

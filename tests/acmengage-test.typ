@@ -1,5 +1,5 @@
-// acmengage-test — two-column proceedings format (golden-smoke / twin).
-// Matched twin: sigconf-test.tex. Exercises the two-column layout: the spanning
+// acmengage-test — two-column proceedings format (twin).
+// Matched twin: acmengage-test.tex. Exercises the two-column layout: the spanning
 // centered conference title, the centered author grid, the first-column copyright
 // block (conference info + permission + ISBN), and the serif-bold Large sections.
 #import "../src/lib.typ": acmart

@@ -273,7 +273,6 @@
     code-data-link: code-data-link,
     contributions: contributions,
     article-type: article-type,
-    conf-footer: cfg.conf-footer,
     bibstrip: cfg.bibstrip,
     authors-per-row: authors-per-row,
     copyright: copyright,

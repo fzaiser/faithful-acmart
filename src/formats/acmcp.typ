@@ -13,10 +13,8 @@
 #let acmcp(font-size: "9pt") = make-format(
   name: "acmcp",
   ladder: size-ladder(font-size, format: "acmcp"),
-  default-font-size: "9pt",
   paper: (width: 6.75in, height: 10in),
-  margin: (inside: 46 * tp, outside: 46 * tp, top: 85 * tp, bottom: 66.7 * tp),
-  head-skip: 58 * tp,
+  margin: (inside: 46 * tp, outside: 46 * tp, top: 85 * tp, bottom: 66.7 * tp), // head top 58
   foot-skip: 24 * tp,
   secnumdepth: -1,         // no section numbers (acmart.dtx:8501)
   title-width-reduction: 6 * 12 * tp, // narrow the title by 6pc to clear the infobox

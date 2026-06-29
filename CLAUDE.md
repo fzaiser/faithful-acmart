@@ -9,10 +9,10 @@ LaTeX. Active formats are data dicts in [`src/formats/`](src/formats/) built by
 `make-format()` in `_base.typ`. The upstream spec being matched is in
 [`acmart/`](acmart/) (`acmart.dtx`); read it when matching behaviour.
 
-Full detail: [DESIGN.md](DESIGN.md) (architecture + Typst-vs-LaTeX modeling) and
-the per-directory READMEs ([`src/`](src/README.md), [`tools/`](tools/README.md),
-[`tests/`](tests/README.md), [`fonts/`](fonts/README.md)). This file is the
-short version that must not be missed.
+Full detail: [DESIGN.md](DESIGN.md) (architecture + Typst-vs-LaTeX modeling), the
+[root README](README.md) (build/validation harness), and [`src/`](src/README.md)
+/ [`fonts/`](fonts/README.md). This file is the short version that must not be
+missed.
 
 ## Operating rules
 
@@ -20,16 +20,18 @@ short version that must not be missed.
   bundled full Libertinus + Inconsolata OTFs (`--font-path fonts
   --ignore-system-fonts`). System Libertinus is often feature-stripped (no small
   caps/ligatures/kerning) and silently degrades output.
-- **Validate against real LaTeX.** `make reference` (LaTeX), `make test` (all
-  Typst + LaTeX refs), `make check` (smoke/golden/text/errors/metrics),
-  `make validate` (copyright modes + options), then `make diff STEM=<name>
-  PAGES=<n>` when visual inspection is needed. Output goes to
-  `tests/out/{latex,typst,diff}` (gitignored). LaTeX must be built via
-  `tools/latex-build.sh` (reruns to stability and fails on final LaTeX errors;
-  a single pdflatex pass leaves acmart's `TotPages` unresolved and adds a
-  spurious "Temporary page").
+- **Validate against real LaTeX.** The harness is `tools/test.py` (run via
+  `tools/venv/bin/python`), driven by the matrix in `tools/test_matrix.py`:
+  `test.py build` (LaTeX refs + Typst PDFs), `test.py check`
+  (smoke/golden/text/errors/metrics), `test.py validate` (copyright modes +
+  options), then `test.py diff <stem> --pages <n>` when visual inspection is
+  needed. Output goes to `tests/out/{latex,typst,diff}` (gitignored). The harness
+  builds LaTeX against the `acmart.cls` generated from the bundled `acmart/`
+  (never the system install) and reruns pdflatex to stability — a single pass
+  leaves acmart's `TotPages` unresolved and adds a spurious "Temporary page".
 - **Tests are matched pairs:** `tests/NAME.tex` (LaTeX) vs `tests/NAME.typ`
-  (ours), identical content, diffed page-by-page.
+  (ours), identical content, diffed page-by-page. Register new tests in
+  `tools/test_matrix.py`.
 - **Keep it idiomatic.** When touching code, apply the simplification checklist in
   [`src/README.md`](src/README.md) ("Idioms / simplifications") — resolve defaults
   in the signature, don't guard/`str()` bare values rendered into content (`none`
@@ -48,8 +50,9 @@ short version that must not be missed.
   through them rather than re-deriving (Typst's line box is 1em, not baselineskip).
 - **amsart skips are 2.1/4.2/8.4pt, NOT 3/6/12.** acmsmall loads `amsart`, which
   scales `\small/\med/\bigskip` to 0.7× the article defaults. Float spacing
-  (`\intextsep`/`\abovecaptionskip` = 12pt) is a *separate* constant. `make probe`
-  re-dumps these from the bundled class — don't hardcode the article values.
+  (`\intextsep`/`\abovecaptionskip` = 12pt) is a *separate* constant.
+  `test.py probe` re-dumps these from the bundled class — don't hardcode the
+  article values.
 - **Section titles are MIXED CASE**, not uppercased (author *names* are uppercased
   — different thing). pdftotext is misleading here; check rendered pixels.
 - **Flushbottom-like fill is unreplicable.** acmsmall does NOT call `\flushbottom`

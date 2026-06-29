@@ -1,7 +1,7 @@
 // sample-acmsmall — full end-to-end port of the upstream acmart sample
 // (acmart/samples/samples.dtx, option `acmsmall`). Unlike the matched twins,
 // this has NO hand-written .tex: it is diffed page-by-page against the upstream
-// reference PDF that `make reference` builds (tests/out/latex/acmsmall.pdf), so
+// reference PDF that `tools/test.py reference` builds (tests/out/latex/acmsmall.pdf), so
 // it tracks the *real* ACM sample rather than a duplicate.
 //
 // Known gaps vs the LaTeX sample (the lib doesn't model these yet; see CLAUDE.md

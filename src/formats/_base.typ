@@ -87,17 +87,13 @@
 #let make-format(
   name: none,
   ladder: none,            // result of size-ladder()
-  default-font-size: none,
   paper: none,
   margin: none,            // dict: top/bottom + inside/outside (or left/right)
-  twoside: true,
-  head-skip: 58 * tp,      // geometry `top` key (paper top -> head top); informational
   foot-skip: 24 * tp,      // \footskip
   columns: 1,
   columnsep: 0pt,
   parindent: 10 * tp,
   title-style: "journal-left", // \@mktitle@i / @iii / @iv
-  author-style: "list",        // \@mkauthors@i / @iii
   // \@titlefont / \@subtitlefont per format (acmart.dtx:6911/6946). family is a
   // role into `fonts`; size is a step name. Default = the journal @i style
   // (\LARGE\sffamily\bfseries title, \normalsize\mdseries subtitle).
@@ -109,9 +105,7 @@
   author-font: (family: "sans", weight: "regular", size: "large"),
   affil-font: (family: "serif", weight: "regular", size: "small"),
   bibstrip: true,              // journal footer (\if@ACM@journal)
-  conf-footer: false,          // first-column conference copyright block
   sans-default: false,
-  flushbottom: false,
   urlstyle-sans: false,
   secnumdepth: 3,
   // acmcp narrows the @i title by 6pc to clear the top-right cover infobox
@@ -122,13 +116,14 @@
   let l = ladder
   (
     name: name,
-    twoside: twoside,
     columns: columns,
     columnsep: columnsep,
-    default-font-size: default-font-size,
     paper: paper,
     margin: margin,
-    head: (height: 13 * tp, sep: 14 * tp, skip: head-skip),
+    // acmart's paper-top -> head-top distance (\topmargin) is captured in each
+    // format's `margin.top` comment; Typst positions the running head via head.sep,
+    // so only height/sep are stored here.
+    head: (height: 13 * tp, sep: 14 * tp),
     foot: (skip: foot-skip),
     // typography (scales with the base font size)
     font-size: l.font-size,
@@ -153,15 +148,12 @@
     secnumdepth: secnumdepth,
     // format-specific layout flags (the acmart \ifcase\ACM@format@nr switch)
     title-style: title-style,
-    author-style: author-style,
     title-font: title-font,
     subtitle-font: subtitle-font,
     author-font: author-font,
     affil-font: affil-font,
     bibstrip: bibstrip,
-    conf-footer: conf-footer,
     sans-default: sans-default,
-    flushbottom: flushbottom,
     urlstyle-sans: urlstyle-sans,
     title-width-reduction: title-width-reduction,
     sec-fonts: sec-fonts,

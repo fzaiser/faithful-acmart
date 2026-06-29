@@ -10,18 +10,15 @@
 #let sigplan(font-size: "10pt") = make-format(
   name: "sigplan",
   ladder: size-ladder(font-size, format: "sigplan"),
-  default-font-size: "10pt",
   paper: (width: 8.5in, height: 11in),
-  margin: (inside: 54.2025 * tp, outside: 54.2025 * tp, top: 72.27 * tp, bottom: 76.7 * tp),
-  head-skip: 45.27 * tp,
+  margin: (inside: 54.2025 * tp, outside: 54.2025 * tp, top: 72.27 * tp, bottom: 76.7 * tp), // head top 45.27
   foot-skip: 12 * tp,
   columns: 2,
   columnsep: 24 * tp,
+  // centered conf title + author grid, first-column copyright block (no journal
+  // footer). acmart \flushbottom-justifies these pages; Typst can't (ragged-bottom).
   title-style: "conf-center",
-  author-style: "grid",
   bibstrip: false,
-  conf-footer: true,
-  flushbottom: true,
   urlstyle-sans: true,
   // \@titlefont \Huge\bfseries (serif) ; \@subtitlefont \LARGE\mdseries (serif)
   title-font: (family: "serif", weight: "bold", size: "Huge"),

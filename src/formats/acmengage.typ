@@ -10,18 +10,15 @@
 #let acmengage(font-size: "10pt") = make-format(
   name: "acmengage",
   ladder: size-ladder(font-size, format: "acmengage"),
-  default-font-size: "10pt",
   paper: (width: 8.5in, height: 11in),
-  margin: (inside: 54 * tp, outside: 54 * tp, top: 84 * tp, bottom: 88.97 * tp),
-  head-skip: 57 * tp,
+  margin: (inside: 54 * tp, outside: 54 * tp, top: 84 * tp, bottom: 88.97 * tp), // head top 57
   foot-skip: 12 * tp,
   columns: 2,
   columnsep: 24 * tp,
+  // centered conf title + author grid, first-column copyright block (no journal
+  // footer). acmart \flushbottom-justifies these pages; Typst can't (ragged-bottom).
   title-style: "conf-center",
-  author-style: "grid",
   bibstrip: false,
-  conf-footer: true,
-  flushbottom: true,
   title-font: (family: "sans", weight: "bold", size: "Huge"),
   subtitle-font: (family: "sans", weight: "regular", size: "LARGE"),
   author-font: (family: "serif", weight: "regular", size: "LARGE"),

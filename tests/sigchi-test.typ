@@ -1,7 +1,7 @@
 // sigchi-test — obsolete public option that aliases to sigconf.
-// Matched twin: sigchi-test.tex. Exercises that the alias follows the sigconf
-// proceedings path: centered title, author grid, proceedings top matter, and
-// first-column copyright block.
+// Typst-only alias compile check (no LaTeX twin): asserts that `format: "sigchi"`
+// compiles warning-free down the sigconf path. The rendered proceedings layout is
+// covered by sigconf-test; this just guards the alias mapping.
 #import "../src/lib.typ": acmart
 
 #show: acmart.with(

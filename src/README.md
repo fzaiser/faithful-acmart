@@ -27,12 +27,12 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 constants). All public acmart formats are accepted; `siggraph` and `sigchi` map
 to the `sigconf` builder, because the bundled LaTeX class treats them as obsolete
 aliases. Each active `formats/<name>.typ` passes its probed geometry + the
-`\ifcase` flags (`columns`, `title-style`, `author-style`, `sec-fonts`,
-`bibstrip`/`conf-footer`, `secnumdepth`, the title/author/affiliation fonts). To
-add or audit one, run `make probe FORMAT=<name>` and register the builder in
-`_formats` in `lib.typ`. Two-column is handled once in `lib.typ` (page columns +
-the spanning-title float); frontmatter/title rendering dispatches on
-`cfg.title-style`/`author-style`, and `headings.typ` reads `cfg.sec-fonts`.
+`\ifcase` flags (`columns`, `title-style`, `sec-fonts`, `bibstrip`,
+`secnumdepth`, the title/author/affiliation fonts). To add or audit one, run
+`tools/test.py probe --format <name>` and register the builder in `_formats` in
+`lib.typ`. Two-column is handled once in `lib.typ` (page columns + the
+spanning-title float); frontmatter/title rendering dispatches on
+`cfg.title-style`, and `headings.typ` reads `cfg.sec-fonts`.
 
 ## Idioms / simplifications to keep the code clean
 

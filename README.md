@@ -131,52 +131,88 @@ under `anonymous`).
 ## Development & validation
 
 The template is validated by rendering both the **real LaTeX acmart** output and
-the Typst output and diffing them page-by-page.
+the Typst output and diffing them page-by-page. The whole harness is one Python
+program, `tools/test.py`, driven by the test matrix in `tools/test_matrix.py`.
+
+### Setup
 
 ```sh
-# one-time: create the Python venv used by the diff tools
+# one-time: create the Python venv used by the harness
 python3 -m venv tools/venv && tools/venv/bin/pip install pillow numpy fonttools
-
-make reference     # build the LaTeX acmsmall reference from acmart/ (needs TeX Live)
-make example       # build the Typst example
-make test          # build the LaTeX references + all Typst test PDFs
-make check         # smoke, golden, extracted text, expected errors, metrics
-make validate      # copyright/options visual validation against LaTeX
-make diff STEM=full-test PAGES=1-2   # diff a Typst output vs its LaTeX reference
 ```
+
+You also need **Typst**, a **TeX Live** install (`pdflatex`, `bibtex`), and
+**Poppler** (`pdftoppm`, `pdftotext`, `pdfinfo`) on `PATH`. All commands below
+build through `tools/tc`, the `typst` wrapper that points Typst at the bundled
+full Libertinus + Inconsolata fonts (see [Fonts](#fonts--important)).
+
+### Commands
+
+```sh
+PY=tools/venv/bin/python
+
+$PY tools/test.py build                     # LaTeX references + all Typst PDFs + the example
+$PY tools/test.py check                     # all regression gates (compiles Typst once, then gates)
+$PY tools/test.py accept                    # rebuild Typst PDFs and bless the golden hashes
+$PY tools/test.py diff full-test --pages 1-2  # side-by-side + overlay vs the LaTeX reference
+$PY tools/test.py validate                  # copyright/option variants vs LaTeX (mismatch %)
+$PY tools/test.py probe --format sigconf    # dump a format's dimensions from the bundled class
+$PY tools/test.py reference                 # build just the LaTeX acmsmall sample reference
+$PY tools/test.py example                   # build just the Typst example
+$PY tools/test.py list                      # print the test matrix
+$PY tools/test.py clean                     # remove tests/out/
+```
+
+`tools/test.py metrics` prints the Tier 2 layout-metric table (no gating) and
+`tools/test.py linepitch FILE.pdf` measures baseline pitch — both for tuning.
+
+### Output
 
 All generated output lives under `tests/out/` (gitignored):
 
 ```
-tests/out/latex/   LaTeX builds (acmart.cls, samples, reference PDFs)
+tests/out/latex/   LaTeX builds: acmart.cls (from the bundled acmart/), samples, reference PDFs (+ aux)
 tests/out/typst/   Typst output PDFs
-tests/out/diff/    visual-diff images
+tests/out/diff/    side-pNN.png / overlay-pNN.png visual diffs
 ```
 
-Pieces:
+The committed golden artifact is `tests/golden/typst.sha256`.
 
-- `tools/build-reference.sh` — extracts the sample sources from `acmart/` and
-  compiles a sample to `tests/out/latex/<name>.pdf`.
-- `tools/latex-build.sh` — compile any `.tex` to a *stable* PDF (reruns until
-  `TotPages`/labels settle; fails on surviving "Temporary page" or final LaTeX
-  errors). Builds against the `acmart.cls` generated from the bundled `acmart/`,
-  never the system install.
-- `tools/check_text.py` — compares normalized extracted LaTeX/Typst PDF text for
-  strict tests and runs semantic assertions for noisy tests.
-- `tools/check_errors.py` — verifies expected compile failures for invalid
-  options.
-- `tools/probe.tex` (`make probe`) — dump a format's geometry / sizes / skips from
-  the bundled class to audit `src/formats/<format>.typ`.
-- `tools/pdfdiff.py` — per-page side-by-side + red/blue overlay diff and a
-  numeric mismatch %.
-- `tools/linepitch.py` — measure baseline pitch / first-line position in a PDF.
-- `tools/tc` — `typst` wrapper that uses the bundled fonts.
-- `acmart/` — the upstream LaTeX acmart source (the spec being matched).
+### Tests
+
+Tests are **matched twins** — `NAME.tex` (real LaTeX acmart) and `NAME.typ`
+(ours) with identical content, diffed page-by-page — plus a Typst-only
+**upstream-ref** port (`sample-acmsmall`, compared against the bundled sample
+reference) and a few **smoke** docs (no LaTeX twin: alias/feature paths,
+compiled and where deterministic golden-hashed). `tools/test.py list` prints the
+full matrix; `tools/test_matrix.py` is the source of truth.
+
+### Gates (`tools/test.py check`)
+
+The harness compiles every Typst test once, captures warnings, then runs all
+gates without recompiling:
+
+- **Tier 0 (smoke)** — every test compiles with no warnings, page counts match,
+  twins keep LaTeX/Typst page-count parity.
+- **Tier 1 (golden)** — each Typst page raster is hashed and compared to
+  `tests/golden/typst.sha256` (Typst is deterministic for a pinned engine +
+  bundled fonts). After an intended change, `tools/test.py accept` refreshes it.
+- **Tier 1.5 (text)** — `pdftotext` extraction is normalized and compared exactly
+  for stable twins (`text_equal`), or with targeted `contains`/`absent`
+  assertions for noisy PDFs (two-column order, author grids, bibliography).
+- **Tier 1.6 (expected errors)** — invalid option cases must fail with the
+  intended diagnostic.
+- **Tier 2 (metrics)** — cross-engine layout geometry (left/top margin, baseline
+  pitch) gated against `test_matrix` tolerances; right margin & line count are
+  reported only (cross-engine line-breaking makes them noisy).
+
+`tools/test.py validate` is a separate, representative visual suite over the
+copyright modes and document options (the package supports every copyright mode;
+the suite samples the common ones plus the options whose effect shows on page 1).
 
 See [DESIGN.md](DESIGN.md) for the architecture and the source-vs-output
-matching decisions. Each subdirectory has its own README:
-[`src/`](src/README.md) (package modules), [`tools/`](tools/README.md) (harness),
-[`tests/`](tests/README.md) (test docs), [`fonts/`](fonts/README.md) (bundled fonts).
+matching decisions, and [`acmart/`](acmart/) for the upstream LaTeX class being
+matched. The bundled fonts are documented in [`fonts/`](fonts/README.md).
 
 ## License
 

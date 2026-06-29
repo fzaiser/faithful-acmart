@@ -1,0 +1,395 @@
+"""Test matrix — the single source of truth for the regression harness.
+
+`tools/test.py` is the command runner; this module is its data. Everything the
+gates need lives here as typed Python: the test list (one `Test` per stem), the
+text assertions, the Tier 2 metric tolerances, the expected compile-error cases,
+the copyright/option validation variants, the pinned Typst version, and the
+golden raster DPI.
+
+Test kinds
+----------
+- ``twin``         matched ``NAME.tex`` (real LaTeX acmart) + ``NAME.typ`` (ours),
+                   compared page-by-page against ``tests/out/latex/<reference>.pdf``.
+- ``upstream-ref`` Typst-only port compared against the upstream sample reference
+                   named by ``reference`` (e.g. the bundled ``acmsmall`` sample).
+- ``smoke``        Typst-only doc with no LaTeX twin: compiled (warning-free) and,
+                   when deterministic, golden-hashed. Alias/feature paths the
+                   matched twins don't cover.
+
+The Tier 1 goldens are captured with `TYPST_VERSION` + the bundled fonts at
+`GOLDEN_DPI`; bumping Typst means regenerating them (`tools/test.py accept`).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+# The engine the Tier 1 goldens were captured with. Bumping Typst means
+# regenerating the golden hashes (`tools/test.py accept`).
+TYPST_VERSION = "0.14.2"
+
+# Raster resolution (dpi) for the Tier 1 page-hash snapshots.
+GOLDEN_DPI = 150
+
+# Tier 2 gate tolerances (PDF points; both engines emit 1/72in big points).
+# Only robust, renderer-agnostic invariants are gated. Right margin and line
+# count depend on cross-engine line-breaking, so metrics report them but does
+# not gate on them.
+METRICS_TOLERANCE = {
+    "left": 1.0,   # text-block left edge — true horizontal invariant, gated tightly
+    "top": 4.5,    # first-content vertical position — loose: absorbs glyph-bbox
+                   # ascent conventions and title-page variance, still catches gross shifts
+    "pitch": 0.6,  # baseline-to-baseline pitch — gated only on uniform_pitch tests
+}
+
+
+@dataclass(frozen=True)
+class Assertion:
+    """A targeted text-layer assertion for a noisy twin (Tier 1.5).
+
+    ``engine``: which PDF(s) to scan — ``typst``, ``latex``, or ``both``.
+    ``kind``:   ``contains`` (text must be present) or ``absent`` (must not be).
+    ``page``:   1-based page to scan, or ``None`` for the whole document.
+    """
+
+    text: str
+    kind: str = "contains"
+    engine: str = "typst"
+    page: int | None = None
+
+
+@dataclass(frozen=True)
+class Test:
+    """One test stem and how the gates treat it.
+
+    ``page_parity`` defaults to ``True`` for twins (LaTeX/Typst page counts must
+    match) and ``False`` otherwise; pass an explicit bool to override.
+    ``uniform_pitch`` marks tests whose body is on a single baseline grid, so
+    median baseline pitch is meaningful and gated. ``page1_only`` gates absolute
+    vertical positions on page 1 only (multi-page docs drift downward via
+    acmsmall's \\flushbottom, which Typst can't replicate). ``text_equal`` /
+    ``text_reason`` / ``text_assertions`` drive Tier 1.5. ``note`` is
+    documentation only.
+    """
+
+    kind: str
+    pages: int
+    reference: str | None = None
+    _page_parity: bool | None = None
+    metrics: bool = True
+    golden: bool = True
+    page1_only: bool = False
+    uniform_pitch: bool = False
+    text_equal: bool | None = None
+    text_reason: str | None = None
+    text_assertions: tuple[Assertion, ...] = ()
+    note: str = ""
+
+    @property
+    def ref_stem(self) -> str:
+        return self.reference if self.reference is not None else ""
+
+    @property
+    def page_parity(self) -> bool:
+        if self._page_parity is not None:
+            return self._page_parity
+        return self.kind == "twin"
+
+
+def reference_for(name: str, t: Test) -> str:
+    """LaTeX stem to compare/diff a test against (defaults to the test name)."""
+    return t.reference if t.reference is not None else name
+
+
+# --- The test matrix -------------------------------------------------------
+#
+# Order is the run/report order. Twins come first, then the upstream-ref port,
+# then the smoke-only docs.
+TESTS: dict[str, Test] = {
+    "body-test": Test(
+        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        note="body typography: font, size, baseline grid, justification, indent",
+    ),
+    "head-test": Test(
+        kind="twin", pages=1, uniform_pitch=True,
+        note="section / subsection / subsubsection / paragraph (run-in) headings",
+    ),
+    "body2-test": Test(
+        kind="twin", pages=1,
+        note="figure & table captions, theorems (plain/definition/proof+QED), lists",
+    ),
+    "fn-test": Test(
+        kind="twin", pages=1,
+        note="body footnotes + code/verbatim",
+    ),
+    "full-test": Test(
+        kind="twin", pages=2, page1_only=True, uniform_pitch=True,
+        note="multi-page cumulative spacing (reveals the \\flushbottom difference)",
+    ),
+    "title-test": Test(
+        kind="twin", pages=1,
+        note="frontmatter in isolation: title block, author fields, abstract, CCS, keywords",
+    ),
+    "manuscript-test": Test(
+        kind="twin", pages=1,
+        note="format=manuscript: single-column draft geometry (letterpaper, 9pt default) "
+             "with the generic sans-bold section fonts shared with acmsmall.",
+    ),
+    "manuscript-pages-test": Test(
+        kind="twin", pages=2, page1_only=True, text_equal=False,
+        text_reason="Continuation-page header/footer extraction is the point; "
+                    "body flow differs across engines.",
+        text_assertions=(
+            Assertion(engine="both", page=2, text="Lovelace and Hopper"),
+            Assertion(engine="both", page=2, text="Manuscript submitted to ACM"),
+        ),
+    ),
+    "acmlarge-test": Test(
+        kind="twin", pages=1,
+        note="format=acmlarge: large single-column journal geometry (10pt) with the "
+             "\\sffamily\\large (regular-weight) section headings (acmart.dtx:8424).",
+    ),
+    "acmlarge-pages-test": Test(
+        kind="twin", pages=2, page1_only=True, text_equal=False,
+        text_reason="Continuation-page header/footer extraction is the point; "
+                    "body flow differs across engines.",
+        text_assertions=(
+            Assertion(engine="both", page=2, text="Lovelace and Hopper"),
+            Assertion(engine="both", page=2, text="111:2"),
+            Assertion(engine="both", page=2, text="J. ACM, Vol. 37, No. 4, Article 111"),
+        ),
+    ),
+    "acmtog-test": Test(
+        kind="twin", pages=1, page1_only=True,
+        note="format=acmtog: two-column JOURNAL. Spanning left @i title + author list, "
+             "contact-info footnote + ACM bibstrip + journal footer, 9pt parindent, "
+             "sans-large sections.",
+    ),
+    "acmtog-pages-test": Test(
+        kind="twin", pages=2, page1_only=True, text_equal=False,
+        text_reason="Continuation-page header/footer extraction is the point; "
+                    "two-column extraction order differs.",
+        text_assertions=(
+            Assertion(engine="both", page=2, text="Lovelace and Hopper"),
+            Assertion(engine="both", page=2, text="111:2"),
+            Assertion(engine="both", page=2,
+                      text="ACM Trans. Graph., Vol. 37, No. 4, Article 111"),
+        ),
+    ),
+    "sigconf-test": Test(
+        kind="twin", pages=1, page1_only=True, text_equal=False,
+        text_reason="Two-column author-grid and copyright-block extraction order differs; "
+                    "assert proceedings top-matter semantics.",
+        text_assertions=(
+            Assertion(engine="both", text="Abstract"),
+            Assertion(engine="both", text="Keywords"),
+            Assertion(engine="both", text="In Proceedings of ACM Conference"),
+            Assertion(engine="both", text="ACM, New York, NY, USA"),
+            Assertion(engine="both", kind="absent", text="Additional Key Words and Phrases"),
+            Assertion(engine="typst", kind="absent", text="Journal of the ACM"),
+        ),
+        note="format=sigconf: two-column proceedings. Spanning centered title + author "
+             "grid, first-column copyright block, serif-bold Large sections. Two columns "
+             "break differently across engines (higher pixel mismatch expected); "
+             "page1_only gates absolute positions on the title page only.",
+    ),
+    "sigconf-pages-test": Test(
+        kind="twin", pages=2, page1_only=True, text_equal=False,
+        text_reason="Continuation-page header/footer extraction is the point; "
+                    "two-column extraction order differs.",
+        text_assertions=(
+            Assertion(engine="both", page=2, text="Lovelace and Hopper"),
+            Assertion(engine="both", page=2,
+                      text="Conference'17, June 2018, Washington, DC, USA"),
+        ),
+    ),
+    "sigconf-authors-test": Test(
+        kind="twin", pages=1, page1_only=True,
+        note="Conference author grid with a PARTIAL last row (5 groups at 3-per-row => "
+             "3 + 2). Guards make-authors-grid's per-row centering: the final row of 2 "
+             "is centered, not left-aligned (validated against LaTeX).",
+    ),
+    "sigplan-test": Test(
+        kind="twin", pages=1, metrics=False,
+        note="format=sigplan: sigconf variant — serif-bold Huge title (no sans), 10pt, "
+             "1in/0.75in margins, serif-bold sections, sans URLs. Tier 2 top-position is "
+             "report-only: the Huge serif title pins its cap-top to the margin, but "
+             "topmost-ink overshoots LaTeX's baseline placement by ~5pt of glyph bbox.",
+    ),
+    "acmengage-test": Test(
+        kind="twin", pages=1, metrics=False,
+        note="format=acmengage: sigconf variant (10pt, booktitle copyright line). Tier 2 "
+             "top-position is report-only (same reason as sigplan): the 10pt Huge title "
+             "pins its cap-top to the margin but topmost-ink overshoots by ~5pt. Left "
+             "edge matches.",
+    ),
+    "acmcp-test": Test(
+        kind="twin", pages=1, metrics=False, text_equal=False,
+        text_reason="acmcp uses an absolutely positioned cover infobox whose extraction "
+                    "order differs.",
+        text_assertions=(
+            Assertion(engine="both", text="Research Article"),
+            Assertion(engine="both", text="Keywords: datasets"),
+            Assertion(engine="both", text="BT designed the study"),
+            Assertion(engine="both", text="Authors' Contact"),
+            Assertion(engine="both", text="Information: Ben"),
+            Assertion(engine="both",
+                      text="Journal of the ACM, Volume 37, Issue 4, Article 111"),
+            Assertion(engine="typst", kind="absent",
+                      text="Permission to make digital or hard copies"),
+            Assertion(engine="typst", kind="absent",
+                      text="Additional Key Words and Phrases"),
+        ),
+        note="format=acmcp: ACM cover page (best-effort). Single-column, unnumbered "
+             "sections, ACM reference format off; the JDS cover frame + infobox ARE "
+             "reproduced (only the infobox's vertical anchoring is approximated). Tier 2 "
+             "is report-only: the page's first ink is the cover frame/logo, not the text "
+             "block.",
+    ),
+    "sigchi-a-test": Test(
+        kind="twin", pages=2, page1_only=True, metrics=False,
+        note="format=sigchi-a: landscape SIGCHI extended abstracts (best-effort). Sans "
+             "default, wide left margin, 2pt-rule title, unnumbered sections. The legacy "
+             "watermark IS reproduced; margin-note footnotes (\\marginpar) and the @iv "
+             "title's 5pc leftskip remain approximations, so cross-engine geometry is "
+             "report-only (metrics off); the twin still gates page-count parity.",
+    ),
+    "fontsize-8-test": Test(
+        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        note="Base font-size option `8pt`: amsart \\@typesizes ladder + "
+             "baselineskip-derived heading/skip scaling. Body is on one grid, so pitch is gated.",
+    ),
+    "fontsize-9-test": Test(
+        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        note="Base font-size option `9pt`.",
+    ),
+    "fontsize-11-test": Test(
+        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        note="Base font-size option `11pt`.",
+    ),
+    "fontsize-12-test": Test(
+        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        note="Base font-size option `12pt`.",
+    ),
+    "bib-test": Test(
+        kind="twin", pages=1, uniform_pitch=True,
+        note="bibliography. The ACM CSL and ACM-Reference-Format.bst differ in content "
+             "(dropped access dates, \"Doctoral dissertation\" vs \"Ph.D.\", doi: vs "
+             "https://doi.org/, in-text range collapsing), so the list reflows and line "
+             "count is reported, not gated. Margins/pitch are held to the same bar.",
+    ),
+    "notes-test": Test(
+        kind="twin", pages=1,
+        note="title/subtitle/author notes, corresponding mark, received line, and acks. "
+             "The title block and footnote stack mix leadings, so pitch is reported, not gated.",
+    ),
+    "options-test": Test(
+        kind="twin", pages=2, page1_only=True,
+        note="toggles nonacm / printccs=false / printfolios=false plus the single-column "
+             "no-ops balance=false / natbib=false. Two pages so page 2 shows suppressed "
+             "folios in the running head. Mixed leadings, so pitch is reported, not gated.",
+    ),
+    "authorversion-test": Test(
+        kind="twin", pages=1,
+        note="author-version copyright block (suppressed permission text + \"author's "
+             "version ... Version of Record\" notice). Mixed leadings, so pitch is reported.",
+    ),
+    "language-test": Test(
+        kind="twin", pages=1,
+        note="multilingual paper (acmart `language` option): French main language with "
+             "English translated title/abstract/keywords. Verifies localized fixed strings "
+             "(keywordsname/acksname/proofname) and French hyphenation.",
+    ),
+    "language-de-test": Test(
+        kind="twin", pages=1,
+        note="German `language=german`: keywordsname/acksname/proofname + tablename "
+             "(\"Tabelle\") localized, figure label still \"Fig.\"",
+    ),
+    "language-es-test": Test(
+        kind="twin", pages=1,
+        note="Spanish `language=spanish`: keywordsname/acksname/proofname + tablename "
+             "(\"Cuadro\") localized, figure label still \"Fig.\"",
+    ),
+    # Upstream-ref port.
+    "sample-acmsmall": Test(
+        kind="upstream-ref", reference="acmsmall", pages=10,
+        _page_parity=False, page1_only=True,
+        note="full port of the upstream acmsmall sample, compared against "
+             "out/latex/acmsmall.pdf.",
+    ),
+    # Smoke-only docs (no LaTeX twin).
+    "siggraph-test": Test(
+        kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
+        note="obsolete public option `siggraph` aliases to sigconf (matching the bundled "
+             "LaTeX class). Typst-only alias compile check: it must compile warning-free "
+             "down the sigconf path. The rendered proceedings layout is covered by "
+             "sigconf-test, so no twin/golden/metrics here.",
+    ),
+    "sigchi-test": Test(
+        kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
+        note="obsolete public option `sigchi` aliases to sigconf (matching the bundled "
+             "LaTeX class). Typst-only alias compile check (see siggraph-test).",
+    ),
+    "draft-test": Test(
+        kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
+        note="author-draft / timestamp mode. The footer embeds the compile date "
+             "(datetime.today), so output is non-deterministic — compile-only (Tier 0): "
+             "no golden hash, no geometry gate, no LaTeX twin.",
+    ),
+    "urlbreak-test": Test(
+        kind="smoke", pages=1, _page_parity=False, metrics=False,
+        note="`urlbreakonhyphens: false`. Not a twin — LaTeX and Typst pick different URL "
+             "break points, so only the Typst output is pinned (golden) to prove the long "
+             "hyphenated URL no longer breaks at its hyphens. Deterministic, so golden-hashed.",
+    ),
+    "feature-test": Test(
+        kind="smoke", pages=1, _page_parity=False, metrics=False,
+        note="no LaTeX twin: badges/teaser use synthetic shapes. Compiled (warning-free) "
+             "and golden-hashed only, to guard the title-note/subtitle-note/teaser/badges "
+             "paths that notes-test (text-only) and the sample don't all exercise together.",
+    ),
+}
+
+
+# --- Tier 1.6: expected compile-error cases --------------------------------
+#
+# Each case compiles a tiny acmsmall document with the bad option spliced in and
+# asserts the compile fails with a diagnostic containing the expected substring.
+# name -> (extra acmart.with(...) argument, expected diagnostic substring)
+ERROR_CASES: dict[str, tuple[str, str]] = {
+    "bad-copyright": ('copyright: "definitely-not-a-mode",', "unsupported copyright mode"),
+    "bad-cc-type": ('copyright: "cc", cc-type: "by-mystery",', "unsupported Creative Commons type"),
+    "bad-cc-version": ('copyright: "cc", cc-version: "2.5",', "unsupported Creative Commons version"),
+    "bad-font-size": ('font-size: "13pt",', "font-size"),
+    "bad-language": ('language: "klingon",', "unsupported language"),
+    "draft-option": ("draft: true,", "option `draft` has no effect"),
+}
+
+
+# --- Copyright / option validation variants --------------------------------
+#
+# A representative visual suite (NOT exhaustive): for each variant `validate`
+# builds a matched LaTeX + Typst page and reports a page-1 mismatch %. The acmart
+# package supports every copyright mode; this suite samples the common ones plus
+# the document options whose effect shows on page 1.
+# name -> (LaTeX class options, LaTeX preamble, Typst acmart.with args)
+VARIANTS: dict[str, tuple[str, str, str]] = {
+    "acmlicensed":    ("", r"\setcopyright{acmlicensed}",    '  copyright: "acmlicensed",\n'),
+    "acmcopyright":   ("", r"\setcopyright{acmcopyright}",   '  copyright: "acmcopyright",\n'),
+    "rightsretained": ("", r"\setcopyright{rightsretained}", '  copyright: "rightsretained",\n'),
+    "usgov":          ("", r"\setcopyright{usgov}",          '  copyright: "usgov",\n'),
+    "usgovmixed":     ("", r"\setcopyright{usgovmixed}",     '  copyright: "usgovmixed",\n'),
+    "cc-by-nc-sa":    ("", "\\setcopyright{cc}\n\\setcctype{by-nc-sa}",
+                       '  copyright: "cc", cc-type: "by-nc-sa",\n'),
+    "screen":    (",screen", r"\setcopyright{acmlicensed}", '  screen: true,\n'),
+    "review":    (",review", r"\setcopyright{acmlicensed}", '  review: true,\n'),
+    "anonymous": (",anonymous", r"\setcopyright{acmlicensed}", '  anonymous: true,\n'),
+    # nonacm drops the journal footer line and, for non-cc copyright, the whole
+    # page-1 copyright/permission block (acmart.dtx:6599) — both visible on page 1.
+    "nonacm":    (",nonacm", r"\setcopyright{acmlicensed}", '  nonacm: true,\n'),
+    # authorversion swaps the page-1 copyright block: no permission text, and the
+    # ACM bibstrip becomes the "author's version ... Version of Record" notice
+    # naming the full journal + DOI (acmart.dtx:6612/6634).
+    "authorversion": (",authorversion", r"\setcopyright{acmlicensed}",
+                      '  author-version: true,\n'),
+}

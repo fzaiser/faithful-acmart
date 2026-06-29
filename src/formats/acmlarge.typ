@@ -3,21 +3,19 @@
 // 8.5x11, wide margins, 10pt default (acmart.dtx:3070). Same single-column
 // journal topmatter as acmsmall, but the section headings are \sffamily\large and
 // NOT bold (acmart.dtx:8424) — sans, regular weight, one size step up.
-// Geometry probed from the bundled class (`make probe`); values in TeX points.
+// Geometry probed from the bundled class (`tools/test.py probe`); values in TeX points.
 #import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
 
 #let acmlarge(font-size: "10pt") = make-format(
   name: "acmlarge",
   ladder: size-ladder(font-size, format: "acmlarge"),
-  default-font-size: "10pt",
   paper: (width: 8.5in, height: 11in),
   margin: (
     inside: 81 * tp,
     outside: 81 * tp,
-    top: 105 * tp,         // geometry top=78 + 13 + 14
+    top: 105 * tp,         // geometry top=78 (head top) + 13 + 14
     bottom: 139.96999 * tp,
   ),
-  head-skip: 78 * tp,
   foot-skip: 24 * tp,
   // \@secfont/\@subsecfont = \sffamily\large (regular weight, size step up);
   // subsubsection/paragraph stay generic (acmart.dtx:8424).
