@@ -35,6 +35,21 @@ missed.
   `tests/typst-only/`; the harness picks the directory from each test's `kind`
   (`Test.subdir` in `test_matrix.py`). Register new tests in
   `tools/test_matrix.py`.
+- **Make twins match at the source, not in the comparison.** When a twin's LaTeX
+  and Typst output differ, prefer making the two *actually* agree — fix the
+  fixture (e.g. a titleless body-only `.tex` re-asserts `\thispagestyle{empty}`,
+  which acmart otherwise overrides at `\begin{document}`) or fix the port — over
+  adding normalization to the gate. Normalization compensation compounds (each
+  strip hides info and spawns the next: the folio-strip created a section-number
+  asymmetry that a digit-strip then masked) and silently hides real bugs. The text
+  gates are layered — sequence (`text_equal=True`) → word bag (`"bag"`) → an exact
+  char bag on *every* twin — and the char bag is deliberately minimal (NFKC + drop
+  dashes + fold quote/star + drop whitespace; numbers/dashes delegated to the word
+  bag, folios to the fixtures). Whatever difference survives a gate is real: fix
+  it, or document it with a one-line `char_diff` / `text_reason` exemption — don't
+  expand the normalization. When asked *why* a normalization step is needed,
+  verify the mechanism (ablate it; read both `pdftotext` dumps) before answering —
+  in this codebase the plausible explanation was wrong more than once.
 - **Keep it idiomatic.** When touching code, apply the simplification checklist in
   [`src/README.md`](src/README.md) ("Idioms / simplifications") — resolve defaults
   in the signature, don't guard/`str()` bare values rendered into content (`none`
