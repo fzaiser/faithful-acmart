@@ -89,6 +89,14 @@ page1_only = true
 # justified text break differently across engines (higher pixel mismatch is
 # expected); page1_only gates absolute positions on the title page only.
 
+[tests.sigconf-authors-test]
+kind = "twin"
+pages = 1
+page1_only = true
+# Conference author grid with a PARTIAL last row (5 groups at 3-per-row => 3 + 2).
+# Guards make-authors-grid's per-row centering: the final row of 2 is centered, not
+# left-aligned (validated against LaTeX, which centers every row).
+
 [tests.sigplan-test]
 kind = "twin"
 pages = 1
