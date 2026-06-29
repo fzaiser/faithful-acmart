@@ -608,6 +608,9 @@
   let ppl = e.names.at("author", default: e.names.at("editor", default: ()))
   let names = ppl.map(n => lower((n.von + " " + n.last + " " + n.first).trim())).join(" ")
   if names == none { names = "" }   // ().join() is none, not ""
+  // bibtex sorts on purify$(name): drop \commands and grouping braces, so a
+  // brace-protected org like {{R Core Team}} sorts under "R", not after "z".
+  names = names.replace(regex("\\\\[a-zA-Z]+"), "").replace("{", "").replace("}", "")
   if names == "" and has(e, "key") { names = lower(fld(e, "key")) }
   let y = if has(e, "year") { fld(e, "year") } else { "" }
   names + "   " + y + "   " + lower(fld(e, "title", d: ""))

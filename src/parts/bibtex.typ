@@ -27,6 +27,7 @@
   let j = i
   while j < cp.len() {
     let c = cp.at(j)
+    if c == "\\" { j += 2; continue }    // escaped char: \{ and \} are literal
     if c == "{" { depth += 1 } else if c == "}" {
       depth -= 1
       if depth == 0 { return j }
@@ -38,6 +39,20 @@
 
 #let skip-ws(cp, i) = {
   while i < cp.len() and cp.at(i) in ws { i += 1 }
+  i
+}
+
+// Like skip-ws, but also swallows `%...\n` line comments between fields (biblatex
+// supports them; bibtex doesn't treat `%` specially, so silently dropping the rest
+// of an entry — the old behaviour — was the worst of both). Only runs in the
+// field-structure scan, never inside a braced/quoted value, so a literal `%` in a
+// value is preserved.
+#let skip-ws-comment(cp, i) = {
+  i = skip-ws(cp, i)
+  while i < cp.len() and cp.at(i) == "%" {
+    while i < cp.len() and cp.at(i) != "\n" { i += 1 }
+    i = skip-ws(cp, i)
+  }
   i
 }
 
@@ -53,6 +68,7 @@
       let j = i + 1
       let depth = 0
       while j < cp.len() and not (cp.at(j) == "\"" and depth == 0) {
+        if cp.at(j) == "\\" { j += 2; continue }   // escaped char (\" \{ \})
         if cp.at(j) == "{" { depth += 1 } else if cp.at(j) == "}" { depth -= 1 }
         j += 1
       }
@@ -255,19 +271,45 @@
 }
 
 // ---- name parsing ----
+// Split a name list on the keyword "and" that sits at brace depth 0 and is
+// bounded by whitespace on BOTH sides (any whitespace, incl. newlines — real
+// .bib files put "and" on its own line). A leading/trailing "and" is not a
+// separator (it has no whitespace on the outer side); two consecutive "and"s
+// yield an empty name in between. Matches biblatex's split_token_lists_with_kw.
 #let split-and(raw) = {
   let cp = raw.codepoints()
+  let n = cp.len()
   let parts = ()
   let cur = ""
   let depth = 0
   let i = 0
-  while i < cp.len() {
+  while i < n {
     let c = cp.at(i)
     if c == "{" { depth += 1 } else if c == "}" { depth -= 1 }
-    if depth == 0 and i + 5 <= cp.len() and cp.slice(i, i + 5).join("") == " and " {
-      parts.push(cur); cur = ""; i += 5; continue
+    if (depth == 0 and c == "a" and i > 0 and i + 3 < n
+        and cp.at(i + 1) == "n" and cp.at(i + 2) == "d"
+        and cp.at(i - 1) in ws and cp.at(i + 3) in ws) {
+      parts.push(cur); cur = ""; i += 3; continue
     }
     cur += c; i += 1
+  }
+  parts.push(cur)
+  parts
+}
+
+// Split `s` at every char in `seps` that sits at brace depth 0; brace groups are
+// kept intact, so "{de la}" stays one token and "{Robert and Sons, Inc.}" keeps
+// its comma. Matches biblatex's split_at_normal_char (commas/spaces inside braces
+// are verbatim, not structural).
+#let split-top(s, seps) = {
+  let parts = ()
+  let cur = ""
+  let depth = 0
+  for c in s.codepoints() {
+    if c == "{" { depth += 1; cur += c }
+    else if c == "}" { depth -= 1; cur += c }
+    else if depth == 0 and c in seps { parts.push(cur); cur = "" }
+    else { cur += c }
   }
   parts.push(cur)
   parts
@@ -317,18 +359,24 @@
 }
 
 #let parse-one-name(raw) = {
-  let parts = raw.trim().split(",").map(p => p.trim())
-  let toks = parts.at(0).split(regex("\s+")).filter(t => t != "")
-  if parts.len() == 1 {
-    if toks.len() == 0 { return (first: "", von: "", last: "", jr: "") }
-    let (first, von, last) = split-first-von-last(toks)
-    (first: first, von: von, last: last, jr: "")
+  let parts = split-top(raw.trim(), (",",)).map(p => p.trim())
+  let toks = split-top(parts.at(0), ws).filter(t => t != "")
+  let r = if parts.len() == 1 {
+    if toks.len() == 0 { (first: "", von: "", last: "", jr: "") }
+    else {
+      let (first, von, last) = split-first-von-last(toks)
+      (first: first, von: von, last: last, jr: "")
+    }
   } else {
     let (von, last) = split-von-last(toks)
     let jr = if parts.len() > 2 { parts.at(1) } else { "" }
     let first = if parts.len() > 2 { parts.at(2) } else { parts.at(1) }
     (first: first, von: von, last: last, jr: jr)
   }
+  // `().join(" ")` is `none` in Typst, so an empty part can come back as none;
+  // coerce to "" so every part is a string (matches the reference; avoids a
+  // downstream `string + none` in the sort key for all-lowercase names).
+  r.pairs().map(((k, v)) => (k, if v == none { "" } else { v })).to-dict()
 }
 
 #let parse-names(raw) = split-and(raw).map(parse-one-name)
@@ -344,8 +392,7 @@
   let i = 0
   while i < cp.len() {
     // next field name (or end of entry)
-    let nm = none
-    let k = skip-ws(cp, i)
+    let k = skip-ws-comment(cp, i)
     let s = k
     while s < cp.len() and (cp.at(s).match(regex("[A-Za-z0-9_-]")) != none) { s += 1 }
     if s == k { break }                       // no identifier -> done (trailing })
@@ -354,8 +401,8 @@
     if eq >= cp.len() or cp.at(eq) != "=" { break }
     let (val, ni) = read-value(cp, eq + 1, macros)
     fields.insert(name, decode-tex(collapse-ws(val), umac: umac))
-    i = skip-ws(cp, ni)
-    while i < cp.len() and cp.at(i) == "," { i = skip-ws(cp, i + 1) }
+    i = skip-ws-comment(cp, ni)
+    while i < cp.len() and cp.at(i) == "," { i = skip-ws-comment(cp, i + 1) }
   }
   let names = (:)
   for role in ("author", "editor") {
@@ -369,6 +416,10 @@
   let out = ()
   let i = 0
   while i < cp.len() {
+    if cp.at(i) == "%" {            // top-level line comment: skip to EOL
+      while i < cp.len() and cp.at(i) != "\n" { i += 1 }
+      continue
+    }
     if cp.at(i) != "@" { i += 1; continue }
     let b = i
     while b < cp.len() and cp.at(b) != "{" { b += 1 }
@@ -409,7 +460,7 @@
   for blk in blocks {
     let head = lower(cp.slice(blk.start, calc.min(blk.start + 9, cp.len())).join(""))
     if head.starts-with("@string") or head.starts-with("@preamble") or head.starts-with("@comment") { continue }
-    let block = cp.slice(blk.start, blk.end + 1).join("")
+    let block = cp.slice(blk.start, calc.min(blk.end + 1, cp.len())).join("")
     let r = parse-entry(block, macros, umac)
     if r != none { db.insert(r.key, r.entry) }
   }

@@ -23,9 +23,12 @@ missed.
 - **Validate against real LaTeX.** The harness is `tools/test.py` (run via
   `tools/venv/bin/python`), driven by the matrix in `tools/test_matrix.py`:
   `test.py build` (LaTeX refs + Typst PDFs), `test.py check`
-  (smoke/golden/text/errors/metrics), `test.py validate` (copyright modes +
+  (smoke/unit/golden/text/errors/metrics), `test.py validate` (copyright modes +
   options), then `test.py diff <stem> --pages <n>` when visual inspection is
-  needed. Output goes to `tests/out/{latex,typst,diff}` (gitignored). The harness
+  needed. `test.py unit` runs the pure-Typst `tests/unit/*.typ` assertion tests
+  alone (no LaTeX) — they import a module and `#assert.eq` on its output (the
+  `.bib` reader, `tests/unit/bibtex.typ`, is ported from the `biblatex` crate's
+  own unit tests). Output goes to `tests/out/{latex,typst,diff}` (gitignored). The harness
   builds LaTeX against the `acmart.cls` generated from the bundled `acmart/`
   (never the system install) and reruns pdflatex to stability — a single pass
   leaves acmart's `TotPages` unresolved and adds a spurious "Temporary page".

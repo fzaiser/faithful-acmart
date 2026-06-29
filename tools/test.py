@@ -12,7 +12,8 @@ validation):
 Commands
 --------
   build            build the LaTeX references, every Typst test PDF, and the example
-  check            run all regression gates (smoke / golden / text / errors / metrics)
+  check            run all regression gates (smoke / unit / golden / text / errors / metrics)
+  unit             run the pure-Typst unit tests in tests/unit/*.typ (no LaTeX needed)
   accept           rebuild Typst PDFs and refresh the Tier 1 golden hashes
   diff STEM        per-page side-by-side + overlay vs the LaTeX reference (--pages, --dpi)
   validate [names] copyright/option variants vs LaTeX, page-1 mismatch %
@@ -830,6 +831,32 @@ def gate_links(report: bool = False) -> list[str]:
     return failures
 
 
+def gate_unit(report: bool = False) -> list[str]:
+    """Tier 0.5 — pure-Typst unit tests (tests/unit/*.typ). These import a module
+    and assert on its output via #assert.eq, so a failure aborts the compile with
+    a diagnostic. No LaTeX/pdftotext involved — they test parsing/logic directly.
+    """
+    failures: list[str] = []
+    unit_dir = TESTS_DIR / "unit"
+    srcs = sorted(unit_dir.glob("*.typ")) if unit_dir.is_dir() else []
+    for src in srcs:
+        with tempfile.TemporaryDirectory() as td:
+            rc, stderr = compile_typst(src, Path(td) / "out.pdf")
+        if rc != 0:
+            failures.append(f"{src.name}: assertion/compile failure\n{stderr.strip()}")
+        elif report:
+            print(f"ok   {src.name}")
+    if report and not srcs:
+        print("(no tests/unit/*.typ found)")
+    return failures
+
+
+def cmd_unit(_args) -> int:
+    gate_unit(report=True)
+    failures = gate_unit()
+    return 1 if failures else 0
+
+
 def cmd_check(args) -> int:
     print("Building LaTeX references…")
     build_all_latex(jobs=args.jobs, force=args.force)
@@ -839,6 +866,8 @@ def cmd_check(args) -> int:
     ok = True
     print("\n== Tier 0 (smoke) ==")
     ok &= _run_gate("Tier 0 (smoke)", gate_smoke(compiled))
+    print("\n== Tier 0.5 (unit) ==")
+    ok &= _run_gate("Tier 0.5 (unit)", gate_unit())
     print("\n== Tier 1 (golden) ==")
     ok &= _run_gate("Tier 1 (golden)", gate_golden())
     print("\n== Tier 1.5 (text) ==")
@@ -1186,6 +1215,7 @@ def main() -> int:
     sub.add_parser("check", parents=[par],
                    help="run all regression gates").set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
+    sub.add_parser("unit", help="run pure-Typst unit tests (tests/unit/*.typ); no LaTeX").set_defaults(fn=cmd_unit)
 
     d = sub.add_parser("diff", help="visual diff a Typst output vs its LaTeX reference")
     d.add_argument("stem")
