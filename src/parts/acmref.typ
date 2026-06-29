@@ -346,6 +346,7 @@
     let n = txc(fld(e, "note"))
     items.push(if ends-punct(fld(e, "note")) { n } else { n + [.] })
   }
+  if has(e, "issue") { items.push("Issue " + fld(e, "issue") + ".") }
   if has(e, "eprint") { items.push(format-eprint(e)) }
   if has(e, "doi") {
     let bare = strip-doi(fld(e, "doi"))
@@ -367,9 +368,13 @@
 }
 
 // ---- per-entry-type handlers ----------------------------------------------
+#let howpub(e) = if has(e, "howpublished") { V(fld(e, "howpublished")) } else { none }
+
 #let lead-author-year(em, e) = {
   em = out(em, format-authors(e), variant: "norm")
   if not has(e, "author") and has(e, "editor") { em = out(em, format-editors(e)) }
+  // format.key fallback: an author-less entry shows its `key` field in that slot
+  if not has(e, "author") and not has(e, "editor") and has(e, "key") { em = out(em, V(fld(e, "key"))) }
   em = out-year(em, year-value(e))
   em
 }
@@ -383,6 +388,8 @@
     em = lead-author-year(em, e)
     em = nblock(em)
     em = out(em, format-articletitle(e))
+    em = nblock(em)
+    em = out(em, howpub(e))
     em = nblock(em)
     if t == "underreview" { em = out(em, format-journal-underreview(e)) }
     else {
@@ -429,6 +436,7 @@
     em = lead-author-year(em, e)
     em = nblock(em)
     em = out(em, format-articletitle(e))
+    em = out(em, howpub(e), variant: "dotspace")
     if t == "presentation" {
       em = nsentence(em)
       em = out(em, format-venue(e))
@@ -532,11 +540,14 @@
 }
 
 // ---- sort key + cite/number layer -----------------------------------------
+// .bst sort key: alphabetical by author/editor (von last first), then year, then
+// title — ties on surname break by given name, like bibtex's label-based presort.
 #let sort-key(e) = {
   let ppl = e.names.at("author", default: e.names.at("editor", default: ()))
-  let surn = ppl.map(n => lower(n.last)).join(" ")
+  let names = ppl.map(n => lower((n.von + " " + n.last + " " + n.first).trim())).join(" ")
+  if names == "" and has(e, "key") { names = lower(fld(e, "key")) }
   let y = if has(e, "year") { fld(e, "year") } else { "" }
-  surn + "   " + y + "   " + lower(fld(e, "title", d: ""))
+  names + "   " + y + "   " + lower(fld(e, "title", d: ""))
 }
 
 #let cited-state = state("acmref-cited", ())

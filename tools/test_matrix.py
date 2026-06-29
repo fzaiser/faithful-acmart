@@ -322,13 +322,21 @@ TESTS: dict[str, Test] = {
              "article, periodical, book, inbook, incollection, inproceedings, mastersthesis, "
              "phdthesis, techreport, online, misc, manual, presentation, underreview, "
              "preprint, software, dataset, proceedings, booklet. Reads sample-base.bib plus "
-             "the crafted tests/twins/bib-all-extra.bib (clean proceedings/booklet/manual, "
-             "plus unpublished and a journal-macro entry exercising canon.abbrev). "
+             "the crafted tests/twins/bib-all-extra.bib (clean proceedings/booklet/manual). "
              "Pitch reported, not gated (heading + hanging-indent grid mix leadings). "
              "link_check gates the DOI/URL/arXiv hyperlink set against bibtex+hyperref.",
         link_check=True,
-        # Word-level guards for things the whitespace-free char bag can't see:
-        # @string/# concatenation spacing, journal-macro+canon.abbrev, unpublished.
+    ),
+    "bib-edge": Test(
+        kind="twin", pages=1,
+        note="Field/path edge cases of the bst backend that bib-all's type sweep doesn't "
+             "hit, each source-audited against ACM-Reference-Format.bst: strip.doi host "
+             "prefix, reduce.pages.to.page.count, format.bookpages, book \"pages\" label, "
+             "issue, howpublished in article/inproceedings, format.key fallback, journal "
+             "MACRO + canon.abbrev, @string/# concatenation, von-name parsing, unpublished. "
+             "Char bag gated, no exemption; pitch reported, not gated.",
+        link_check=True,
+        # Word-level guards for things the whitespace-free char bag can't see.
         text_assertions=(
             Assertion(engine="both", text="Tech Press, Ltd."),       # concat keeps the space
             Assertion(engine="both", text="Comput. Surveys"),        # csur macro -> canon.abbrev
@@ -337,6 +345,9 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", kind="absent", text="doi.acm.org"),  # strip.doi drops the host prefix
             Assertion(engine="both", text="Article 17"),             # articleno path
             Assertion(engine="both", text="9:1"),                    # reduce.pages keeps n:1--n:m verbatim
+            Assertion(engine="both", text="250 book pages"),         # format.bookpages
+            Assertion(engine="both", text="Issue 7"),                # issue field
+            Assertion(engine="both", text="Preprint"),               # howpublished in @article
         ),
     ),
     "notes-test": Test(

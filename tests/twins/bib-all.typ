@@ -5,7 +5,7 @@
   "Cohen07", "JCohen96", "Kosiur01", "Editor00", "Editor00a", "Spector90",
   "Andler79", "anisi03", "Clarkson85", "Harel78", "Thornburg01", "CleanManual",
   "Poker06", "Reiser2014", "Baggett2025", "Bornmann2019", "R", "UMassCitations",
-  "CleanProc20", "CleanBooklet", "UnpubX", "MacroJournal", "ConcatTest", "DoiUrl", "ArtPages", "ColonPages", "MiscPages", "BookPages", "TRnoNum", "BookPagesField",
+  "CleanProc20", "CleanBooklet",
 )
 
 = Introduction

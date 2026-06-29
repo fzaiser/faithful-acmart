@@ -1,0 +1,18 @@
+%% bib-edge — field/path edge cases of ACM-Reference-Format that the type-coverage
+%% twin (bib-all) doesn't hit: strip.doi host prefix, reduce.pages.to.page.count,
+%% format.bookpages, book "pages" label, issue, howpublished (article/inproc),
+%% format.key fallback, journal MACRO + canon.abbrev, @string/# concatenation,
+%% von-name parsing, unpublished. LaTeX twin of bib-edge.typ.
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\begin{document}
+\thispagestyle{empty}% titleless body-only fixture: re-assert empty.
+
+\section{Introduction}
+Field-level edge cases through the bst backend \cite{UnpubX,MacroJournal,ConcatTest,DoiUrl,ArtPages,ColonPages,MiscPages,BookPages,TRnoNum,BookPagesField,IssueTest,HowPub,KeyOnly,ArtHP,IpHP}.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{bib-all-extra}
+
+\end{document}
