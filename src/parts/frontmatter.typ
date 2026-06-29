@@ -471,7 +471,9 @@
 // row. acmart's box width is (textwidth - sep)/N - sep with sep = \author@bx@sep
 // (1pc); N defaults from the group count (1-3 -> that many, 4 -> 2, 5+ -> 3) and
 // is overridable with authors-per-row. Names are mixed-case (not uppercased like
-// the journal list); fonts are cfg.author-font / cfg.affil-font.
+// the journal list); fonts are cfg.author-font / cfg.affil-font. Each row is
+// centered independently (acmart \centering per row), so a partial final row is
+// centered under the full rows rather than left-aligned.
 #let make-authors-grid(cfg, groups, authors-per-row: 0) = {
   let sep = 12pt // \author@bx@sep = 1pc
   let tw = cfg.paper.width - cfg.margin.inside - cfg.margin.outside
@@ -501,13 +503,20 @@
     let emails = group.authors.map(a => a.email).filter(e => e != none)
     (affs + emails).join(linebreak())
   }
-  // One grid of N columns auto-wraps to rows; row-gutter = \lineskip (1pc).
-  align(center, grid(
-    columns: (bw,) * n,
+  // Chunk the boxes into rows of N and center each row on its own (acmart centers
+  // every row), so a short final row sits centered rather than left-aligned. Rows
+  // are separated by \lineskip (1pc).
+  let rows = ()
+  let i = 0
+  while i < groups.len() {
+    rows.push(groups.slice(i, calc.min(i + n, groups.len())))
+    i += n
+  }
+  stack(dir: ttb, spacing: 12pt, ..rows.map(row => align(center, grid(
+    columns: (bw,) * row.len(),
     column-gutter: sep,
-    row-gutter: 12pt,
-    ..groups.map(author-box),
-  ))
+    ..row.map(author-box),
+  ))))
 }
 
 // The conference @mktitle@iii spanning head (acmart.dtx:7018): CENTERED title and

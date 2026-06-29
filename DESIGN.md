@@ -218,16 +218,15 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   the two columns of a page may differ in height. Last-column balancing (`balance`)
   is likewise absent. Each page's content/spacing is correct; only the bottom-fill
   stretch is missing.
-- **Conference author grid** spacing is approximate: the box widths follow acmart's
-  `(textwidth − sep)/N − sep`, but a partial last row is left-aligned by Typst's
-  grid rather than centred (acmart centres every row).
-- **`sigchi-a`** (best-effort): geometry, sans default, the 2pt-rule title and
-  unnumbered sections are reproduced; footnotes are **not** moved into the margin
-  (`\marginpar`, acmart.dtx:3533), the `@iv` 5pc title leftskip is omitted, and the
-  "Legacy document" watermark is not drawn.
-- **`acmcp`** (best-effort): geometry, unnumbered sections and the suppressed ACM
-  reference format are reproduced; the JDS cover infobox (logo, colour frame,
-  code/data links — acmart.dtx:6724) is **not** drawn.
+- **`sigchi-a`** (best-effort): geometry, sans default, the 2pt-rule title,
+  unnumbered sections and the "Legacy document" watermark are reproduced; footnotes
+  are **not** moved into the margin (`\marginpar`, acmart.dtx:3533) and the `@iv`
+  5pc title leftskip is omitted.
+- **`acmcp`** (best-effort): geometry, unnumbered sections, the suppressed ACM
+  reference format, and the light-tinted cover **frame** (`@ACM@Article@color!10!
+  white`, default ACMBlue — acmart.dtx:5899) are reproduced; the right-column
+  infobox (the **JDS logo** is a bundled asset we don't ship, plus code/data links
+  set via `zref` two-pass positioning — acmart.dtx:6724) is **not** drawn.
 - **Conference Huge title vertical position** differs from LaTeX by ~4–5pt of
   glyph-bbox overshoot: we pin the title cap-top to the top margin (the faithful
   `\topskip` model, as for acmsmall), whereas LaTeX places the baseline and lets

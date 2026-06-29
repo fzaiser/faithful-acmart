@@ -325,13 +325,35 @@
     }
   }
 
-  // authordraft stamps every page with a light-grey diagonal watermark
-  // (draftwatermark: 0.5in, gray 0.9; acmart.dtx:3720-3726).
-  let watermark = if author-draft {
+  // Light-grey diagonal watermark (draftwatermark: 0.5in, gray 0.9). authordraft
+  // stamps every page "Unpublished working draft." (acmart.dtx:3720-3726); sigchi-a
+  // (unless nonacm) stamps the legacy notice instead (acmart.dtx:3728-3736).
+  let watermark-text = if author-draft {
+    [Unpublished working draft.\ Not for distribution.]
+  } else if cfg.name == "sigchi-a" and not nonacm {
+    [Legacy document.\ Not for publication in an ACM venue]
+  }
+  let watermark = if watermark-text != none {
     rotate(-45deg, reflow: false, text(size: 0.5in, fill: luma(90%))[
       #set par(leading: 0.2em, justify: false)
-      #align(center)[Unpublished working draft.\ Not for distribution.]
+      #align(center, watermark-text)
     ])
+  }
+
+  // acmcp colored cover frame (acmart.dtx:5899): the body sits on a light tint of
+  // the article-type colour (\colorbox{@ACM@Article@color!10!white}; the default
+  // Research type is ACMBlue, acmart.dtx:5889/3707). The MakeFramed box bleeds
+  // 6.5pc into the left margin, so the panel runs from the page's left edge across
+  // to the right text edge, between the top and bottom margins. (The JDS logo and
+  // the right-column infobox are NOT reproduced — the logo is a bundled asset we
+  // don't have, and the box uses two-pass zref positioning.)
+  let acmcp-frame = if cfg.name == "acmcp" {
+    let tint = cmyk(100%, 10%, 0%, 10%).lighten(90%) // ACMBlue!10!white
+    place(top + left, dy: cfg.margin.top, rect(
+      width: cfg.paper.width - cfg.margin.outside,
+      height: cfg.paper.height - cfg.margin.top - cfg.margin.bottom,
+      fill: tint,
+    ))
   }
 
   set page(
@@ -343,7 +365,10 @@
     footer-descent: cfg.foot.skip - cfg.size.footnotesize,
     header: header-content,
     footer: footer-content,
-    background: if watermark != none { align(center + horizon, watermark) },
+    background: {
+      acmcp-frame // behind the body (drawn first so the watermark sits on top)
+      if watermark != none { align(center + horizon, watermark) }
+    },
   )
   // Exact inter-column gutter (\columnsep; acmart sets 24pt/2pc). Typst's page
   // `columns` otherwise defaults to a 4%-of-width gutter. A no-op for the
