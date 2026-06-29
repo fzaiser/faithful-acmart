@@ -11,6 +11,7 @@
 #import "formats/acmsmall.typ": acmsmall
 #import "formats/manuscript.typ": manuscript
 #import "formats/acmlarge.typ": acmlarge
+#import "formats/acmtog.typ": acmtog
 #import "formats/sigconf.typ": sigconf
 #import "formats/siggraph.typ": siggraph
 #import "formats/sigchi.typ": sigchi
@@ -28,6 +29,7 @@
   manuscript: manuscript,
   acmsmall: acmsmall,
   acmlarge: acmlarge,
+  acmtog: acmtog,
   sigconf: sigconf,
   siggraph: siggraph,
   sigchi: sigchi,

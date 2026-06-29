@@ -72,6 +72,14 @@ pages = 1
 # format=acmlarge: large single-column journal geometry (10pt) with the
 # \sffamily\large (regular-weight) section headings (acmart.dtx:8424).
 
+[tests.acmtog-test]
+kind = "twin"
+pages = 1
+page1_only = true
+# format=acmtog: two-column JOURNAL. Spanning left @i title + author list,
+# contact-info footnote + ACM bibstrip + journal footer (journal/tog top matter in
+# two columns), 9pt parindent, sans-large sections.
+
 [tests.sigconf-test]
 kind = "twin"
 pages = 1

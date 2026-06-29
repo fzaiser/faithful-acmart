@@ -407,15 +407,21 @@
     ]
   }
 
+  // Author-list fonts come from the format dict (acmart.dtx:7206 \@authorfont /
+  // \@affiliationfont): acmsmall \large sans names + \small serif affils (the
+  // make-format defaults), acmtog \LARGE sans + \large. The size step also drives
+  // the leading and the title->authors gap.
+  let af = cfg.author-font
+  let aff-f = cfg.affil-font
   // Title box ends with \par\bigskip; \@mkauthors@i prepends \par\medskip before
-  // the author lines (at \large). So the gap is \bigskip + \medskip before 10.95pt.
-  v(tex-skip(cfg, cfg.bigskip + cfg.medskip, sz: "large"), weak: true)
+  // the author lines (at the author size). gap = \bigskip + \medskip.
+  v(tex-skip(cfg, cfg.bigskip + cfg.medskip, sz: af.size), weak: true)
 
   // --- Authors (grouped structurally per acmart; see group-authors) ---
   // Anonymous review: replace the whole author strip with "Anonymous Author(s)".
   if meta.anonymous {
     block(spacing: 0pt)[
-      #set text(font: cfg.fonts.sans, size: cfg.size.large)
+      #set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
       #upper[Anonymous Author(s)]
     ]
   } else {
@@ -425,7 +431,7 @@
     a2
   })
   block(spacing: 0pt)[
-    #set par(justify: false, leading: comp(cfg, sz: "large"), spacing: 0pt)
+    #set par(justify: false, leading: comp(cfg, sz: af.size), spacing: 0pt)
     #for g in group-authors(marked) {
       let names = g.authors.map(a => {
         upper(a.name)
@@ -434,12 +440,12 @@
           if m == "✉" { super(text(size: 0.72em)[#m]) } else { super(m) }
         }
       })
-      block(spacing: comp(cfg, sz: "large"))[
+      block(spacing: comp(cfg, sz: af.size))[
         // andify preserves the per-name content marks (superscript symbols).
-        #text(font: cfg.fonts.sans, size: cfg.size.large)[#andify(names)]#{
+        #text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))[#andify(names)]#{
           let aff = affil-short(g.affiliation)
           if aff != none {
-            text(font: cfg.fonts.serif, size: cfg.size.small)[, #aff]
+            text(font: cfg.fonts.at(aff-f.family), weight: aff-f.weight, size: cfg.size.at(aff-f.size))[, #aff]
           }
         }
       ]
