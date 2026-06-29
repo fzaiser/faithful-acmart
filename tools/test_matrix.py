@@ -80,8 +80,9 @@ class Test:
     whose lines extract in the same order); ``"bag"`` exact word-MULTISET equality
     — order-independent, for twins whose blocks reorder under extraction (two
     -column flow, footnotes, the acmcp cover infobox), but still catches any single
-    word that goes missing or appears; ``False`` not gated (give ``text_reason``);
-    ``None`` unset.
+    word that goes missing or appears, then tightened by an exact CHAR-multiset
+    check that also catches a stray comma/period the word bag's edge-strip drops;
+    ``False`` not gated (give ``text_reason``); ``None`` unset.
     """
 
     kind: str

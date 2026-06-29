@@ -212,6 +212,18 @@ def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
     return 1 - sum((miss + extra).values()) / max(1, total), miss, extra
 
 
+def char_bag(raw: str) -> Counter:
+    """Whitespace-free character multiset (same normalization as the word bag).
+
+    Order- and line-break-independent like the word bag, but it keeps punctuation
+    and ignores word tokenization, so it's a stricter tripwire: a stray comma or
+    period the word bag's edge-strip hides shows up here, while hyphenation still
+    washes out (a broken word differs only by a space, and spaces are excluded).
+    """
+    text = re.sub(r"https?://", "", normalize(_EOL_HYPHEN.sub("", raw)))
+    return Counter(re.sub(r"\s+", "", text))
+
+
 # ---------------------------------------------------------------------------
 # Typst compilation
 # ---------------------------------------------------------------------------
@@ -502,14 +514,25 @@ def gate_text(report: bool = False) -> list[str]:
             elif report:
                 print(f"equal {name}")
         elif t.text_equal == "bag":
-            cov, miss, extra = bag_coverage(pdf_text(lref), pdf_text(tpdf))
+            lraw, traw = pdf_text(lref), pdf_text(tpdf)
+            cov, miss, extra = bag_coverage(lraw, traw)
             if miss or extra:
                 local.append(
                     f"{name}: word bags differ ({cov * 100:.2f}% common)\n"
                     f"    only in LaTeX: {', '.join(list(miss)[:12])}\n"
                     f"    only in Typst: {', '.join(list(extra)[:12])}")
-            elif report:
-                print(f"bag   {name}: exact (order-independent)")
+            else:
+                # Word bags match — tighten with the char bag (catches a stray
+                # comma/period the edge-strip drops). Diagnose by reading both
+                # `pdftotext` dumps; the differing characters point the way.
+                ca, cb = char_bag(lraw), char_bag(traw)
+                cm, ce = ca - cb, cb - ca
+                if cm or ce:
+                    local.append(
+                        f"{name}: word bags match but char bags differ\n"
+                        f"    only in LaTeX: {dict(cm)}\n    only in Typst: {dict(ce)}")
+                elif report:
+                    print(f"bag   {name}: word+char exact (order-independent)")
         elif t.text_equal is False:
             if not t.text_reason:
                 local.append(f"{name}: text_equal=false requires text_reason")

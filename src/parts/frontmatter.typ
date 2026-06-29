@@ -70,6 +70,17 @@
   if affs.len() == 0 { none } else { affs.join(" and ") }
 }
 
+// Conference/proceedings author-grid affiliation, as separate lines. acmart's
+// non-journal field macros (acmart.dtx:7130) put \position, \institution and
+// \department each on their own line (\par), while \city/\state/\country
+// accumulate into one ", "-joined address line. (Journal mode collapses the
+// whole thing to institution, country — that is affil-short.)
+#let affil-conf-lines(aff) = affil-list(aff).map(a => {
+  let lines = ("position", "institution", "department").map(k => a.at(k, default: none))
+  lines.push(join-fields(a, ("city", "state", "country")))
+  lines.filter(v => v != none)
+}).flatten()
+
 // Keywords may be an array (joined with ", ") or a ready string/content.
 #let kw-join(kw) = if type(kw) == array { kw.join(", ") } else { kw }
 
@@ -534,9 +545,10 @@
     parbreak()
     set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
     set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
-    // affiliation lines (institution, city, state, country) then emails, each on
-    // its own line (acmart appends \email to \@currentaffiliation as \par lines).
-    let affs = affil-strings(group.affiliation, ("institution", "city", "state", "country"))
+    // institution (own line) + ", "-joined city/state/country address line, then
+    // emails, each on its own line (acmart appends \email to \@currentaffiliation
+    // as \par lines too).
+    let affs = affil-conf-lines(group.affiliation)
     let emails = group.authors.map(a => a.email).filter(e => e != none)
     (affs + emails).join(linebreak())
   }
