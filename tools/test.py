@@ -384,19 +384,80 @@ def build_reference(sample: str = "acmsmall", outdir: Path = LATEX) -> int:
     return latex_build(outdir / f"{sample}.tex", outdir)
 
 
-def build_all_latex() -> None:
-    """Build every LaTeX reference the matrix needs: twin .tex files + sample refs."""
-    ensure_class(LATEX)
-    # Upstream-ref samples first (extracts the sample sources once).
+def default_jobs() -> int:
+    """Parallel LaTeX jobs to use by default: leave 2 cores free so a full build
+    doesn't hog the machine (matches the repo's Workflow concurrency convention)."""
+    return max(1, (os.cpu_count() or 2) - 2)
+
+
+def _pmap(fn, items: list, jobs: int) -> list:
+    """Map ``fn`` over ``items``, up to ``jobs`` at a time. Serial (and easier to
+    debug) when ``jobs <= 1``. ``fn`` runs subprocesses, which release the GIL, so
+    threads give real parallelism without the pickling cost of processes."""
+    if jobs <= 1 or len(items) <= 1:
+        return [fn(x) for x in items]
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=jobs) as ex:
+        return list(ex.map(fn, items))
+
+
+# The LaTeX references are a pure function of their sources. A reference PDF is
+# fresh if it is newer than its own .tex AND newer than every shared input that
+# could change its output: the class source, the bundled sample sources/bibs/bst,
+# and the twins' own .bib files. This is deliberately conservative — touching any
+# .bib rebuilds all refs — because over-invalidating is cheap and correctness
+# beats precision here. `--force` bypasses it entirely.
+_shared_inputs_mtime_cache: float | None = None
+
+
+def _shared_inputs_mtime() -> float:
+    global _shared_inputs_mtime_cache
+    if _shared_inputs_mtime_cache is None:
+        paths = [ACMART / "acmart.dtx", ACMART / "ACM-Reference-Format.bst"]
+        paths += list((ACMART / "samples").glob("*.dtx"))
+        paths += list((ACMART / "samples").glob("*.bib"))
+        paths += list((TESTS_DIR / "twins").glob("*.bib"))
+        _shared_inputs_mtime_cache = max(
+            (p.stat().st_mtime for p in paths if p.exists()), default=0.0)
+    return _shared_inputs_mtime_cache
+
+
+def ref_is_fresh(tex: Path, pdf: Path) -> bool:
+    """True if ``pdf`` is up to date with ``tex`` and all shared LaTeX inputs."""
+    if not pdf.exists() or not tex.exists():
+        return False
+    return pdf.stat().st_mtime >= max(tex.stat().st_mtime, _shared_inputs_mtime())
+
+
+def build_all_latex(jobs: int = 1, force: bool = False) -> None:
+    """Build every LaTeX reference the matrix needs: twin .tex files + sample refs.
+
+    Twin references are independent, so they build in parallel (``jobs`` at a
+    time). Up-to-date references are skipped unless ``force`` (see ``ref_is_fresh``).
+    """
+    ensure_class(LATEX)  # serial, before fan-out: avoids a class/asset write race
+    # Upstream-ref samples first (extracts the sample sources once; usually just
+    # acmsmall). Kept serial because the first one runs the shared extract step.
     samples = {reference_for(n, t) for n, t in TESTS.items() if t.kind == "upstream-ref"}
     for s in sorted(samples):
+        if not force and ref_is_fresh(LATEX / f"{s}.tex", LATEX / f"{s}.pdf"):
+            print(f"  reference {s} (cached)")
+            continue
         print(f"  reference {s}")
         build_reference(s)
-    for name, t in TESTS.items():
-        if t.kind != "twin":
-            continue
+
+    twins = [(name, TESTS_DIR / t.subdir / f"{name}.tex")
+             for name, t in TESTS.items() if t.kind == "twin"]
+
+    def build_one(item: tuple[str, Path]) -> None:
+        name, tex = item
+        if not force and ref_is_fresh(tex, LATEX / f"{name}.pdf"):
+            print(f"  latex {name} (cached)")
+            return
         print(f"  latex {name}")
-        latex_build(TESTS_DIR / t.subdir / f"{name}.tex")
+        latex_build(tex)
+
+    _pmap(build_one, twins, jobs)
 
 
 # ---------------------------------------------------------------------------
@@ -730,9 +791,9 @@ def _run_gate(title: str, failures: list[str]) -> bool:
     return True
 
 
-def cmd_build(_args) -> int:
+def cmd_build(args) -> int:
     print("Building LaTeX references…")
-    build_all_latex()
+    build_all_latex(jobs=args.jobs, force=args.force)
     print("Compiling Typst test PDFs…")
     compiled = compile_all_typst()
     bad = [n for n, (rc, _) in compiled.items() if rc != 0]
@@ -769,9 +830,9 @@ def gate_links(report: bool = False) -> list[str]:
     return failures
 
 
-def cmd_check(_args) -> int:
+def cmd_check(args) -> int:
     print("Building LaTeX references…")
-    build_all_latex()
+    build_all_latex(jobs=args.jobs, force=args.force)
     print("Compiling Typst test PDFs once…")
     compiled = compile_all_typst()
 
@@ -981,15 +1042,18 @@ def cmd_validate(args) -> int:
         Image.fromarray(np.concatenate([pad(ref), gap, pad(our)], axis=1)).save(
             DIFF / f"var-{name}-side.png")
 
-    print(f"{'variant':16} {'mismatch%':>9}   notes")
-    print("-" * 50)
-    for name in names:
+    def variant(name: str) -> str:
         opts, pre, typ_opts = M.VARIANTS[name]
         tex = LATEX / f"var-{name}.tex"
-        tex.write_text(_VALIDATE_TEX.format(opts=opts, pre=pre))
+        new_tex = _VALIDATE_TEX.format(opts=opts, pre=pre)
+        # Only rewrite when the content changes, so an unchanged variant keeps its
+        # mtime and ref_is_fresh can skip its (slow) LaTeX rebuild.
+        if not (tex.exists() and tex.read_text() == new_tex):
+            tex.write_text(new_tex)
         typ = OUT / f"var-{name}.typ"
         typ.write_text(_VALIDATE_TYP.format(opts=typ_opts))
-        latex_build(tex)
+        if args.force or not ref_is_fresh(tex, LATEX / f"var-{name}.pdf"):
+            latex_build(tex)
         compile_typst(typ, TYPST / f"var-{name}.pdf")
         typ.unlink()
         ref, our = render(LATEX / f"var-{name}.pdf"), render(TYPST / f"var-{name}.pdf")
@@ -1006,7 +1070,14 @@ def cmd_validate(args) -> int:
                 # A ±1-2/channel delta is expected (Typst writes CMYK as 8-bit).
                 if d > 2:
                     note += f"link rgb ref~{tuple(rc)} our~{tuple(oc)} (Δ{d}) "
-        print(f"{name:16} {mismatch(ref, our):9.2f}   {note}")
+        return f"{name:16} {mismatch(ref, our):9.2f}   {note}"
+
+    ensure_class(LATEX)  # warm the class before the parallel fan-out (write race)
+    rows = _pmap(variant, names, args.jobs)
+    print(f"{'variant':16} {'mismatch%':>9}   notes")
+    print("-" * 50)
+    for row in rows:
+        print(row)
     print(f"\nside-by-sides: {DIFF.relative_to(ROOT)}/var-*-side.png")
     return 0
 
@@ -1103,8 +1174,17 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("build", help="build LaTeX refs + all Typst PDFs + example").set_defaults(fn=cmd_build)
-    sub.add_parser("check", help="run all regression gates").set_defaults(fn=cmd_check)
+    # Shared by the LaTeX-building commands (build / check / validate).
+    par = argparse.ArgumentParser(add_help=False)
+    par.add_argument("-j", "--jobs", type=int, default=default_jobs(),
+                     help=f"parallel LaTeX build jobs (default {default_jobs()} = cpu-2)")
+    par.add_argument("--force", action="store_true",
+                     help="rebuild LaTeX references even if their cached PDFs look up to date")
+
+    sub.add_parser("build", parents=[par],
+                   help="build LaTeX refs + all Typst PDFs + example").set_defaults(fn=cmd_build)
+    sub.add_parser("check", parents=[par],
+                   help="run all regression gates").set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
 
     d = sub.add_parser("diff", help="visual diff a Typst output vs its LaTeX reference")
@@ -1113,7 +1193,8 @@ def main() -> int:
     d.add_argument("--dpi", type=int, default=150)
     d.set_defaults(fn=cmd_diff)
 
-    v = sub.add_parser("validate", help="copyright/option variants vs LaTeX (page-1 mismatch pct)")
+    v = sub.add_parser("validate", parents=[par],
+                       help="copyright/option variants vs LaTeX (page-1 mismatch pct)")
     v.add_argument("names", nargs="*", help="variant names (default: all)")
     v.set_defaults(fn=cmd_validate)
 

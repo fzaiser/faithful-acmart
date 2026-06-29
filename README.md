@@ -171,6 +171,20 @@ $PY tools/test.py clean                     # remove tests/out/
 `tools/test.py metrics` prints the Tier 2 layout-metric table (no gating) and
 `tools/test.py linepitch FILE.pdf` measures baseline pitch — both for tuning.
 
+**Speed.** LaTeX is ~90% of a run's wall time (each `pdflatex` pass is ~0.6s and
+acmart needs several per doc), so `build`, `check`, and `validate` build the
+twin/variant references **in parallel** (`-j`, default `cpu-2`) and **skip
+references whose cached PDF is already up to date** with its `.tex` and the
+shared inputs (the class source, sample/twin bibs, the `.bst`). Editing only the
+Typst port leaves every reference cached, so the inner loop is dominated by the
+~20ms-per-file Typst compiles. Use `-j N` to cap parallelism and `--force` to
+rebuild every reference (use it if you ever suspect a stale cache):
+
+```sh
+$PY tools/test.py check -j8        # at most 8 concurrent pdflatex builds
+$PY tools/test.py build --force    # ignore the cache, rebuild all LaTeX refs
+```
+
 ### Output
 
 All generated output lives under `tests/out/` (gitignored):
