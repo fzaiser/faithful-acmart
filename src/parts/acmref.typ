@@ -12,6 +12,10 @@
 //   * sort + cite/number layer using native state/metadata/query.
 
 #import "bibtex.typ": read-bib
+#import "bib-data.typ": journal-canon
+
+// ACM journal.canon.abbrev: map a full journal name to its canonical abbreviation
+#let canon-abbrev(j) = journal-canon.at(j, default: j)
 
 // ---- TeX text ligatures the .bst output relies on -------------------------
 #let tx(s) = {
@@ -25,6 +29,29 @@
   s = s.replace("``", "\u{201C}").replace("''", "\u{201D}")
   s = s.replace("`", "\u{2018}").replace("'", "\u{2019}")
   s
+}
+
+// tex string -> content, turning \url{U} / \href{U}{T} into real Typst links
+// (acmart loads hyperref, so these are clickable in LaTeX too). Link targets and
+// \url display text stay verbatim (no tx — URLs keep ~, etc.).
+#let txc(s) = {
+  if type(s) != str { return s }
+  let out = []
+  let rest = s
+  let re = regex("\\\\url\s*\{([^}]*)\}|\\\\href\s*\{([^}]*)\}\s*\{([^}]*)\}")
+  while true {
+    let m = rest.match(re)
+    if m == none { out = out + tx(rest); break }
+    out = out + tx(rest.slice(0, m.start))
+    if m.captures.at(0) != none {
+      let u = m.captures.at(0)
+      out = out + link(u)[#u]
+    } else {
+      out = out + link(m.captures.at(1))[#tx(m.captures.at(2))]
+    }
+    rest = rest.slice(m.end)
+  }
+  out
 }
 #let ends-punct(s) = {
   let t = s.trim()
@@ -219,7 +246,7 @@
 }
 #let format-journal-block(e) = {
   if not has(e, "journal") { return none }
-  let c = it(tx(fld(e, "journal")))
+  let c = it(tx(canon-abbrev(fld(e, "journal"))))
   if has(e, "number") {
     c = c + " " + fld(e, "volume") + ", " + fld(e, "number")
   } else if has(e, "volume") {
@@ -230,7 +257,7 @@
   (c: c, p: false)
 }
 #let format-journal-underreview(e) = {
-  let pre = if has(e, "journal") { it(tx(fld(e, "journal"))) + "." } else { [] }
+  let pre = if has(e, "journal") { it(tx(canon-abbrev(fld(e, "journal")))) + "." } else { [] }
   (c: pre + " Manuscript submitted for review", p: false)
 }
 
@@ -276,21 +303,37 @@
   let m = d.match(regex("(?i)^https?://(?:dx\.)?doi\.org/(.+)$"))
   if m != none { m.captures.at(0) } else { d }
 }
+// arXiv eprint per acmart's \showeprint: "arXiv:" + linked number + " [class]"
+// for arxiv-family prefixes, else plain "prefix:eprint".
+#let format-eprint(e) = {
+  let ep = fld(e, "eprint")
+  let prefix = fld(e, "archiveprefix", d: if has(e, "eprinttype") { fld(e, "eprinttype") } else { "arxiv" })
+  let cls = if has(e, "primaryclass") { fld(e, "primaryclass") } else if has(e, "eprintclass") { fld(e, "eprintclass") } else { none }
+  let suffix = if cls != none { " [" + cls + "]" } else { "" }
+  if lower(prefix) == "arxiv" {
+    [arXiv:#link("https://arxiv.org/abs/" + ep)[#ep]#suffix]
+  } else {
+    [#prefix:#ep#suffix]
+  }
+}
+
+// shared trailing block: note, eprint, doi, url — each self-punctuating, with real
+// hyperlinks (acmart renders these via hyperref \href/\url/\showeprint).
 #let trailing(e) = {
   let items = ()
   if has(e, "note") {
-    let n = tx(fld(e, "note"))
-    items.push(if ends-punct(fld(e, "note")) { n } else { n + "." })
+    let n = txc(fld(e, "note"))
+    items.push(if ends-punct(fld(e, "note")) { n } else { n + [.] })
   }
-  if has(e, "eprint") {
-    let cls = if has(e, "primaryclass") { fld(e, "primaryclass") } else if has(e, "eprintclass") { fld(e, "eprintclass") } else { none }
-    items.push("arXiv:" + fld(e, "eprint") + (if cls != none { " [" + cls + "]" } else { "" }))
+  if has(e, "eprint") { items.push(format-eprint(e)) }
+  if has(e, "doi") {
+    let bare = strip-doi(fld(e, "doi"))
+    items.push(link("https://doi.org/" + bare)[doi:#bare])
   }
-  if has(e, "doi") { items.push("doi:" + strip-doi(fld(e, "doi"))) }
   if has(e, "url") and not has(e, "doi") {
     let u = fld(e, "url")
-    let r = if has(e, "lastaccessed") { "Retrieved " + tx(fld(e, "lastaccessed")) + " from " + u } else { u }
-    if has(e, "archived") { r = r + ", archived at [" + fld(e, "archived") + "]" }
+    let r = if has(e, "lastaccessed") { [Retrieved #tx(fld(e, "lastaccessed")) from #link(u)[#u]] } else { link(u)[#u] }
+    if has(e, "archived") { r = r + [, archived at \[#link(fld(e, "archived"))[#fld(e, "archived")]\]] }
     items.push(r)
   }
   items
@@ -425,6 +468,15 @@
     em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
     em = nsentence(em)
     em = out(em, if has(e, "pages") { (c: dashify(fld(e, "pages")) + " pages", p: false) } else { none })
+  } else if t == "unpublished" {
+    em = lead-author-year(em, e)
+    em = nblock(em)
+    em = out(em, format-title(e))          // plain title (not emphasized)
+    em = nsentence(em)
+    let ymd = format-day-month-year(e)
+    if ymd != none { em = out(em, (c: ymd.c.trim(), p: false)) }
+    em = out(em, format-page-count(e))
+    // note is required for @unpublished and emitted by the shared trailing block
   } else if t == "misc" or t == "booklet" {
     em = lead-author-year(em, e)
     em = nblock(em)

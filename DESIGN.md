@@ -199,19 +199,28 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   `ACM-Reference-Format.bst`: [`parts/bibtex.typ`](src/parts/bibtex.typ) parses the
   `.bib` (via `read()`), [`parts/acmref.typ`](src/parts/acmref.typ) reimplements the
   `.bst`'s output state machine + `format.*` helpers + every entry-type handler +
-  the sort/cite layer (native `state`/`query`). It reproduces the `.bst`'s *visible*
+  the sort/cite layer (native `state`/`query`), plus the `.bst`'s built-in journal
+  MACRO table and `journal.canon.abbrev` (auto-extracted to `parts/bib-data.typ`, so
+  `journal = csur` resolves and abbreviates like bibtex). It reproduces the `.bst`'s
   reference text exactly — the `bib-all` twin gates the full char bag against real
-  bibtex output across all 19 handlers (article, periodical, book, inbook,
+  bibtex output across all 20 handlers (article, periodical, book, inbook,
   incollection, inproceedings, mastersthesis, phdthesis, techreport, online, misc,
   manual, presentation, underreview, preprint, software, dataset, proceedings,
-  booklet) with **no exemption**. Reached via the exported `acm-cite` /
+  booklet, unpublished) with **no exemption**, plus word-level assertions for
+  things the whitespace-free char bag can't see (`#`-concatenation spacing,
+  canon.abbrev, von-name parsing). DOI / URL / arXiv-eprint / `\url`-in-note render
+  as **real Typst hyperlinks** (acmart loads hyperref); a `link_check` gate compares
+  the `/URI` set against bibtex+hyperref. Reached via the exported `acm-cite` /
   `acm-bibliography` functions instead of `@key` / `#bibliography` (Typst exposes no
   hook to drive native citation numbering from a custom renderer, so the backend
-  owns its own cite layer). Accepted gaps: ISBN/ISSN/CODEN/LCCN render invisibly in
-  acmsmall (as in real acmart) and are omitted; the `journal.canon.abbrev` table is
-  not transcribed (sample data is pre-abbreviated); `\natexlab` year-disambiguation
-  is computed but only shows in author-year citation modes. The `\LaTeX`/`\TeX`
-  *logos* are the one rendering caveat — pdftotext extracts the LaTeX logo as
+  owns its own cite layer). Faithful-by-omission: acmart leaves `\showISBNx` /
+  `\showISSN` / `\showCODEN` / `\showLCCN` **undefined in every format**, so the
+  `.bbl`'s `\unskip` fallback suppresses them universally — we omit them likewise.
+  Deferred: author-year citation mode (`\citestyle{acmauthoryear}` + `\natexlab`
+  year-disambiguation `2019a`/`b`) — a citation-*style* feature distinct from the
+  reference-list formatting; verified to be invisible in the numeric mode we render
+  (colliding author+year entries still print a bare year). The `\LaTeX`/`\TeX`
+  *logos* are the one char-match caveat — pdftotext extracts the LaTeX logo as
   `LATEX`, so logo-bearing entries would not char-match; the twin avoids them.
 - The corresponding-author ✉ mark itself is faithful: acmart's `\correspondingauthor`
   (new in v2.18) emits a superscript envelope `\textsuperscript{\ding{41}}`

@@ -240,6 +240,24 @@ def char_bag(raw: str) -> Counter:
     return Counter(re.sub(r"\s+", "", text))
 
 
+_URI = re.compile(rb"/URI\s*\(([^)]*)\)")
+
+
+def extract_uris(pdf: Path) -> set[str]:
+    """Hyperlink (/URI) targets in a PDF. LaTeX/hyperref compresses annotations
+    into object streams, so decompress with qpdf when available; Typst writes them
+    uncompressed, so the raw pass already catches those."""
+    data = pdf.read_bytes()
+    found = set(_URI.findall(data))
+    if shutil.which("qpdf"):
+        out = subprocess.run(
+            ["qpdf", "--qdf", "--object-streams=disable", "--decode-level=all", str(pdf), "-"],
+            capture_output=True,
+        ).stdout
+        found |= set(_URI.findall(out))
+    return {u.decode("latin1") for u in found}
+
+
 # ---------------------------------------------------------------------------
 # Typst compilation
 # ---------------------------------------------------------------------------
@@ -728,6 +746,29 @@ def cmd_build(_args) -> int:
     return 0
 
 
+def gate_links(report: bool = False) -> list[str]:
+    """Tier 1.7 — hyperlink (/URI) set must match LaTeX+hyperref, for twins that
+    set link_check (e.g. the bst-backend bib-all, whose DOI/URL/arXiv links are a
+    fidelity goal pdftotext can't see)."""
+    failures: list[str] = []
+    for name, t in TESTS.items():
+        if not getattr(t, "link_check", False) or t.kind != "twin":
+            continue
+        lref, tpdf = latex_pdf(name, t), typst_pdf(name)
+        if not lref.exists() or not tpdf.exists():
+            failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
+            continue
+        lu, tu = extract_uris(lref), extract_uris(tpdf)
+        miss, extra = lu - tu, tu - lu
+        if miss or extra:
+            failures.append(
+                f"{name}: hyperlink sets differ\n"
+                f"    only in LaTeX: {sorted(miss)}\n    only in Typst: {sorted(extra)}")
+        elif report:
+            print(f"ok   {name}: {len(tu)} hyperlinks match")
+    return failures
+
+
 def cmd_check(_args) -> int:
     print("Building LaTeX references…")
     build_all_latex()
@@ -743,6 +784,8 @@ def cmd_check(_args) -> int:
     ok &= _run_gate("Tier 1.5 (text)", gate_text())
     print("\n== Tier 1.6 (expected errors) ==")
     ok &= _run_gate("Tier 1.6 (expected errors)", gate_errors())
+    print("\n== Tier 1.7 (hyperlinks) ==")
+    ok &= _run_gate("Tier 1.7 (hyperlinks)", gate_links())
     print("\n== Tier 2 (metrics) ==")
     ok &= _run_gate("Tier 2 (metrics)", gate_metrics())
     return 0 if ok else 1

@@ -102,6 +102,7 @@ class Test:
     text_reason: str | None = None
     text_assertions: tuple[Assertion, ...] = ()
     char_diff: str = ""
+    link_check: bool = False  # compare hyperlink (/URI) sets LaTeX vs Typst
     note: str = ""
 
     @property
@@ -321,8 +322,19 @@ TESTS: dict[str, Test] = {
              "article, periodical, book, inbook, incollection, inproceedings, mastersthesis, "
              "phdthesis, techreport, online, misc, manual, presentation, underreview, "
              "preprint, software, dataset, proceedings, booklet. Reads sample-base.bib plus "
-             "the crafted tests/twins/bib-all-extra.bib (clean proceedings/booklet/manual). "
-             "Pitch reported, not gated (heading + hanging-indent grid mix leadings).",
+             "the crafted tests/twins/bib-all-extra.bib (clean proceedings/booklet/manual, "
+             "plus unpublished and a journal-macro entry exercising canon.abbrev). "
+             "Pitch reported, not gated (heading + hanging-indent grid mix leadings). "
+             "link_check gates the DOI/URL/arXiv hyperlink set against bibtex+hyperref.",
+        link_check=True,
+        # Word-level guards for things the whitespace-free char bag can't see:
+        # @string/# concatenation spacing, journal-macro+canon.abbrev, unpublished.
+        text_assertions=(
+            Assertion(engine="both", text="Tech Press, Ltd."),       # concat keeps the space
+            Assertion(engine="both", text="Comput. Surveys"),        # csur macro -> canon.abbrev
+            Assertion(engine="both", text="Submitted to Mind"),      # @unpublished note
+            Assertion(engine="both", text="Maria de la Cruz"),       # von-name parsing
+        ),
     ),
     "notes-test": Test(
         kind="twin", pages=1,
