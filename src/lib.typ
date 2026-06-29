@@ -245,6 +245,18 @@
   // Fill in optional author fields up front (see normalize-author).
   let authors = authors.map(normalize-author)
 
+  // \@acmBooktitle defaults to "Proceedings of <conference name> (<short>)" when
+  // not set explicitly, dropping the "(<short>)" when the name already is the
+  // short name (acmart.dtx:5059). Resolve it once here so every consumer (the ACM
+  // reference, the engage copyright line) sees the effective value.
+  let booktitle = if booktitle != none {
+    booktitle
+  } else if conference != none and conference.at("name", default: none) != none {
+    let nm = conference.name
+    let sh = conference.at("short", default: none)
+    if sh != none and sh != nm { [Proceedings of #nm (#sh)] } else { [Proceedings of #nm] }
+  }
+
   let meta = (
     title: title,
     subtitle: subtitle,

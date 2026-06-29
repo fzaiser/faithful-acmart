@@ -682,8 +682,8 @@
           if meta.bibstrip {
             [#if j.short != none { emph(j.short) + " " }#meta.acm-volume, #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta)), #total #if total == 1 [page] else [pages].]
           } else {
-            let bt = if meta.booktitle != none { meta.booktitle } else if meta.conference != none { meta.conference.at("name", default: none) }
-            [In #emph(bt). ACM, New York, NY, USA#if meta.acm-article != none [, Article #meta.acm-article], #total #if total == 1 [page] else [pages].]
+            // booktitle is resolved (explicit or derived from the conference) in acmart().
+            [In #emph(meta.booktitle). ACM, New York, NY, USA#if meta.acm-article != none [, Article #meta.acm-article], #total #if total == 1 [page] else [pages].]
           }
         }#{
           if meta.doi != none [ #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]]

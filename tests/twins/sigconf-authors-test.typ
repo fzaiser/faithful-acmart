@@ -8,8 +8,9 @@
 #show: acmart.with(
   format: "sigconf",
   title: "Five Authors, Two Rows",
-  conference: (short: "Conference'17", venue: "Washington, DC, USA"),
-  booktitle: "Proceedings of ACM Conference (Conference'17)",
+  // No booktitle: the reference's booktitle is derived from the conference,
+  // matching acmart's \acmBooktitle auto-derivation.
+  conference: (name: "ACM Conference", short: "Conference'17", venue: "Washington, DC, USA"),
   isbn: "978-1-4503-XXXX-X/2018/06",
   doi: "XXXXXXX.XXXXXXX",
   acm-year: 2018, acm-month: 6,
