@@ -203,49 +203,66 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   carries the `.bst`'s built-in journal MACRO table + `journal.canon.abbrev`
   (auto-extracted, so `journal = csur` → "Comput. Surveys" like bibtex). DOI / URL /
   arXiv-eprint / `\url`-in-note render as **real Typst hyperlinks** (acmart loads
-  hyperref). Reached via the exported `acm-cite` / `acm-bibliography` (Typst exposes
+  hyperref). Reached via the exported `acm-cite` (`\citep`) / `acm-citet` /
+  `acm-citeyear` / `acm-citeauthor` / `acm-bibliography` (Typst exposes
   no hook to drive native `@key` numbering from a custom renderer, so the backend
   owns its cite layer). It reproduces the `.bst`'s reference text *exactly*: the
-  `bib-all` (20 entry-type handlers) and `bib-edge` (field/path edge cases) twins
-  gate the full char bag against real bibtex with **no exemption**, plus a
+  `bib-all` (20 entry-type handlers), `bib-edge` (field/path edge cases),
+  `crossref` (crossref + org→key + distinctURL) and `authoryear` (author-year mode)
+  twins gate the full char bag against real bibtex with **no exemption**, plus a
   `link_check` gate on the `/URI` set and word-level assertions for what the
   whitespace-free char bag can't see. The von/Last/Jr name split follows the
   `biblatex` crate's `Person::parse` algorithm (von = up to the last lowercase word
   for `von Last, First`; the leading-cap / lowercase / trailing-cap partition for
   `First von Last`), verified field-by-field against it.
 
-  **Not ported from `ACM-Reference-Format.bst`** (the exhaustive gap list):
-  - **Author-year citation mode** (`\citestyle{acmauthoryear}`). We render numeric
-    only, so the entire label subsystem is unused — `calc.label` / `my.full.label` /
-    `format.lab.names` (the `[Author et&nbsp;al. year]` label with >N-author "et al."
-    truncation) and the `\natexlab` year-disambiguation suffix (`2019a`/`b`) in both
-    the citations and the reference-list years. *Verified* invisible in numeric mode
-    (natbib gobbles `\natexlab`; colliding author+year entries print a bare year), so
-    this is purely the author-year feature, not a reference-formatting gap.
-  - **`crossref`.** No field inheritance from a crossref'd parent and no "See [N]"
-    rendering (`format.{article,book,incoll.inproc}.crossref` → `\citeN`). Entries
-    using `crossref` won't inherit `booktitle`/`publisher` or emit the reference.
+  **Implemented (each validated against real bibtex):**
+  - **Author-year citation mode** — `cite-style: "author-year"` (acmart's
+    `\citestyle{acmauthoryear}`). Short `format.lab.names` labels (von+Last only,
+    `" and "` for two, `"et al."` for >2), the `\natexlab` `a`/`b`/`c`
+    year-disambiguation suffix assigned over `(label, year)`-equal entries in sort
+    order (the `forward.pass`/`reverse.pass` algorithm), a reference list with **no
+    leading numbers**, and the natbib `\citep`/`\citet` renderers with same-author
+    year compression (`[Smith and Doe 2020a,b]`). `acm-cite` = `\citep`, `acm-citet`
+    = `\citet`, plus `acm-citeyear`/`acm-citeauthor`.
+  - **`crossref`** — BibTeX *engine* behaviour (not in the `.bst`): the parent's
+    missing fields are inherited into the child; the parent is listed only when
+    crossref'd ≥ `min_crossrefs` (=2) times or cited directly; a child whose parent
+    is listed renders the `.bst`'s `format.{article,book,incoll.inproc}.crossref`
+    ("See [N]" / "In ⟨ed⟩ [N]"), and a child whose parent is *not* listed has its
+    `crossref` dropped and renders in full from the inherited fields. Both thresholds
+    + inheritance verified against bibtex.
+  - **`organization`-as-label `format.key` fallback** for proceedings/manual (the
+    `.bst`'s `organization format.key output`): an entry with neither name field nor
+    organization leads with its `key` — both in the reference text *and* the sort key.
+  - **`distinctURL`** — the per-entry field that prints the URL alongside a DOI
+    (`output.url`'s `distinctURL empty.or.zero not`).
+
+  **Not ported** (genuinely out of reach, or faithful to omit — the exhaustive list):
   - **ISBN / ISBN-13 / ISSN / CODEN / LCCN.** Emitted by the `.bst` but suppressed by
-    acmart (`\show*` left **undefined in every format** → the `.bbl`'s `\unskip`
-    fallback), so omitting them is faithful for acmart; a user who *defines*
-    `\showISBNx` to surface them can't via this backend (`show-isbn-10-and-13` logic
-    is also unimplemented).
-  - **`distinctURL` option.** URL is suppressed when a DOI is present (the default);
-    the option to print both isn't supported.
-  - **`organization`-as-label `format.key` fallback** for proceedings/manual/periodical
-    (org-led types where both org and the name field are absent). Only the author-led
-    `format.key` fallback (author-less entry shows its `key`) is implemented.
+    acmart (`\showISBNx` etc. left **undefined in every format** → the `.bbl`'s
+    `\unskip` fallback eats them), so omitting them is *faithful to stock acmart*. A
+    user who redefines `\showISBNx` to surface them can't via this backend; the
+    `show-isbn-10-and-13` branch is unimplemented because no acmart format reaches it.
+  - **Native `@key` / `#bibliography`** don't route to the bst engine — and *can't*.
+    Typst's `cite`/`bibliography` elements are closed: there is no public hook to make
+    a custom renderer supply the citation labels or the numbered list that native
+    `@key` resolves against. The backend therefore owns its own cite layer
+    (`acm-cite` & friends + `acm-bibliography`); routing `@key` through it would
+    require Typst to expose a citation-provider API that does not exist.
+  - **Arbitrary TeX in fields** beyond the decoded set — *unbounded by nature*. The
+    single-pass lexer in `bibtex.typ` decodes accents (`\"o`→ö), special letters
+    (`\ss`→ß, `\o`→ø) and leaves known macros (`\url`/`\emph`/`\&`…) to the formatter,
+    but a field can contain any TeX at all: inline math (`$x^2$`), user-defined macros
+    (`\mycmd`), nested groups, `\newcommand`s pulled from the preamble. Interpreting
+    those would mean embedding a TeX engine; we decode the finite set the ACM samples
+    actually use and pass the rest through verbatim.
+  - **BibTeX warnings** (missing year, empty author, bad page ranges…) are not emitted
+    — by choice, not necessity. Rendering is best-effort and silent;
+    `\begin{thebibliography}{width}` label-width (`longest.label`) is moot since Typst
+    numbers the list natively.
   - **`, Article N` comma** is emitted unconditionally; the `.bst` keys it on output
     state (equivalent in practice — every reachable call site is post-`new.block`).
-  - **Arbitrary TeX in fields** beyond the decoded set. The single-pass lexer decodes
-    accents (`\"o`→ö), special letters (`\ss`→ß, `\o`→ø), and leaves known macros
-    (`\url`/`\emph`/`\&`…) to the formatter; raw math (`$…$`), custom macros, and
-    nested constructs are not interpreted.
-  - **Native `@key` / `#bibliography`** don't route to the bst engine (use
-    `acm-cite` / `acm-bibliography`).
-  - **BibTeX warnings** (missing year, empty author, page numbers…) are not emitted;
-    rendering is best-effort and silent. `\begin{thebibliography}{width}` label-width
-    (`longest.label`) is moot — Typst numbers the list natively.
 
   **One rendering caveat:** the `\LaTeX`/`\TeX` *logos* — pdftotext extracts the
   LaTeX logo as `LATEX`, so logo-bearing entries don't char-match; the twins avoid
