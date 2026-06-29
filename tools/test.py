@@ -214,19 +214,29 @@ def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
     return 1 - sum((miss + extra).values()) / max(1, total), miss, extra
 
 
-def char_bag(raw: str) -> Counter:
-    """Whitespace- and digit-free character multiset (same normalization as the word bag).
+# Quote/star/bullet glyph variants the two engines encode differently, folded to
+# a canonical form for the char bag. Dashes are NOT here — they're dropped wholesale
+# (below), because line-break hyphenation differs between engines (they break
+# different words) and pdftotext drops the break hyphen inconsistently, so any
+# surviving dash count is noise.
+_CHAR_FOLD = {"‘": "'", "’": "'", "“": '"', "”": '"', "∗": "*", "⁎": "*", "∙": "•"}
+_DROP_DASHES = str.maketrans("", "", "­‐‑‒–—−-")  # soft hyphen, hyphens, dashes, minus
 
-    Order- and line-break-independent like the word bag, but it keeps punctuation
-    and ignores word tokenization, so it's a stricter tripwire: a stray comma or
-    period the word bag's edge-strip hides shows up here, while hyphenation still
-    washes out (a broken word differs only by a space, and spaces are excluded).
-    Pure-digit runs (folios, section numbers, years — which pdftotext segments
-    onto their own line or glues to text inconsistently between engines) are
-    dropped; the word bag and assertions still check those.
+
+def char_bag(raw: str) -> Counter:
+    """Whitespace- and dash-free character multiset (NFKC + quote/star folding).
+
+    A stricter tripwire than the word bag: order- and line-break-independent too,
+    but it keeps punctuation, so a stray comma or period the word bag's edge-strip
+    hides shows up here. Deliberately self-contained (not via normalize()) — it
+    needs none of the word bag's tokenization machinery. What it does NOT check is
+    delegated elsewhere: numbers and dashes to the word bag's tokens, page folios
+    to the fixtures (titleless twins re-assert \\thispagestyle{empty} so neither
+    engine prints one). Whatever difference survives here is real.
     """
-    text = _URL_SCHEME.sub("", normalize(_EOL_HYPHEN.sub("", raw)))
-    text = re.sub(r"\b\d+\b", "", text)
+    text = unicodedata.normalize("NFKC", raw).translate(_DROP_DASHES)
+    for old, new in _CHAR_FOLD.items():
+        text = text.replace(old, new)
     return Counter(re.sub(r"\s+", "", text))
 
 
@@ -651,6 +661,11 @@ def gate_metrics(report: bool = False) -> list[str]:
         if t.uniform_pitch:
             gated.append(("pitch", tol["pitch"], "baseline pitch"))
 
+        # Per-line pitch is gated only on SINGLE-page uniform_pitch twins. A
+        # multi-page doc's page 1 is full, so acmsmall's \@textbottom rubber glue
+        # stretches its paragraph gaps to the bottom margin (the documented fill we
+        # can't replicate) — gating per-line spacing there would chase that drift.
+        line_pitch = t.uniform_pitch and t.pages == 1
         if report:
             print(name + ":")
         local: list[str] = []
@@ -658,10 +673,10 @@ def gate_metrics(report: bool = False) -> list[str]:
             a, b = lm.get(p), tm.get(p)
             if a is None or b is None:
                 continue
-            lpd = _line_pitch_drift(a["pitches"], b["pitches"]) if t.uniform_pitch else None
+            lpd = _line_pitch_drift(a["pitches"], b["pitches"]) if line_pitch else None
             if report:
                 lpd_s = (f"  line-pitch {lpd[0]:.2f}pt×{lpd[1]}" if lpd and lpd[1]
-                         else "  line-pitch n/a (lines differ)" if t.uniform_pitch else "")
+                         else "  line-pitch n/a (lines differ)" if line_pitch else "")
                 print(f"  {name} p{p}: "
                       f"L {a['left']:.1f}/{b['left']:.1f}  R {a['right']:.1f}/{b['right']:.1f}  "
                       f"T {a['top']:.1f}/{b['top']:.1f}  "

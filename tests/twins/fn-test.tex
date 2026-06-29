@@ -2,6 +2,7 @@
 \pagestyle{empty}
 \settopmatter{printacmref=false}
 \begin{document}
+\thispagestyle{empty}% acmart re-installs standardpagestyle \AtBeginDocument, overriding the preamble \pagestyle{empty}; with no \maketitle this would leak a page-1 folio. Re-assert empty so the titleless body-only fixture matches the Typst twin.
 \section{Footnotes and Code}
 This paragraph has a footnote\footnote{This is the footnote text, set in footnotesize with a short rule above it.} and some inline code like \texttt{printf("hello")} embedded in the text. A second footnote\footnote{Another footnote to check numbering and spacing.} follows.
 

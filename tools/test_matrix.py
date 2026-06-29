@@ -146,8 +146,6 @@ TESTS: dict[str, Test] = {
     ),
     "fn-test": Test(
         kind="twin", pages=1,
-        char_diff="pdftotext glues the footnote-marker digit to the following word in "
-                  "one engine only (e.g. \"1This\"), so a digit survives the digit-strip",
         note="body footnotes + code/verbatim",
     ),
     "full-test": Test(
@@ -241,8 +239,6 @@ TESTS: dict[str, Test] = {
     ),
     "sigplan-test": Test(
         kind="twin", pages=1, metrics=False,
-        char_diff="pdftotext drops the hyphen when Typst breaks a compound "
-                  "(two-column/full-width) at it; sources are identical",
         note="format=sigplan: sigconf variant — serif-bold Huge title (no sans), 10pt, "
              "1in/0.75in margins, serif-bold sections, sans URLs. Tier 2 top-position is "
              "report-only: the Huge serif title pins its cap-top to the margin, but "
@@ -250,8 +246,6 @@ TESTS: dict[str, Test] = {
     ),
     "acmengage-test": Test(
         kind="twin", pages=1, metrics=False,
-        char_diff="pdftotext drops the hyphen when an engine breaks a compound "
-                  "(two-column/first-column) at it; sources are identical",
         note="format=acmengage: sigconf variant (10pt, booktitle copyright line). Tier 2 "
              "top-position is report-only (same reason as sigplan): the 10pt Huge title "
              "pins its cap-top to the margin but topmost-ink overshoots by ~5pt. Left "
@@ -259,6 +253,8 @@ TESTS: dict[str, Test] = {
     ),
     "acmcp-test": Test(
         kind="twin", pages=1, metrics=False, text_equal="bag",
+        char_diff="our cover-infobox code/data link is shown without the https:// scheme "
+                  "(a display approximation); acmart shows the full URL",
         text_assertions=(
             Assertion(engine="both", text="Research Article"),
             Assertion(engine="both", text="Keywords: datasets"),
@@ -316,15 +312,11 @@ TESTS: dict[str, Test] = {
     ),
     "notes-test": Test(
         kind="twin", pages=1,
-        char_diff="pdftotext drops the hyphen when Typst breaks 'paper-history' at it; "
-                  "sources are identical",
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "
              "The title block and footnote stack mix leadings, so pitch is reported, not gated.",
     ),
     "options-test": Test(
         kind="twin", pages=2, page1_only=True,
-        char_diff="pdftotext drops the hyphen when Typst breaks a compound at it; "
-                  "sources are identical",
         note="toggles nonacm / printccs=false / printfolios=false plus the single-column "
              "no-ops balance=false / natbib=false. Two pages so page 2 shows suppressed "
              "folios in the running head. Mixed leadings, so pitch is reported, not gated.",

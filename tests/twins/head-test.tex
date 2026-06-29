@@ -2,6 +2,7 @@
 \pagestyle{empty}
 \settopmatter{printacmref=false}
 \begin{document}
+\thispagestyle{empty}% acmart re-installs standardpagestyle \AtBeginDocument, overriding the preamble \pagestyle{empty}; with no \maketitle this would leak a page-1 folio. Re-assert empty so the titleless body-only fixture matches the Typst twin.
 
 \section{Introduction}
 The quick brown fox jumps over the lazy dog. Pack my box with five dozen
