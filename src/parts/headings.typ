@@ -44,7 +44,9 @@
 #let render-heading(it, cfg) = {
   let lvl = it.level
   let bls = cfg.baselineskip
-  let num = heading-number(it)
+  // secnumdepth (acmart.dtx:8419): levels beyond it are unnumbered (sigchi=1,
+  // sigchi-a=0). Paragraphs (level 4) are always unnumbered regardless.
+  let num = if lvl <= cfg.secnumdepth { heading-number(it) }
 
   // \@startsection puts a heading a full \baselineskip + |beforeskip| below the
   // previous baseline, and the body a \baselineskip + afterskip below the

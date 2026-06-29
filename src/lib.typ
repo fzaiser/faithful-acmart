@@ -12,6 +12,10 @@
 #import "formats/manuscript.typ": manuscript
 #import "formats/acmlarge.typ": acmlarge
 #import "formats/sigconf.typ": sigconf
+#import "formats/siggraph.typ": siggraph
+#import "formats/sigchi.typ": sigchi
+#import "formats/sigplan.typ": sigplan
+#import "formats/acmengage.typ": acmengage
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
 #import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
@@ -25,6 +29,10 @@
   acmsmall: acmsmall,
   acmlarge: acmlarge,
   sigconf: sigconf,
+  siggraph: siggraph,
+  sigchi: sigchi,
+  sigplan: sigplan,
+  acmengage: acmengage,
 )
 
 #let acmart(
@@ -363,9 +371,13 @@
   // for URLs). Without it, links stay black as in print acmart.
   let acm-purple = cmyk(55%, 100%, 0%, 15%)
   let acm-dark-blue = cmyk(100%, 58%, 0%, 21%)
-  let colorize = (dest, body) => if screen {
-    text(fill: if type(dest) == str { acm-dark-blue } else { acm-purple }, body)
-  } else { body }
+  let colorize = (dest, body) => {
+    // \urlstyle{sf} (sigplan/sigchi-a, acmart.dtx:3623): URL links set in sans.
+    let body = if cfg.urlstyle-sans and type(dest) == str { text(font: cfg.fonts.sans, body) } else { body }
+    if screen {
+      text(fill: if type(dest) == str { acm-dark-blue } else { acm-purple }, body)
+    } else { body }
+  }
   // `urlbreakonhyphens` (default true): acmart adds `-` to hyperref's URL break
   // set (\do@url@hyp, acmart.dtx:3631), and Typst's line-breaker already breaks
   // URLs after hyphens — so the default needs nothing and stays the plain `it`.

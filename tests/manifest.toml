@@ -81,6 +81,41 @@ page1_only = true
 # justified text break differently across engines (higher pixel mismatch is
 # expected); page1_only gates absolute positions on the title page only.
 
+[tests.sigplan-test]
+kind = "twin"
+pages = 1
+metrics = false
+# format=sigplan: sigconf variant — serif-bold Huge title (no sans), 10pt, 1in/
+# 0.75in margins, serif-bold sections, sans URLs. Validated by the LaTeX overlay
+# (geometry/left-edge match). Tier 2 top-position is report-only here: our Huge
+# *serif* title pins its cap-top to the margin (the faithful \topskip model, as
+# for acmsmall), but topmost-ink then differs from LaTeX's baseline placement by
+# ~5pt of glyph-bbox overshoot — just over the loose top tolerance.
+
+[tests.siggraph-test]
+kind = "smoke"
+pages = 1
+page_parity = false
+metrics = false
+# format=siggraph: sigconf variant (normalsize serif authors, sans-bold Large
+# sections). Typst-only golden-smoke (shares the sigconf two-column path).
+
+[tests.sigchi-test]
+kind = "smoke"
+pages = 1
+page_parity = false
+metrics = false
+# format=sigchi: sigconf variant — secnumdepth=1 (subsections unnumbered), bold
+# serif author names. Typst-only golden-smoke.
+
+[tests.acmengage-test]
+kind = "smoke"
+pages = 1
+page_parity = false
+metrics = false
+# format=acmengage: sigconf variant (booktitle copyright line). Typst-only
+# golden-smoke.
+
 [tests.fontsize-8-test]
 kind = "twin"
 pages = 1
