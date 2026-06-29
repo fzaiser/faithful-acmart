@@ -187,8 +187,6 @@ TESTS: dict[str, Test] = {
     ),
     "acmtog-test": Test(
         kind="twin", pages=1, page1_only=True,
-        char_diff="two-column fill differs (Typst lacks \\flushbottom balancing), so a "
-                  "different amount of body text lands on page 1",
         note="format=acmtog: two-column JOURNAL. Spanning left @i title + author list, "
              "contact-info footnote + ACM bibstrip + journal footer, 9pt parindent, "
              "sans-large sections.",
@@ -231,8 +229,6 @@ TESTS: dict[str, Test] = {
     ),
     "sigconf-authors-test": Test(
         kind="twin", pages=1, page1_only=True,
-        char_diff="5-author two-column grid: fill differs (no \\flushbottom), so a "
-                  "different amount of body text lands on page 1",
         note="Conference author grid with a PARTIAL last row (5 groups at 3-per-row => "
              "3 + 2). Guards make-authors-grid's per-row centering: the final row of 2 "
              "is centered, not left-aligned (validated against LaTeX).",
@@ -276,8 +272,9 @@ TESTS: dict[str, Test] = {
     ),
     "sigchi-a-test": Test(
         kind="twin", pages=2, page1_only=True, metrics=False,
-        char_diff="best-effort format: marginpar footnotes omitted and the @iv title "
-                  "leftskip approximated, so body content differs",
+        char_diff="best-effort @iv format: the author block renders uppercase names where "
+                  "acmart shows name/email/affiliation, the conference date line and Legacy "
+                  "watermark split differ — real layout approximations, not a content bug",
         note="format=sigchi-a: landscape SIGCHI extended abstracts (best-effort). Sans "
              "default, wide left margin, 2pt-rule title, unnumbered sections. The legacy "
              "watermark IS reproduced; margin-note footnotes (\\marginpar) and the @iv "

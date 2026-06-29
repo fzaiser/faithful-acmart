@@ -9,6 +9,7 @@
   format: "sigconf",
   title: "Five Authors, Two Rows",
   conference: (short: "Conference'17", venue: "Washington, DC, USA"),
+  booktitle: "Proceedings of ACM Conference (Conference'17)",
   isbn: "978-1-4503-XXXX-X/2018/06",
   doi: "XXXXXXX.XXXXXXX",
   acm-year: 2018, acm-month: 6,
@@ -32,4 +33,4 @@
 )
 
 = Introduction
-This isolates the author grid's row layout. #lorem(40)
+This isolates the author grid's row layout. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore.
