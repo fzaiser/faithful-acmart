@@ -351,8 +351,9 @@
   // Research type is ACMBlue, acmart.dtx:5889/3707). The MakeFramed box bleeds
   // 6.5pc into the left margin, so the panel runs from the page's left edge across
   // to the right text edge, between the top and bottom margins. (The JDS logo and
-  // the right-column infobox are NOT reproduced — the logo is a bundled asset we
-  // don't have, and the box uses two-pass zref positioning.)
+  // the right-column infobox ARE reproduced — see make-acmcp-infobox below; only
+  // their vertical position is approximated, anchored to the top-right corner
+  // rather than zref-positioned against the frame bottom.)
   let acmcp-frame = if cfg.name == "acmcp" {
     let tint = cmyk(100%, 10%, 0%, 10%).lighten(90%) // ACMBlue!10!white
     place(top + left, dy: cfg.margin.top, rect(

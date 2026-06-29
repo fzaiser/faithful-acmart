@@ -216,8 +216,8 @@
 // One author's contact entry, replaying name → affiliation fields → email in
 // that order (email LAST), matching LaTeX \@mkauthorsaddresses (acmart.dtx:7588).
 // Authors are listed individually in source order with the affiliation repeated
-// per author — NOT grouped. (LaTeX also allows multiple affiliations per author,
-// joined by " and "; our data model carries one affiliation each.)
+// per author — NOT grouped. Multiple affiliations per author are supported (an
+// `affiliation` array, like LaTeX's repeated \affiliation), joined by " and ".
 #let contact-line(a) = {
   let parts = (a.name,)
   // each affiliation as "institution, city, state, country"; several joined by
@@ -389,45 +389,75 @@
   ])
 }
 
+// --- Shared title-head pieces (used by both the journal and the conference head;
+// the only difference between those heads is centering + the author layout). ---
+
+// The title block: \@titlefont per format, with cap-height top-edge so the (tall)
+// first line's cap-top sits at the top margin, matching LaTeX \topskip for a first
+// line taller than \topskip. \@translatedtitle adds each secondary title as a new
+// \par in the title font (acmart.dtx:3374/6994), one baselineskip below.
+#let title-block(cfg, meta, mark) = {
+  let tf = cfg.title-font
+  block(spacing: 0pt)[
+    #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), top-edge: "cap-height")
+    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: tf.size), spacing: comp(cfg, sz: tf.size))
+    #meta.title#if mark != none { super(mark) }
+    #for (l, t) in meta.translated-title {
+      parbreak()
+      text(lang: lang-record(l).code, t)
+    }
+  ]
+}
+
+// The subtitle block (\@subtitlefont = \normalsize\mdseries; its own block so it
+// gets normalsize leading, one normalsize baselineskip below the title via the
+// \par). \@translatedsubtitle each in the subtitle font (acmart.dtx:3391/6996).
+// none when there is no subtitle.
+#let subtitle-block(cfg, meta, mark) = {
+  if meta.subtitle == none { return }
+  let sf = cfg.subtitle-font
+  block(spacing: tex-skip(cfg, 0pt))[
+    #set text(font: cfg.fonts.at(sf.family), weight: sf.weight, size: cfg.size.at(sf.size))
+    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: sf.size), spacing: comp(cfg, sz: sf.size))
+    #meta.subtitle#if mark != none { super(mark) }
+    #for (l, t) in meta.translated-subtitle {
+      parbreak()
+      text(lang: lang-record(l).code, t)
+    }
+  ]
+}
+
+// Render an author's note marks as superscripts; the ✉ glyph is large, so shrink it.
+#let render-marks(marks) = {
+  for m in marks {
+    if m == "✉" { super(text(size: 0.72em)[#m]) } else { super(m) }
+  }
+}
+
+// Attach each author's collected note marks (collect-notes order) as `_marks`, so
+// group-authors and the per-name rendering can read them off the author dict.
+#let mark-authors(meta, ni) = meta.authors.enumerate().map(((i, a)) => {
+  let a2 = a
+  a2.insert("_marks", ni.marks.at(i))
+  a2
+})
+
+// Teaser figure between the authors and the abstract (\@mkteasers, acmart.dtx:7663):
+// a full-text-width figure, \par\bigskip above. none when there is no teaser.
+#let teaser-block(cfg, meta) = {
+  if meta.teaser == none { return }
+  v(tex-skip(cfg, cfg.bigskip), weak: true)
+  block(width: 100%, spacing: 0pt, meta.teaser)
+}
+
 // The journal @i spanning head (acmart.dtx:6986): left-aligned title/subtitle,
 // then the andified author *list* with short affiliations. Used by the single-
 // column journals and by acmtog (two-column journal). The conference formats use
 // conf-title-head instead; make-title-head dispatches on cfg.title-style.
 #let journal-title-head(cfg, meta) = {
   let ni = collect-notes(meta)
-  // \@titlefont / \@subtitlefont differ per format (acmart.dtx:6911/6946); the
-  // family/weight/size come from the format dict.
-  let tf = cfg.title-font
-  let sf = cfg.subtitle-font
-  // --- Title (journal @i: left-aligned; font per format) ---
-  block(spacing: 0pt)[
-    // top-edge: cap-height places the (tall) first line's cap-top at the top
-    // margin, matching LaTeX \topskip behaviour for a first line taller than it.
-    #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), top-edge: "cap-height")
-    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: tf.size), spacing: comp(cfg, sz: tf.size))
-    #meta.title#if ni.title-mark != none { super(ni.title-mark) }
-    // \@translatedtitle: each secondary title is a new \par in the title font
-    // (acmart.dtx:3374/6994), one baselineskip below (par spacing = leading).
-    #for (l, t) in meta.translated-title {
-      parbreak()
-      text(lang: lang-record(l).code, t)
-    }
-  ]
-  // Subtitle (\@subtitlefont = \normalsize\mdseries, inherits the sans family);
-  // its own block so it gets normalsize leading, not the title's LARGE leading.
-  // LaTeX `\par` puts it one normalsize baselineskip below the title.
-  if meta.subtitle != none {
-    block(spacing: tex-skip(cfg, 0pt))[
-      #set text(font: cfg.fonts.at(sf.family), weight: sf.weight, size: cfg.size.at(sf.size))
-      #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: sf.size), spacing: comp(cfg, sz: sf.size))
-      #meta.subtitle#if ni.subtitle-mark != none { super(ni.subtitle-mark) }
-      // \@translatedsubtitle: each in the subtitle font (acmart.dtx:3391/6996).
-      #for (l, t) in meta.translated-subtitle {
-        parbreak()
-        text(lang: lang-record(l).code, t)
-      }
-    ]
-  }
+  title-block(cfg, meta, ni.title-mark)
+  subtitle-block(cfg, meta, ni.subtitle-mark)
 
   // Author-list fonts come from the format dict (acmart.dtx:7206 \@authorfont /
   // \@affiliationfont): acmsmall \large sans names + \small serif affils (the
@@ -447,23 +477,12 @@
       #upper[Anonymous Author(s)]
     ]
   } else {
-  let marked = meta.authors.enumerate().map(((i, a)) => {
-    let a2 = a
-    a2.insert("_marks", ni.marks.at(i))
-    a2
-  })
   block(spacing: 0pt)[
     #set par(justify: false, leading: comp(cfg, sz: af.size), spacing: 0pt)
-    #for g in group-authors(marked) {
-      let names = g.authors.map(a => {
-        upper(a.name)
-        // note marks (superscript symbols); the ✉ glyph is large, so shrink it
-        for m in a._marks {
-          if m == "✉" { super(text(size: 0.72em)[#m]) } else { super(m) }
-        }
-      })
+    #for g in group-authors(mark-authors(meta, ni)) {
+      // andify preserves the per-name content marks (superscript symbols).
+      let names = g.authors.map(a => { upper(a.name); render-marks(a._marks) })
       block(spacing: comp(cfg, sz: af.size))[
-        // andify preserves the per-name content marks (superscript symbols).
         #text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))[#andify(names)]#{
           let aff = affil-short(g.affiliation)
           if aff != none {
@@ -475,16 +494,9 @@
   ]
   } // end non-anonymous author block
 
-  // --- Teaser figure (between authors and abstract) ---
-  // \@mkteasers appends each teaser to the title box with \par\bigskip above and
-  // a closing \medskip (acmart.dtx:7663-7671): a full-text-width figure in the
-  // one-column journal layout. With no teaser, the trailing \medskip is the normal
-  // author-box gap to the abstract.
-  if meta.teaser != none {
-    v(tex-skip(cfg, cfg.bigskip), weak: true)
-    block(width: 100%, spacing: 0pt, meta.teaser)
-  }
-  // author box trailing \par\medskip; next block (abstract/CCS/...) is 9pt
+  // Teaser figure between authors and abstract; then the author box's trailing
+  // \par\medskip to the next block (abstract/CCS/..., at 9pt).
+  teaser-block(cfg, meta)
   v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
 }
 
@@ -510,12 +522,7 @@
     set align(center)
     set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
     set par(justify: false, leading: comp(cfg, sz: af.size), spacing: comp(cfg, sz: af.size))
-    andify(group.authors.map(a => {
-      a.name
-      for m in a._marks {
-        if m == "✉" { super(text(size: 0.72em)[#m]) } else { super(m) }
-      }
-    }))
+    andify(group.authors.map(a => { a.name; render-marks(a._marks) }))
     parbreak()
     set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
     set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
@@ -545,23 +552,9 @@
 // subtitle, then the centered author grid. Fonts come from the format dict.
 #let conf-title-head(cfg, meta) = {
   let ni = collect-notes(meta)
-  let tf = cfg.title-font
-  let sf = cfg.subtitle-font
   set align(center)
-  block(spacing: 0pt)[
-    #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), top-edge: "cap-height")
-    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: tf.size), spacing: comp(cfg, sz: tf.size))
-    #meta.title#if ni.title-mark != none { super(ni.title-mark) }
-    #for (l, t) in meta.translated-title { parbreak(); text(lang: lang-record(l).code, t) }
-  ]
-  if meta.subtitle != none {
-    block(spacing: tex-skip(cfg, 0pt))[
-      #set text(font: cfg.fonts.at(sf.family), weight: sf.weight, size: cfg.size.at(sf.size))
-      #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: sf.size), spacing: comp(cfg, sz: sf.size))
-      #meta.subtitle#if ni.subtitle-mark != none { super(ni.subtitle-mark) }
-      #for (l, t) in meta.translated-subtitle { parbreak(); text(lang: lang-record(l).code, t) }
-    ]
-  }
+  title-block(cfg, meta, ni.title-mark)
+  subtitle-block(cfg, meta, ni.subtitle-mark)
   // title box \par\bigskip + @mkauthors@iii leading \par\medskip before the boxes
   v(tex-skip(cfg, cfg.bigskip + cfg.medskip), weak: true)
   if meta.anonymous {
@@ -570,17 +563,9 @@
       Anonymous Author(s)
     ]
   } else {
-    let marked = meta.authors.enumerate().map(((i, a)) => {
-      let a2 = a
-      a2.insert("_marks", ni.marks.at(i))
-      a2
-    })
-    make-authors-grid(cfg, group-authors(marked), authors-per-row: meta.authors-per-row)
+    make-authors-grid(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
   }
-  if meta.teaser != none {
-    v(tex-skip(cfg, cfg.bigskip), weak: true)
-    block(width: 100%, spacing: 0pt, meta.teaser)
-  }
+  teaser-block(cfg, meta)
   // closing \par\bigskip of \mktitle@bx (the float clearance adds the gap to body)
   v(tex-skip(cfg, cfg.bigskip), weak: true)
 }

@@ -212,12 +212,25 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 
 ## Known limitations / not done
 
-- **Two-column vertical fill / `\flushbottom`** is not replicable (same root cause
-  as the acmsmall note below): the proceedings + acmtog formats call `\flushbottom`,
-  but Typst has no vertical justification, so their columns are ragged-bottom and
-  the two columns of a page may differ in height. Last-column balancing (`balance`)
-  is likewise absent. Each page's content/spacing is correct; only the bottom-fill
-  stretch is missing.
+- **Vertical fill (`\flushbottom` / `\@textbottom`) is not replicable in Typst,**
+  which has no vertical justification — so all formats are effectively
+  ragged-bottom. Two distinct LaTeX mechanisms are missing:
+  - *Two-column* formats (proceedings + acmtog) call `\flushbottom`
+    (`acmart.dtx`'s `\ifcase\ACM@format@nr … \flushbottom`), so their columns are
+    ragged-bottom and a page's two columns may differ in height; last-column
+    balancing (`balance`) is likewise absent.
+  - *All* formats — including single-column acmsmall, which does **not** call
+    `\flushbottom` (nor does `amsart`/the kernel) — have acmart redefine
+    `\@textbottom` to `\vskip \z@ \@plus 1pt` (`acmart.dtx:3936`): a full page
+    absorbs ≤1pt of slack, so the rubber glue in the section skips
+    (`.75bl \@plus -2pt` etc.) stretches the text to the bottom margin —
+    observationally identical to `\flushbottom`.
+
+  Each page's content and spacing are *exactly* correct — verified by forcing
+  `\raggedbottom` in LaTeX, after which section positions match ours to within
+  0.2pt (increments 191.3 vs 191.3pt). Only the bottom-fill stretch is missing; it
+  shows as gradual downward drift on *full* pages (e.g. `tests/full-test` page 1)
+  but not on partial/last pages (page 2 matches). No clean Typst workaround exists.
 - **`sigchi-a`** (best-effort): geometry, sans default, the 2pt-rule title,
   unnumbered sections and the "Legacy document" watermark are reproduced; footnotes
   are **not** moved into the margin (`\marginpar`, acmart.dtx:3533) and the `@iv`
@@ -239,23 +252,6 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   twin marks its Tier-2 top check report-only for this reason.
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
 - No automated pass/fail thresholds; validation is visual + mismatch %.
-- **Vertical justification (flushbottom-like fill) is not replicable in Typst.**
-  acmsmall does *not* call `\flushbottom` (only acmtog/sigconf… do — see
-  `acmart.dtx`'s `\ifcase\ACM@format@nr … \flushbottom`); nor does `amsart` or
-  the LaTeX kernel set it for this format. Instead acmart redefines, for *all*
-  formats, `\@textbottom` to `\vskip \z@ \@plus 1pt` (`acmart.dtx:3936`): the page
-  bottom can absorb at most 1pt of slack, so on a *full* page the rubber glue in
-  the section skips (`.75bl \@plus -2pt` etc.) stretches to fill the text to the
-  bottom margin — observationally identical to `\flushbottom`. Typst has no
-  vertical justification, so our
-  pages are effectively ragged-bottom. Our section spacing is *exactly* correct
-  — verified by forcing `\raggedbottom` in LaTeX, after which LaTeX's section
-  positions match ours to within 0.2pt (increments 191.3 vs 191.3pt). The only
-  difference is that LaTeX additionally stretches a full page by a few pt per
-  section to reach the bottom; this shows as gradual vertical drift on full pages
-  (e.g. `tests/full-test` page 1) but not on partial/last pages (page 2 matches).
-  Each page's content and spacing are correct; only the bottom-fill stretch is
-  missing. Not worked around — there is no clean Typst mechanism for it.
 
 ## Test harness robustness
 

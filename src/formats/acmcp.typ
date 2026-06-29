@@ -3,9 +3,11 @@
 // Single-column, acmsmall-like geometry (6.75x10, probed), 9pt default. The title
 // is narrowed by 6pc (acmart.dtx:6988) and sections are UNNUMBERED (secnumdepth
 // -1, acmart.dtx:8501); the ACM reference format is off by default
-// (\@ACM@printacmreffalse, acmart.dtx:3006). The bespoke cover infobox (JDS logo,
-// colour frame, code/data links — acmart.dtx:6724) is NOT reproduced; this gives
-// the cover-page typography and geometry, not the full ornamented cover.
+// (\@ACM@printacmreffalse, acmart.dtx:3006). The bespoke cover frame and the
+// top-right infobox (JDS logo over code/data links, keywords, contributions —
+// acmart.dtx:5899/6724) ARE reproduced (drawn in lib.typ); the only approximation
+// is the infobox's vertical anchoring (top-right corner, not zref against the
+// frame bottom). See DESIGN.md "Known limitations".
 #import "_base.typ": tp, size-ladder, make-format
 
 #let acmcp(font-size: "9pt") = make-format(
