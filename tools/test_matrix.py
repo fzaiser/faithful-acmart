@@ -538,6 +538,20 @@ TESTS: dict[str, Test] = {
              "+ inner-edge timestamp. The timestamp embeds the compile date, so "
              "output is non-deterministic — compile-only (no golden), like draft-test.",
     ),
+    "sample-acmcp": Test(
+        kind="upstream-ref", reference="acmcp", pages=1,
+        _page_parity=False, page1_only=True,
+        note="upstream acmcp sample: single-column JDS format, rotated article-type "
+             "banner, cover infobox with code/data links and author contributions. "
+             "No abstract, CCS, keywords, or bibliography in this variant.",
+    ),
+    "sample-acmengage": Test(
+        kind="upstream-ref", reference="acmengage", pages=3,
+        _page_parity=False, page1_only=True,
+        note="upstream acmengage sample: two-column ACM EngageCSEdu course-material "
+             "format, Synopsis abstract, CC license. Engage metadata "
+             "(\\setengagemetadata) is not modelled — metadata table omitted.",
+    ),
     # Smoke-only docs (no LaTeX twin).
     "siggraph-test": Test(
         kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,

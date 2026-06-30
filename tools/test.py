@@ -367,7 +367,7 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
 def extract_samples(outdir: Path) -> None:
     """Copy the acmart sample sources into outdir and run samples.ins to extract them."""
     samples = ACMART / "samples"
-    for f in ("samples.ins", "samples.dtx"):
+    for f in ("samples.ins", "samples.dtx", "acmengage.dtx"):
         (outdir / f).write_bytes((samples / f).read_bytes())
     # *.bib + image assets (the franklin PNG and the teaser figure, shipped as a
     # PDF) + the .bst. NOT the sample output *.pdf — copying those would shadow a
