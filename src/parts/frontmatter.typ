@@ -595,12 +595,14 @@
     parbreak()
     set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
     set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
-    // institution (own line) + ", "-joined city/state/country address line, then
-    // emails, each on its own line (acmart appends \email to \@currentaffiliation
-    // as \par lines too).
-    let affs = affil-conf-lines(group.affiliation)
+    // emails (each on its own line) then the affiliation lines — source order,
+    // since the twins declare \email before \affiliation, matching acmart's
+    // conference author block (\email/\affiliation append to \@currentaffiliation
+    // in command order) and the sigchi-a head below. Email goes right after the
+    // name, before the institution, exactly as the journal contact line does.
     let emails = group.authors.map(a => a.email).filter(e => e != none)
-    (affs + emails).join(linebreak())
+    let affs = affil-conf-lines(group.affiliation)
+    (emails + affs).join(linebreak())
   }
   // Chunk the boxes into rows of N and center each row on its own (acmart centers
   // every row), so a short final row sits centered rather than left-aligned. Rows
