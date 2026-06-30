@@ -339,27 +339,64 @@ def _locate_window(chunk: list[str], pos: dict, n_stream: int) -> tuple[int, int
             min(n_stream - 1, best_o + len(chunk) + slack))
 
 
+def _reconcile_boundaries(chunk: list[str], window: list[str]) -> list[str]:
+    """Split a chunk token the structure tree glued across a line break back into
+    the stream's tokenization, so the boundary disagreement doesn't hide content
+    from the order check.
+
+    Word boundaries are unrecoverable from the tag tree: a line break renders no
+    space and drops the hyphenation hyphen, so consecutive marked-content runs
+    abut ("Group"+"Hekla" -> "GroupHekla", "USA"+email -> "USAemail"). pdftotext
+    splits them. A chunk token that is ABSENT from the window but equals a
+    concatenation of consecutive window tokens (greedy longest-prefix over the
+    window vocabulary) is replaced by those tokens. This is the "sub-token prefix"
+    rule, done at word granularity — so unlike a char-level match it neither
+    re-flags content reorders the bags already own nor reacts to a single stray
+    char. Its payoff: an email glued onto an affiliation line is un-glued, so its
+    ORDER is actually checked (the conference author grid, otherwise a blind spot).
+    """
+    vocab = set(window)
+    by_len = sorted(vocab, key=len, reverse=True)   # longest-prefix first
+    out: list[str] = []
+    for t in chunk:
+        if t in vocab:
+            out.append(t)
+            continue
+        pieces, rest = [], t
+        while rest:
+            m = next((w for w in by_len if rest.startswith(w)), None)
+            if m is None or len(pieces) >= 8:
+                pieces = None
+                break
+            pieces.append(m)
+            rest = rest[len(m):]
+        out.extend(pieces if pieces and len(pieces) > 1 else [t])
+    return out
+
+
 def chunk_order(chunk: list[str], stream: list[str]) -> dict:
     """Project a chunk's ordered tokens onto the flat stream and measure order.
 
-    The chunk is first localized to its region of the stream (``_locate_window``),
-    then aligned to that window by LCS. ``disorder`` is the number of present
-    chunk tokens that LCS had to drop to keep the match monotone — i.e. tokens
-    that appear out of order relative to the stream; 0 means the chunk's tokens
-    occur in the stream in the chunk's own order (other content may interpose).
-    Tokens absent from the window are reported as ``missing`` (a content gap, or
-    an extraction artifact) and excluded from the order measure. ``norm`` is
-    disorder / present in [0,1].
+    The chunk is first localized to its region of the stream (``_locate_window``);
+    glued tokens are then reconciled to the window's tokenization
+    (``_reconcile_boundaries``) and the result aligned to the window by LCS.
+    ``disorder`` is the number of present chunk tokens that LCS had to drop to keep
+    the match monotone — i.e. tokens that appear out of order relative to the
+    stream; 0 means the chunk's tokens occur in the stream in the chunk's own order
+    (other content may interpose). Tokens absent from the window are reported as
+    ``missing`` (a content gap, or an extraction artifact) and excluded from the
+    order measure. ``norm`` is disorder / present in [0,1].
     """
     fullpos: dict = {}
     for i, t in enumerate(stream):
         fullpos.setdefault(t, []).append(i)
     lo, hi = _locate_window(chunk, fullpos, len(stream))
     window = stream[lo:hi + 1]
+    tokens = _reconcile_boundaries(chunk, window)
     avail: Counter = Counter(window)
     present: list[str] = []
     missing: list[str] = []
-    for t in chunk:
+    for t in tokens:
         if avail[t] > 0:
             present.append(t); avail[t] -= 1
         else:
