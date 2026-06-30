@@ -16,7 +16,7 @@ Commands
   unit             run the pure-Typst unit tests in tests/unit/*.typ (no LaTeX needed)
   accept           rebuild Typst PDFs and refresh the Tier 1 golden hashes
   diff STEM        per-page side-by-side + overlay vs the LaTeX reference (--pages, --dpi)
-  overlay [stems]  combined overlay.pdf + side-by-side.pdf across all twins (--dpi)
+  overlay [stems]  combined vector overlay.pdf + side-by-side.pdf across all twins
   validate [names] copyright/option variants vs LaTeX, page-1 mismatch %
   probe            dump a format's ground-truth dimensions from the bundled class (--format)
   reference [name] build a LaTeX sample reference PDF (default: acmsmall)
@@ -26,8 +26,9 @@ Commands
   metrics          print the Tier 2 layout-metric table for every page (no gating)
   linepitch FILE   measure baseline pitch / first-line position in a PDF (--dpi, --page)
 
-External tools required: Typst, TeX Live (pdflatex, bibtex), Poppler (pdftoppm,
-pdftotext, pdfinfo). All generated output lives under tests/out/ (gitignored).
+External tools required: Typst, TeX Live (pdflatex, bibtex, pdfjam), Poppler
+(pdftoppm, pdftotext, pdfinfo), and — for the `overlay` command — qpdf and
+Ghostscript (gs). All generated output lives under tests/out/ (gitignored).
 """
 
 from __future__ import annotations
@@ -981,18 +982,6 @@ def _parse_pages(spec: str | None, n: int) -> list[int]:
     return sorted(i for i in out if 0 <= i < n)
 
 
-def _labeled(img, text: str):
-    """Prepend a grey caption band naming the page; mode-preserving (L or RGB)."""
-    from PIL import Image, ImageDraw
-    band, gray = 26, img.mode == "L"
-    out = Image.new(img.mode, (img.width, img.height + band), 255 if gray else (255, 255, 255))
-    out.paste(img, (0, band))
-    draw = ImageDraw.Draw(out)
-    draw.rectangle([0, 0, img.width - 1, band - 1], fill=220 if gray else (224, 224, 224))
-    draw.text((6, 8), text, fill=0 if gray else (0, 0, 0))
-    return out
-
-
 def cmd_diff(args) -> int:
     from PIL import Image
 
@@ -1022,59 +1011,133 @@ def cmd_diff(args) -> int:
     return 0
 
 
+# --- Vector recolor-overlay primitives (gs + qpdf + pdfjam, no rasterization) ---
+
+def _page_count(pdf: Path) -> int:
+    out = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True).stdout
+    m = re.search(r"(?m)^Pages:\s*(\d+)", out)
+    return int(m.group(1)) if m else 0
+
+
+def _qpdf(argv: list[str]) -> None:
+    # qpdf exits 3 on warnings (e.g. a recovered xref); only treat worse as fatal.
+    p = subprocess.run(["qpdf", *argv], capture_output=True, text=True)
+    if p.returncode not in (0, 3):
+        raise RuntimeError(f"qpdf {argv}: {p.stderr.strip()}")
+
+
+def _gs_recolor(src: Path, dst: Path, rgb: tuple[float, float, float], tmp: Path) -> None:
+    """Recolor `src`'s device-colour vector ink to the flat colour `rgb` (0-1), losslessly.
+
+    PDF colour operators (rg/g/k) aren't PostScript-level, so a `-c` override can't
+    intercept them when gs reads a PDF directly; lowering to PostScript first (ps2write)
+    turns them into setrgbcolor/setgray/setcmykcolor, which the second pass overrides.
+    `bind` captures the *original* operators inside each redefinition, so the forced
+    colour is set without recursing. Near-white is left alone so page backgrounds /
+    knockouts aren't tinted.
+
+    Coverage gap: ink set through a spot/ICC colourspace (`setcolor`, e.g. acmart's
+    JDS cover panel and its text) and embedded images keep their original colours —
+    intercepting `setcolor` generically needs per-colourspace operand counting that
+    isn't worth the fragility. Typst output uses only device colours, so Typst always
+    recolours fully; the gap only shows on a couple of LaTeX cover pages."""
+    ps = tmp / f"{src.stem}.ps"
+    subprocess.run(["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=ps2write", "-o", str(ps), str(src)],
+                   check=True, capture_output=True)
+    flat = "{} {} {} setrgbcolor".format(*rgb)
+    override = (
+        f"/setrgbcolor{{3 copy add add 2.97 ge{{setrgbcolor}}{{pop pop pop {flat}}}ifelse}}bind def "
+        f"/setgray{{dup .97 ge{{setgray}}{{pop {flat}}}ifelse}}bind def "
+        f"/setcmykcolor{{4 copy add add add .03 le{{setcmykcolor}}{{pop pop pop pop {flat}}}ifelse}}bind def "
+        f"/sethsbcolor{{pop pop pop {flat}}}bind def"
+    )
+    subprocess.run(["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=pdfwrite",
+                    "-o", str(dst), "-c", override, "-f", str(ps)], check=True, capture_output=True)
+
+
+def _vector_overlay(name: str, ref: Path, ours: Path, tmp: Path) -> Path:
+    """Typst ink recoloured red, stacked on top of LaTeX ink recoloured blue.
+
+    Typst (red) is always the overlay and LaTeX (blue) the base: Typst pages don't
+    paint an opaque background, so red sits on top without hiding LaTeX, while LaTeX's
+    panels/cover fills stay underneath. Normal blend (not alpha), so on exact overlap
+    red wins and any drift leaves a blue halo. If page counts differ, qpdf overlays
+    the shared prefix and LaTeX's extra pages show solo (the side-by-side shows the
+    rest). Returns the per-test overlay PDF."""
+    blue, red = tmp / f"{name}-blue.pdf", tmp / f"{name}-red.pdf"
+    _gs_recolor(ref, blue, (0, 0, 1), tmp)
+    _gs_recolor(ours, red, (1, 0, 0), tmp)
+    out = tmp / f"{name}-overlay.pdf"
+    _qpdf(["--overlay", str(red), "--", str(blue), str(out)])
+    return out
+
+
+def _vector_sidebyside(name: str, ref: Path, ours: Path, tmp: Path) -> Path:
+    """LaTeX | Typst: collate the two page-for-page, then 2-up each pair onto one
+    framed landscape page (qpdf --collate + pdfjam). Returns the per-test PDF."""
+    inter = tmp / f"{name}-inter.pdf"
+    _qpdf(["--collate", "--empty", "--pages", str(ref), str(ours), "--", str(inter)])
+    out = tmp / f"{name}-side.pdf"
+    subprocess.run(["pdfjam", "--quiet", "--nup", "2x1", "--landscape", "--frame", "true",
+                    str(inter), "-o", str(out)], check=True, capture_output=True)
+    return out
+
+
+def _concat_outlined(parts: list, dst: Path, tmp: Path) -> None:
+    """Concatenate the per-test PDFs into `dst` with a clickable per-test outline.
+
+    `parts` is a list of (name, pdf, npages); the pdfmark file registers one outline
+    entry per test at its first page, and gs concatenates the inputs after it."""
+    marks, page = [], 1
+    for name, _, n in parts:
+        marks.append(f"[/Page {page} /Title ({name}) /OUT pdfmark")
+        page += n
+    mk = tmp / f"{dst.stem}-marks.ps"
+    mk.write_text("\n".join(marks) + "\n")
+    subprocess.run(["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=pdfwrite",
+                    "-o", str(dst), str(mk), *[str(p) for _, p, _ in parts]],
+                   check=True, capture_output=True)
+
+
 def cmd_overlay(args) -> int:
-    """Combined multi-page overlay.pdf + side-by-side.pdf across all twins.
+    """Combined vector overlay.pdf + side-by-side.pdf across all twins (no raster).
 
-    One page per twin page, captioned with the test name and per-page mismatch %,
-    so you can flip through every twin in two files instead of N PNG pairs."""
-    import numpy as np
-    from PIL import Image
-    Image.init()  # register the JPEG save handler so the PDF pages compress (DCTDecode)
-
+    overlay.pdf: Typst ink recoloured red over LaTeX ink recoloured blue (gs+qpdf).
+    side-by-side.pdf: LaTeX | Typst, 2-up per page (qpdf+pdfjam). Both keep selectable
+    vector text and carry a per-test PDF outline; per-test work runs in parallel."""
     stems = args.stems or [n for n, t in TESTS.items() if t.kind == "twin"]
-    overlay_pages: list = []
-    side_pages: list = []
     DIFF.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
-        for name in stems:
+
+        def process(name: str):
             t = TESTS.get(name)
             if t is None:
                 print(f"skip  {name}: not in test matrix")
-                continue
-            ref = LATEX / f"{reference_for(name, t)}.pdf"
-            ours = typst_pdf(name)
+                return None
+            ref, ours = LATEX / f"{reference_for(name, t)}.pdf", typst_pdf(name)
             if not ref.exists() or not ours.exists():
                 print(f"skip  {name}: missing {'LaTeX' if not ref.exists() else 'Typst'} PDF")
-                continue
-            ref_pngs = _render_pdf_pages(ref, args.dpi, tmp, f"{name}-ref")
-            our_pngs = _render_pdf_pages(ours, args.dpi, tmp, f"{name}-our")
-            npages = max(len(ref_pngs), len(our_pngs))
-            for i in range(npages):
-                rg = _to_gray(ref_pngs[i]) if i < len(ref_pngs) else None
-                og = _to_gray(our_pngs[i]) if i < len(our_pngs) else None
-                if rg is None:
-                    rg = np.full_like(og, 255.0)
-                if og is None:
-                    og = np.full_like(rg, 255.0)
-                overlay, sbs, mismatch = _compare_page(rg, og)
-                caption = f"{name}  p{i+1}/{npages}   {mismatch:.2f}% mismatch   (left/red=LaTeX, right/blue=Typst)"
-                overlay_pages.append(_labeled(Image.fromarray(overlay), caption))
-                side_pages.append(_labeled(Image.fromarray(sbs), caption))
-                print(f"{name:>20}  p{i+1}: {mismatch:5.2f}% mismatch")
+                return None
+            ov = _vector_overlay(name, ref, ours, tmp)
+            sd = _vector_sidebyside(name, ref, ours, tmp)
+            nov, nsd = _page_count(ov), _page_count(sd)
+            print(f"{name:>20}: overlay {nov}p, side {nsd}p")
+            return (name, ov, nov, sd, nsd)
 
-    if not overlay_pages:
-        print("no pages produced (build the PDFs first: test.py build)")
-        return 1
-    def _pdf(path, pages):
-        pages[0].save(path, save_all=True, append_images=pages[1:], resolution=float(args.dpi))
+        results = [r for r in _pmap(process, stems, default_jobs()) if r]
+        if not results:
+            print("no pages produced (build the PDFs first: test.py build)")
+            return 1
 
-    opdf, spdf = DIFF / "overlay.pdf", DIFF / "side-by-side.pdf"
-    _pdf(opdf, overlay_pages)
-    _pdf(spdf, side_pages)
-    print(f"\nwrote {opdf.relative_to(ROOT)} (ref red / ours blue / shared dark)"
-          f"\n  and {spdf.relative_to(ROOT)} (LaTeX | Typst) — {len(overlay_pages)} pages, dpi={args.dpi}")
+        opdf, spdf = DIFF / "overlay.pdf", DIFF / "side-by-side.pdf"
+        _concat_outlined([(n, ov, nov) for n, ov, nov, sd, nsd in results], opdf, tmp)
+        _concat_outlined([(n, sd, nsd) for n, ov, nov, sd, nsd in results], spdf, tmp)
+
+    print(f"\nwrote {opdf.relative_to(ROOT)} (Typst red / LaTeX blue / aligned dark)"
+          f"\n  and {spdf.relative_to(ROOT)} (LaTeX | Typst) — vector, {len(results)} twins, "
+          "per-test PDF outline for navigation")
     return 0
 
 
@@ -1311,10 +1374,9 @@ def main() -> int:
     d.set_defaults(fn=cmd_diff)
 
     o = sub.add_parser("overlay",
-                       help="combined overlay.pdf + side-by-side.pdf across all twins")
+                       help="combined vector overlay.pdf + side-by-side.pdf across all twins")
     o.add_argument("stems", nargs="*",
                    help="test stems to include (default: every twin)")
-    o.add_argument("--dpi", type=int, default=120)
     o.set_defaults(fn=cmd_overlay)
 
     v = sub.add_parser("validate", parents=[par],
