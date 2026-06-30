@@ -413,7 +413,11 @@
 // the box BOTTOM against the frame bottom — top-alignment is the approximation.
 #let make-acmcp-infobox(cfg, meta) = {
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
-  place(top + right, box(width: 60pt /* 5pc */)[
+  // LaTeX zref-pushes the box down so its bottom approaches the frame bottom; we
+  // can't run that two-pass measurement, so nudge it down by ~3 baselineskips from
+  // the body top — a fixed approximation that lands near LaTeX for a short cover.
+  place(top + right, dy: 3 * cfg.baselineskip, box(width: 60pt /* 5pc */)[
+    #set align(left) // the \parindent\z@ vbox is left-aligned, not centred
     #image("../assets/acm-jdslogo.png", width: 100%)
     #set text(size: cfg.size.scriptsize)
     #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: "scriptsize"))

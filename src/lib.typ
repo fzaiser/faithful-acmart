@@ -490,8 +490,13 @@
     let textheight = cfg.paper.height - cfg.margin.top - cfg.margin.bottom
     // Read bottom-to-top (\rotatebox{90}); reflow:true so the placed footprint is
     // the rotated box and top+left anchors deterministically to the page corner.
-    let lbl = rotate(-90deg, reflow: true, box(fill: article.color, inset: (x: 3pt, y: 2pt),
-      text(font: cfg.fonts.sans, size: cfg.size.footnotesize, fill: white)[#article-type Article]))
+    // \colorbox{...}{\color{white}\strut <Type> Article} at the head's normalsize
+    // (9pt), \fboxsep (3pt) all round; \strut gives the box a full line's height (so
+    // extra space perpendicular to the rotated text). top-edge/bottom-edge span the
+    // strut's height+depth.
+    let lbl = rotate(-90deg, reflow: true, box(fill: article.color, inset: 3 * tp,
+      text(font: cfg.fonts.sans, size: cfg.size.normalsize, fill: white,
+        top-edge: "ascender", bottom-edge: "descender")[#article-type Article]))
     context place(top + left, dx: 0pt,
       // Centre on the title (\fancyhead[L] level with the head); step later article
       // types down by 0.2\textheight per nr (Research nr=0 sits at the top margin).
