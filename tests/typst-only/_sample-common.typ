@@ -3,7 +3,7 @@
 // abstract, CCS concepts, \received dates, and document body — only the
 // preamble (format, journal/conference metadata, copyright, class options)
 // differs. Each sample-<format>.typ sets that preamble and calls `sample-body`.
-#import "/src/lib.typ": acks
+#import "/src/lib.typ": acks, acm-cite, acm-bibliography
 
 #let sample-authors = (
   // Trovato carries NO affiliation; Tobin holds the shared one, so acmart's
@@ -68,7 +68,14 @@
 // The shared article body (everything after \maketitle). `documentclass` is the
 // option string echoed in the "Citations and Bibliographies" verbatim example,
 // e.g. "acmsmall" or "sigconf" — the only per-format text in the body.
-#let sample-body(documentclass: "acmsmall") = [
+//
+// `author-year` selects the citation system, mirroring acmart's \citestyle: the
+// default numeric path uses Typst-native cites + bibliography() with the ACM CSL;
+// the acmtog samples set it true, routing the same keys through the bst backend's
+// acm-cite / acm-bibliography (cite-style "author-year", set in the preamble).
+#let sample-body(documentclass: "acmsmall", author-year: false) = {
+  let cit(key) = if author-year { acm-cite(key) } else { cite(label(key)) }
+  [
 = Introduction
 ACM's consolidated article template, introduced in 2017, provides a consistent
 LaTeX style for use across ACM publications, and incorporates accessibility and
@@ -350,7 +357,7 @@ A formula that appears in the running text is called an inline or in-text formul
 It is produced by the *math* environment, which can be invoked with the usual
 #raw("\\begin\u{2026}\\end") construction or with the short form #raw("$\u{2026}$").
 You can use any of the symbols and structures, from $alpha$ to $omega$, available
-in LaTeX @Lamport:LaTeX; this section will simply show a few examples of in-text
+in LaTeX #cit("Lamport:LaTeX")\; this section will simply show a few examples of in-text
 equations in context. Notice how this equation: $lim_(n -> infinity) x = 0$, set
 here in in-line math style, looks slightly different when set in display style.
 (See next section).
@@ -449,29 +456,29 @@ command "#raw("\\begin{document}")") of your LaTeX source:
   \citestyle{acmauthoryear}
 ```
 
-Some examples. A paginated journal article @Abril07, an enumerated journal
-article @Cohen07, a reference to an entire issue @JCohen96, a monograph (whole
-book) @Kosiur01, a monograph/whole book in a series (see 2a in spec. document)
-@Harel79, a divisible-book such as an anthology or compilation @Editor00 followed
+Some examples. A paginated journal article #cit("Abril07"), an enumerated journal
+article #cit("Cohen07"), a reference to an entire issue #cit("JCohen96"), a monograph (whole
+book) #cit("Kosiur01"), a monograph/whole book in a series (see 2a in spec. document)
+#cit("Harel79"), a divisible-book such as an anthology or compilation #cit("Editor00") followed
 by the same example, however we only output the series if the volume number is
-given @Editor00a (so Editor00a's series should NOT be present since it has no vol.
-no.), a chapter in a divisible book @Spector90, a chapter in a divisible book in a
-series @Douglass98, a multi-volume work as book @Knuth97, a couple of articles in
+given #cit("Editor00a") (so Editor00a's series should NOT be present since it has no vol.
+no.), a chapter in a divisible book #cit("Spector90"), a chapter in a divisible book in a
+series #cit("Douglass98"), a multi-volume work as book #cit("Knuth97"), a couple of articles in
 a proceedings (of a conference, symposium, workshop for example) (paginated
-proceedings article) @Andler79 @Hagerup1993, a proceedings article with all
-possible elements @Smith10, an example of an enumerated proceedings article
-@VanGundy07, an informally published work @Harel78, a couple of preprints
-@Bornmann2019 @AnzarootPBM14, a doctoral dissertation @Clarkson85, a master's
-thesis: @anisi03, an online document / world wide web resource @Thornburg01
-@Ablamowicz07 @Poker06, a video game (Case 1) @Obama08 and (Case 2) @Novak03 and
-@Lee05 and (Case 3) a patent @JoeScientist001, work accepted for publication
-@rous08, 'YYYYb'-test for prolific author @SaeediMEJ10 and @SaeediJETC10. Other
+proceedings article) #cit("Andler79") #cit("Hagerup1993"), a proceedings article with all
+possible elements #cit("Smith10"), an example of an enumerated proceedings article
+#cit("VanGundy07"), an informally published work #cit("Harel78"), a couple of preprints
+#cit("Bornmann2019") #cit("AnzarootPBM14"), a doctoral dissertation #cit("Clarkson85"), a master's
+thesis: #cit("anisi03"), an online document / world wide web resource #cit("Thornburg01")
+#cit("Ablamowicz07") #cit("Poker06"), a video game (Case 1) #cit("Obama08") and (Case 2) #cit("Novak03") and
+#cit("Lee05") and (Case 3) a patent #cit("JoeScientist001"), work accepted for publication
+#cit("rous08"), 'YYYYb'-test for prolific author #cit("SaeediMEJ10") and #cit("SaeediJETC10"). Other
 cites might contain 'duplicate' DOI and URLs (some SIAM articles)
-@Kirschmer:2010:AEI:1958016.1958018. Boris / Barbara Beeton: multi-volume works
-as books @MR781536 and @MR781537. A presentation @Reiser2014. An article under
-review @Baggett2025. A couple of citations with DOIs:
-@2004:ITE:1009386.1010128 @Kirschmer:2010:AEI:1958016.1958018. Online citations:
-@TUGInstmem @Thornburg01 @CTANacmart. Artifacts: @R and @UMassCitations.
+#cit("Kirschmer:2010:AEI:1958016.1958018"). Boris / Barbara Beeton: multi-volume works
+as books #cit("MR781536") and #cit("MR781537"). A presentation #cit("Reiser2014"). An article under
+review #cit("Baggett2025"). A couple of citations with DOIs:
+#cit("2004:ITE:1009386.1010128") #cit("Kirschmer:2010:AEI:1958016.1958018"). Online citations:
+#cit("TUGInstmem") #cit("Thornburg01") #cit("CTANacmart"). Artifacts: #cit("R") and #cit("UMassCitations").
 
 #acks[
   To Robert, for the bagels and explaining CMYK and color spaces.
@@ -491,7 +498,11 @@ societal risks beyond those considered by institutional review boards, and the
 dimensions considered by any review of the user study design or dataset licenses
 could be provided in this statement.
 
-#bibliography("/acmart/samples/sample-base.bib")
+#if author-year {
+  acm-bibliography("/acmart/samples/sample-base.bib")
+} else {
+  bibliography("/acmart/samples/sample-base.bib")
+}
 
 // GAP: \appendix — acmart switches section numbering to letters (A, A.1, ...).
 // Emulated by resetting the heading counter and switching the numbering format.
@@ -525,3 +536,4 @@ ultrices commodo venenatis eget dui. Etiam sagittis eleifend elementum.
 Nam interdum magna at lectus dignissim, ac dignissim lorem rhoncus. Maecenas eu
 arcu ac neque placerat aliquam. Nunc pulvinar massa et mattis lacinia.
 ]
+}

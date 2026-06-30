@@ -64,7 +64,10 @@
     p += 1                                 // skip "\"
     let y = p
     while p < n and _lex(cp.at(p)) == "alpha" { p += 1 }
-    let cs = cp.slice(y, p).join("")
+    // A control SYMBOL (`\'e`, `\"o`, …) has no alpha name, so the slice is empty
+    // and array.join returns none; treat it as the unrecognized cs "" (drop the
+    // accent, keep the trailing letter), matching BibTeX purify$.
+    let cs = if p > y { cp.slice(y, p).join("") } else { "" }
     if cs in _foreign-purify { out += _foreign-purify.at(cs) }
     while p < n and bl > 0 and cp.at(p) != "\\" {
       let cc = cp.at(p)

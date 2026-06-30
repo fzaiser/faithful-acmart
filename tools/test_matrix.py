@@ -512,6 +512,18 @@ TESTS: dict[str, Test] = {
         note="upstream acmsmall-for-a-conference sample (acmsmall journal format "
              "with conference metadata replacing the journal metadata).",
     ),
+    "sample-acmtog": Test(
+        kind="upstream-ref", reference="acmtog", pages=6,
+        _page_parity=False, page1_only=True,
+        note="upstream acmtog sample (two-column TOG journal). Uses the author-year "
+             "citation style (\\citestyle{acmauthoryear}) via the bst backend.",
+    ),
+    "sample-acmtog-conf": Test(
+        kind="upstream-ref", reference="acmtog-conf", pages=6,
+        _page_parity=False, page1_only=True,
+        note="upstream acmtog-for-a-conference sample (acmtog two-column with "
+             "conference metadata + teaser; author-year citations via the bst backend).",
+    ),
     "sample-sigconf-authordraft": Test(
         kind="upstream-ref", reference="sigconf-authordraft", pages=6,
         _page_parity=False, page1_only=True, golden=False,
