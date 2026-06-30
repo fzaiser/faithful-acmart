@@ -301,12 +301,37 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     `\unskip` fallback eats them), so omitting them is *faithful to stock acmart*. A
     user who redefines `\showISBNx` to surface them can't via this backend; the
     `show-isbn-10-and-13` branch is unimplemented because no acmart format reaches it.
-  - **Arbitrary / full-equation TeX** beyond the `decode-math` table and the
+  - **Arbitrary / full-equation TeX** beyond the supported command tables and the
     `tex-render` override — *unbounded by nature*. A field can contain any TeX
     (multi-line display math, macros that expand to layout, `\newcommand`s pulled from
-    the preamble); interpreting all of it would mean embedding a TeX engine. We decode
-    the finite set titles use, let a `tex-render` callback patch the rest, and pass
-    anything unknown through verbatim.
+    the preamble); interpreting all of it would mean embedding a TeX engine. We support
+    the finite set references use and **raise an error on anything unknown** (rather
+    than emitting garbage), pointing the user at a `tex-render` callback to patch it.
+
+  **`tex-render` accepted approximations** (correct for the common case; edges noted
+  so they're not mistaken for bugs):
+  - **The math-symbol table is curated and only spot-verified.** `mathfields`
+    oracle-tests greek + `\leq \frac \oplus \mathbb \log`; the remaining ~110 symbol/
+    function entries are valid Typst identifiers (they compile) but are *not* each
+    diffed against LaTeX, so a wrong-but-valid mapping would render the wrong glyph
+    silently. Greek and the tested set are trusted; the long tail is best-effort.
+  - **`/` inside `$…$` becomes a Typst fraction**, not a literal slash — Typst math
+    reads `/` as division layout (LaTeX `$a/b$` is just a slash). Rare in references;
+    unhandled.
+  - **`\left`/`\right` are dropped, so delimiters don't auto-size** around tall content
+    (Typst needs `lr(...)`); the bare delimiter still prints.
+  - **Accents render as decomposed combining sequences** (`o`+◌̈), not precomposed
+    (ö). They shape and NFKC-fold identically (golden + char bag agree), so this is
+    invisible — we just don't NFC-normalize.
+  - **`edition` is lowercased with `lower()`**, not the brace-aware `change.case$ "l"`
+    (fine for `"Second"`, would differ for a braced edition).
+  - **`tie-join`'s tie placement for multi-token *first* names with initials** (`J.`)
+    may not match BibTeX exactly — but inter-token spacing is whitespace, which the
+    char-bag gate drops, so it's untestable against the oracle and visually negligible.
+  - **`url`/`doi`/`eprint` fields bypass the render seam** — `acmref.typ` links them
+    with the raw string, so TeX inside a URL is not decoded (URLs rarely contain TeX).
+  - **`tex-to-string` (sort/cite labels) errors on inline math** — labels are names/
+    orgs/keys, which never carry `$…$`; sort keys themselves go through `purify`.
   - **BibTeX warnings** (missing year, empty author, bad page ranges…) are not emitted
     — by choice, not necessity. Rendering is best-effort and silent;
     `\begin{thebibliography}{width}` label-width (`longest.label`) is moot since Typst
