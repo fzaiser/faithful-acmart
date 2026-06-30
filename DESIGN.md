@@ -213,10 +213,13 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   `mathfields` (inline math) and `keycite` (native `@key` routing)
   twins gate the full char bag against real bibtex with **no exemption**, plus a
   `link_check` gate on the `/URI` set and word-level assertions for what the
-  whitespace-free char bag can't see. The von/Last/Jr name split follows the
-  `biblatex` crate's `Person::parse` algorithm (von = up to the last lowercase word
-  for `von Last, First`; the leading-cap / lowercase / trailing-cap partition for
-  `First von Last`), verified field-by-field against it.
+  whitespace-free char bag can't see. The von/Last/Jr name split tokenizes on **raw
+  TeX** and follows BibTeX's `format.name$` exactly (`von_name_ends` +
+  `von_token_found` from `bibtex.web`): a token's case is its first *brace-level-0*
+  letter (or a `{\..}` foreign letter), so `{de la}` and `{Barnes & Co.}` are Last,
+  not von; the von part may include leading uppercase tokens (`De la`); and a bare
+  `\ss` doesn't split its token (`Stra\ss e` → Last). Verified field-by-field
+  against the real bibtex binary (oracle cases pinned in `tests/unit/bibtex.typ`).
 
   **Implemented (each validated against real bibtex):**
   - **Author-year citation mode** — `cite-style: "author-year"` (acmart's

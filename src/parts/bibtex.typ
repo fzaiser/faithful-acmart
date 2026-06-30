@@ -12,7 +12,6 @@
 // (TeX-significant: {ACM} casing, \url{...}); the formatter's tx() resolves them.
 
 #import "bib-data.typ": journal-macros
-#import "tex.typ": decode
 
 // ACM journal-style month macros (full name if <=5 letters, else abbreviated)
 #let months = (
@@ -142,46 +141,89 @@
   parts
 }
 
-#let is-lower-tok(t) = t != "" and lower(t.first()) == t.first() and upper(t.first()) != t.first()
-
-// indices of the first / last lowercase-initial token (none if all uppercase),
-// matching biblatex (brace-verbatim tokens count as uppercase, via is-lower-tok).
-#let lower-bounds(toks) = {
-  let first = none
-  let last = none
-  for (i, t) in toks.enumerate() {
-    if is-lower-tok(t) { if first == none { first = i }; last = i }
+// BibTeX `von_token_found`: a token is a "von" (lowercase) token iff its first
+// *brace-level-0* cased letter is lowercase. Only letters outside braces, and the
+// recognized foreign-letter commands inside a `{\..}` special character, count:
+//   * `Stra\ss`        -> "S" (level 0)        -> upper, not von
+//   * `de`             -> "d"                  -> lower, von
+//   * `{de la}`        -> braced group SKIPPED -> no level-0 letter -> not von
+//   * `{Barnes & Co.}` -> skipped              -> not von
+//   * `{\oe}uvre`      -> \oe foreign letter   -> lower, von
+// (A regular `{group}` is skipped whole; a `{\cs..}` special character commits —
+// foreign cs gives the case, else its inner letters do.) Mirrors bibtex.web's
+// von_token_found / Check-special-character / Skip-over-stuff modules.
+#let _ascii-alpha(c) = (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
+#let _foreign-lower = ("i", "j", "o", "l", "oe", "ae", "aa", "ss")
+#let _foreign-upper = ("O", "L", "OE", "AE", "AA")
+#let is-lower-tok(t) = {
+  let cp = t.codepoints()
+  let n = cp.len()
+  let i = 0
+  while i < n {
+    let c = cp.at(i)
+    if c == "{" {
+      i += 1
+      if i < n and cp.at(i) == "\\" {     // special character {\cs..}
+        i += 1
+        let x = i
+        while i < n and _ascii-alpha(cp.at(i)) { i += 1 }
+        let cs = cp.slice(x, i).join("")
+        if cs in _foreign-lower { return true }
+        if cs in _foreign-upper { return false }
+        let bl = 1                         // unknown cs: first inner cased letter wins
+        while i < n and bl > 0 {
+          let d = cp.at(i)
+          if d == "}" { bl -= 1 } else if d == "{" { bl += 1 }
+          else if lower(d) != upper(d) { return d == lower(d) }
+          i += 1
+        }
+        return false                       // closed without a letter
+      } else {                             // regular group: skip to its close
+        let bl = 1
+        while i < n and bl > 0 {
+          if cp.at(i) == "{" { bl += 1 } else if cp.at(i) == "}" { bl -= 1 }
+          i += 1
+        }
+      }
+    } else if c == "}" { i += 1 }
+    else if lower(c) != upper(c) { return c == lower(c) }   // level-0 cased letter
+    else { i += 1 }
   }
-  (first, last)
+  false
 }
 
-// "von Last" (the part before the first comma). Per biblatex Person::parse:
-// von = up to AND INCLUDING the last lowercase word (when any uppercase word
-// exists), else all but the final word; last = the remainder.
+// BibTeX `von_name_ends_and_last_name_starts_stuff`: scanning down from the token
+// before Last, von ends right after the LAST lowercase token that still leaves a
+// non-empty Last. Everything in [von-start, von-end) is von (it may include
+// UPPERCASE tokens, e.g. "De la"); [von-end, last-end) is Last.
+#let von-end(toks, von-start, last-end) = {
+  let ve = last-end - 1
+  while ve > von-start {
+    if is-lower-tok(toks.at(ve - 1)) { return ve }
+    ve -= 1
+  }
+  von-start
+}
+
+// "von Last" (comma form: the part before the first comma; von-start = 0).
 #let split-von-last(toks) = {
   if toks.len() == 0 { return ("", "") }
-  let (_, lastlc) = lower-bounds(toks)
-  if toks.any(t => not is-lower-tok(t)) {
-    if lastlc == none { ("", toks.join(" ")) }
-    else { (toks.slice(0, lastlc + 1).join(" "), toks.slice(lastlc + 1).join(" ")) }
-  } else {
-    (toks.slice(0, -1).join(" "), toks.at(-1))
-  }
+  let ve = von-end(toks, 0, toks.len())
+  (toks.slice(0, ve).join(" "), toks.slice(ve).join(" "))
 }
 
-// "First von Last" (no comma). first = leading uppercase run; von = first..last
-// lowercase word; last = the trailing uppercase run (or the final word if none).
+// "First von Last" (no comma). von-start = first lowercase token (BibTeX scans up
+// while von-start < last-1); First = tokens before it; if none, there is no von
+// and Last is the final token, First the rest.
 #let split-first-von-last(toks) = {
-  let (firstlc, lastlc) = lower-bounds(toks)
-  if firstlc == none {
-    (toks.slice(0, -1).join(" "), "", toks.at(-1, default: ""))
+  let n = toks.len()
+  let vs = 0
+  while vs < n - 1 and not is-lower-tok(toks.at(vs)) { vs += 1 }
+  if vs >= n - 1 or not is-lower-tok(toks.at(vs)) {
+    (toks.slice(0, n - 1).join(" "), "", toks.at(n - 1, default: ""))
   } else {
-    let first = toks.slice(0, firstlc).join(" ")
-    if lastlc + 1 >= toks.len() {  // trailing lowercase: take the final word as Last
-      (first, toks.slice(firstlc, toks.len() - 1).join(" "), toks.at(-1))
-    } else {
-      (first, toks.slice(firstlc, lastlc + 1).join(" "), toks.slice(lastlc + 1).join(" "))
-    }
+    let ve = von-end(toks, vs, n)
+    (toks.slice(0, vs).join(" "), toks.slice(vs, ve).join(" "), toks.slice(ve).join(" "))
   }
 }
 
@@ -229,16 +271,16 @@
     let (val, ni) = read-value(cp, eq + 1, macros)
     // store the RAW TeX value (collapse whitespace only); decoding to Unicode and
     // rendering to content happen later, in tex.typ, so the raw TeX survives the
-    // pipeline (BibTeX-style). Names are still decoded for tokenization here —
-    // decode() leaves the " and " separators and word boundaries intact, so this
-    // reproduces the previous split exactly; Stage C will tokenize raw instead.
+    // pipeline (BibTeX-style). Names tokenize on the RAW string too — exactly like
+    // BibTeX's format.name$ (brace/case rules in parse-names), so "Stra\ss e" and
+    // "{Barnes and Noble}" split the way bibtex splits them.
     fields.insert(name, collapse-ws(val))
     i = skip-ws-comment(cp, ni)
     while i < cp.len() and cp.at(i) == "," { i = skip-ws-comment(cp, i + 1) }
   }
   let names = (:)
   for role in ("author", "editor") {
-    if role in fields { names.insert(role, parse-names(decode(fields.at(role)))) }
+    if role in fields { names.insert(role, parse-names(fields.at(role))) }
   }
   (key: key, entry: (entry-type: etype, fields: fields, names: names))
 }

@@ -92,6 +92,20 @@
 #chk-name("{de la} Fontaine, Jean", nm(first: "Jean", last: "{de la} Fontaine"))
 #chk-name("Haug, {Martin}", nm(first: "{Martin}", last: "Haug"))
 
+// Raw-TeX von/last boundary, each verified against the real bibtex format.name$
+// (see the oracle battery in the session notes): names tokenize on RAW TeX, the
+// von part may include leading UPPERCASE tokens ("De la"), a trailing lowercase
+// token with nothing after it stays in Last ("Stra\ss e"), and a bare control
+// sequence (\ss) does not split its token.
+#chk-name("Stra\\ss e, Joe", nm(first: "Joe", last: "Stra\\ss e"))
+#chk-name("De la Fontaine, Jean", nm(first: "Jean", von: "De la", last: "Fontaine"))
+#chk-name("De La Fontaine, Jean", nm(first: "Jean", last: "De La Fontaine"))
+#chk-name("Charles Louis Xavier Joseph de la Vall\\'ee Poussin",
+  nm(first: "Charles Louis Xavier Joseph", von: "de la", last: "Vall\\'ee Poussin"))
+#chk-name("van der Berg, Jan", nm(first: "Jan", von: "van der", last: "Berg"))
+#chk-name("Ludwig van Beethoven", nm(first: "Ludwig", von: "van", last: "Beethoven"))
+#chk-name("Jones, Jr., John Paul", nm(first: "John Paul", last: "Jones", jr: "Jr."))
+
 // ---- field / value tokenizing (port of raw.rs) ----------------------------
 #let fields-of(src, key) = parse-bib(src).at(key).fields
 

@@ -584,14 +584,16 @@
 // title — ties on surname break by given name, like bibtex's label-based presort.
 #let sort-key(e) = {
   let ppl = e.names.at("author", default: e.names.at("editor", default: ()))
-  let names = ppl.map(n => lower((n.von + " " + n.last + " " + n.first).trim())).join(" ")
+  let names = ppl.map(n => (n.von + " " + n.last + " " + n.first).trim()).join(" ")
   if names == none { names = "" }   // ().join() is none, not ""
-  // bibtex sorts on purify$(name): drop \commands and grouping braces, so a
-  // brace-protected org like {{R Core Team}} sorts under "R", not after "z".
-  names = names.replace(regex("\\\\[a-zA-Z]+"), "").replace("{", "").replace("}", "")
-  if names == "" and has(e, "key") { names = lower(fld(e, "key")) }
+  // bibtex sorts on purify$(name): drops \commands + grouping braces and reduces
+  // foreign chars to ASCII, so {{R Core Team}} sorts under "R" and "Stra\ss e"
+  // under "Strasse" — exactly BibTeX's order. (tex.typ's purify is the faithful
+  // port; lower() makes the compare case-insensitive, as our presort does.)
+  names = lower(purify(names))
+  if names == "" and has(e, "key") { names = lower(purify(fld(e, "key"))) }
   let y = if has(e, "year") { fld(e, "year") } else { "" }
-  names + "   " + y + "   " + lower(fld(e, "title", d: ""))
+  names + "   " + y + "   " + lower(purify(fld(e, "title", d: "")))
 }
 
 #let cited-state = state("acmref-cited", ())
@@ -650,14 +652,17 @@
 #let prepared() = resolve-crossref(read-merged(bib-path-state.final()), cited-state.final())
 
 // ---- author-year labels (format.lab.names + calc.basic.label dispatch) -----
-// short citation label: von+Last only, " and " for two, "et al." for >2 (or "and others")
+// short citation label: von+Last only, " and " for two, "et al." for >2 (or "and
+// others"). von-last is RAW; tex-to-string gives the plain label used for both
+// display and (suffix-)grouping comparison.
 #let format-lab-names(people) = {
   if people.len() == 0 { return "" }
-  if people.len() > 2 { return von-last(people.at(0)) + " et al." }
+  if people.len() > 2 { return tex-to-string(von-last(people.at(0))) + " et al." }
   let s = von-last(people.at(0))
   if people.len() == 2 {
     if is-others(people.at(1)) { s = s + " et al." } else { s = s + " and " + von-last(people.at(1)) }
   }
+  s = tex-to-string(s)
   s
 }
 #let pick(arr) = { let r = arr.find(x => x != none); if r == none { "" } else { r } }
