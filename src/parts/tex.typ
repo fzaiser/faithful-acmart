@@ -10,12 +10,15 @@
 //     keys and display case; we follow it literally. Verified against the real
 //     bibtex binary (see tests/unit/tex.typ), which is a closed, finite spec.
 //
-//   * the PRESENTATION layer — `tex-to-string` / `tex-to-content`, the default
-//     "render this raw TeX as visible text/content" pass (accents + special
-//     letters + inline math -> Unicode, ligatures/dashes/quotes, \url/\href ->
-//     real links). `tex-to-content` is what the acmart() `tex-render` option
-//     overrides; the logic layer is never user-overridable (it would corrupt
-//     sorting). [see decode/render section below]
+//   * the PRESENTATION layer — one TeX *tokenizer* feeding mode-aware
+//     *evaluators*: `tex-to-content` (raw TeX -> content: accents/special letters
+//     -> Unicode, inline math -> real Typst equations, \emph/\textbf/... -> styled
+//     content, \url/\href -> links) and `tex-to-string` (raw TeX -> plain string,
+//     for sort/cite labels). `tex-to-content` is what the acmart() `tex-render`
+//     option overrides; the logic layer is never user-overridable (it would
+//     corrupt sorting). Unknown commands raise an error rather than passing
+//     through silently — the user is expected to handle them in a `tex-render`
+//     callback that falls back to `default-tex-render`.
 //
 // The 13-entry foreign-character table and the brace/special-character rules
 // below are quoted from bibtex.web (`x_purify`, `x_change_case`, and the
@@ -179,230 +182,259 @@
 }
 
 // ===========================================================================
-// PRESENTATION layer: render raw TeX as visible text / content.
+// PRESENTATION layer: tokenizer -> mode-aware evaluators.
 // ===========================================================================
 // BibTeX never decodes to Unicode — TeX does, at typeset time. We replicate
-// "what TeX renders" here, as the single string->content boundary. Field values
-// flow through the pipeline as RAW TeX and only become Unicode/content in this
-// pass. `tex-to-content` is what the acmart() `tex-render` option overrides;
-// `tex-to-string` (the text-only backbone, used for sort/cite labels) is not.
+// "what TeX renders": a single mode-independent tokenizer turns raw TeX into a
+// token tree, then evaluators interpret it (text -> content, text -> string,
+// math -> a Typst-math source string that is `eval`'d). Field values flow
+// through the whole pipeline as RAW TeX and only become content here.
 
-#let _ws = (" ", "\n", "\t", "\r")
-#let _skip-ws(cp, i) = { while i < cp.len() and cp.at(i) in _ws { i += 1 }; i }
-// index of the "}" matching the "{" at i (escaped \{ \} skipped)
-#let _match-brace(cp, i) = {
-  let depth = 0
-  let j = i
-  while j < cp.len() {
-    let c = cp.at(j)
-    if c == "\\" { j += 2; continue }
-    if c == "{" { depth += 1 } else if c == "}" { depth -= 1; if depth == 0 { return j } }
-    j += 1
+#let _unsupported(what) = panic(
+  "tex-render: unsupported TeX " + what + ". Supply a `tex-render` callback "
+  + "that handles this case and falls back to `default-tex-render` for the rest.")
+
+// ---- tokenizer -------------------------------------------------------------
+// Token kinds (a nested tree; groups/math carry sub-token lists):
+//   (kind: "text",    value: <run>)         maximal run, excludes \ { } $ ~ ^ _
+//   (kind: "cw",      name:  <letters>)      control word \foo (swallows spaces)
+//   (kind: "cs",      name:  <one char>)     control symbol \& \" \, ...
+//   (kind: "group",   body:  (..tokens))     { ... }
+//   (kind: "math",    body:  (..tokens))     $ ... $
+//   (kind: "special", char:  "~"|"^"|"_")    catcode-special single chars
+// Mode-independent: `^`/`_` are emitted as `special` regardless of mode; the
+// evaluators give them meaning (scripts in math, an error bare in text).
+#let _is-alpha(c) = (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
+#let _tokenize(cp, i, stop) = {
+  let n = cp.len()
+  let toks = ()
+  let run = ""
+  while i < n {
+    let c = cp.at(i)
+    if stop != none and c == stop { break }
+    if c == "\\" {
+      if run != "" { toks.push((kind: "text", value: run)); run = "" }
+      i += 1
+      if i >= n { toks.push((kind: "cs", name: "\\")); break }
+      let d = cp.at(i)
+      if _is-alpha(d) {
+        let j = i
+        while j < n and _is-alpha(cp.at(j)) { j += 1 }
+        toks.push((kind: "cw", name: cp.slice(i, j).join("")))
+        i = j
+        while i < n and cp.at(i) == " " { i += 1 }   // control word swallows spaces
+      } else {
+        toks.push((kind: "cs", name: d))
+        i += 1
+      }
+    } else if c == "{" {
+      if run != "" { toks.push((kind: "text", value: run)); run = "" }
+      let (body, ni) = _tokenize(cp, i + 1, "}")
+      toks.push((kind: "group", body: body))
+      i = if ni < n { ni + 1 } else { ni }
+    } else if c == "$" {
+      if run != "" { toks.push((kind: "text", value: run)); run = "" }
+      let (body, ni) = _tokenize(cp, i + 1, "$")
+      toks.push((kind: "math", body: body))
+      i = if ni < n { ni + 1 } else { ni }
+    } else if c == "~" or c == "^" or c == "_" {
+      if run != "" { toks.push((kind: "text", value: run)); run = "" }
+      toks.push((kind: "special", char: c))
+      i += 1
+    } else if c == "}" {
+      i += 1                                  // unmatched close: drop (TeX errors)
+    } else {
+      run += c
+      i += 1
+    }
   }
-  j
+  if run != "" { toks.push((kind: "text", value: run)) }
+  (toks, i)
 }
-#let _is-letter(c) = c != "" and lower(c) != upper(c)
+#let _lex-tokens(s) = _tokenize(s.codepoints(), 0, none).at(0)
 
-// TeX accent commands -> combining diacritic on the following letter (NFC
-// composes downstream; the text gate NFKC-folds).
-#let _symbol-accent = (
+// Grab one TeX argument from the front of a token list: a {group}'s body, or a
+// single token — and for a text run, just its FIRST grapheme (TeX's unbraced
+// single-token rule), slicing the tail back so the rest stays text. Leading
+// spaces are skipped (accents/commands take the next non-space). Returns
+// (arg-tokens, remaining-tokens).
+#let _grab(rest) = {
+  let r = rest
+  while r.len() > 0 and r.first().kind == "text" {
+    let cps = r.first().value.codepoints()
+    let k = 0
+    while k < cps.len() and (cps.at(k) == " " or cps.at(k) == "\t" or cps.at(k) == "\n") { k += 1 }
+    if k == cps.len() { r = r.slice(1) }
+    else { r = ((kind: "text", value: cps.slice(k).join("")),) + r.slice(1); break }
+  }
+  if r.len() == 0 { return ((), ()) }
+  let h = r.first()
+  if h.kind == "group" { return (h.body, r.slice(1)) }
+  if h.kind == "text" {
+    let cl = h.value.clusters()
+    let tail = cl.slice(1).join("")
+    let remaining = if tail == "" { r.slice(1) } else { ((kind: "text", value: tail),) + r.slice(1) }
+    return (((kind: "text", value: cl.first()),), remaining)
+  }
+  ((h,), r.slice(1))
+}
+
+// ---- command tables --------------------------------------------------------
+// Combining diacritics (NFC composes downstream; the text gate NFKC-folds).
+#let _accent-cs = (                        // control symbols: \"o \'e \^o ...
   "\"": "\u{0308}", "'": "\u{0301}", "`": "\u{0300}", "^": "\u{0302}",
   "~": "\u{0303}", "=": "\u{0304}", ".": "\u{0307}",
 )
-#let _letter-accent = (
-  "H": "\u{030B}", "v": "\u{030C}", "u": "\u{0306}", "r": "\u{030A}",
-  "k": "\u{0328}", "c": "\u{0327}", "b": "\u{0331}", "d": "\u{0323}",
+#let _accent-cw = (                        // control words: \H{o} \v s ...
+  H: "\u{030B}", v: "\u{030C}", u: "\u{0306}", r: "\u{030A}",
+  k: "\u{0328}", c: "\u{0327}", b: "\u{0331}", d: "\u{0323}",
 )
 #let _special-letters = (
-  "ss": "ß", "SS": "ẞ", "ae": "æ", "AE": "Æ", "oe": "œ", "OE": "Œ",
-  "aa": "å", "AA": "Å", "o": "ø", "O": "Ø", "l": "ł", "L": "Ł", "i": "ı", "j": "ȷ",
+  ss: "ß", SS: "ẞ", ae: "æ", AE: "Æ", oe: "œ", OE: "Œ", aa: "å", AA: "Å",
+  o: "ø", O: "Ø", l: "ł", L: "Ł", i: "ı", j: "ȷ",
 )
+#let _logos = (LaTeX: "LaTeX", TeX: "TeX", BibTeX: "BibTeX", LaTeXe: "LaTeX2e")
+#let _emph-cw = ("emph", "textit", "it", "textsl")
+#let _strong-cw = ("textbf", "bf")
+#let _sc-cw = ("textsc", "sc")
+#let _id-cw = ("textrm", "textsf", "textnormal", "textup", "textmd", "mbox", "text", "ensuremath")
+#let _noop-cw = ("relax", "protect", "noindent")
+#let _cs-literal = ("&": "&", "%": "%", "$": "$", "#": "#", "_": "_", "{": "{", "}": "}")
+#let _cs-space = (" ": " ", ",": "\u{2009}", ";": " ", ":": " ")
+#let _noop-cs = ("/", "-", "!", "@")
 
-// ---- inline math ($...$) ---------------------------------------------------
-// Curated map of the math commands that turn up in real reference titles
-// (\lambda-calculus, \chi^2, \Theta(n)...), to the BASE Unicode letter, not the
-// math-italic plane LaTeX renders — both fold the same under the text gate's
-// NFKC, and base letters are what a reader expects to copy. Unknown commands
-// pass through verbatim; richer math is the `tex-render` override's job.
-#let _math-symbols = (
-  alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε",
-  zeta: "ζ", eta: "η", theta: "θ", vartheta: "ϑ", iota: "ι", kappa: "κ",
-  lambda: "λ", mu: "μ", nu: "ν", xi: "ξ", omicron: "ο", pi: "π", varpi: "ϖ",
-  rho: "ρ", varrho: "ϱ", sigma: "σ", varsigma: "ς", tau: "τ", upsilon: "υ",
-  phi: "φ", varphi: "ϕ", chi: "χ", psi: "ψ", omega: "ω",
-  Gamma: "Γ", Delta: "Δ", Theta: "Θ", Lambda: "Λ", Xi: "Ξ", Pi: "Π", Sigma: "Σ",
-  Upsilon: "Υ", Phi: "Φ", Psi: "Ψ", Omega: "Ω",
-  times: "×", cdot: "·", div: "÷", pm: "±", mp: "∓", ast: "∗", star: "⋆",
-  leq: "≤", le: "≤", geq: "≥", ge: "≥", neq: "≠", ne: "≠", approx: "≈",
-  equiv: "≡", sim: "∼", simeq: "≃", cong: "≅", propto: "∝", ll: "≪", gg: "≫",
-  to: "→", rightarrow: "→", Rightarrow: "⇒", leftarrow: "←", Leftarrow: "⇐",
-  leftrightarrow: "↔", mapsto: "↦", infty: "∞", partial: "∂", nabla: "∇",
-  forall: "∀", exists: "∃", neg: "¬", "in": "∈", notin: "∉", ni: "∋",
-  subset: "⊂", subseteq: "⊆", supset: "⊃", supseteq: "⊇", cup: "∪", cap: "∩",
-  setminus: "∖", emptyset: "∅", varnothing: "∅", wedge: "∧", land: "∧",
-  vee: "∨", lor: "∨", oplus: "⊕", otimes: "⊗", circ: "∘", bullet: "•",
-  sum: "∑", prod: "∏", int: "∫", sqrt: "√", angle: "∠", perp: "⊥",
-  parallel: "∥", ell: "ℓ", hbar: "ℏ", Re: "ℜ", Im: "ℑ", aleph: "ℵ",
-  ldots: "…", cdots: "⋯", dots: "…", dag: "†", ddag: "‡", prime: "′",
-  log: "log", ln: "ln", exp: "exp", sin: "sin", cos: "cos", tan: "tan",
-  cot: "cot", sec: "sec", csc: "csc", lim: "lim", limsup: "lim sup",
-  liminf: "lim inf", max: "max", min: "min", sup: "sup", inf: "inf",
-  det: "det", dim: "dim", deg: "deg", gcd: "gcd", arg: "arg", ker: "ker", bmod: "mod",
-)
-#let _math-arg-commands = ("mathbb", "mathcal", "mathbf", "mathrm", "mathit",
-  "mathsf", "mathtt", "mathfrak", "boldsymbol", "text", "textrm", "mathnormal", "operatorname")
-#let _superscripts = (
-  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶",
-  "7": "⁷", "8": "⁸", "9": "⁹", "n": "ⁿ", "i": "ⁱ", "+": "⁺", "-": "⁻",
-)
-#let _subscripts = (
-  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆",
-  "7": "₇", "8": "₈", "9": "₉", "+": "₊", "-": "₋",
-)
-
-// Read an accent's argument at i: skip spaces, then a {group} or one char.
-#let _read-arg(cp, i) = {
-  i = _skip-ws(cp, i)
-  if i >= cp.len() { return ("", i) }
-  if cp.at(i) == "{" { let j = _match-brace(cp, i); (cp.slice(i + 1, j).join(""), j + 1) }
-  else { (cp.at(i), i + 1) }
-}
-
-// Decode the inside of an inline-math `$...$` span -> base Unicode.
-#let _decode-math(inner) = {
-  let cp = inner.codepoints()
-  let n = cp.len()
-  let out = ""
-  let i = 0
-  while i < n {
-    let c = cp.at(i)
-    if c == "\\" {
-      i += 1
-      if i >= n { break }
-      let d = cp.at(i)
-      if _is-letter(d) {
-        let j = i
-        while j < n and _is-letter(cp.at(j)) { j += 1 }
-        let name = cp.slice(i, j).join(""); i = j
-        if name in _math-symbols { out += _math-symbols.at(name) }
-        else if name in _math-arg-commands { let (a, ni) = _read-arg(cp, i); out += _decode-math(a); i = ni }
-        else if name in _special-letters { out += _special-letters.at(name) }
-        else { out += "\\" + name }
-      } else {
-        if d in ("{", "}", "%", "&", "#", "_", "$") { out += d }
-        i += 1
-      }
-    } else if c == "^" or c == "_" {
-      let tbl = if c == "^" { _superscripts } else { _subscripts }
-      let (a, ni) = _read-arg(cp, i + 1); i = ni
-      for ch in a.codepoints() { out += tbl.at(ch, default: ch) }
-    } else if c == "{" or c == "}" { i += 1 }
-    else { out += c; i += 1 }
-  }
-  out
-}
-
-// Single-pass TeX decoder: accents (\"o), special letters (\ss), inline math
-// ($...$) -> Unicode. Reads the FULL command name so `\u{a}` (breve) and `\url`
-// never collide; unknown control words (\url, \emph, \&, \LaTeX) pass through
-// for tex-to-string / tex-to-content to handle.
-#let decode(s) = {
-  if type(s) != str or not (s.contains("\\") or s.contains("$")) { return s }
-  let cp = s.codepoints()
-  let n = cp.len()
-  let out = ""
-  let i = 0
-  while i < n {
-    let c = cp.at(i)
-    if c == "$" {
-      let j = i + 1
-      while j < n and cp.at(j) != "$" { j += 1 }
-      out += _decode-math(cp.slice(i + 1, j).join(""))
-      i = if j < n { j + 1 } else { j }
-      continue
-    }
-    if c != "\\" { out += c; i += 1; continue }
-    i += 1
-    if i >= n { out += "\\"; break }
-    let d = cp.at(i)
-    if _is-letter(d) {
-      let j = i
-      while j < n and _is-letter(cp.at(j)) { j += 1 }
-      let name = cp.slice(i, j).join(""); i = j
-      if name in _special-letters {
-        out += _special-letters.at(name)
-        if i + 1 < n and cp.at(i) == "{" and cp.at(i + 1) == "}" { i += 2 }
-      } else if name in _letter-accent {
-        let (a, ni) = _read-arg(cp, i); out += decode(a) + _letter-accent.at(name); i = ni
-      } else { out += "\\" + name }
-    } else if d in _symbol-accent {
-      let (a, ni) = _read-arg(cp, i + 1); out += decode(a) + _symbol-accent.at(d); i = ni
-    } else { out += "\\" + d; i += 1 }
-  }
-  out
-}
-
-// ---- raw TeX -> plain Unicode string (sort/cite labels, text backbone) ------
-#let tex-to-string(s) = {
-  if type(s) != str { return s }
-  s = decode(s)
-  s = s.replace(regex("\\\\(?:url|href|emph|textit|textbf|textsc|textrm)\s*\{([^}]*)\}"), m => m.captures.at(0))
-  s = s.replace("\\LaTeX", "LaTeX").replace("\\TeX", "TeX").replace("\\BibTeX", "BibTeX")
-  s = s.replace("~", " ").replace("\\&", "&").replace("\\ ", " ").replace("\\,", "\u{2009}")
-  s = s.replace("{", "").replace("}", "")
+// TeX *input* ligatures (NOT font ligatures, which Typst applies itself; these
+// are markup-level in Typst and so are NOT applied to interpolated strings).
+#let _render-run(s) = {
   s = s.replace("---", "\u{2014}").replace("--", "\u{2013}")
   s = s.replace("``", "\u{201C}").replace("''", "\u{201D}")
   s = s.replace("`", "\u{2018}").replace("'", "\u{2019}")
   s
 }
 
-// ---- raw TeX -> content (the default `tex-render`) --------------------------
-// Brace-matched scan turning \emph/\textit -> emph and \url/\href -> real links
-// (acmart loads hyperref); plain runs go through tex-to-string. \url targets and
-// display text stay verbatim (URLs keep ~ etc.); \href display text is decoded.
-#let _cmd-at(cp, i, word) = {
-  let w = ("\\" + word).codepoints()
-  if i + w.len() > cp.len() { return false }
-  for k in range(w.len()) { if cp.at(i + k) != w.at(k) { return false } }
-  // must be followed by an (optionally space-led) "{", and not be a longer name
-  let a = i + w.len()
-  if a < cp.len() and _is-letter(cp.at(a)) { return false }
-  let b = _skip-ws(cp, a)
-  b < cp.len() and cp.at(b) == "{"
-}
-#let tex-to-content(s) = {
-  if type(s) != str { return s }
-  let cp = s.codepoints()
-  let n = cp.len()
-  let out = []
-  let buf = ""
-  let i = 0
-  while i < n {
-    let c = cp.at(i)
-    if c == "\\" and (_cmd-at(cp, i, "href") or _cmd-at(cp, i, "url")
-                      or _cmd-at(cp, i, "emph") or _cmd-at(cp, i, "textit")) {
-      out += tex-to-string(buf); buf = ""
-      let href = _cmd-at(cp, i, "href")
-      let url = _cmd-at(cp, i, "url")
-      let word = if href { "href" } else if url { "url" } else if _cmd-at(cp, i, "emph") { "emph" } else { "textit" }
-      let b1 = _skip-ws(cp, i + 1 + word.len())
-      let e1 = _match-brace(cp, b1)
-      let a1 = cp.slice(b1 + 1, e1).join("")
-      if href {
-        let b2 = _skip-ws(cp, e1 + 1)
-        let e2 = _match-brace(cp, b2)
-        let a2 = cp.slice(b2 + 1, e2).join("")
-        out += link(a1)[#tex-to-content(a2)]
-        i = e2 + 1
-      } else if url {
-        out += link(a1)[#a1]
-        i = e1 + 1
-      } else {
-        out += emph(tex-to-content(a1))
-        i = e1 + 1
-      }
-    } else { buf += c; i += 1 }
+// ---- math: tokens -> Typst-math source string ------------------------------
+// Symbols map to Typst math identifiers; one-/two-arg functions to Typst math
+// functions; LaTeX `^{..}`/`_{..}` grouping becomes Typst `^(..)`/`_(..)`.
+#let _math-sym = (
+  alpha: "alpha", beta: "beta", gamma: "gamma", delta: "delta", epsilon: "epsilon",
+  varepsilon: "epsilon.alt", zeta: "zeta", eta: "eta", theta: "theta", vartheta: "theta.alt",
+  iota: "iota", kappa: "kappa", lambda: "lambda", mu: "mu", nu: "nu", xi: "xi",
+  omicron: "omicron", pi: "pi", varpi: "pi.alt", rho: "rho", varrho: "rho.alt",
+  sigma: "sigma", varsigma: "sigma.alt", tau: "tau", upsilon: "upsilon", phi: "phi",
+  varphi: "phi.alt", chi: "chi", psi: "psi", omega: "omega",
+  Gamma: "Gamma", Delta: "Delta", Theta: "Theta", Lambda: "Lambda", Xi: "Xi",
+  Pi: "Pi", Sigma: "Sigma", Upsilon: "Upsilon", Phi: "Phi", Psi: "Psi", Omega: "Omega",
+  times: "times", cdot: "dot.c", div: "div", pm: "plus.minus", mp: "minus.plus",
+  ast: "ast.op", star: "star.op", oplus: "plus.o", otimes: "times.o",
+  odot: "dot.o", circ: "compose", bullet: "bullet", cup: "union", cap: "inter",
+  setminus: "without", wedge: "and", land: "and", vee: "or", lor: "or",
+  leq: "lt.eq", le: "lt.eq", geq: "gt.eq", ge: "gt.eq", neq: "eq.not", ne: "eq.not",
+  approx: "approx", equiv: "equiv", sim: "tilde.op", simeq: "tilde.eq", cong: "tilde.equiv",
+  propto: "prop", ll: "lt.double", gg: "gt.double",
+  to: "arrow.r", rightarrow: "arrow.r", Rightarrow: "arrow.r.double", leftarrow: "arrow.l",
+  Leftarrow: "arrow.l.double", leftrightarrow: "arrow.l.r", mapsto: "arrow.r.bar",
+  infty: "infinity", partial: "diff", nabla: "nabla", forall: "forall", exists: "exists",
+  neg: "not", "in": "in", notin: "in.not", ni: "in.rev", subset: "subset",
+  subseteq: "subset.eq", supset: "supset", supseteq: "supset.eq", emptyset: "emptyset",
+  varnothing: "nothing", perp: "perp", parallel: "parallel", angle: "angle", ell: "ell",
+  hbar: "planck.reduce", aleph: "aleph", prime: "prime", dag: "dagger", ddag: "dagger.double",
+  ldots: "dots.h", dots: "dots.h", cdots: "dots.c",
+  sum: "sum", prod: "product", int: "integral",
+  log: "log", ln: "ln", exp: "exp", sin: "sin", cos: "cos", tan: "tan", cot: "cot",
+  sec: "sec", csc: "csc", lim: "lim", limsup: "limsup", liminf: "liminf", max: "max",
+  min: "min", sup: "sup", inf: "inf", det: "det", dim: "dim", gcd: "gcd", bmod: "mod",
+)
+#let _math-fn1 = (
+  sqrt: "sqrt", mathbb: "bb", mathcal: "cal", mathbf: "bold", mathrm: "upright",
+  mathit: "italic", mathsf: "sans", mathtt: "mono", mathfrak: "frak", boldsymbol: "bold",
+  hat: "hat", widehat: "hat", tilde: "tilde", widetilde: "tilde", bar: "macron",
+  overline: "overline", underline: "underline", vec: "arrow", dot: "dot", ddot: "dot.double",
+  check: "caron", breve: "breve", acute: "acute", grave: "grave",
+)
+#let _math-fn2 = (frac: "frac", tfrac: "frac", dfrac: "frac", binom: "binom")
+#let _math-noop = ("left", "right", "displaystyle", "textstyle", "scriptstyle",
+  "limits", "nolimits", "bigl", "bigr", "big", "Big", "biggl", "biggr")
+
+// ---- the evaluator: tokens -> content / string / math-source ---------------
+// ONE recursive function over three modes, so every call is self-referential
+// (Typst has no late binding between separate module-level `#let`s, which rules
+// out mutual recursion). `mode`:
+//   "content" -> content (the default tex-render: styled, real equations, links)
+//   "string"  -> plain string (sort/cite labels: formatting dropped)
+//   "math"    -> a Typst-math SOURCE string (later eval'd inside $...$)
+#let _eval(toks, mode) = {
+  if toks.len() == 0 { return if mode == "content" { [] } else { "" } }
+  let cont = mode == "content"
+  let math = mode == "math"
+  let t = toks.first()
+  let rest = toks.slice(1)
+
+  if t.kind == "text" {
+    let r = if math { t.value + " " } else { _render-run(t.value) }
+    return r + _eval(rest, mode)
   }
-  out += tex-to-string(buf)
-  out
+  if t.kind == "group" {
+    let g = _eval(t.body, mode)
+    return (if math { "(" + g + ") " } else { g }) + _eval(rest, mode)
+  }
+  if t.kind == "math" {
+    if cont { return eval("$" + _eval(t.body, "math") + "$", mode: "markup") + _eval(rest, mode) }
+    if math { return _eval(t.body, "math") + _eval(rest, mode) }
+    _unsupported("inline math in a name/label field")
+  }
+  if t.kind == "special" {
+    if math {
+      if t.char == "~" { return " " + _eval(rest, mode) }
+      let (a, r) = _grab(rest)              // LaTeX `^x`/`_{..}` -> Typst `^(..)`
+      return t.char + "(" + _eval(a, "math") + ") " + _eval(r, mode)
+    }
+    if t.char == "~" { return "\u{00A0}" + _eval(rest, mode) }
+    _unsupported("character '" + t.char + "' outside math mode (use $...$, \\textasciicircum or \\textunderscore)")
+  }
+
+  if t.kind == "cw" {
+    let nm = t.name
+    if math {
+      if nm in _math-sym { return _math-sym.at(nm) + " " + _eval(rest, mode) }
+      if nm in _math-fn1 { let (a, r) = _grab(rest); return _math-fn1.at(nm) + "(" + _eval(a, "math") + ") " + _eval(r, mode) }
+      if nm in _math-fn2 { let (a, r) = _grab(rest); let (b, r2) = _grab(r); return _math-fn2.at(nm) + "(" + _eval(a, "math") + ", " + _eval(b, "math") + ") " + _eval(r2, mode) }
+      if nm == "text" or nm == "mbox" or nm == "textrm" { let (a, r) = _grab(rest); return "\"" + _eval(a, "string") + "\" " + _eval(r, mode) }
+      if nm in _math-noop { return _eval(rest, mode) }
+      _unsupported("math command \\" + nm)
+    }
+    // text / string mode
+    if nm in _special-letters { return _special-letters.at(nm) + _eval(rest, mode) }
+    if nm in _logos { return _logos.at(nm) + _eval(rest, mode) }
+    if nm in _accent-cw { let (a, r) = _grab(rest); return (_eval(a, "string") + _accent-cw.at(nm)) + _eval(r, mode) }
+    if nm in _id-cw { let (a, r) = _grab(rest); return _eval(a, mode) + _eval(r, mode) }
+    if nm in _emph-cw { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { emph(x) } else { x }) + _eval(r, mode) }
+    if nm in _strong-cw { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { strong(x) } else { x }) + _eval(r, mode) }
+    if nm in _sc-cw { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { smallcaps(x) } else { x }) + _eval(r, mode) }
+    if nm == "underline" { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { underline(x) } else { x }) + _eval(r, mode) }
+    if nm == "textsuperscript" { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { super(x) } else { x }) + _eval(r, mode) }
+    if nm == "textsubscript" { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { sub(x) } else { x }) + _eval(r, mode) }
+    if nm == "texttt" or nm == "tt" { let (a, r) = _grab(rest); let s = _eval(a, "string"); return (if cont { raw(s) } else { s }) + _eval(r, mode) }
+    if nm == "url" { let (a, r) = _grab(rest); let u = _eval(a, "string"); return (if cont { link(u)[#u] } else { u }) + _eval(r, mode) }
+    if nm == "href" { let (a, r) = _grab(rest); let (b, r2) = _grab(r); let u = _eval(a, "string"); let x = _eval(b, mode); return (if cont { link(u)[#x] } else { x }) + _eval(r2, mode) }
+    if nm == "noopsort" { let (a, r) = _grab(rest); return _eval(r, mode) }
+    if nm in _noop-cw { return _eval(rest, mode) }
+    _unsupported("command \\" + nm)
+  }
+
+  if t.kind == "cs" {
+    let nm = t.name
+    if math {
+      if nm == "," or nm == ";" or nm == " " or nm == "!" or nm == ":" { return " " + _eval(rest, mode) }
+      _unsupported("math command \\" + nm)
+    }
+    if nm in _accent-cs { let (a, r) = _grab(rest); return (_eval(a, "string") + _accent-cs.at(nm)) + _eval(r, mode) }
+    if nm in _cs-literal { return _cs-literal.at(nm) + _eval(rest, mode) }
+    if nm in _cs-space { return _cs-space.at(nm) + _eval(rest, mode) }
+    if nm in _noop-cs { return _eval(rest, mode) }
+    _unsupported("command \\" + nm)
+  }
 }
+
+// ---- public entry points ---------------------------------------------------
+#let tex-to-content(s) = if type(s) != str { s } else { _eval(_lex-tokens(s), "content") }
+#let tex-to-string(s) = if type(s) != str { s } else { _eval(_lex-tokens(s), "string") }

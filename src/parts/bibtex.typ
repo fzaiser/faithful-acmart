@@ -205,11 +205,28 @@
   von-start
 }
 
+// Join the tokens of ONE name part the way BibTeX's format.name$ does: a tie
+// (`~`, -> nbsp) before the LAST token and after a single-letter token, a space
+// otherwise — e.g. "de~la", "Stra\ss~e", "Charles Louis Xavier~Joseph". The tie
+// matters: a control-word accent (\ss, \ae, ...) swallows a following *space* but
+// not a *tie*, so BibTeX (and we) keep the gap by tying. Matches the `~`s BibTeX
+// writes straight into the .bbl.
+#let tie-join(toks) = {
+  if toks.len() == 0 { return "" }
+  let n = toks.len()
+  let out = toks.at(0)
+  for i in range(1, n) {
+    let sep = if toks.at(i - 1).clusters().len() == 1 or i == n - 1 { "~" } else { " " }
+    out += sep + toks.at(i)
+  }
+  out
+}
+
 // "von Last" (comma form: the part before the first comma; von-start = 0).
 #let split-von-last(toks) = {
   if toks.len() == 0 { return ("", "") }
   let ve = von-end(toks, 0, toks.len())
-  (toks.slice(0, ve).join(" "), toks.slice(ve).join(" "))
+  (tie-join(toks.slice(0, ve)), tie-join(toks.slice(ve)))
 }
 
 // "First von Last" (no comma). von-start = first lowercase token (BibTeX scans up
@@ -220,10 +237,10 @@
   let vs = 0
   while vs < n - 1 and not is-lower-tok(toks.at(vs)) { vs += 1 }
   if vs >= n - 1 or not is-lower-tok(toks.at(vs)) {
-    (toks.slice(0, n - 1).join(" "), "", toks.at(n - 1, default: ""))
+    (tie-join(toks.slice(0, n - 1)), "", toks.at(n - 1, default: ""))
   } else {
     let ve = von-end(toks, vs, n)
-    (toks.slice(0, vs).join(" "), toks.slice(vs, ve).join(" "), toks.slice(ve).join(" "))
+    (tie-join(toks.slice(0, vs)), tie-join(toks.slice(vs, ve)), tie-join(toks.slice(ve)))
   }
 }
 
@@ -237,9 +254,12 @@
       (first: first, von: von, last: last, jr: "")
     }
   } else {
+    // "von Last, [Jr,] First": tokenize and tie-join the Jr/First parts too, the
+    // way BibTeX's format.name$ does (so "Harcourt Fenton" -> "Harcourt~Fenton").
     let (von, last) = split-von-last(toks)
-    let jr = if parts.len() > 2 { parts.at(1) } else { "" }
-    let first = if parts.len() > 2 { parts.at(2) } else { parts.at(1) }
+    let part = i => tie-join(split-top(parts.at(i), ws).filter(t => t != ""))
+    let jr = if parts.len() > 2 { part(1) } else { "" }
+    let first = if parts.len() > 2 { part(2) } else { part(1) }
     (first: first, von: von, last: last, jr: jr)
   }
   // `().join(" ")` is `none` in Typst, so an empty part can come back as none;

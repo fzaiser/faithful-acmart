@@ -7,7 +7,7 @@
   tex-render: s => default-tex-render(s.replace("\\widget", "W").replace("\\RR", "ℝ")),
 )
 
-#let keys = ("lam", "greek", "custom")
+#let keys = ("lam", "greek", "custom", "adv")
 
 = Introduction
 Inline math in titles #acm-cite(..keys).

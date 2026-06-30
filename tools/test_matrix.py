@@ -386,13 +386,13 @@ TESTS: dict[str, Test] = {
     ),
     "mathfields": Test(
         kind="twin", pages=1,
-        note="inline math ($...$) in reference fields via the bst backend: greek "
-             "letters, ^/_ super/subscripts, relations and text operators (\\log etc.) "
-             "decode to base Unicode in tex.typ's decode-math, which the char bag's "
-             "NFKC fold collapses to match LaTeX's math-italic pdftotext output (𝜆->λ, "
-             "²->2). Also exercises the `tex-render` override (composed with "
-             "default-tex-render) for custom commands (\\widget, \\RR). Char bag gated, "
-             "no exemption.",
+        note="inline math ($...$) in reference fields via the bst backend, rendered as "
+             "REAL Typst math (tex.typ tokenizer -> math evaluator -> eval): greek "
+             "letters, ^/_ grouping, relations/operators (\\leq, \\log), \\frac, "
+             "\\oplus, and \\mathbb. Real Typst math extracts to the same char bag as "
+             "LaTeX's math-italic output (𝜆, scripts as plain digits, ℝ->R under NFKC). "
+             "Also exercises the `tex-render` override (composed with default-tex-render) "
+             "for custom commands (\\widget, \\RR). Char bag gated, no exemption.",
         text_assertions=(
             Assertion(engine="both", text="-calculus"),              # $\lambda$-calculus
         ),

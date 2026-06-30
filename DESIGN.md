@@ -263,25 +263,37 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     We port both *exactly* — quoting `bibtex.web` (`x_purify`, `x_change_case`, the
     13-entry `control_seq_ilk` foreign-letter table) and oracle-testing against the
     real bibtex binary in `tests/unit/tex.typ`. Field values therefore stay raw TeX
-    until a **single render seam**: `tex-to-content` (accents/special letters/inline
-    math → Unicode, `\url`/`\href` → links, `\emph` → italics), applied once per
-    visible field in `acmref.typ` via `render`. Sort/cite labels use `tex-to-string`
-    (the text-only backbone) instead — never overridable, since changing them would
-    corrupt ordering.
-  - **Inline math (`$…$`) in fields** — a curated subset, enough for the maths that
-    actually appears in titles (`$\lambda$-calculus`, `$\chi^2$`, `$\Theta(n)$`,
-    `$O(n\log n)$`). `tex.typ`'s `decode-math` maps greek + relations + text operators
-    to **base** Unicode and `^`/`_` to Unicode super/subscripts; these NFKC-fold to
-    exactly what LaTeX's math-italic output extracts as (`𝜆`→`λ`, `²`→`2`), so the
-    `mathfields` twin gates them with no exemption.
-  - **The `tex-render` option** is the single user override of that seam: a callback
-    `(raw-tex: str) => content` (default `auto` = `tex-to-content`). Compose with the
-    default — exported as `default-tex-render` — to extend it, e.g.
-    `tex-render: s => default-tex-render(s.replace("\\myunit", "kg"))`, covering the
-    `\newcommand` case without a TeX engine. (This replaces the old string→string
-    `tex-macros` dict, which couldn't take arguments or produce real content.) Full
-    equations / arbitrary nested constructs remain out of scope (unknown commands pass
-    through verbatim, for the override to handle).
+    until the **render seam**, which is one **mode-independent tokenizer** feeding
+    mode-aware **evaluators** (`tex.typ`): the raw string is lexed *once* into a token
+    tree (text runs, control words/symbols, `{groups}`, `$math$`, the catcode-special
+    `~ ^ _`), then evaluated to content (`tex-to-content`), to a plain string for
+    sort/cite labels (`tex-to-string`, never overridable — it would corrupt ordering),
+    or, for a `$…$` body, to a Typst-math source string that is `eval`'d. This replaced
+    the old multi-pass `decode` + regex chain (which was order-dependent and brittle).
+    Name-part tokens are tie-joined the way BibTeX's `format.name$` does (a `~` before
+    the last token / after a single letter), so e.g. `Stra\ss e` renders `Straß e` like
+    LaTeX (the tie blocks the control-word space-swallowing).
+  - **Inline math (`$…$`) is real Typst math.** The math evaluator translates LaTeX
+    math to Typst math — symbols (`\alpha`→`alpha`, `\leq`→`<=`, `\oplus`→`plus.o`),
+    one-/two-arg functions (`\frac{a}{b}`→`frac(a,b)`, `\mathbb{R}`→`bb(R)`, `\sqrt`),
+    and LaTeX `^{..}`/`_{..}` grouping → Typst `^(..)`/`_(..)` — then `eval`s it inside
+    `$…$`. Real Typst math extracts to the same char-bag text as LaTeX's math-italic
+    output (`𝜆`, super/subscripts as plain digits, `ℝ`→`R` under NFKC), so the
+    `mathfields` twin — which exercises greek, super/subscripts, `\frac`, `\oplus` and
+    grouping — gates with **no exemption**.
+  - **Formatting commands** map to their Typst equivalents: `\emph`/`\textit`→`emph`,
+    `\textbf`→`strong`, `\textsc`→`smallcaps`, `\texttt`→`raw`, `\underline`,
+    `\textsuperscript`/`\textsubscript`; `\url`/`\href`→links; accents and the foreign
+    letters (`\ss` etc.)→Unicode; `\LaTeX`/`\TeX`→logos.
+  - **Unknown commands raise an error**, never pass through silently — the message
+    names the command and tells the user to handle it in a `tex-render` callback. The
+    **`tex-render` option** is that single override: a callback `(raw-tex: str) =>
+    content` (default `auto` = `tex-to-content`), composed with the default — exported
+    as `default-tex-render` — e.g. `tex-render: s => default-tex-render(s.replace(
+    "\\myunit", "kg"))`, covering the `\newcommand` case without a TeX engine. (This
+    replaced the old string→string `tex-macros` dict, which couldn't take arguments or
+    produce real content.) A small allowlist of genuine no-ops (`\noopsort`, `\relax`,
+    `\protect`, …) is recognized so benign BibTeX idioms don't error.
 
   **Not ported** (genuinely out of reach, or faithful to omit — the exhaustive list):
   - **ISBN / ISBN-13 / ISSN / CODEN / LCCN.** Emitted by the `.bst` but suppressed by

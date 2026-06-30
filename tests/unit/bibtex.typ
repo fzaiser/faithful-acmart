@@ -24,20 +24,21 @@
 }
 
 // test_person_comma + test_person_no_comma: the "jean de la fontaine" matrix.
-#chk-name("jean de la fontaine,", nm(von: "jean de la", last: "fontaine"))
-#chk-name("de la fontaine, Jean", nm(first: "Jean", von: "de la", last: "fontaine"))
-#chk-name("De La Fontaine, Jean", nm(first: "Jean", last: "De La Fontaine"))
-#chk-name("De la Fontaine, Jean", nm(first: "Jean", von: "De la", last: "Fontaine"))
-#chk-name("de La Fontaine, Jean", nm(first: "Jean", von: "de", last: "La Fontaine"))
+// Multi-token parts carry BibTeX's tie (~) before the last token (tie-join).
+#chk-name("jean de la fontaine,", nm(von: "jean de~la", last: "fontaine"))
+#chk-name("de la fontaine, Jean", nm(first: "Jean", von: "de~la", last: "fontaine"))
+#chk-name("De La Fontaine, Jean", nm(first: "Jean", last: "De La~Fontaine"))
+#chk-name("De la Fontaine, Jean", nm(first: "Jean", von: "De~la", last: "Fontaine"))
+#chk-name("de La Fontaine, Jean", nm(first: "Jean", von: "de", last: "La~Fontaine"))
 #chk-name("", nm())
-#chk-name("jean de la fontaine", nm(von: "jean de la", last: "fontaine"))
-#chk-name("Jean de la fontaine", nm(first: "Jean", von: "de la", last: "fontaine"))
-#chk-name("Jean De La Fontaine", nm(first: "Jean De La", last: "Fontaine"))
-#chk-name("jean De la Fontaine", nm(von: "jean De la", last: "Fontaine"))
-#chk-name("Jean de La Fontaine", nm(first: "Jean", von: "de", last: "La Fontaine"))
+#chk-name("jean de la fontaine", nm(von: "jean de~la", last: "fontaine"))
+#chk-name("Jean de la fontaine", nm(first: "Jean", von: "de~la", last: "fontaine"))
+#chk-name("Jean De La Fontaine", nm(first: "Jean De~La", last: "Fontaine"))
+#chk-name("jean De la Fontaine", nm(von: "jean De~la", last: "Fontaine"))
+#chk-name("Jean de La Fontaine", nm(first: "Jean", von: "de", last: "La~Fontaine"))
 
 // test_person_two_comma: "<Last>, <Suffix>, <First>".
-#chk-name("Mudd, Sr., Harcourt Fenton", nm(first: "Harcourt Fenton", last: "Mudd", jr: "Sr."))
+#chk-name("Mudd, Sr., Harcourt Fenton", nm(first: "Harcourt~Fenton", last: "Mudd", jr: "Sr."))
 
 // test_list_of_names + the " and " separator (split_token_lists_with_kw).
 #chk-name(
@@ -72,7 +73,7 @@
   "Johannes Gutenberg and Aldus Manutius and Claude Garamond and",
   nm(first: "Johannes", last: "Gutenberg"),
   nm(first: "Aldus", last: "Manutius"),
-  nm(first: "Claude Garamond", last: "and"),
+  nm(first: "Claude~Garamond", last: "and"),
 )
 // test_name_with_and_inside: "and" only splits as a standalone whitespace-bounded
 // word — "Claudeand"/"Aanderson"/"anderson" stay intact.
@@ -89,7 +90,7 @@
 // differently; we follow the .bst oracle.) The braces are kept here and stripped
 // later by the formatter.
 #chk-name("{Barnes and Noble}", nm(last: "{Barnes and Noble}"))
-#chk-name("{de la} Fontaine, Jean", nm(first: "Jean", last: "{de la} Fontaine"))
+#chk-name("{de la} Fontaine, Jean", nm(first: "Jean", last: "{de la}~Fontaine"))
 #chk-name("Haug, {Martin}", nm(first: "{Martin}", last: "Haug"))
 
 // Raw-TeX von/last boundary, each verified against the real bibtex format.name$
@@ -97,14 +98,14 @@
 // von part may include leading UPPERCASE tokens ("De la"), a trailing lowercase
 // token with nothing after it stays in Last ("Stra\ss e"), and a bare control
 // sequence (\ss) does not split its token.
-#chk-name("Stra\\ss e, Joe", nm(first: "Joe", last: "Stra\\ss e"))
-#chk-name("De la Fontaine, Jean", nm(first: "Jean", von: "De la", last: "Fontaine"))
-#chk-name("De La Fontaine, Jean", nm(first: "Jean", last: "De La Fontaine"))
+#chk-name("Stra\\ss e, Joe", nm(first: "Joe", last: "Stra\\ss~e"))
+#chk-name("De la Fontaine, Jean", nm(first: "Jean", von: "De~la", last: "Fontaine"))
+#chk-name("De La Fontaine, Jean", nm(first: "Jean", last: "De La~Fontaine"))
 #chk-name("Charles Louis Xavier Joseph de la Vall\\'ee Poussin",
-  nm(first: "Charles Louis Xavier Joseph", von: "de la", last: "Vall\\'ee Poussin"))
-#chk-name("van der Berg, Jan", nm(first: "Jan", von: "van der", last: "Berg"))
+  nm(first: "Charles Louis Xavier~Joseph", von: "de~la", last: "Vall\\'ee~Poussin"))
+#chk-name("van der Berg, Jan", nm(first: "Jan", von: "van~der", last: "Berg"))
 #chk-name("Ludwig van Beethoven", nm(first: "Ludwig", von: "van", last: "Beethoven"))
-#chk-name("Jones, Jr., John Paul", nm(first: "John Paul", last: "Jones", jr: "Jr."))
+#chk-name("Jones, Jr., John Paul", nm(first: "John~Paul", last: "Jones", jr: "Jr."))
 
 // ---- field / value tokenizing (port of raw.rs) ----------------------------
 #let fields-of(src, key) = parse-bib(src).at(key).fields
