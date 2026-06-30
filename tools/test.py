@@ -325,13 +325,15 @@ def ensure_class(outdir: Path) -> None:
 def latex_build(tex: Path, outdir: Path = LATEX) -> int:
     """Compile a .tex to a STABLE PDF in outdir; return its page count.
 
-    Reruns pdflatex until cross-references / TotPages settle, runs bibtex, and
-    fails if a 'Temporary page' placeholder survives or LaTeX reports an error.
+    Reruns pdflatex until cross-references / TotPages settle, runs bibtex or
+    biber (auto-detected from the source), and fails if a 'Temporary page'
+    placeholder survives or LaTeX reports an error.
     """
     outdir.mkdir(parents=True, exist_ok=True)
     ensure_class(outdir)
     srcdir = tex.resolve().parent
     base = tex.stem
+    use_biber = "]{biblatex}" in tex.read_text(errors="replace")
 
     env = {
         **os.environ,
@@ -342,7 +344,10 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
     }
 
     _pdflatex(f"{base}.tex", srcdir, outdir, env)
-    _quiet(["bibtex", base], cwd=outdir, env=env)
+    if use_biber:
+        _quiet(["biber", base], cwd=outdir, env=env)
+    else:
+        _quiet(["bibtex", base], cwd=outdir, env=env)
     _pdflatex(f"{base}.tex", srcdir, outdir, env)
 
     log = outdir / f"{base}.log"

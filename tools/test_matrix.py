@@ -538,6 +538,21 @@ TESTS: dict[str, Test] = {
              "+ inner-edge timestamp. The timestamp embeds the compile date, so "
              "output is non-deterministic — compile-only (no golden), like draft-test.",
     ),
+    "sample-acmsmall-biblatex": Test(
+        kind="upstream-ref", reference="acmsmall-biblatex", pages=10,
+        _page_parity=False, page1_only=True,
+        note="upstream acmsmall-biblatex sample: acmsmall with BibLaTeX acmauthoryear "
+             "style (author-year). Software artifact cites from software.bib "
+             "(@software/@softwaremodule/@codefragment) are omitted — these biblatex-"
+             "software entry types have no equivalent in the bst backend.",
+    ),
+    "sample-sigconf-biblatex": Test(
+        kind="upstream-ref", reference="sigconf-biblatex", pages=6,
+        _page_parity=False, page1_only=True,
+        note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
+             "(numeric). Software artifact cites from software.bib are omitted (same "
+             "reason as sample-acmsmall-biblatex).",
+    ),
     "sample-acmcp": Test(
         kind="upstream-ref", reference="acmcp", pages=1,
         _page_parity=False, page1_only=True,

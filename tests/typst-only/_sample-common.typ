@@ -73,7 +73,7 @@
 // default numeric path uses Typst-native cites + bibliography() with the ACM CSL;
 // the acmtog samples set it true, routing the same keys through the bst backend's
 // acm-cite / acm-bibliography (cite-style "author-year", set in the preamble).
-#let sample-body(documentclass: "acmsmall", author-year: false) = {
+#let sample-body(documentclass: "acmsmall", author-year: false, biblatex: false) = {
   let cit(key) = if author-year { acm-cite(key) } else { cite(label(key)) }
   [
 = Introduction
@@ -439,22 +439,42 @@ strongly recommended. Authors' names should be complete --- use full first names
 features of a reference should be included: title, year, volume, number, pages,
 article DOI, etc.
 
-The bibliography is included in your source document with these two commands,
-placed just before the #raw("\\end{document}") command:
-```
-  \bibliographystyle{ACM-Reference-Format}
-  \bibliography{bibfile}
-```
-where "#raw("bibfile")" is the name, without the "#raw(".bib")" suffix, of the
-BibTeX file.
+#if biblatex [
+  Using the BibLaTeX system, the bibliography is included in your source document
+  with the following command, placed just before the `\end{document}` command:
+  ```
+    \printbibliography
+  ```
 
-Citations and references are numbered by default. A small number of ACM
-publications have citations and references formatted in the "author year" style;
-for these exceptions, please include this command in the *preamble* (before the
-command "#raw("\\begin{document}")") of your LaTeX source:
-```
-  \citestyle{acmauthoryear}
-```
+  The command `\addbibresource{bibfile}` declares the BibTeX file to use in the
+  *preamble* (before the command "`\begin{document}`") of your LaTeX source where
+  "`bibfile`" is the name, _with_ the "`.bib`" suffix. Notice that
+  `\addbibresource` takes only one argument: to declare multiple files, use
+  multiple instances of the command.
+
+  Citations and references are numbered by default. A small number of ACM
+  publications have citations and references formatted in the "author year" style;
+  for these exceptions, please pass the option `style=acmauthoryear` to the
+  `biblatex` package loaded in the *preamble* (before the command
+  "`\begin{document}`") of your LaTeX source.
+] else [
+  The bibliography is included in your source document with these two commands,
+  placed just before the #raw("\\end{document}") command:
+  ```
+    \bibliographystyle{ACM-Reference-Format}
+    \bibliography{bibfile}
+  ```
+  where "#raw("bibfile")" is the name, without the "#raw(".bib")" suffix, of the
+  BibTeX file.
+
+  Citations and references are numbered by default. A small number of ACM
+  publications have citations and references formatted in the "author year" style;
+  for these exceptions, please include this command in the *preamble* (before the
+  command "#raw("\\begin{document}")") of your LaTeX source:
+  ```
+    \citestyle{acmauthoryear}
+  ```
+]
 
 Some examples. A paginated journal article #cit("Abril07"), an enumerated journal
 article #cit("Cohen07"), a reference to an entire issue #cit("JCohen96"), a monograph (whole
@@ -478,7 +498,15 @@ cites might contain 'duplicate' DOI and URLs (some SIAM articles)
 as books #cit("MR781536") and #cit("MR781537"). A presentation #cit("Reiser2014"). An article under
 review #cit("Baggett2025"). A couple of citations with DOIs:
 #cit("2004:ITE:1009386.1010128") #cit("Kirschmer:2010:AEI:1958016.1958018"). Online citations:
-#cit("TUGInstmem") #cit("Thornburg01") #cit("CTANacmart"). Artifacts: #cit("R") and #cit("UMassCitations").
+#cit("TUGInstmem") #cit("Thornburg01") #cit("CTANacmart").
+#if biblatex [
+  Data Artifacts: #cit("UMassCitations").
+  // GAP: software artifact cites (cgal/delebecque/gf-tag/simplemapper) use
+  // biblatex-software @software/@softwaremodule/@codefragment entry types that
+  // neither the CSL nor BST backend supports; they are omitted here.
+] else [
+  Artifacts: #cit("R") and #cit("UMassCitations").
+]
 
 #acks[
   To Robert, for the bagels and explaining CMYK and color spaces.
