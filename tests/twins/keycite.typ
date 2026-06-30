@@ -4,4 +4,4 @@
 = Introduction
 Native Typst citations @Cohen07, @Kosiur01, and @Harel78 route through the bst engine.
 
-#bibliography("/acmart/samples/sample-base.bib")
+#bibliography("/tests/twins/sample-base.bib")

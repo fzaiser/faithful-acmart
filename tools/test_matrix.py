@@ -8,13 +8,11 @@ golden raster DPI.
 
 Test kinds
 ----------
-- ``twin``         matched ``NAME.tex`` (real LaTeX acmart) + ``NAME.typ`` (ours),
-                   compared page-by-page against ``tests/out/latex/<reference>.pdf``.
-- ``upstream-ref`` Typst-only port compared against the upstream sample reference
-                   named by ``reference`` (e.g. the bundled ``acmsmall`` sample).
-- ``smoke``        Typst-only doc with no LaTeX twin: compiled (warning-free) and,
-                   when deterministic, golden-hashed. Alias/feature paths the
-                   matched twins don't cover.
+- ``twin``  matched ``NAME.tex`` (real LaTeX acmart) + ``NAME.typ`` (ours),
+            compared page-by-page; assets (bib, images) in ``tests/twins/``.
+- ``smoke`` Typst-only doc with no LaTeX twin: compiled (warning-free) and,
+            when deterministic, golden-hashed. Alias/feature paths the
+            matched twins don't cover.
 
 The Tier 1 goldens are captured with `TYPST_VERSION` + the bundled fonts at
 `GOLDEN_DPI`; bumping Typst means regenerating them (`tools/test.py accept`).
@@ -144,10 +142,35 @@ def reference_for(name: str, t: Test) -> str:
     return t.reference if t.reference is not None else name
 
 
+# Shared gate settings for all bundled-sample twins. Visual fidelity is checked
+# via `test.py overlay`; text/font/metrics/order gates are all exempted:
+# - text_equal=False / char_diff: \\LaTeX logo → "LATEX" in LaTeX vs "LaTeX" in
+#   Typst, ACM bibstrip/copyright wording, math glyph encoding differences, and
+#   multi-column extraction ordering all cause word/char bag divergence.
+# - font_diff: math + verbatim blocks cause per-letter font-count differences as
+#   body text reflows between engines; not a body-text font bug.
+# - metrics=False: mode-specific layout (line numbers, anonymous margins, Huge
+#   title positions) causes Tier-2 geometry differences not worth gating here —
+#   the specialized -test twins gate each mode's geometry precisely.
+# - order_diff: the reading-order gate assumes structural regularity not met by
+#   complex multi-page docs with floats, appendices, and multi-column flow.
+_SAMPLE_COMMON = dict(
+    _page_parity=False, page1_only=True, metrics=False,
+    text_equal=False,
+    text_reason="whole-doc word bag diverges on \\LaTeX logo rendering, ACM "
+                "bibstrip/copyright wording, and multi-column extraction order; "
+                "visual fidelity is checked via test.py overlay instead",
+    char_diff="\\LaTeX logo → different codepoints, ACM bibstrip wording, and math "
+              "glyph encoding differ between engines across the full sample document",
+    font_diff="math + verbatim blocks cause per-letter font-count divergence as body "
+              "reflows between engines; not a body-text font bug",
+    order_diff="complex multi-page layout (floats, appendices, multi-column); "
+               "reading-order gate does not apply to the full bundled sample",
+)
+
 # --- The test matrix -------------------------------------------------------
 #
-# Order is the run/report order. Twins come first, then the upstream-ref port,
-# then the smoke-only docs.
+# Order is the run/report order. Twins come first, then smoke-only docs.
 TESTS: dict[str, Test] = {
     "body-test": Test(
         kind="twin", pages=1, uniform_pitch=True, text_equal=True,
@@ -464,105 +487,89 @@ TESTS: dict[str, Test] = {
         note="Spanish `language=spanish`: keywordsname/acksname/proofname + tablename "
              "(\"Cuadro\") localized, figure label still \"Fig.\"",
     ),
-    # Upstream-ref ports — full Typst renderings of the bundled acmart samples
-    # (acmart/samples/*.tex), each diffed page-by-page against out/latex/<ref>.pdf.
-    # They share one body/authors/CCS via _sample-common.typ; only the preamble
-    # (format + options) differs. Gated on compile-cleanliness + page count +
-    # pinned golden (the LaTeX-comparison gates are twin-only); fidelity is checked
-    # manually with `test.py diff`. Page counts are the Typst counts (usually 1-2
-    # under LaTeX: acmart's \flushbottom rubber-fills full pages, Typst is ragged
-    # -bottom — see CLAUDE.md), so _page_parity is off.
+    # Full twins of the bundled acmart samples (acmart/samples/*.tex).
+    # Each has a matched .tex/.typ pair in tests/twins/; assets (sample-base.bib,
+    # sample-franklin.png, sampleteaser.*) are vendored into tests/twins/ so the
+    # build does not depend on the acmart/ reference folder. They share one body via
+    # _sample-common.typ; only the preamble (format + options) differs.
+    # _page_parity is off: acmart's \flushbottom rubber-fills full pages, Typst is
+    # ragged-bottom, so Typst typically runs 1-2 pages shorter on multi-page docs.
+    # text_equal=False / order_diff: see _SAMPLE_COMMON above.
     "sample-acmsmall": Test(
-        kind="upstream-ref", reference="acmsmall", pages=10,
-        _page_parity=False, page1_only=True,
-        note="full port of the upstream acmsmall sample, compared against "
-             "out/latex/acmsmall.pdf.",
+        kind="twin", pages=10, **_SAMPLE_COMMON,
+        note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
-        kind="upstream-ref", reference="manuscript", pages=9,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=9, **_SAMPLE_COMMON,
         note="upstream manuscript sample (manuscript,screen,review + proceedings "
              "metadata). Single-column review style with margin line numbers.",
     ),
     "sample-acmlarge": Test(
-        kind="upstream-ref", reference="acmlarge", pages=10,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=10, **_SAMPLE_COMMON,
         note="upstream acmlarge sample (wide single-column journal, POMACS).",
     ),
     "sample-sigconf": Test(
-        kind="upstream-ref", reference="sigconf", pages=6,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream sigconf sample: two-column proceedings, spanning title, "
              "centred author grid, teaser figure.",
     ),
     "sample-sigplan": Test(
-        kind="upstream-ref", reference="sigplan", pages=6,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
     ),
     "sample-acmsmall-submission": Test(
-        kind="upstream-ref", reference="acmsmall-submission", pages=9,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=9, **_SAMPLE_COMMON,
         note="upstream acmsmall double-anonymous review sample "
              "(screen,anonymous,review): anonymized author strip + line numbers.",
     ),
     "sample-acmsmall-conf": Test(
-        kind="upstream-ref", reference="acmsmall-conf", pages=10,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=10, **_SAMPLE_COMMON,
         note="upstream acmsmall-for-a-conference sample (acmsmall journal format "
              "with conference metadata replacing the journal metadata).",
     ),
     "sample-acmtog": Test(
-        kind="upstream-ref", reference="acmtog", pages=6,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream acmtog sample (two-column TOG journal). Uses the author-year "
              "citation style (\\citestyle{acmauthoryear}) via the bst backend.",
     ),
     "sample-acmtog-conf": Test(
-        kind="upstream-ref", reference="acmtog-conf", pages=6,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream acmtog-for-a-conference sample (acmtog two-column with "
              "conference metadata + teaser; author-year citations via the bst backend).",
     ),
     "sample-sigconf-i13n": Test(
-        kind="upstream-ref", reference="sigconf-i13n", pages=6,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream sigconf internationalization sample: \\translatedtitle + "
              "translatedabstract in French/German/Spanish (English main), each "
              "abstract headed by its babel \\abstractname.",
     ),
     "sample-sigconf-authordraft": Test(
-        kind="upstream-ref", reference="sigconf-authordraft", pages=6,
-        _page_parity=False, page1_only=True, golden=False,
+        kind="twin", pages=6, golden=False, **_SAMPLE_COMMON,
         note="upstream sigconf authordraft sample: draft watermark + line numbers "
              "+ inner-edge timestamp. The timestamp embeds the compile date, so "
              "output is non-deterministic — compile-only (no golden), like draft-test.",
     ),
     "sample-acmsmall-biblatex": Test(
-        kind="upstream-ref", reference="acmsmall-biblatex", pages=10,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=10, **_SAMPLE_COMMON,
         note="upstream acmsmall-biblatex sample: acmsmall with BibLaTeX acmauthoryear "
              "style (author-year). Software artifact cites from software.bib "
              "(@software/@softwaremodule/@codefragment) are omitted — these biblatex-"
              "software entry types have no equivalent in the bst backend.",
     ),
     "sample-sigconf-biblatex": Test(
-        kind="upstream-ref", reference="sigconf-biblatex", pages=6,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
              "(numeric). Software artifact cites from software.bib are omitted (same "
              "reason as sample-acmsmall-biblatex).",
     ),
     "sample-acmcp": Test(
-        kind="upstream-ref", reference="acmcp", pages=1,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=1, **_SAMPLE_COMMON,
         note="upstream acmcp sample: single-column JDS format, rotated article-type "
              "banner, cover infobox with code/data links and author contributions. "
              "No abstract, CCS, keywords, or bibliography in this variant.",
     ),
     "sample-acmengage": Test(
-        kind="upstream-ref", reference="acmengage", pages=3,
-        _page_parity=False, page1_only=True,
+        kind="twin", pages=3, **_SAMPLE_COMMON,
         note="upstream acmengage sample: two-column ACM EngageCSEdu course-material "
              "format, Synopsis abstract, CC license. Engage metadata "
              "(\\setengagemetadata) is not modelled — metadata table omitted.",

@@ -337,10 +337,10 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
 
     env = {
         **os.environ,
-        # acmart.cls in outdir must win over any system install; include the
-        # bundled sample bibliographies so twins can \bibliography{sample-base}.
+        # acmart.cls in outdir must win over any system install; srcdir carries
+        # the twin's own bib/image assets (sample-base.bib, sample-franklin.png…).
         "TEXINPUTS": f"{outdir}:{srcdir}:",
-        "BIBINPUTS": f"{outdir}:{srcdir}:{ACMART / 'samples'}:",
+        "BIBINPUTS": f"{outdir}:{srcdir}:",
     }
 
     _pdflatex(f"{base}.tex", srcdir, outdir, env)
@@ -368,31 +368,6 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
         raise SystemExit(f"ERROR: {pdf} still contains a 'Temporary page'.")
     return page_count(pdf)
 
-
-def extract_samples(outdir: Path) -> None:
-    """Copy the acmart sample sources into outdir and run samples.ins to extract them."""
-    samples = ACMART / "samples"
-    for f in ("samples.ins", "samples.dtx", "acmengage.dtx"):
-        (outdir / f).write_bytes((samples / f).read_bytes())
-    # *.bib + image assets (the franklin PNG and the teaser figure, shipped as a
-    # PDF) + the .bst. NOT the sample output *.pdf — copying those would shadow a
-    # reference that failed to (re)build. sampleteaser.pdf is named explicitly.
-    for src in list(samples.glob("*.bib")) + list(samples.glob("*.png")) + [
-        samples / "sampleteaser.pdf",
-        ACMART / "ACM-Reference-Format.bst",
-    ]:
-        if src.exists():
-            (outdir / src.name).write_bytes(src.read_bytes())
-    _quiet(["pdflatex", "-interaction=nonstopmode", "samples.ins"], cwd=outdir)
-
-
-def build_reference(sample: str = "acmsmall", outdir: Path = LATEX) -> int:
-    """Build a LaTeX sample reference PDF (e.g. acmsmall) into outdir."""
-    outdir.mkdir(parents=True, exist_ok=True)
-    ensure_class(outdir)
-    if not (outdir / f"{sample}.tex").exists():
-        extract_samples(outdir)
-    return latex_build(outdir / f"{sample}.tex", outdir)
 
 
 def default_jobs() -> int:
@@ -425,8 +400,6 @@ def _shared_inputs_mtime() -> float:
     global _shared_inputs_mtime_cache
     if _shared_inputs_mtime_cache is None:
         paths = [ACMART / "acmart.dtx", ACMART / "ACM-Reference-Format.bst"]
-        paths += list((ACMART / "samples").glob("*.dtx"))
-        paths += list((ACMART / "samples").glob("*.bib"))
         paths += list((TESTS_DIR / "twins").glob("*.bib"))
         _shared_inputs_mtime_cache = max(
             (p.stat().st_mtime for p in paths if p.exists()), default=0.0)
@@ -441,22 +414,11 @@ def ref_is_fresh(tex: Path, pdf: Path) -> bool:
 
 
 def build_all_latex(jobs: int = 1, force: bool = False) -> None:
-    """Build every LaTeX reference the matrix needs: twin .tex files + sample refs.
+    """Build every LaTeX twin in parallel (``jobs`` at a time).
 
-    Twin references are independent, so they build in parallel (``jobs`` at a
-    time). Up-to-date references are skipped unless ``force`` (see ``ref_is_fresh``).
+    Up-to-date references are skipped unless ``force`` (see ``ref_is_fresh``).
     """
     ensure_class(LATEX)  # serial, before fan-out: avoids a class/asset write race
-    # Upstream-ref samples first (extracts the sample sources once; usually just
-    # acmsmall). Kept serial because the first one runs the shared extract step.
-    samples = {reference_for(n, t) for n, t in TESTS.items() if t.kind == "upstream-ref"}
-    for s in sorted(samples):
-        if not force and ref_is_fresh(LATEX / f"{s}.tex", LATEX / f"{s}.pdf"):
-            print(f"  reference {s} (cached)")
-            continue
-        print(f"  reference {s}")
-        build_reference(s)
-
     twins = [(name, TESTS_DIR / t.subdir / f"{name}.tex")
              for name, t in TESTS.items() if t.kind == "twin"]
 
@@ -1036,11 +998,6 @@ def cmd_accept(_args) -> int:
     return 0
 
 
-def cmd_reference(args) -> int:
-    pages = build_reference(args.sample)
-    print(f"Built {LATEX / (args.sample + '.pdf')} ({pages} pages)")
-    return 0
-
 
 def cmd_example(_args) -> int:
     TYPST.mkdir(parents=True, exist_ok=True)
@@ -1323,7 +1280,6 @@ def cmd_list(_args) -> int:
         print(f"{name:24} {t.kind:13} {t.pages:>5}  {' '.join(flags)}")
     print(f"\n{len(TESTS)} tests "
           f"({sum(t.kind == 'twin' for t in TESTS.values())} twin, "
-          f"{sum(t.kind == 'upstream-ref' for t in TESTS.values())} upstream-ref, "
           f"{sum(t.kind == 'smoke' for t in TESTS.values())} smoke).")
     return 0
 
@@ -1425,10 +1381,6 @@ def main() -> int:
     p = sub.add_parser("probe", help="dump a format's dimensions from the bundled class")
     p.add_argument("--format", default="acmsmall")
     p.set_defaults(fn=cmd_probe)
-
-    r = sub.add_parser("reference", help="build a LaTeX sample reference PDF")
-    r.add_argument("sample", nargs="?", default="acmsmall")
-    r.set_defaults(fn=cmd_reference)
 
     sub.add_parser("example", help="build the Typst example (template/main.typ)").set_defaults(fn=cmd_example)
     sub.add_parser("list", help="print the test matrix").set_defaults(fn=cmd_list)

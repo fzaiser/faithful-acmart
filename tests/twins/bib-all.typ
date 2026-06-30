@@ -11,4 +11,4 @@
 = Introduction
 Every entry type, exercised through the bst backend #acm-cite(..keys).
 
-#acm-bibliography(("/acmart/samples/sample-base.bib", "/tests/twins/bib-all-extra.bib"))
+#acm-bibliography(("/tests/twins/sample-base.bib", "/tests/twins/bib-all-extra.bib"))
