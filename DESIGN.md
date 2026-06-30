@@ -426,6 +426,20 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   the cap-top fall where the font's cap height puts it. Imperceptible; the sigplan
   twin marks its Tier-2 top check report-only for this reason.
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
+- **`biblatex-software` artifact entry types** (`@software`, `@softwaremodule`,
+  `@softwareversion`, `@codefragment` from the `biblatex-software` CTAN package)
+  have no equivalent in our CSL or BST backends. The `sample-acmsmall-biblatex`
+  and `sample-sigconf-biblatex` upstream-ref ports therefore omit the
+  Software-project/version/module/fragment cite block from the Citations section,
+  noting it as a known gap; the rest of the bibliography (all `sample-base.bib`
+  entries) reproduces correctly.
+- **Engine-variant and accessibility-tagged samples** (three of the 18 bundled
+  acmart samples) are not ported as upstream-ref tests: `sigconf-lualatex` is
+  docstrip-identical to `sigconf` (same flags, just a different engine note in the
+  comment header); `acmsmall-tagged` and `sigconf-tagged` require
+  `\DocumentMetadata{tagging=on}` + `lualatex-dev`, which pdflatex (our reference
+  builder) rejects with an unknown-key error. All three render identically to their
+  base format, so they add zero Typst coverage.
 
 ## Test harness robustness
 
