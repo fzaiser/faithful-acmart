@@ -464,12 +464,60 @@ TESTS: dict[str, Test] = {
         note="Spanish `language=spanish`: keywordsname/acksname/proofname + tablename "
              "(\"Cuadro\") localized, figure label still \"Fig.\"",
     ),
-    # Upstream-ref port.
+    # Upstream-ref ports — full Typst renderings of the bundled acmart samples
+    # (acmart/samples/*.tex), each diffed page-by-page against out/latex/<ref>.pdf.
+    # They share one body/authors/CCS via _sample-common.typ; only the preamble
+    # (format + options) differs. Gated on compile-cleanliness + page count +
+    # pinned golden (the LaTeX-comparison gates are twin-only); fidelity is checked
+    # manually with `test.py diff`. Page counts are the Typst counts (usually 1-2
+    # under LaTeX: acmart's \flushbottom rubber-fills full pages, Typst is ragged
+    # -bottom — see CLAUDE.md), so _page_parity is off.
     "sample-acmsmall": Test(
         kind="upstream-ref", reference="acmsmall", pages=10,
         _page_parity=False, page1_only=True,
         note="full port of the upstream acmsmall sample, compared against "
              "out/latex/acmsmall.pdf.",
+    ),
+    "sample-manuscript": Test(
+        kind="upstream-ref", reference="manuscript", pages=9,
+        _page_parity=False, page1_only=True,
+        note="upstream manuscript sample (manuscript,screen,review + proceedings "
+             "metadata). Single-column review style with margin line numbers.",
+    ),
+    "sample-acmlarge": Test(
+        kind="upstream-ref", reference="acmlarge", pages=10,
+        _page_parity=False, page1_only=True,
+        note="upstream acmlarge sample (wide single-column journal, POMACS).",
+    ),
+    "sample-sigconf": Test(
+        kind="upstream-ref", reference="sigconf", pages=6,
+        _page_parity=False, page1_only=True,
+        note="upstream sigconf sample: two-column proceedings, spanning title, "
+             "centred author grid, teaser figure.",
+    ),
+    "sample-sigplan": Test(
+        kind="upstream-ref", reference="sigplan", pages=6,
+        _page_parity=False, page1_only=True,
+        note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
+    ),
+    "sample-acmsmall-submission": Test(
+        kind="upstream-ref", reference="acmsmall-submission", pages=9,
+        _page_parity=False, page1_only=True,
+        note="upstream acmsmall double-anonymous review sample "
+             "(screen,anonymous,review): anonymized author strip + line numbers.",
+    ),
+    "sample-acmsmall-conf": Test(
+        kind="upstream-ref", reference="acmsmall-conf", pages=10,
+        _page_parity=False, page1_only=True,
+        note="upstream acmsmall-for-a-conference sample (acmsmall journal format "
+             "with conference metadata replacing the journal metadata).",
+    ),
+    "sample-sigconf-authordraft": Test(
+        kind="upstream-ref", reference="sigconf-authordraft", pages=6,
+        _page_parity=False, page1_only=True, golden=False,
+        note="upstream sigconf authordraft sample: draft watermark + line numbers "
+             "+ inner-edge timestamp. The timestamp embeds the compile date, so "
+             "output is non-deterministic — compile-only (no golden), like draft-test.",
     ),
     # Smoke-only docs (no LaTeX twin).
     "siggraph-test": Test(

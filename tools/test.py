@@ -369,8 +369,12 @@ def extract_samples(outdir: Path) -> None:
     samples = ACMART / "samples"
     for f in ("samples.ins", "samples.dtx"):
         (outdir / f).write_bytes((samples / f).read_bytes())
+    # *.bib + image assets (the franklin PNG and the teaser figure, shipped as a
+    # PDF) + the .bst. NOT the sample output *.pdf — copying those would shadow a
+    # reference that failed to (re)build. sampleteaser.pdf is named explicitly.
     for src in list(samples.glob("*.bib")) + list(samples.glob("*.png")) + [
-        ACMART / "ACM-Reference-Format.bst"
+        samples / "sampleteaser.pdf",
+        ACMART / "ACM-Reference-Format.bst",
     ]:
         if src.exists():
             (outdir / src.name).write_bytes(src.read_bytes())

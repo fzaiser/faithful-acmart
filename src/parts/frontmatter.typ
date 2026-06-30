@@ -591,18 +591,29 @@
     set align(center)
     set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
     set par(justify: false, leading: comp(cfg, sz: af.size), spacing: comp(cfg, sz: af.size))
-    andify(group.authors.map(a => { a.name; render-marks(a._marks) }))
+    // Co-authors sharing a box are STACKED, each on its own line — acmart's
+    // conference grid adds every name with `\par##1` (acmart.dtx:7470-7474), NOT
+    // andified like the journal author list (\andify, @mkauthors@i). A single
+    // -author box (every conference twin) renders just the name either way.
+    group.authors.map(a => { a.name; render-marks(a._marks) }).join(linebreak())
     parbreak()
     set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
     set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
-    // emails (each on its own line) then the affiliation lines — source order,
-    // since the twins declare \email before \affiliation, matching acmart's
-    // conference author block (\email/\affiliation append to \@currentaffiliation
-    // in command order) and the sigchi-a head below. Email goes right after the
-    // name, before the institution, exactly as the journal contact line does.
-    let emails = group.authors.map(a => a.email).filter(e => e != none)
-    let affs = affil-conf-lines(group.affiliation)
-    (emails + affs).join(linebreak())
+    // Contact lines in acmart's command order: \email/\affiliation append to
+    // \@currentaffiliation as issued (acmart.dtx). Replay each author's email and
+    // affiliation in its own declared order (a.contact-order), so an author who
+    // wrote \affiliation before \email (sample Lars/Charles/John/Julius) prints
+    // institution-then-email, while one who wrote \email first prints email-then
+    // -institution. The shared group affiliation is emitted once, at the position
+    // its holder declared it (only that author carries it in contact-order).
+    let lines = ()
+    for a in group.authors {
+      for field in a.contact-order {
+        if field == "email" and a.email != none { lines.push(a.email) }
+        else if field == "affiliation" { lines += affil-conf-lines(group.affiliation) }
+      }
+    }
+    lines.join(linebreak())
   }
   // Chunk the boxes into rows of N and center each row on its own (acmart centers
   // every row), so a short final row sits centered rather than left-aligned. Rows

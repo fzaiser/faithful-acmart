@@ -7,6 +7,10 @@ __pycache__/
 
 # Generated LaTeX reference build (regenerate from acmart/ via the harness)
 
+# Sample .tex extracted from samples.dtx by samples.ins / the Makefile (the
+# harness re-extracts into tests/out/latex; these are pure build artifacts).
+acmart/samples/*.tex
+
 # Visual-diff outputs
 tests/out/
 
