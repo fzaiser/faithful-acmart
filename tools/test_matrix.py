@@ -249,9 +249,11 @@ TESTS: dict[str, Test] = {
              "edge matches.",
     ),
     "acmcp-test": Test(
-        kind="twin", pages=1, metrics=False, text_equal="bag",
-        char_diff="our cover-infobox code/data link is shown without the https:// scheme "
-                  "(a display approximation); acmart shows the full URL",
+        kind="twin", pages=1, metrics=False, text_equal=False,
+        text_reason="the cover-infobox code/data link now shows the full URL (matching "
+                    "\\url), so the exact char bag gates cleanly. The URL is wider than the "
+                    "5pc box: Typst wraps it (example.com / data) where LaTeX overflows the "
+                    "box on one line, so only the word bag would split that one token.",
         text_assertions=(
             Assertion(engine="both", text="Research Article"),
             Assertion(engine="both", text="Keywords: datasets"),
@@ -272,15 +274,15 @@ TESTS: dict[str, Test] = {
              "block.",
     ),
     "sigchi-a-test": Test(
-        kind="twin", pages=2, page1_only=True, metrics=False,
-        char_diff="best-effort @iv format: the author block renders uppercase names where "
-                  "acmart shows name/email/affiliation, the conference date line and Legacy "
-                  "watermark split differ — real layout approximations, not a content bug",
-        note="format=sigchi-a: landscape SIGCHI extended abstracts (best-effort). Sans "
-             "default, wide left margin, 2pt-rule title, unnumbered sections. The legacy "
-             "watermark IS reproduced; margin-note footnotes (\\marginpar) and the @iv "
-             "title's 5pc leftskip remain approximations, so cross-engine geometry is "
-             "report-only (metrics off); the twin still gates page-count parity.",
+        kind="twin", pages=2, page1_only=True, metrics=False, text_equal="bag",
+        note="format=sigchi-a: landscape SIGCHI extended abstracts. The @mktitle@iv head "
+             "(5pc-leftskip title under a 2pt rule), the @mkauthors@iv author grid (bold "
+             "mixed-case name + email + affiliation, 2 per row, left-aligned), the one-sided "
+             "running head (shorttitle + dated conference), and the 'Legacy document' "
+             "watermark (breaking before 'ACM venue') now all match LaTeX — char AND word "
+             "bags are exact. Remaining approximation: margin-note footnotes (\\marginpar) "
+             "are omitted, so cross-engine geometry is report-only (metrics off); the twin "
+             "gates page-count parity and the exact text bags.",
     ),
     "fontsize-8-test": Test(
         kind="twin", pages=1, uniform_pitch=True, text_equal=True,

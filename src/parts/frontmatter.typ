@@ -404,12 +404,13 @@
   place(bottom, float: true, block(width: 100%, spacing: 0pt, stack))
 }
 
-// acmcp cover infobox (\set@ACM@acmcpbox, acmart.dtx:6725): a 5pc-wide box in the
-// top-right corner of page 1 (\fancyhead[R]\makebox[\z@][r], acmart.dtx:8129) —
-// the JDS logo over optional code/data links, keywords, contributions and author
-// contact information, in scriptsize. The acmcp title is narrowed by 6pc
-// (cfg.title-width-reduction) so it clears the box. place() leaves the box out of
-// flow; its vertical anchor is the known approximation versus LaTeX's zref logic.
+// acmcp cover infobox (\set@ACM@acmcpbox, acmart.dtx:6725): a 5pc-wide box at the
+// right text margin (\fancyhead[R]\makebox[\z@][r], acmart.dtx:8129) — the JDS logo
+// over optional code/data links, keywords, contributions and author contact
+// information, in scriptsize. The acmcp title is narrowed by 6pc so it clears the
+// box. Called inside a full-width block at the body's vertical start, so place(top +
+// right) anchors it to the right margin level with the body top; LaTeX zref-anchors
+// the box BOTTOM against the frame bottom — top-alignment is the approximation.
 #let make-acmcp-infobox(cfg, meta) = {
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
   place(top + right, box(width: 60pt /* 5pc */)[
@@ -437,7 +438,10 @@
 // \par in the title font (acmart.dtx:3374/6994), one baselineskip below.
 #let title-block(cfg, meta, mark) = {
   let tf = cfg.title-font
-  block(spacing: 0pt)[
+  // acmcp narrows the title box by 6pc (\@mktitle@i \advance\hsize -6pc,
+  // acmart.dtx:6988) so it clears the top-right cover infobox; auto width (natural,
+  // unchanged) elsewhere.
+  block(spacing: 0pt, width: if cfg.title-width-reduction != 0pt { 100% - cfg.title-width-reduction } else { auto })[
     #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), top-edge: "cap-height")
     #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: tf.size), spacing: comp(cfg, sz: tf.size))
     // tagged-par so the title is its own <P> chunk, not fused into the author
@@ -616,14 +620,79 @@
 }
 
 // Dispatch the spanning head on the format's title style (acmart.dtx:6874).
+// sigchi-a @mkauthors@iv (acmart.dtx:7518): authors in left-aligned boxes, no more
+// than 2 per row, each box holding the bold mixed-case name(s) (\@authorfont =
+// \bfseries) then the email(s) and affiliation lines (\@affiliationfont = \mdseries),
+// in source order (the twins declare \email before \affiliation). Unlike the
+// conference grid (\@mkauthors@iii) the boxes are NOT centred (sigchiamode skips
+// \centering) and box width is (textwidth - sep)/N - sep with sep = \author@bx@sep.
+#let sigchi-authors(cfg, groups, authors-per-row: 0) = {
+  let sep = 12pt // \author@bx@sep = 1pc
+  let tw = cfg.paper.width - cfg.margin.left - cfg.margin.right
+  let n = if authors-per-row > 0 { authors-per-row } else if groups.len() <= 1 { 1 } else { 2 }
+  let bw = (tw - sep) / n - sep
+  let af = cfg.author-font
+  let aff = cfg.affil-font
+  let author-box(group) = {
+    set align(left)
+    set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
+    set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: af.size), spacing: comp(cfg, sz: af.size))
+    // grouped author names stack one per line (\def\and{\par} inside the box).
+    group.authors.map(a => { a.name; render-marks(a._marks) }).join(linebreak())
+    parbreak()
+    set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
+    set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
+    let emails = group.authors.map(a => a.email).filter(e => e != none)
+    (emails + affil-conf-lines(group.affiliation)).join(linebreak())
+  }
+  // Boxes flow left-aligned and wrap after N; rows are \lineskip (1pc) apart.
+  let rows = ()
+  let i = 0
+  while i < groups.len() {
+    rows.push(groups.slice(i, calc.min(i + n, groups.len())))
+    i += n
+  }
+  stack(dir: ttb, spacing: 12pt, ..rows.map(row => grid(
+    columns: (bw,) * row.len(),
+    column-gutter: sep,
+    align: top + left,
+    ..row.map(author-box),
+  )))
+}
+
+// sigchi-a @mktitle@iv (acmart.dtx:7039): hsize-wide box with \leftskip5pc and a
+// leading full-width 2pt rule (\leaders\hrule height 2pt\hfill), then the
+// ragged-right title; the author grid (\@mkauthors@iv) follows at leftskip 0.
+#let sigchi-title-head(cfg, meta) = {
+  let ni = collect-notes(meta)
+  pad(left: 5 * 12pt, { // \leftskip5pc
+    // \leaders\hrule height 2pt\hfill\par then \@title: the title sits one title-font
+    // \baselineskip below the rule (rule height 2pt + a full Huge baseline step).
+    let tf = cfg.title-font
+    block(above: 0pt, below: comp(cfg, sz: tf.size) + cfg.size.at(tf.size) - 2pt,
+      line(length: 100%, stroke: 2pt))
+    title-block(cfg, meta, ni.title-mark)
+    subtitle-block(cfg, meta, ni.subtitle-mark)
+  })
+  // title box \par\bigskip, then the author grid
+  v(tex-skip(cfg, cfg.bigskip), weak: true)
+  if meta.anonymous {
+    block(spacing: 0pt)[
+      #set text(font: cfg.fonts.at(cfg.author-font.family), weight: cfg.author-font.weight, size: cfg.size.at(cfg.author-font.size))
+      Anonymous Author(s)
+    ]
+  } else {
+    sigchi-authors(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
+  }
+  teaser-block(cfg, meta)
+  // \@mkauthors@iv closing \par\bigskip before the abstract block
+  v(tex-skip(cfg, cfg.bigskip), weak: true)
+}
+
 #let make-title-head(cfg, meta) = if cfg.title-style == "conf-center" {
   conf-title-head(cfg, meta)
 } else if cfg.title-style == "sigchi-rule" {
-  // sigchi-a @mktitle@iv (acmart.dtx:7039): a leading full-width 2pt rule above
-  // the ragged title. We approximate by prefixing the rule to the journal head
-  // (left/ragged title + author list); the 5pc leftskip indent is omitted.
-  block(below: comp(cfg), line(length: 100%, stroke: 2pt))
-  journal-title-head(cfg, meta)
+  sigchi-title-head(cfg, meta)
 } else {
   journal-title-head(cfg, meta)
 }

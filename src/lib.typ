@@ -18,6 +18,7 @@
 #import "formats/acmengage.typ": acmengage
 #import "formats/sigchi-a.typ": sigchia
 #import "formats/acmcp.typ": acmcp
+#import "formats/_base.typ": tp
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
 #import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
@@ -446,7 +447,11 @@
       else { align(left, [#ap • #sa]) }
     } else if cfg.name in ("sigconf", "sigplan", "acmengage", "sigchi-a") {
       let conf = conference-line
-      if odd {
+      // sigchi-a is one-sided (landscape, fixed wide left margin): every page uses
+      // the ODD proceedings head — shorttitle (left) + conference (right); the
+      // \@shortauthors (RE) line never appears (acmart.dtx:8093/8109). The other
+      // proceedings formats are two-sided and alternate authors/title by parity.
+      if odd or cfg.name == "sigchi-a" {
         grid(columns: (1fr, 1fr), align(left, st), align(right, if not nonacm { conf }))
       } else {
         grid(columns: (1fr, 1fr), align(left, if not nonacm { conf }), align(right, sa))
@@ -462,7 +467,10 @@
   let watermark-text = if author-draft {
     [Unpublished working draft.\ Not for distribution.]
   } else if cfg.name == "sigchi-a" and not nonacm {
-    [Legacy document.\ Not for publication in an ACM venue]
+    // \parbox{12em}{\centering Legacy document. \\ Not for publication in an ACM
+    // venue} (acmart.dtx:3733): "Legacy document." then the second line wraps in
+    // the 12em box, breaking before "ACM venue".
+    [Legacy document.\ Not for publication in an\ ACM venue]
   }
   let watermark = if watermark-text != none {
     rotate(-45deg, reflow: false, text(size: 0.5in, fill: luma(90%))[
@@ -471,29 +479,24 @@
     ])
   }
 
-  // acmcp colored cover frame (acmart.dtx:5899): the body sits on a light tint of
-  // the article-type colour (\colorbox{@ACM@Article@color!10!white}; the default
-  // Research type is ACMBlue, acmart.dtx:5889/3707). The MakeFramed box bleeds
-  // 6.5pc into the left margin, so the panel runs from the page's left edge across
-  // to the right text edge, between the top and bottom margins. (The JDS logo and
-  // the right-column infobox ARE reproduced — see make-acmcp-infobox below; only
-  // their vertical position is approximated, anchored to the top-right corner
-  // rather than zref-positioned against the frame bottom.)
-  let acmcp-frame = if cfg.name == "acmcp" {
-    let article = _acmcp-article-types.at(article-type)
-    let tint = article.color.lighten(90%)
-    place(top + left, dy: cfg.margin.top, rect(
-      width: cfg.paper.width - cfg.margin.outside,
-      height: cfg.paper.height - cfg.margin.top - cfg.margin.bottom,
-      fill: tint,
-    ))
-  }
+  // acmcp rotated article-type label (\fancyhead[L], acmart.dtx:8253): a saturated
+  // article-colour box reading bottom-to-top, offset 46pt into the left margin
+  // (\fancyheadoffset[L]) so it sits at the page's left edge, level with the title.
+  // The vertical position carries a -0.2\textheight*(nr-2) shift per article type
+  // (Research nr=0 sits at the top margin; later types step down); only Research is
+  // exercised by the twin, and it lands at the top margin as measured in LaTeX.
   let acmcp-label = if cfg.name == "acmcp" {
     let article = _acmcp-article-types.at(article-type)
-    place(top + left, dx: -4pt, dy: cfg.margin.top + 0.22 * (cfg.paper.height - cfg.margin.top - cfg.margin.bottom),
-      rotate(90deg, reflow: false, rect(fill: article.color, outset: (x: 3pt, y: 2pt))[
-        #text(font: cfg.fonts.sans, size: cfg.size.footnotesize, fill: white)[#article-type Article]
-      ]))
+    let textheight = cfg.paper.height - cfg.margin.top - cfg.margin.bottom
+    // Read bottom-to-top (\rotatebox{90}); reflow:true so the placed footprint is
+    // the rotated box and top+left anchors deterministically to the page corner.
+    let lbl = rotate(-90deg, reflow: true, box(fill: article.color, inset: (x: 3pt, y: 2pt),
+      text(font: cfg.fonts.sans, size: cfg.size.footnotesize, fill: white)[#article-type Article]))
+    context place(top + left, dx: 0pt,
+      // Centre on the title (\fancyhead[L] level with the head); step later article
+      // types down by 0.2\textheight per nr (Research nr=0 sits at the top margin).
+      dy: cfg.margin.top - measure(lbl).height / 2 + 0.2 * textheight * article.nr,
+      lbl)
   }
 
   set page(
@@ -506,7 +509,6 @@
     header: header-content,
     footer: footer-content,
     background: {
-      acmcp-frame // behind the body (drawn first so the watermark sits on top)
       acmcp-label
       if watermark != none { align(center + horizon, watermark) }
     },
@@ -604,8 +606,6 @@
     // place(bottom, float) — full-width in one column, first-column-scoped in two
     // (the conference \footnotetextcopyrightpermission block, acmart.dtx:6605).
     make-footnotes(cfg, meta)
-    // acmcp draws the JDS-logo cover infobox in the top-right corner of page 1.
-    if cfg.name == "acmcp" { make-acmcp-infobox(cfg, meta) }
     if cfg.columns > 1 {
       // \twocolumn[\box\mktitle@bx] (acmart.dtx:6849): only the title/author box
       // spans both columns; the abstract/CCS/keywords (\@mkabstract et seq.,
@@ -615,17 +615,41 @@
       place(top, scope: "parent", float: true, clearance: tex-skip(cfg, cfg.bigskip),
         make-title-head(cfg, meta))
       make-title-body(cfg, meta) // flows in column 1, beneath the spanning box
-    } else if cfg.title-width-reduction != 0pt {
-      // acmcp: the whole top matter is narrowed (acmart's framed \hsize reduction,
-      // acmart.dtx:5902) so it clears the top-right cover infobox. The body
-      // sections below the box flow full width.
-      block(width: 100% - cfg.title-width-reduction, make-title(cfg, meta))
     } else {
+      // acmcp narrows only the TITLE box by 6pc (\@mktitle@i, acmart.dtx:6988);
+      // authors/abstract stay full width. Other formats: nothing to narrow.
       make-title(cfg, meta)
     }
   }
 
-  apply-body(cfg, body)
+  if cfg.name == "acmcp" {
+    // The body sits on a light tint of the article colour (\@ACM@color@frame,
+    // acmart.dtx:5899: \colorbox{@ACM@Article@color!10!white}), the hsize reduced
+    // 6.5pc on the right (acmart.dtx:5902) to clear the top-right cover infobox.
+    // ONLY the body is tinted — title/authors/abstract above stay on white. The
+    // infobox (JDS logo + code/data, keywords, contributions, contact info;
+    // \set@ACM@acmcpbox, acmart.dtx:6724) is right-aligned at the text margin and
+    // top-aligned with the body (LaTeX zref-anchors it against the frame bottom; we
+    // approximate with the body top). The wrapping full-width block gives the
+    // place(top+right) infobox the full text-width right edge while the tint stays
+    // narrow.
+    let article = _acmcp-article-types.at(article-type)
+    let tint = article.color.lighten(90%)
+    let fbox = 3 * tp // \fboxsep
+    let body-reduction = 6.5 * 12 * tp // \advance\hsize -6.5pc (acmart.dtx:5902)
+    block(width: 100%, breakable: true, spacing: 0pt, {
+      make-acmcp-infobox(cfg, meta)
+      pad(left: -fbox, block(
+        fill: tint,
+        inset: fbox,
+        width: 100% - body-reduction + 2 * fbox,
+        breakable: true,
+        apply-body(cfg, body),
+      ))
+    })
+  } else {
+    apply-body(cfg, body)
+  }
 
   // \received history line, printed last (acmart \AtEndDocument).
   if received != none { make-received(cfg, received) }

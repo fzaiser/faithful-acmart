@@ -5,7 +5,7 @@
 #show: acmart.with(
   format: "sigchi-a",
   title: "A Two-Column Conference Sample",
-  conference: (short: "Conference'17", venue: "Washington, DC, USA"),
+  conference: (short: "Conference'17", date: "June 2018", venue: "Washington, DC, USA"),
   booktitle: "Proceedings of ACM Conference (Conference'17)",
   isbn: "978-1-4503-XXXX-X/2018/06",
   doi: "XXXXXXX.XXXXXXX",

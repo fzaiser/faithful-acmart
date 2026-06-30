@@ -395,20 +395,29 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   0.2pt (increments 191.3 vs 191.3pt). Only the bottom-fill stretch is missing; it
   shows as gradual downward drift on *full* pages (e.g. `tests/twins/full-test` page 1)
   but not on partial/last pages (page 2 matches). No clean Typst workaround exists.
-- **`sigchi-a`** (best-effort): geometry, sans default, the 2pt-rule title,
-  unnumbered sections and the "Legacy document" watermark are reproduced; footnotes
-  are **not** moved into the margin (`\marginpar`, acmart.dtx:3533) and the `@iv`
-  5pc title leftskip is omitted.
+- **`sigchi-a`**: geometry, sans default, the `@mktitle@iv` title (5pc-leftskip
+  ragged title under a 2pt rule, acmart.dtx:7039), the `@mkauthors@iv` author grid
+  (bold mixed-case name + email + affiliation, 2 per row, left-aligned —
+  acmart.dtx:7518), the one-sided running head (shorttitle + dated conference), the
+  unnumbered sections and the "Legacy document" watermark (breaking before "ACM
+  venue") are all reproduced — the page-1 top matter and the running head match
+  LaTeX's extracted text exactly (char *and* word bags). The remaining approximation:
+  footnotes are **not** moved into the margin (`\marginpar`, acmart.dtx:3533).
 - **`acmcp`**: geometry, unnumbered sections, the suppressed ACM reference format,
-  the light-tinted cover **frame** (`@ACM@Article@color!10!white`, default ACMBlue
-  — acmart.dtx:5899), and the top-right cover **infobox** — the bundled JDS logo
-  (`src/assets/acm-jdslogo.png`, from acmart's `acm-jdslogo.png`) over the optional
-  `code-data-link` / `keywords` / `contributions` / author contact information —
-  are reproduced; the top matter is narrowed by 6pc to clear the box. The only
-  approximation is the box's vertical position: acmart uses two-pass `zref`
-  measurement (acmart.dtx:6733) to butt it against the frame bottom on short
-  documents; we anchor it to the top-right corner. Normal contact/copyright
-  footnotes and normal keyword top matter are suppressed for `acmcp`, as in LaTeX.
+  the rotated article-type label at the page's left edge, the light-tinted cover
+  **frame** (`@ACM@Article@color!10!white`, default ACMBlue — acmart.dtx:5899)
+  scoped to the **body only** (the title/authors/abstract stay on white) and
+  narrowed 6.5pc on the right (acmart.dtx:5902), and the right-margin cover
+  **infobox** — the bundled JDS logo (`src/assets/acm-jdslogo.png`, from acmart's
+  `acm-jdslogo.png`) over the optional `code-data-link` / `keywords` /
+  `contributions` / author contact information — are reproduced; the title alone is
+  narrowed by 6pc to clear the box (acmart.dtx:6988). The one approximation is the
+  infobox's vertical position: acmart uses two-pass `zref` measurement
+  (acmart.dtx:6733) to butt its bottom against the frame bottom on short documents;
+  we top-align it with the body. The code/data link shows the full URL (`\url`,
+  char-exact); being wider than the 5pc box it wraps where LaTeX overflows, so only
+  that one word-bag token splits. Normal contact/copyright footnotes and normal
+  keyword top matter are suppressed for `acmcp`, as in LaTeX.
 - **Conference Huge title vertical position** differs from LaTeX by ~4–5pt of
   glyph-bbox overshoot: we pin the title cap-top to the top margin (the faithful
   `\topskip` model, as for acmsmall), whereas LaTeX places the baseline and lets

@@ -89,10 +89,12 @@ missed.
 All public formats are accepted, but with accepted approximations: two-column
 vertical fill (`\flushbottom`) and last-column balancing are unreplicable in
 Typst (ragged-bottom columns); `sigchi-a` omits margin-note footnotes
-(`\marginpar`); `acmcp`'s cover infobox is anchored to the top-right corner
-rather than `zref`-positioned against the frame bottom. Its keywords,
-contributions, code/data link, and author contact info are in the cover infobox,
-while normal contact/copyright footnotes are suppressed. Also outstanding:
+(`\marginpar`) but otherwise matches LaTeX exactly (the `@mktitle@iv` rule title,
+the `@mkauthors@iv` author grid, the one-sided running head, the watermark);
+`acmcp`'s cover infobox is top-aligned with the body rather than `zref`-positioned
+against the frame bottom (the body tint and right-margin infobox layout otherwise
+match). Its keywords, contributions, code/data link, and author contact info are
+in the cover infobox, while normal contact/copyright footnotes are suppressed. Also outstanding:
 math-font fidelity. Top-matter commands `\titlenote`/`\subtitlenote`,
 `\received`, the `acks` environment, teaser figures, author badges, and the
 conference metadata (`conference`/`booktitle`/`isbn`) ARE modelled. See DESIGN.md "Deliberate

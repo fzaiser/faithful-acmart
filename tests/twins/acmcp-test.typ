@@ -22,7 +22,7 @@
     draft geometry and section typography between the LaTeX and Typst renderings.
   ],
   keywords: ("datasets", "neural networks", "gaze detection"),
-  code-data-link: link("https://example.com/data")[example.com/data],
+  code-data-link: link("https://example.com/data")[https://example.com/data],
   contributions: [BT designed the study; VB performed it.],
 )
 

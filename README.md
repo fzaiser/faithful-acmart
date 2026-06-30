@@ -42,8 +42,8 @@ Known differences from LaTeX (engine limits, not spacing errors — see
   matched to the LaTeX source.
 - Line/page breaking differs between engines → horizontal word drift on dense
   pages and different page breaks.
-- `sigchi-a` omits margin-note footnotes; `acmcp` anchors its infobox at the
-  top-right rather than LaTeX's two-pass `zref` vertical position.
+- `sigchi-a` omits margin-note footnotes; `acmcp` top-aligns its cover infobox
+  with the body rather than LaTeX's two-pass `zref` bottom-anchoring.
 - Minor: residual ACM-CSL vs `.bst` gaps (hayagriva BibTeX→CSL data limits, see
   DESIGN.md); author note/✉ mark order; list hanging-label
   indent (no LaTeX `\llap`); `screen` link colour ~1/255 (Typst 8-bit CMYK).

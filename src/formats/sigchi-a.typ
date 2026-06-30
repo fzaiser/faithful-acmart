@@ -1,14 +1,16 @@
-// sigchi-a format — landscape SIGCHI extended abstracts, best-effort.
+// sigchi-a format — landscape SIGCHI extended abstracts.
 //
 // Landscape 11x8.5, single wide column with a large (314pt) left margin for
 // marginal notes, sans-serif document default (acmart.dtx:4073), 10pt. The title
-// is @mktitle@iv (a leading 2pt rule above a ragged title, acmart.dtx:7039) and
+// is @mktitle@iv (a 5pc-leftskip ragged title under a leading 2pt rule,
+// acmart.dtx:7039), authors use the @mkauthors@iv grid (acmart.dtx:7518), and
 // sections are unnumbered (secnumdepth 0). Geometry probed from the class.
 //
-// The geometry, sans default, rule title, unnumbered sections, and the "Legacy
-// document" watermark (drawn in lib.typ) are reproduced. Documented
-// approximations: footnotes are NOT moved into the margin (acmart.dtx:3533
-// \marginpar) and the @iv 5pc title leftskip is omitted.
+// The geometry, sans default, rule title (5pc leftskip), @iv author grid (bold
+// mixed-case name + email + affiliation, 2 per row), one-sided running head, and
+// the "Legacy document" watermark (drawn in lib.typ) are reproduced — text matches
+// LaTeX exactly. The remaining approximation: footnotes are NOT moved into the
+// margin (acmart.dtx:3533 \marginpar).
 #import "_base.typ": tp, size-ladder, make-format
 
 #let sigchia(font-size: "10pt") = make-format(
