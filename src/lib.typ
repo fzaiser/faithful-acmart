@@ -379,7 +379,7 @@
   // bibstrip. acmart's stamp is "<date> <HH>:<MM>. Page p of start--total."; Typst
   // can't read the wall clock, so we print the compile date and omit the time.
   let footer-content = context {
-    set text(font: cfg.fonts.serif, size: cfg.size.footnotesize)
+    set text(font: cfg.fonts.body, size: cfg.size.footnotesize)
     let odd = calc.odd(here().page())
     let bib = if cfg.name == "acmcp" {
       let j = lookup-journal(journal)
@@ -526,7 +526,7 @@
   // baseline at `top margin + \topskip`, as LaTeX does.
   set text(
     // sigchi-a sets the sans family as the document default (acmart.dtx:4073).
-    font: if cfg.sans-default { cfg.fonts.sans } else { cfg.fonts.serif },
+    font: cfg.fonts.body, // sans under sans-default (sigchi-a), else serif
     size: cfg.font-size,
     top-edge: 1em,
     bottom-edge: 0pt,

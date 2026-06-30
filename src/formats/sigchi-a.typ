@@ -26,9 +26,10 @@
   secnumdepth: 0,
   title-style: "sigchi-rule",
   bibstrip: false,
-  // \@titlefont \Huge\bfseries (serif bold) ; \@subtitlefont \mdseries
-  title-font: (family: "serif", weight: "bold", size: "Huge"),
-  subtitle-font: (family: "sans", weight: "regular", size: "normalsize"),
+  // \@titlefont \Huge\bfseries — no \sffamily, so it inherits the document default
+  // family, which is sans here (acmart.dtx:6930); `body` resolves to that.
+  title-font: (family: "body", weight: "bold", size: "Huge"),
+  subtitle-font: (family: "body", weight: "regular", size: "normalsize"),
   // \@authorfont \bfseries ; \@affiliationfont \mdseries (sans, the default family)
   author-font: (family: "sans", weight: "bold", size: "normalsize"),
   affil-font: (family: "sans", weight: "regular", size: "normalsize"),

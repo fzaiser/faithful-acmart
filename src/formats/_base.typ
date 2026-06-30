@@ -72,7 +72,9 @@
   section:       (family: "sans", weight: "bold", style: "normal", size: "normalsize"),
   subsection:    (family: "sans", weight: "bold", style: "normal", size: "normalsize"),
   subsubsection: (family: "sans", weight: "regular", style: "italic", size: "normalsize"),
-  paragraph:     (family: "serif", weight: "regular", style: "italic", size: "normalsize"),
+  // run-in paragraph heading inherits the default body family (\itshape only, no
+  // family switch) — serif for journals, sans under sans-default (sigchi-a).
+  paragraph:     (family: "body", weight: "regular", style: "italic", size: "normalsize"),
 )
 
 // A heading numbering pattern for a given secnumdepth (acmart.dtx:8419). secnum
@@ -162,6 +164,13 @@
       sans: "Libertinus Sans",
       mono: "Inconsolatazi4", // acmart uses zi4 (Inconsolata) for \texttt
       math: "Libertinus Math",
+      // The document's DEFAULT body family. acmart sets \sffamily as the document
+      // default for sigchi-a (acmart.dtx:4073), so its whole body — abstract, CCS,
+      // footnotes, footer, run-in headings — is sans, not just the section titles.
+      // Any component rendering default body text should use this role (not `serif`
+      // directly) so `sans-default` propagates by construction; reach for `serif`/
+      // `sans` only when a specific family is required regardless of format.
+      body: if sans-default { "Libertinus Sans" } else { "Libertinus Serif" },
     ),
   )
 }

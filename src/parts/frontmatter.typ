@@ -172,7 +172,7 @@
 #let fm-block(cfg, body, sz: "small", justify: true, indent: 0pt, spacing: 0pt, chunk: false) = {
   let lead = comp(cfg, sz: sz)
   block(width: 100%, spacing: spacing)[
-    #set text(font: cfg.fonts.serif, size: cfg.size.at(sz))
+    #set text(font: cfg.fonts.body, size: cfg.size.at(sz))
     #set par(
       justify: justify,
       leading: lead,
@@ -295,7 +295,7 @@
   }
 
   let stack = {
-    set text(font: cfg.fonts.serif, size: fs)
+    set text(font: cfg.fonts.body, size: fs)
     set par(justify: true, leading: lead, first-line-indent: 0pt, spacing: lead)
 
     let anon = meta.anonymous
@@ -703,8 +703,10 @@
   if cfg.bibstrip or cfg.name == "sigplan" {
     special-line(cfg, label, if lang != none { text(lang: lang, content) } else { content })
   } else {
+    // Proceedings \section*{label}: the heading is a real section and the body is
+    // normalsize (\@specialsection, acmart.dtx:6786) — NOT the journals' \small.
     heading(numbering: none, outlined: false)[#label]
-    fm-block(cfg, if lang != none { text(lang: lang, content) } else { content }, justify: false, chunk: true)
+    fm-block(cfg, if lang != none { text(lang: lang, content) } else { content }, sz: "normalsize", justify: false, chunk: true)
   }
 }
 
@@ -716,23 +718,25 @@
   let abstract-name = if cfg.name == "acmengage" { "Synopsis" } else { "Abstract" }
 
   // --- Abstract ---
+  // Journals (bibstrip) set the abstract in \small with no heading; proceedings do
+  // \section*{Abstract} + a normalsize body (\@mkabstract, acmart.dtx:7688-7696).
   if meta.abstract != none {
     if meta.bibstrip {
       fm-block(cfg, meta.abstract, indent: cfg.parindent)
     } else {
       heading(numbering: none, outlined: false)[#abstract-name]
-      fm-block(cfg, meta.abstract, indent: cfg.parindent)
+      fm-block(cfg, meta.abstract, indent: cfg.parindent, sz: "normalsize")
     }
   }
-  // Translated abstracts: each is another 9pt block in its own language, right
-  // after the main one; proceedings repeat the abstract heading per language.
+  // Translated abstracts: each is another block in its own language, right after the
+  // main one; proceedings repeat the abstract heading per language.
   for (l, ab) in meta.translated-abstract {
     let rec = lang-record(l)
     if meta.bibstrip {
       fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent)
     } else {
       heading(numbering: none, outlined: false)[#abstract-name]
-      fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent)
+      fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent, sz: "normalsize")
     }
   }
 
@@ -815,11 +819,11 @@
 
 // The paper-history line, printed at the very end of the document
 // (acmart \AtEndDocument, acmart.dtx:5858-5861): \par\bigskip then \small
-// \normalfont (9pt serif roman), unindented.
+// \normalfont (9pt body roman — serif, or sans under sans-default), unindented.
 #let make-received(cfg, received) = {
   v(tex-skip(cfg, cfg.bigskip, sz: "small"), weak: true)
   block(width: 100%, spacing: 0pt)[
-    #set text(font: cfg.fonts.serif, weight: "regular", style: "normal", size: cfg.size.small)
+    #set text(font: cfg.fonts.body, weight: "regular", style: "normal", size: cfg.size.small)
     #set par(justify: false, leading: comp(cfg, sz: "small"), first-line-indent: 0pt)
     #format-received(received)
   ]
