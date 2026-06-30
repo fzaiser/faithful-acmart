@@ -69,3 +69,17 @@
 #has("see \\url{http://a.b}", "link")
 #has("ref \\href{http://a.b}{text}", "link")
 #has("math $\\frac{n}{2} \\leq x^{2n}$", "equation")  // real Typst math
+
+// regression: an accent grabbing the LAST char of a run (run = 1 cluster) — the
+// tail `().join("")` is `none`, which once built a `value: none` text token.
+#chk(tex-to-string("Caf\\'e"), "accent at end of field", "Cafe\u{0301}")
+#chk(tex-to-string("a\\'e"),   "accent on lone trailing char", "ae\u{0301}")
+
+// regression: the linear token walk is a LOOP, so a field with FAR more tokens
+// than Typst's ~72 call-depth limit must not stack-overflow. These would error
+// ("maximum function call depth exceeded") under the old head+recurse walk — the
+// unit gate compiles this file, so reaching here at all is the assertion.
+#let _stress300 = "x" + ("\\'e" * 300)                 // ~300 accent tokens (text)
+#let _stressmath = "$" + ("a_1 + " * 200) + "b$"        // ~600 math tokens
+#assert(repr(tex-to-content(_stress300)).len() > 0)
+#assert(repr(tex-to-content(_stressmath)).contains("equation"))

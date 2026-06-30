@@ -272,8 +272,10 @@
   if h.kind == "group" { return (h.body, r.slice(1)) }
   if h.kind == "text" {
     let cl = h.value.clusters()
-    let tail = cl.slice(1).join("")
-    let remaining = if tail == "" { r.slice(1) } else { ((kind: "text", value: tail),) + r.slice(1) }
+    // `().join("")` is `none`, not "" — so guard the single-cluster case (an accent
+    // grabbing the last char of a run, e.g. a title ending in "Caf\'e").
+    let remaining = if cl.len() <= 1 { r.slice(1) }
+      else { ((kind: "text", value: cl.slice(1).join("")),) + r.slice(1) }
     return (((kind: "text", value: cl.first()),), remaining)
   }
   ((h,), r.slice(1))
@@ -362,77 +364,78 @@
 //   "content" -> content (the default tex-render: styled, real equations, links)
 //   "string"  -> plain string (sort/cite labels: formatting dropped)
 //   "math"    -> a Typst-math SOURCE string (later eval'd inside $...$)
+// The LINEAR walk over the token list is a LOOP (reassigning `rest`), so its depth
+// is O(1) in field length — Typst's call-depth limit is ~72, and a field can have
+// dozens of tokens. Only the STRUCTURAL descent (group/arg/math bodies, via the
+// recursive `_eval` calls below) recurses, and that is bounded by brace/math
+// nesting depth (a handful), not token count.
 #let _eval(toks, mode) = {
-  if toks.len() == 0 { return if mode == "content" { [] } else { "" } }
   let cont = mode == "content"
   let math = mode == "math"
-  let t = toks.first()
-  let rest = toks.slice(1)
+  let out = if cont { [] } else { "" }
+  let rest = toks
+  while rest.len() > 0 {
+    let t = rest.first()
+    let tail = rest.slice(1)
+    let next = tail                    // commands that take arguments override this
+    let piece = if cont { [] } else { "" }
 
-  if t.kind == "text" {
-    let r = if math { t.value + " " } else { _render-run(t.value) }
-    return r + _eval(rest, mode)
-  }
-  if t.kind == "group" {
-    let g = _eval(t.body, mode)
-    return (if math { "(" + g + ") " } else { g }) + _eval(rest, mode)
-  }
-  if t.kind == "math" {
-    if cont { return eval("$" + _eval(t.body, "math") + "$", mode: "markup") + _eval(rest, mode) }
-    if math { return _eval(t.body, "math") + _eval(rest, mode) }
-    _unsupported("inline math in a name/label field")
-  }
-  if t.kind == "special" {
-    if math {
-      if t.char == "~" { return " " + _eval(rest, mode) }
-      let (a, r) = _grab(rest)              // LaTeX `^x`/`_{..}` -> Typst `^(..)`
-      return t.char + "(" + _eval(a, "math") + ") " + _eval(r, mode)
+    if t.kind == "text" {
+      piece = if math { t.value + " " } else { _render-run(t.value) }
+    } else if t.kind == "group" {
+      let g = _eval(t.body, mode)
+      piece = if math { "(" + g + ") " } else { g }
+    } else if t.kind == "math" {
+      if cont { piece = eval("$" + _eval(t.body, "math") + "$", mode: "markup") }
+      else if math { piece = _eval(t.body, "math") }
+      else { _unsupported("inline math in a name/label field") }
+    } else if t.kind == "special" {
+      if math {
+        if t.char == "~" { piece = " " }
+        else { let (a, r) = _grab(tail); piece = t.char + "(" + _eval(a, "math") + ") "; next = r }
+      } else if t.char == "~" { piece = "\u{00A0}" }
+      else { _unsupported("character '" + t.char + "' outside math mode (use $...$, \\textasciicircum or \\textunderscore)") }
+    } else if t.kind == "cw" {
+      let nm = t.name
+      if math {
+        if nm in _math-sym { piece = _math-sym.at(nm) + " " }
+        else if nm in _math-fn1 { let (a, r) = _grab(tail); piece = _math-fn1.at(nm) + "(" + _eval(a, "math") + ") "; next = r }
+        else if nm in _math-fn2 { let (a, r) = _grab(tail); let (b, r2) = _grab(r); piece = _math-fn2.at(nm) + "(" + _eval(a, "math") + ", " + _eval(b, "math") + ") "; next = r2 }
+        else if nm == "text" or nm == "mbox" or nm == "textrm" { let (a, r) = _grab(tail); piece = "\"" + _eval(a, "string") + "\" "; next = r }
+        else if nm in _math-noop { }
+        else { _unsupported("math command \\" + nm) }
+      } else if nm in _special-letters { piece = _special-letters.at(nm) }
+      else if nm in _logos { piece = _logos.at(nm) }
+      else if nm in _accent-cw { let (a, r) = _grab(tail); piece = _eval(a, "string") + _accent-cw.at(nm); next = r }
+      else if nm in _id-cw { let (a, r) = _grab(tail); piece = _eval(a, mode); next = r }
+      else if nm in _emph-cw { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { emph(x) } else { x }; next = r }
+      else if nm in _strong-cw { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { strong(x) } else { x }; next = r }
+      else if nm in _sc-cw { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { smallcaps(x) } else { x }; next = r }
+      else if nm == "underline" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { underline(x) } else { x }; next = r }
+      else if nm == "textsuperscript" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { super(x) } else { x }; next = r }
+      else if nm == "textsubscript" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { sub(x) } else { x }; next = r }
+      else if nm == "texttt" or nm == "tt" { let (a, r) = _grab(tail); let s = _eval(a, "string"); piece = if cont { raw(s) } else { s }; next = r }
+      else if nm == "url" { let (a, r) = _grab(tail); let u = _eval(a, "string"); piece = if cont { link(u)[#u] } else { u }; next = r }
+      else if nm == "href" { let (a, r) = _grab(tail); let (b, r2) = _grab(r); let u = _eval(a, "string"); let x = _eval(b, mode); piece = if cont { link(u)[#x] } else { x }; next = r2 }
+      else if nm == "noopsort" { let (a, r) = _grab(tail); next = r }
+      else if nm in _noop-cw { }
+      else { _unsupported("command \\" + nm) }
+    } else if t.kind == "cs" {
+      let nm = t.name
+      if math {
+        if nm == "," or nm == ";" or nm == " " or nm == "!" or nm == ":" { piece = " " }
+        else { _unsupported("math command \\" + nm) }
+      } else if nm in _accent-cs { let (a, r) = _grab(tail); piece = _eval(a, "string") + _accent-cs.at(nm); next = r }
+      else if nm in _cs-literal { piece = _cs-literal.at(nm) }
+      else if nm in _cs-space { piece = _cs-space.at(nm) }
+      else if nm in _noop-cs { }
+      else { _unsupported("command \\" + nm) }
     }
-    if t.char == "~" { return "\u{00A0}" + _eval(rest, mode) }
-    _unsupported("character '" + t.char + "' outside math mode (use $...$, \\textasciicircum or \\textunderscore)")
-  }
 
-  if t.kind == "cw" {
-    let nm = t.name
-    if math {
-      if nm in _math-sym { return _math-sym.at(nm) + " " + _eval(rest, mode) }
-      if nm in _math-fn1 { let (a, r) = _grab(rest); return _math-fn1.at(nm) + "(" + _eval(a, "math") + ") " + _eval(r, mode) }
-      if nm in _math-fn2 { let (a, r) = _grab(rest); let (b, r2) = _grab(r); return _math-fn2.at(nm) + "(" + _eval(a, "math") + ", " + _eval(b, "math") + ") " + _eval(r2, mode) }
-      if nm == "text" or nm == "mbox" or nm == "textrm" { let (a, r) = _grab(rest); return "\"" + _eval(a, "string") + "\" " + _eval(r, mode) }
-      if nm in _math-noop { return _eval(rest, mode) }
-      _unsupported("math command \\" + nm)
-    }
-    // text / string mode
-    if nm in _special-letters { return _special-letters.at(nm) + _eval(rest, mode) }
-    if nm in _logos { return _logos.at(nm) + _eval(rest, mode) }
-    if nm in _accent-cw { let (a, r) = _grab(rest); return (_eval(a, "string") + _accent-cw.at(nm)) + _eval(r, mode) }
-    if nm in _id-cw { let (a, r) = _grab(rest); return _eval(a, mode) + _eval(r, mode) }
-    if nm in _emph-cw { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { emph(x) } else { x }) + _eval(r, mode) }
-    if nm in _strong-cw { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { strong(x) } else { x }) + _eval(r, mode) }
-    if nm in _sc-cw { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { smallcaps(x) } else { x }) + _eval(r, mode) }
-    if nm == "underline" { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { underline(x) } else { x }) + _eval(r, mode) }
-    if nm == "textsuperscript" { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { super(x) } else { x }) + _eval(r, mode) }
-    if nm == "textsubscript" { let (a, r) = _grab(rest); let x = _eval(a, mode); return (if cont { sub(x) } else { x }) + _eval(r, mode) }
-    if nm == "texttt" or nm == "tt" { let (a, r) = _grab(rest); let s = _eval(a, "string"); return (if cont { raw(s) } else { s }) + _eval(r, mode) }
-    if nm == "url" { let (a, r) = _grab(rest); let u = _eval(a, "string"); return (if cont { link(u)[#u] } else { u }) + _eval(r, mode) }
-    if nm == "href" { let (a, r) = _grab(rest); let (b, r2) = _grab(r); let u = _eval(a, "string"); let x = _eval(b, mode); return (if cont { link(u)[#x] } else { x }) + _eval(r2, mode) }
-    if nm == "noopsort" { let (a, r) = _grab(rest); return _eval(r, mode) }
-    if nm in _noop-cw { return _eval(rest, mode) }
-    _unsupported("command \\" + nm)
+    out += piece
+    rest = next
   }
-
-  if t.kind == "cs" {
-    let nm = t.name
-    if math {
-      if nm == "," or nm == ";" or nm == " " or nm == "!" or nm == ":" { return " " + _eval(rest, mode) }
-      _unsupported("math command \\" + nm)
-    }
-    if nm in _accent-cs { let (a, r) = _grab(rest); return (_eval(a, "string") + _accent-cs.at(nm)) + _eval(r, mode) }
-    if nm in _cs-literal { return _cs-literal.at(nm) + _eval(rest, mode) }
-    if nm in _cs-space { return _cs-space.at(nm) + _eval(rest, mode) }
-    if nm in _noop-cs { return _eval(rest, mode) }
-    _unsupported("command \\" + nm)
-  }
+  out
 }
 
 // ---- public entry points ---------------------------------------------------

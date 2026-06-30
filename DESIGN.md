@@ -332,6 +332,11 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     with the raw string, so TeX inside a URL is not decoded (URLs rarely contain TeX).
   - **`tex-to-string` (sort/cite labels) errors on inline math** — labels are names/
     orgs/keys, which never carry `$…$`; sort keys themselves go through `purify`.
+  - **Recursion vs Typst's ~72 call-depth limit.** The evaluator walks a field's
+    token list in a *loop*, so field *length* is unbounded; only structural descent
+    (group/argument/math nesting) recurses. So a field could only overflow with ~70+
+    levels of *nested* braces/math — absurd for a reference (the deep stress cases in
+    `tests/unit/tex.typ` confirm long flat fields are fine).
   - **BibTeX warnings** (missing year, empty author, bad page ranges…) are not emitted
     — by choice, not necessity. Rendering is best-effort and silent;
     `\begin{thebibliography}{width}` label-width (`longest.label`) is moot since Typst
