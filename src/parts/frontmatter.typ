@@ -42,6 +42,11 @@
   email: a.at("email", default: none),
   note: a.at("note", default: none),
   corresponding: a.at("corresponding", default: false),
+  // The order the email and affiliation were declared, preserved so the contact
+  // line can replay them in that order — acmart prints \addresses in the order
+  // the \email/\affiliation commands were issued (acmart.dtx:7588), and Typst
+  // dicts keep insertion order, so the author dict's key order is the analog.
+  contact-order: a.keys().filter(k => k == "email" or k == "affiliation"),
 )
 
 // An author's `affiliation` may be a single dict or an array of dicts (a person
@@ -246,18 +251,24 @@
   (title-mark: title-mark, subtitle-mark: subtitle-mark, notes: notes, marks: marks)
 }
 
-// One author's contact entry, replaying name → affiliation fields → email in
-// that order (email LAST), matching LaTeX \@mkauthorsaddresses (acmart.dtx:7588).
-// Authors are listed individually in source order with the affiliation repeated
-// per author — NOT grouped. Multiple affiliations per author are supported (an
-// `affiliation` array, like LaTeX's repeated \affiliation), joined by " and ".
+// One author's contact entry, replaying name then the email/affiliation fields in
+// the order they were declared, matching LaTeX \@mkauthorsaddresses, which prints
+// \addresses in \email/\affiliation command order (acmart.dtx:7588). Authors are
+// listed individually in source order with the affiliation repeated per author —
+// NOT grouped. Multiple affiliations per author are supported (an `affiliation`
+// array, like LaTeX's repeated \affiliation), joined by " and ".
 #let contact-line(a) = {
   let parts = (a.name,)
-  // each affiliation as "institution, city, state, country"; several joined by
-  // " and " (LaTeX's institution separator), then email last.
-  let affs = affil-strings(a.affiliation, ("institution", "city", "state", "country"))
-  if affs.len() > 0 { parts.push(affs.join(" and ")) }
-  if a.email != none { parts.push(a.email) }
+  for field in a.contact-order {
+    if field == "affiliation" {
+      // each affiliation as "institution, city, state, country"; several joined
+      // by " and " (LaTeX's institution separator).
+      let affs = affil-strings(a.affiliation, ("institution", "city", "state", "country"))
+      if affs.len() > 0 { parts.push(affs.join(" and ")) }
+    } else if a.email != none {
+      parts.push(a.email)
+    }
+  }
   parts.join(", ")
 }
 
