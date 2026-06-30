@@ -611,56 +611,58 @@
   cfg-state.update(cfg) // publish config for theorem environments
   anon-state.update(anonymous) // publish anonymity for the acks environment
 
-  if meta.title != none {
-    // Page-1 footnote stack (author notes / contact info / copyright). A
-    // place(bottom, float) — full-width in one column, first-column-scoped in two
-    // (the conference \footnotetextcopyrightpermission block, acmart.dtx:6605).
-    make-footnotes(cfg, meta)
-    if cfg.columns > 1 {
-      // \twocolumn[\box\mktitle@bx] (acmart.dtx:6849): only the title/author box
-      // spans both columns; the abstract/CCS/keywords (\@mkabstract et seq.,
-      // acmart.dtx:6665) follow it in the FIRST column. scope: "parent" escapes the
-      // column to span the full text width; clearance is the box's trailing
-      // \par\bigskip before the columns start.
-      place(top, scope: "parent", float: true, clearance: tex-skip(cfg, cfg.bigskip),
-        make-title-head(cfg, meta))
-      make-title-body(cfg, meta) // flows in column 1, beneath the spanning box
-    } else {
-      // acmcp narrows only the TITLE box by 6pc (\@mktitle@i, acmart.dtx:6988);
-      // authors/abstract stay full width. Other formats: nothing to narrow.
-      make-title(cfg, meta)
+  apply-body(cfg, {
+    if meta.title != none {
+      // Page-1 footnote stack (author notes / contact info / copyright). A
+      // place(bottom, float) — full-width in one column, first-column-scoped in two
+      // (the conference \footnotetextcopyrightpermission block, acmart.dtx:6605).
+      make-footnotes(cfg, meta)
+      if cfg.columns > 1 {
+        // \twocolumn[\box\mktitle@bx] (acmart.dtx:6849): only the title/author box
+        // spans both columns; the abstract/CCS/keywords (\@mkabstract et seq.,
+        // acmart.dtx:6665) follow it in the FIRST column. scope: "parent" escapes the
+        // column to span the full text width; clearance is the box's trailing
+        // \par\bigskip before the columns start.
+        place(top, scope: "parent", float: true, clearance: tex-skip(cfg, cfg.bigskip),
+          make-title-head(cfg, meta))
+        make-title-body(cfg, meta) // flows in column 1, beneath the spanning box
+      } else {
+        // acmcp narrows only the TITLE box by 6pc (\@mktitle@i, acmart.dtx:6988);
+        // authors/abstract stay full width. Other formats: nothing to narrow.
+        make-title(cfg, meta)
+      }
     }
-  }
 
-  if cfg.name == "acmcp" {
-    // The body sits on a light tint of the article colour (\@ACM@color@frame,
-    // acmart.dtx:5899: \colorbox{@ACM@Article@color!10!white}), the hsize reduced
-    // 6.5pc on the right (acmart.dtx:5902) to clear the top-right cover infobox.
-    // ONLY the body is tinted — title/authors/abstract above stay on white. The
-    // infobox (JDS logo + code/data, keywords, contributions, contact info;
-    // \set@ACM@acmcpbox, acmart.dtx:6724) is right-aligned at the text margin and
-    // top-aligned with the body (LaTeX zref-anchors it against the frame bottom; we
-    // approximate with the body top). The wrapping full-width block gives the
-    // place(top+right) infobox the full text-width right edge while the tint stays
-    // narrow.
-    let article = _acmcp-article-types.at(article-type)
-    let tint = article.color.lighten(90%)
-    let fbox = 3 * tp // \fboxsep
-    let body-reduction = 6.5 * 12 * tp // \advance\hsize -6.5pc (acmart.dtx:5902)
-    block(width: 100%, breakable: true, spacing: 0pt, {
-      make-acmcp-infobox(cfg, meta)
-      pad(left: -fbox, block(
-        fill: tint,
-        inset: fbox,
-        width: 100% - body-reduction + 2 * fbox,
-        breakable: true,
-        apply-body(cfg, body),
-      ))
-    })
-  } else {
-    apply-body(cfg, body)
-  }
+    if cfg.name == "acmcp" {
+      // The body sits on a light tint of the article colour (\@ACM@color@frame,
+      // acmart.dtx:5899: \colorbox{@ACM@Article@color!10!white}), the hsize reduced
+      // 6.5pc on the right (acmart.dtx:5902) to clear the top-right cover infobox.
+      // ONLY the body is tinted — title/authors/abstract above stay on white. The
+      // infobox (JDS logo + code/data, keywords, contributions, contact info;
+      // \set@ACM@acmcpbox, acmart.dtx:6724) is right-aligned at the text margin and
+      // top-aligned with the body (LaTeX zref-anchors it against the frame bottom; we
+      // approximate with the body top). The wrapping full-width block gives the
+      // place(top+right) infobox the full text-width right edge while the tint stays
+      // narrow.
+      let article = _acmcp-article-types.at(article-type)
+      let tint = article.color.lighten(90%)
+      let fbox = 3 * tp // \fboxsep
+      let body-reduction = 6.5 * 12 * tp // \advance\hsize -6.5pc (acmart.dtx:5902)
+      block(width: 100%, breakable: true, spacing: 0pt, {
+        make-acmcp-infobox(cfg, meta)
+        pad(left: -fbox, block(
+          fill: tint,
+          inset: fbox,
+          width: 100% - body-reduction + 2 * fbox,
+          breakable: true,
+          body,
+        ))
+      })
+    } else {
+      body
+    }
 
-  // \received history line, printed last (acmart \AtEndDocument).
-  if received != none { make-received(cfg, received) }
+    // \received history line, printed last (acmart \AtEndDocument).
+    if received != none { make-received(cfg, received) }
+  })
 }

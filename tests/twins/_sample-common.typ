@@ -69,12 +69,11 @@
 // option string echoed in the "Citations and Bibliographies" verbatim example,
 // e.g. "acmsmall" or "sigconf" — the only per-format text in the body.
 //
-// `author-year` selects the citation system, mirroring acmart's \citestyle: the
-// default numeric path uses Typst-native cites + bibliography() with the ACM CSL;
-// the acmtog samples set it true, routing the same keys through the bst backend's
-// acm-cite / acm-bibliography (cite-style "author-year", set in the preamble).
+// Citations route through the bst backend so the sample's reference ordering and
+// numeric labels match ACM-Reference-Format.bst. `author-year` still selects the
+// acmauthoryear citation style in the sample preamble.
 #let sample-body(documentclass: "acmsmall", author-year: false, biblatex: false) = {
-  let cit(key) = if author-year { acm-cite(key) } else { cite(label(key)) }
+  let cit(..keys) = acm-cite(..keys.pos())
   [
 = Introduction
 ACM's consolidated article template, introduced in 2017, provides a consistent
@@ -194,7 +193,7 @@ shown below, is not acceptable:
   \email{firstname.lastname@phillips.org}
 ```
 
-The #raw("authornote") and #raw("authornotemark") commands allow a note to apply
+#h(10pt)The #raw("authornote") and #raw("authornotemark") commands allow a note to apply
 to multiple authors --- for example, if the first two authors of an article
 contributed equally to the work.
 
@@ -271,17 +270,13 @@ Below are examples of sectioning commands.
 
 This is a subsection.
 
-=== Subsubsection
-<sec:subsubsection>
-
+=== Subsubsection <sec:subsubsection>
 This is a subsubsection.
 
 ==== Paragraph
-
 This is a paragraph.
 
 ===== Subparagraph
-
 This is a subparagraph.
 
 = Tables
@@ -299,7 +294,7 @@ in the *tabular* environment, to be aligned properly in rows and columns, with
 the desired horizontal and vertical rules. Again, detailed instructions on
 *tabular* material are found in the _LaTeX User's Guide._
 
-Immediately following this sentence is the point at which Table @tab:freq is
+Immediately following this sentence is the point at which @tab:freq is
 included in the input file; compare the placement of the table here with the
 table in the printed output of this document.
 
@@ -309,40 +304,46 @@ table in the printed output of this document.
     columns: 3,
     align: (center, center, left),
     stroke: none,
-    table.hline(),
+    table.hline(stroke: 0.08em),
     [Non-English or Math], [Frequency], [Comments],
     table.hline(),
     [Ø], [1 in 1,000], [For Swedish names],
     [$pi$], [1 in 5], [Common in math],
     [\$], [4 in 5], [Used in business],
     [$Psi^2_1$], [1 in 40,000], [Unexplained usage],
-    table.hline(),
+    table.hline(stroke: 0.08em),
   ),
 ) <tab:freq>
 
 To set a wider table, which takes up the whole width of the page's live area, use
 the environment *table\** to enclose the table's contents and the table caption.
 As with a single-column table, this wide table will "float" to a location deemed
-more desirable. Immediately following this sentence is the point at which Table
+more desirable. Immediately following this sentence is the point at which
 @tab:commands is included in the input file; again, it is instructive to compare
 the placement of the table here with the table in the printed output of this
 document.
 
-#figure(
-  caption: [Some Typical Commands],
-  table(
-    columns: 3,
-    align: (center, center, left),
-    stroke: none,
-    table.hline(),
-    [Command], [A Number], [Comments],
-    table.hline(),
-    [#raw("\\author")], [100], [Author],
-    [#raw("\\table")], [300], [For tables],
-    [#raw("\\table*")], [400], [For wider tables],
-    table.hline(),
-  ),
-) <tab:commands>
+#place(top, scope: "parent", float: true)[
+  #block(width: 100%)[
+    #align(center)[
+      #figure(
+        caption: [Some Typical Commands],
+        table(
+          columns: 3,
+          align: (center, center, left),
+          stroke: none,
+          table.hline(stroke: 0.08em),
+          [Command], [A Number], [Comments],
+          table.hline(),
+          [#raw("\\author")], [100], [Author],
+          [#raw("\\table")], [300], [For tables],
+          [#raw("\\table*")], [400], [For wider tables],
+          table.hline(stroke: 0.08em),
+        ),
+      ) <tab:commands>
+    ]
+  ]
+]
 
 Always use midrule to separate table header rows from data rows, and use it only
 for this purpose. This enables assistive technologies to recognise table headers
@@ -485,20 +486,20 @@ given #cit("Editor00a") (so Editor00a's series should NOT be present since it ha
 no.), a chapter in a divisible book #cit("Spector90"), a chapter in a divisible book in a
 series #cit("Douglass98"), a multi-volume work as book #cit("Knuth97"), a couple of articles in
 a proceedings (of a conference, symposium, workshop for example) (paginated
-proceedings article) #cit("Andler79") #cit("Hagerup1993"), a proceedings article with all
+proceedings article) #cit("Andler79", "Hagerup1993"), a proceedings article with all
 possible elements #cit("Smith10"), an example of an enumerated proceedings article
 #cit("VanGundy07"), an informally published work #cit("Harel78"), a couple of preprints
-#cit("Bornmann2019") #cit("AnzarootPBM14"), a doctoral dissertation #cit("Clarkson85"), a master's
-thesis: #cit("anisi03"), an online document / world wide web resource #cit("Thornburg01")
-#cit("Ablamowicz07") #cit("Poker06"), a video game (Case 1) #cit("Obama08") and (Case 2) #cit("Novak03") and
+#cit("Bornmann2019", "AnzarootPBM14"), a doctoral dissertation #cit("Clarkson85"), a master's
+thesis: #cit("anisi03"), an online document / world wide web resource
+#cit("Thornburg01", "Ablamowicz07", "Poker06"), a video game (Case 1) #cit("Obama08") and (Case 2) #cit("Novak03") and
 #cit("Lee05") and (Case 3) a patent #cit("JoeScientist001"), work accepted for publication
 #cit("rous08"), 'YYYYb'-test for prolific author #cit("SaeediMEJ10") and #cit("SaeediJETC10"). Other
 cites might contain 'duplicate' DOI and URLs (some SIAM articles)
 #cit("Kirschmer:2010:AEI:1958016.1958018"). Boris / Barbara Beeton: multi-volume works
 as books #cit("MR781536") and #cit("MR781537"). A presentation #cit("Reiser2014"). An article under
 review #cit("Baggett2025"). A couple of citations with DOIs:
-#cit("2004:ITE:1009386.1010128") #cit("Kirschmer:2010:AEI:1958016.1958018"). Online citations:
-#cit("TUGInstmem") #cit("Thornburg01") #cit("CTANacmart").
+#cit("2004:ITE:1009386.1010128", "Kirschmer:2010:AEI:1958016.1958018"). Online citations:
+#cit("TUGInstmem", "Thornburg01", "CTANacmart").
 #if biblatex [
   Data Artifacts: #cit("UMassCitations").
   // GAP: software artifact cites (cgal/delebecque/gf-tag/simplemapper) use
@@ -507,6 +508,61 @@ review #cit("Baggett2025"). A couple of citations with DOIs:
 ] else [
   Artifacts: #cit("R") and #cit("UMassCitations").
 ]
+
+= Acknowledgments
+
+Identification of funding sources and other support, and thanks to individuals
+and groups that assisted in the research and the preparation of the work should
+be included in an acknowledgment section, which is placed just before the
+reference section in your document.
+
+This section has a special environment:
+```
+  \begin{acks}
+  ...
+  \end{acks}
+```
+so that the information contained therein can be more easily collected during
+the article metadata extraction phase, and to ensure consistency in the spelling
+of the section heading.
+
+Authors should not prepare this section as a numbered or unnumbered
+#raw("\\section"); please use the "#raw("acks")" environment.
+
+= Appendices
+
+If your work needs an appendix, add it before the "#raw("\\end{document}")"
+command at the conclusion of your source document.
+
+Start the appendix with the "#raw("appendix")" command:
+```
+  \appendix
+```
+and note that in the appendix, sections are lettered, not numbered. This
+document has two appendices, demonstrating the section and subsection
+identification method.
+
+= Multi-language papers
+
+Papers may be written in languages other than English or include titles,
+subtitles, keywords and abstracts in different languages (as a rule, a paper in
+a language other than English should include an English title and an English
+abstract). Use "#raw("language=...")" for every language used in the paper. The
+last language indicated is the main language of the paper. For example, a French
+paper with additional titles and abstracts in English and German may start with
+the following command
+```
+\documentclass[sigconf, language=english, language=german,
+               language=french]{acmart}
+```
+
+The title, subtitle, keywords and abstract will be typeset in the main language
+of the paper. The commands #raw("\\translatedXXX"), #raw("XXX") begin title,
+subtitle and keywords, can be used to set these elements in the other languages.
+The environment #raw("translatedabstract") is used to set the translation of the
+abstract. These commands and environment have a mandatory first argument: the
+language of the second argument. See #raw("sample-sigconf-i13n.tex") file for
+examples of their usage.
 
 #acks[
   To Robert, for the bagels and explaining CMYK and color spaces.
@@ -526,11 +582,7 @@ societal risks beyond those considered by institutional review boards, and the
 dimensions considered by any review of the user study design or dataset licenses
 could be provided in this statement.
 
-#if author-year {
-  acm-bibliography("/tests/twins/sample-base.bib")
-} else {
-  bibliography("/tests/twins/sample-base.bib")
-}
+#acm-bibliography("/tests/twins/sample-base.bib")
 
 // GAP: \appendix — acmart switches section numbering to letters (A, A.1, ...).
 // Emulated by resetting the heading counter and switching the numbering format.

@@ -23,6 +23,10 @@
 // Assembled as content (not a joined string) so the year int renders directly.
 #let pub-date(meta) = [#month-names.at(meta.acm-month - 1) #meta.acm-year]
 
+// Match LaTeX \@textsuperscript marks. Typst's super() scales its body further;
+// the Dingbats-style envelope needs less inner scaling than text glyph marks.
+#let note-super(mark) = super(text(size: if mark == "✉" { 1.05em } else { 1.22em })[#mark])
+
 // Join a list of names the ACM/amsart "andify" way ("a", "a and b",
 // "a, b, and c"). Items may be strings (author names) or content (names carrying
 // superscript note marks); the result is content in either case.
@@ -316,20 +320,38 @@
     set par(justify: true, leading: lead, first-line-indent: 0pt, spacing: lead)
 
     let anon = meta.anonymous
+    let has-contact-info = cfg.name != "acmcp" and meta.bibstrip and not anon and meta.authors.len() > 0 and meta.authors.any(a => a.affiliation != none or a.email != none)
+    let mode = meta.copyright
+    let ptext = permission-text(mode, cc-type: meta.cc-type, cc-version: meta.cc-version)
+    let has-copyright-info = cfg.name != "acmcp" and (
+      if meta.nonacm { mode == "cc" and ptext != none } else { true }
+    )
 
     // 1. Title/subtitle/author notes (regular footnotes, symbol marks). collect-notes
     // already excludes author notes under anonymity but keeps title/subtitle notes.
     if ni.notes.len() > 0 {
       rule(cfg.footnote-rule-short)
       for n in ni.notes {
-        block(spacing: lead, tagged-par[#super(n.symbol)#n.body])
+        block(spacing: lead, tagged-par[#note-super(n.symbol)#n.body])
+      }
+      if has-contact-info or has-copyright-info {
+        // These are separate LaTeX footnote streams (ordinary notes, then
+        // manyfoot authors-address/copyright streams). The later full-width
+        // rule is already bottom-aligned; add the measured inter-stream strut so
+        // the author-note rule/text sit at the LaTeX height above it.
+        let stream-gap = if meta.bibstrip {
+          2 * lead + cfg.footnote-rule-kern-below
+        } else {
+          lead
+        }
+        block(spacing: 0pt)[#box(width: 0pt, height: stream-gap)]
       }
     }
 
     // 2. Authors' Contact Information — only the journal/tog formats print this
     // footnote (\if@ACM@journal@bibstrip@or@tog, acmart.dtx:6592); the conference
     // formats carry contact info in the author grid instead. Suppressed if anon.
-    if cfg.name != "acmcp" and meta.bibstrip and not anon and meta.authors.len() > 0 and meta.authors.any(a => a.affiliation != none or a.email != none) {
+    if has-contact-info {
       rule(100%)
       let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
       let contacts = meta.authors.map(contact-line).join("; ")
@@ -339,8 +361,6 @@
     // 3. Copyright / permission (faithful to acmart's assembly). nonacm
     // suppresses this whole block — including the © line and ACM bibstrip —
     // except cc mode, which still prints its permission text (acmart.dtx:6599-6661).
-    let mode = meta.copyright
-    let ptext = permission-text(mode, cc-type: meta.cc-type, cc-version: meta.cc-version)
     if cfg.name == "acmcp" {
       // acmcp routes contact data to the cover infobox and suppresses the normal
       // copyright footnote block (acmart.dtx:6589/6604).
@@ -471,6 +491,7 @@
     #tagged-par[#meta.title#if mark != none { super(mark) }]
     #for (l, t) in meta.translated-title {
       parbreak()
+      v(0.51em, weak: true)
       text(lang: lang-record(l).code, t)
     }
   ]
@@ -489,15 +510,16 @@
     #tagged-par[#meta.subtitle#if mark != none { super(mark) }]
     #for (l, t) in meta.translated-subtitle {
       parbreak()
+      v(0.51em, weak: true)
       text(lang: lang-record(l).code, t)
     }
   ]
 }
 
-// Render an author's note marks as superscripts; the ✉ glyph is large, so shrink it.
+// Render an author's note marks as superscripts.
 #let render-marks(marks) = {
   for m in marks {
-    if m == "✉" { super(text(size: 0.72em)[#m]) } else { super(m) }
+    note-super(m)
   }
 }
 

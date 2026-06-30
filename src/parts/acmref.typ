@@ -821,7 +821,6 @@
       } else {
         grid(columns: (2.4em, 1fr), gutter: 0pt, [[#(i + 1)]], body)
       }
-      v(0.2em, weak: true)
     }
   }
 }

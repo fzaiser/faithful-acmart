@@ -6,6 +6,7 @@
 //   subsection (2):    sffamily bfseries, mixed case, before .75bl, after .25bl
 //   subsubsection (3): sffamily itshape, run-in (negative afterskip), dot
 //   paragraph (4):     itshape (serif),  run-in, indented \parindent, dot
+//   subparagraph (5):  inherited amsart run-in body font, no added dot
 // where bl = \baselineskip. Section number is followed by \quad (1em). secnumdepth
 // is 3, so paragraphs (level 4) are unnumbered. The paragraph after a heading is
 // not indented (Typst handles this via first-line-indent (all: false)). (acmart
@@ -31,13 +32,14 @@
 // Run-in heading: heading text flows inline, the following paragraph continues
 // on the same line. Returning inline content from the show rule achieves this;
 // a weak v() supplies the vertical space before without breaking the run-in.
-#let run-in-heading(it, cfg, before: 0pt, indent: 0pt, f: (:), num: none) = {
+#let run-in-heading(it, cfg, before: 0pt, indent: 0pt, f: (:), num: none, dot: true) = {
   v(before, weak: true)
   // Cancel the automatic first-line indent down to the desired `indent`.
   h(indent - cfg.parindent)
   set text(font: f.font, style: f.style, weight: f.weight, size: f.size)
   if num != none [#num#h(1em)]
-  [#it.body.]
+  it.body
+  if dot [.]
   h(cfg.runin-sep) // horizontal gap to the body text (|afterskip|)
 }
 
@@ -67,9 +69,16 @@
     // subsubsection: before .5bl, run-in
     run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: 0pt,
       f: sec-font(cfg, "subsubsection"), num: num)
-  } else {
+  } else if lvl == 4 {
     // paragraph: indented, run-in, before .5bl, unnumbered (secnumdepth 3)
     run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: cfg.parindent,
       f: sec-font(cfg, "paragraph"), num: none)
+  } else {
+    // subparagraph: acmart does not override the base \subparagraph in the
+    // generic/journal formats; the upstream sample shows an unstyled run-in title
+    // with no added dot and no paragraph indent.
+    run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: 0pt,
+      f: (font: cfg.fonts.body, weight: "regular", style: "normal", size: cfg.size.normalsize),
+      num: none, dot: false)
   }
 }

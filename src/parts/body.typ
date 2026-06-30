@@ -1,4 +1,4 @@
-// Body elements for acmsmall: captions, lists, and figure spacing.
+// Body elements: captions, lists, tables, code, display math, footnotes.
 //
 // acmsmall (journal) caption: sans-serif small (9pt), label and text same
 // weight, period label separator; figure named "Fig.", table caption on top.
@@ -8,18 +8,22 @@
 #import "spacing.typ": comp, tex-skip
 
 #let apply-body(cfg, body) = {
-  // Figure/table supplements and caption separator
-  // Figure name is "Fig." in every language (acmart sets it globally, not via a
-  // babel caption; acmart.dtx:4199). The table name follows the main language.
-  show figure.where(kind: image): set figure(supplement: [Fig.])
+  // Figure/table supplements and caption separator. Journals use "Fig.";
+  // proceedings keep caption's default "Figure" name. The table name follows the
+  // main language, as in acmart's babel caption hooks.
+  show figure.where(kind: image): set figure(supplement: if cfg.bibstrip { [Fig.] } else { [Figure] })
   show figure.where(kind: table): set figure(supplement: cfg.strings.table)
   show figure.where(kind: table): set figure.caption(position: top)
-  set figure.caption(separator: [. ])
+  set figure.caption(separator: if cfg.bibstrip or cfg.name == "sigplan" { [. ] } else { [: ] })
 
   // Caption typography + singlelinecheck (center if one line, else left-justify)
   show figure.caption: it => context {
-    set text(font: cfg.fonts.sans, size: cfg.size.small)
-    set par(leading: comp(cfg, sz: "small"))
+    let cap-font = if cfg.bibstrip { cfg.fonts.sans } else { cfg.fonts.body }
+    let cap-weight = if cfg.bibstrip or cfg.name == "sigplan" { "regular" } else { "bold" }
+    let cap-size = if cfg.bibstrip { cfg.size.small } else { cfg.size.normalsize }
+    let cap-step = if cfg.bibstrip { "small" } else { "normalsize" }
+    set text(font: cap-font, weight: cap-weight, size: cap-size)
+    set par(leading: comp(cfg, sz: cap-step))
     layout(size => {
       let w = measure(it).width
       if w <= size.width {
@@ -37,8 +41,23 @@
   show figure: set block(above: cfg.intextsep, below: cfg.intextsep)
   set figure(gap: cfg.abovecaptionskip)
 
-  // Tables: booktabs-like tight rows (Typst's default inset is too tall).
-  set table(inset: (x: 0.6em, y: 0.28em), stroke: none)
+  // Tables: booktabs-like tight rows. booktabs.sty v1.61803398 sets
+  // \lightrulewidth=.05em and \heavyrulewidth=.08em; the default hline is the
+  // light rule, with top/bottom rules opt-in at the table source.
+  set table(
+    inset: (left: 0.6em, right: 0.6em, top: 0.11em, bottom: 0.36em),
+    stroke: none,
+  )
+  set table.hline(stroke: 0.05em)
+
+  // Display equations in acmart/amsart are numbered by default and carry
+  // generous \abovedisplayskip/\belowdisplayskip. Typst's native display math is
+  // visually too tight, so wrap only block equations in TeX-like vertical space.
+  set math.equation(numbering: "(1)")
+  show math.equation.where(block: true): set block(
+    above: tex-skip(cfg, cfg.medskip),
+    below: tex-skip(cfg, cfg.medskip),
+  )
 
   // amsart list labels (inherited by acmsmall; amsart.cls:870-884):
   //   enumerate: (1) / (a) / (i) / (A)   itemize: • / bold – / ∗ / ·
@@ -60,8 +79,24 @@
     indent: cfg.list-leftmargin - 2 * cfg.list-labelsep, body-indent: cfg.list-labelsep,
     spacing: list-gap)
 
-  // Monospace (Inconsolata/zi4) for inline and block code.
-  show raw: set text(font: cfg.fonts.mono)
+  // Monospace (Inconsolata/zi4) for inline and block code. Typst's raw default
+  // is smaller than LaTeX \texttt/verbatim; force it back to the surrounding
+  // font size, and give display code the same smallskip-style breathing room as
+  // LaTeX's verbatim/trivlist.
+  show raw: it => {
+    set text(font: cfg.fonts.mono, size: 1.25em)
+    if it.block {
+      block(above: tex-skip(cfg, cfg.smallskip), below: tex-skip(cfg, cfg.smallskip))[
+        #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: 0pt)
+        #for (i, l) in it.lines.enumerate() {
+          if i > 0 { linebreak() }
+          l.body
+        }
+      ]
+    } else {
+      it.lines.first().body
+    }
+  }
 
   // Bibliography: vendored ACM CSL (../styles, forked to track the bundled
   // ACM-Reference-Format.bst — see its header), footnotesize (8pt), "References".

@@ -496,34 +496,34 @@ TESTS: dict[str, Test] = {
     # ragged-bottom, so Typst typically runs 1-2 pages shorter on multi-page docs.
     # text_equal=False / order_diff: see _SAMPLE_COMMON above.
     "sample-acmsmall": Test(
-        kind="twin", pages=10, **_SAMPLE_COMMON,
+        kind="twin", pages=11, **_SAMPLE_COMMON,
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
-        kind="twin", pages=9, **_SAMPLE_COMMON,
+        kind="twin", pages=10, **_SAMPLE_COMMON,
         note="upstream manuscript sample (manuscript,screen,review + proceedings "
              "metadata). Single-column review style with margin line numbers.",
     ),
     "sample-acmlarge": Test(
-        kind="twin", pages=10, **_SAMPLE_COMMON,
+        kind="twin", pages=11, **_SAMPLE_COMMON,
         note="upstream acmlarge sample (wide single-column journal, POMACS).",
     ),
     "sample-sigconf": Test(
-        kind="twin", pages=6, **_SAMPLE_COMMON,
+        kind="twin", pages=7, **_SAMPLE_COMMON,
         note="upstream sigconf sample: two-column proceedings, spanning title, "
              "centred author grid, teaser figure.",
     ),
     "sample-sigplan": Test(
-        kind="twin", pages=6, **_SAMPLE_COMMON,
+        kind="twin", pages=7, **_SAMPLE_COMMON,
         note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
     ),
     "sample-acmsmall-submission": Test(
-        kind="twin", pages=9, **_SAMPLE_COMMON,
+        kind="twin", pages=10, **_SAMPLE_COMMON,
         note="upstream acmsmall double-anonymous review sample "
              "(screen,anonymous,review): anonymized author strip + line numbers.",
     ),
     "sample-acmsmall-conf": Test(
-        kind="twin", pages=10, **_SAMPLE_COMMON,
+        kind="twin", pages=11, **_SAMPLE_COMMON,
         note="upstream acmsmall-for-a-conference sample (acmsmall journal format "
              "with conference metadata replacing the journal metadata).",
     ),
@@ -538,26 +538,26 @@ TESTS: dict[str, Test] = {
              "conference metadata + teaser; author-year citations via the bst backend).",
     ),
     "sample-sigconf-i13n": Test(
-        kind="twin", pages=6, **_SAMPLE_COMMON,
+        kind="twin", pages=7, **_SAMPLE_COMMON,
         note="upstream sigconf internationalization sample: \\translatedtitle + "
              "translatedabstract in French/German/Spanish (English main), each "
              "abstract headed by its babel \\abstractname.",
     ),
     "sample-sigconf-authordraft": Test(
-        kind="twin", pages=6, golden=False, **_SAMPLE_COMMON,
+        kind="twin", pages=7, golden=False, **_SAMPLE_COMMON,
         note="upstream sigconf authordraft sample: draft watermark + line numbers "
              "+ inner-edge timestamp. The timestamp embeds the compile date, so "
              "output is non-deterministic — compile-only (no golden), like draft-test.",
     ),
     "sample-acmsmall-biblatex": Test(
-        kind="twin", pages=10, **_SAMPLE_COMMON,
+        kind="twin", pages=11, **_SAMPLE_COMMON,
         note="upstream acmsmall-biblatex sample: acmsmall with BibLaTeX acmauthoryear "
              "style (author-year). Software artifact cites from software.bib "
              "(@software/@softwaremodule/@codefragment) are omitted — these biblatex-"
              "software entry types have no equivalent in the bst backend.",
     ),
     "sample-sigconf-biblatex": Test(
-        kind="twin", pages=6, **_SAMPLE_COMMON,
+        kind="twin", pages=7, **_SAMPLE_COMMON,
         note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
              "(numeric). Software artifact cites from software.bib are omitted (same "
              "reason as sample-acmsmall-biblatex).",
