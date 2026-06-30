@@ -388,10 +388,11 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1,
         note="inline math ($...$) in reference fields via the bst backend: greek "
              "letters, ^/_ super/subscripts, relations and text operators (\\log etc.) "
-             "decode to base Unicode in bibtex.typ's decode-math, which the char bag's "
+             "decode to base Unicode in tex.typ's decode-math, which the char bag's "
              "NFKC fold collapses to match LaTeX's math-italic pdftotext output (𝜆->λ, "
-             "²->2). Also exercises the `tex-macros` user escape hatch for custom "
-             "commands (\\widget, \\RR). Char bag gated, no exemption.",
+             "²->2). Also exercises the `tex-render` override (composed with "
+             "default-tex-render) for custom commands (\\widget, \\RR). Char bag gated, "
+             "no exemption.",
         text_assertions=(
             Assertion(engine="both", text="-calculus"),              # $\lambda$-calculus
         ),

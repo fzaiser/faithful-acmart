@@ -253,16 +253,32 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     behaviour. *Caveat:* Typst validates a `#bibliography` source through hayagriva
     when it constructs the element, so a file hayagriva can't parse errors before the
     rule fires — `acm-bibliography(path)` bypasses hayagriva entirely.
+  - **TeX-string handling follows BibTeX literally** (`src/parts/tex.typ`). BibTeX
+    never normalizes to Unicode — it carries the **raw** TeX string through its whole
+    pipeline and only applies two string→string built-ins: `purify$` (sort keys) and
+    `change.case$` (display case), both math-blind and brace/special-character aware.
+    We port both *exactly* — quoting `bibtex.web` (`x_purify`, `x_change_case`, the
+    13-entry `control_seq_ilk` foreign-letter table) and oracle-testing against the
+    real bibtex binary in `tests/unit/tex.typ`. Field values therefore stay raw TeX
+    until a **single render seam**: `tex-to-content` (accents/special letters/inline
+    math → Unicode, `\url`/`\href` → links, `\emph` → italics), applied once per
+    visible field in `acmref.typ` via `render`. Sort/cite labels use `tex-to-string`
+    (the text-only backbone) instead — never overridable, since changing them would
+    corrupt ordering.
   - **Inline math (`$…$`) in fields** — a curated subset, enough for the maths that
     actually appears in titles (`$\lambda$-calculus`, `$\chi^2$`, `$\Theta(n)$`,
-    `$O(n\log n)$`). `bibtex.typ`'s `decode-math` maps greek + relations + text
-    operators to **base** Unicode and `^`/`_` to Unicode super/subscripts; these
-    NFKC-fold to exactly what LaTeX's math-italic output extracts as
-    (`𝜆`→`λ`, `²`→`2`), so the `mathfields` twin gates them with no exemption.
-    Beyond the table, the **`tex-macros` option** (keyed by bare command name) lets a
-    user supply replacements for custom commands — in both text and math — covering
-    the `\newcommand` case without a TeX engine. Full equations / arbitrary nested
-    constructs are still out of scope (unknown commands pass through verbatim).
+    `$O(n\log n)$`). `tex.typ`'s `decode-math` maps greek + relations + text operators
+    to **base** Unicode and `^`/`_` to Unicode super/subscripts; these NFKC-fold to
+    exactly what LaTeX's math-italic output extracts as (`𝜆`→`λ`, `²`→`2`), so the
+    `mathfields` twin gates them with no exemption.
+  - **The `tex-render` option** is the single user override of that seam: a callback
+    `(raw-tex: str) => content` (default `auto` = `tex-to-content`). Compose with the
+    default — exported as `default-tex-render` — to extend it, e.g.
+    `tex-render: s => default-tex-render(s.replace("\\myunit", "kg"))`, covering the
+    `\newcommand` case without a TeX engine. (This replaces the old string→string
+    `tex-macros` dict, which couldn't take arguments or produce real content.) Full
+    equations / arbitrary nested constructs remain out of scope (unknown commands pass
+    through verbatim, for the override to handle).
 
   **Not ported** (genuinely out of reach, or faithful to omit — the exhaustive list):
   - **ISBN / ISBN-13 / ISSN / CODEN / LCCN.** Emitted by the `.bst` but suppressed by
@@ -270,12 +286,12 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     `\unskip` fallback eats them), so omitting them is *faithful to stock acmart*. A
     user who redefines `\showISBNx` to surface them can't via this backend; the
     `show-isbn-10-and-13` branch is unimplemented because no acmart format reaches it.
-  - **Arbitrary / full-equation TeX** beyond the `decode-math` table and `tex-macros`
-    — *unbounded by nature*. A field can contain any TeX (multi-line display math,
-    macros that expand to layout, `\newcommand`s pulled from the preamble);
-    interpreting all of it would mean embedding a TeX engine. We decode the finite set
-    titles use, let `tex-macros` patch the rest, and pass anything unknown through
-    verbatim.
+  - **Arbitrary / full-equation TeX** beyond the `decode-math` table and the
+    `tex-render` override — *unbounded by nature*. A field can contain any TeX
+    (multi-line display math, macros that expand to layout, `\newcommand`s pulled from
+    the preamble); interpreting all of it would mean embedding a TeX engine. We decode
+    the finite set titles use, let a `tex-render` callback patch the rest, and pass
+    anything unknown through verbatim.
   - **BibTeX warnings** (missing year, empty author, bad page ranges…) are not emitted
     — by choice, not necessity. Rendering is best-effort and silent;
     `\begin{thebibliography}{width}` label-width (`longest.label`) is moot since Typst

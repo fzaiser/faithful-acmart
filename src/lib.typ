@@ -25,7 +25,9 @@
 #import "parts/strings.typ": resolve-language, lang-record
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
-#import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citeyear, bbl-citeauthor, bbl-bibliography, cite-style-state, tex-macros-state
+#import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citeyear, bbl-citeauthor, bbl-bibliography, cite-style-state, tex-render-state
+// the built-in "bst" field renderer, exported so a custom `tex-render` can wrap it
+#import "parts/tex.typ": tex-to-content as default-tex-render
 
 // "bst" bibliography backend (pure-Typst ACM-Reference-Format port). Use these in
 // place of `@key` / `#bibliography(...)` when `bibliography-backend: "bst"`.
@@ -131,10 +133,14 @@
   // Citation style for the "bst" backend, mirroring acmart's \citestyle:
   // "numeric" (default, "[N]") or "author-year" ("[Author Year]" + a/b/c years).
   cite-style: "numeric",
-  // Extra/override TeX-command decodings for the "bst" backend, keyed by bare
-  // command name (a leading "\" is tolerated): e.g. (RR: "ℝ", "\\myunit": "kg").
-  // Applied in both text and inline math ($...$); overrides the built-in tables.
-  tex-macros: (:),
+  // Override how the "bst" backend renders the RAW TeX of a reference field to
+  // content: a function `(raw-tex: str) => content`. `auto` uses the built-in
+  // renderer (accents/special letters/inline math -> Unicode, \url/\href ->
+  // links, \emph -> italics). Compose with the default to extend it, e.g.
+  //   tex-render: s => default-tex-render(s.replace("\\myunit", "kg"))
+  // (import `default-tex-render` alongside `acmart`). Only the *presentation* is
+  // overridable; sort/cite labels always use the built-in text normalization.
+  tex-render: auto,
   short-title: auto,
   short-authors: auto,
   // --- acmart class & \settopmatter options ---
@@ -254,7 +260,7 @@
   assert(cite-style in ("numeric", "author-year"),
     message: "acmart: `cite-style` must be \"numeric\" or \"author-year\".")
   cite-style-state.update(cite-style)
-  tex-macros-state.update(tex-macros)
+  if tex-render != auto { tex-render-state.update(_ => tex-render) }
 
   // The translated-* top matter requires `language` (acmart \ACM@lang@check,
   // acmart.dtx:3346) — a secondary-language block is meaningless monolingual.

@@ -13,53 +13,29 @@
 
 #import "bibtex.typ": read-bib, parse-names
 #import "bib-data.typ": journal-canon
+#import "tex.typ": tex-to-string, tex-to-content, purify, change-case
 
 // ACM journal.canon.abbrev: map a full journal name to its canonical abbreviation
 #let canon-abbrev(j) = journal-canon.at(j, default: j)
 
-// ---- TeX text ligatures the .bst output relies on -------------------------
-// (TeX accents \"o etc. are already decoded in the parser, before name tokenizing.)
-#let tx(s) = {
-  if type(s) != str { return s }
-  // strip the few TeX macros that survive parsing into field values
-  s = s.replace(regex("\\\\(?:url|href|emph|text(?:bf|it|sc|rm))\s*\{([^}]*)\}"), m => m.captures.at(0))
-  s = s.replace("\\LaTeX", "LaTeX").replace("\\TeX", "TeX").replace("\\BibTeX", "BibTeX")
-  s = s.replace("~", " ").replace("\\&", "&").replace("\\ ", " ").replace("\\,", "\u{2009}")
-  s = s.replace("{", "").replace("}", "")   // drop remaining grouping braces ({ACM} -> ACM)
-  s = s.replace("---", "\u{2014}").replace("--", "\u{2013}")
-  s = s.replace("``", "\u{201C}").replace("''", "\u{201D}")
-  s = s.replace("`", "\u{2018}").replace("'", "\u{2019}")
-  s
-}
-
-// tex string -> content, turning \url{U} / \href{U}{T} into real Typst links
-// (acmart loads hyperref, so these are clickable in LaTeX too). Link targets and
-// \url display text stay verbatim (no tx — URLs keep ~, etc.).
-#let txc(s) = {
-  if type(s) != str { return s }
-  let out = []
-  let rest = s
-  let re = regex("\\\\url\s*\{([^}]*)\}|\\\\href\s*\{([^}]*)\}\s*\{([^}]*)\}")
-  while true {
-    let m = rest.match(re)
-    if m == none { out = out + tx(rest); break }
-    out = out + tx(rest.slice(0, m.start))
-    if m.captures.at(0) != none {
-      let u = m.captures.at(0)
-      out = out + link(u)[#u]
-    } else {
-      out = out + link(m.captures.at(1))[#tx(m.captures.at(2))]
-    }
-    rest = rest.slice(m.end)
-  }
-  out
-}
+// ---- the render seam ------------------------------------------------------
+// Field values flow through the formatter as RAW TeX (BibTeX-style); the single
+// string->content boundary is `render`, the active `tex-render` callback (the
+// acmart() option, default tex-to-content). Every helper that emits *visible*
+// field text routes through it, so a user override sees the raw TeX of every
+// title/journal/note. The whole reference renders inside bbl-bibliography's
+// `context`, so reading the state here resolves. Sort/cite *labels* instead use
+// tex-to-string (a plain string, for comparison/sorting) — never overridable,
+// since changing them would corrupt ordering.
+#let tex-render-state = state("acmref-texrender", tex-to-content)
+#let render(s) = (tex-render-state.get())(s)
 #let ends-punct(s) = {
   let t = s.trim()
   t != "" and t.last() in (".", "!", "?")
 }
-// a value carried through the emitter: content + whether its text ends in .?!
-#let V(text, c: none) = (c: if c == none { tx(text) } else { c }, p: ends-punct(text))
+// a value carried through the emitter: rendered content + whether its raw text
+// ends in .?! (drives the .bst add.period$ / block separators)
+#let V(text, c: none) = (c: render(if c == none { text } else { c }), p: ends-punct(text))
 #let it = emph
 
 // ---- output state machine -------------------------------------------------
@@ -160,16 +136,16 @@
 #let format-articletitle(e) = if has(e, "title") { V(fld(e, "title")) } else { none }
 #let format-title(e) = if has(e, "title") { V(fld(e, "title")) } else { none }
 #let format-title-emph(e) = if has(e, "title") {
-  (c: it(tx(fld(e, "title"))), p: ends-punct(fld(e, "title")))
+  (c: it(render(fld(e, "title"))), p: ends-punct(fld(e, "title")))
 } else { none }
 
 // emph(title) + " (Nth ed.)"  — for book/proceedings btitle & booktitle
 #let title-with-edition(e, raw) = {
   if raw == none or raw.trim() == "" { return none }
-  let body = it(tx(raw))
+  let body = it(render(raw))
   if has(e, "edition") {
     let ed = lower(fld(e, "edition"))
-    (c: body + " (" + tx(ed) + " ed.)", p: false)
+    (c: body + " (" + render(ed) + " ed.)", p: false)
   } else { (c: body, p: ends-punct(raw)) }
 }
 #let format-btitle(e) = title-with-edition(e, fld(e, "title"))
@@ -189,14 +165,14 @@
   // "Number <n> in <series>" when a number is present and volume is absent.
   if has(e, "volume") { return none }
   if has(e, "number") and has(e, "series") {
-    (c: "Number " + fld(e, "number") + " in " + tx(fld(e, "series")), p: false)
+    (c: "Number " + fld(e, "number") + " in " + render(fld(e, "series")), p: false)
   } else { none }
 }
 
 // format.series: " (series)" / " (series, number)" / " (series, Vol. N)" (emph), leading space
 #let format-series(e) = {
   if not has(e, "series") { return none }
-  let inner = tx(fld(e, "series"))
+  let inner = render(fld(e, "series"))
   if has(e, "volume") { inner = inner + ", Vol.\u{00A0}" + fld(e, "volume") }
   else if has(e, "number") { inner = inner + ", " + fld(e, "number") }
   (c: " " + it("(" + inner + ")"), p: false)
@@ -206,13 +182,11 @@
 #let dashify(s) = s.replace("--", "\u{2013}").replace("-", "\u{2013}")
 #let format-pages(e) = if has(e, "pages") { (c: dashify(fld(e, "pages")), p: false) } else { none }
 #let format-bookpages(e) = if has(e, "bookpages") {
-  (c: tx(fld(e, "bookpages")) + " book pages", p: false) } else { none }
+  (c: render(fld(e, "bookpages")) + " book pages", p: false) } else { none }
 // chapter + pages, or just pages
-// change.case$ "t": first char of the string upper, the rest lower
-#let title-case(s) = if s == "" { s } else { upper(s.slice(0, 1)) + lower(s.slice(1)) }
 #let format-chapter-pages(e) = {
   if has(e, "chapter") {
-    let ty = if has(e, "type") { tx(title-case(fld(e, "type"))) } else { "Chapter" }
+    let ty = if has(e, "type") { render(change-case(fld(e, "type"), "t")) } else { "Chapter" }
     let r = ty + " " + fld(e, "chapter")
     if has(e, "pages") { r = r + ", " + dashify(fld(e, "pages")) }
     (c: r, p: false)
@@ -245,16 +219,19 @@
 }
 
 // ---- date / journal -------------------------------------------------------
-#let format-day-month-year(e) = {
-  // optional ", Article N" prefix, then " (month year)" / " (day month year)"
+// optional ", Article N" prefix, then "(month year)"/"(day month year)", joined
+// by a leading space (`lead`); `lead: false` drops it for standalone use (the
+// content can't be .trim()ed once rendered, unlike the old decoded string).
+#let format-day-month-year(e, lead: true) = {
   let art = articleno-of(e)
   let pre = if art != none { ", Article " + art } else { "" }
+  let sp = if lead { " " } else { "" }
   if not has(e, "month") {
-    if has(e, "year") { (c: pre + " (" + fld(e, "year") + ")", p: false) }
+    if has(e, "year") { (c: pre + sp + "(" + fld(e, "year") + ")", p: false) }
     else if art != none { (c: pre, p: false) } else { none }
   } else {
     let d = if has(e, "day") { fld(e, "day") + " " } else { "" }
-    (c: pre + " (" + tx(fld(e, "month")) + " " + d + fld(e, "year") + ")", p: false)
+    (c: pre + sp + "(" + render(fld(e, "month")) + " " + d + fld(e, "year") + ")", p: false)
   }
 }
 // "N pages" when articleno present (numpages, or reduced from pages)
@@ -264,7 +241,7 @@
 }
 #let format-journal-block(e) = {
   if not has(e, "journal") { return none }
-  let c = it(tx(canon-abbrev(fld(e, "journal"))))
+  let c = it(render(canon-abbrev(fld(e, "journal"))))
   if has(e, "number") {
     c = c + " " + fld(e, "volume") + ", " + fld(e, "number")
   } else if has(e, "volume") {
@@ -275,7 +252,7 @@
   (c: c, p: false)
 }
 #let format-journal-underreview(e) = {
-  let pre = if has(e, "journal") { it(tx(canon-abbrev(fld(e, "journal")))) + "." } else { [] }
+  let pre = if has(e, "journal") { it(render(canon-abbrev(fld(e, "journal")))) + "." } else { [] }
   (c: pre + " Manuscript submitted for review", p: false)
 }
 
@@ -285,9 +262,9 @@
   let loc = if has(e, "location") { fld(e, "location") } else if has(e, "city") { fld(e, "city") } else { none }
   let date = if has(e, "date") { fld(e, "date") } else { none }
   if loc == none and date == none { "" }
-  else if loc == none { " (" + tx(date) + ")" }
-  else if date == none { " (" + tx(loc) + ")" }
-  else { " (" + tx(loc) + ", " + tx(date) + ")" }
+  else if loc == none { " (" + render(date) + ")" }
+  else if date == none { " (" + render(loc) + ")" }
+  else { " (" + render(loc) + ", " + render(date) + ")" }
 }
 #let format-in-emph-booktitle(e) = {
   let bt = format-emph-booktitle(e)
@@ -304,14 +281,15 @@
   (c: c, p: false)
 }
 #let format-venue(e) = if has(e, "venue") {
-  (c: "Presentation at " + tx(fld(e, "venue")), p: false) } else { none }
+  (c: "Presentation at " + render(fld(e, "venue")), p: false) } else { none }
 
 // ---- thesis / techreport --------------------------------------------------
-#let format-thesis-type(e, default) = (c: tx(if has(e, "type") { fld(e, "type") } else { default }), p: ends-punct(if has(e, "type") { fld(e, "type") } else { default }))
+#let format-thesis-type(e, default) = (c: render(if has(e, "type") { fld(e, "type") } else { default }), p: ends-punct(if has(e, "type") { fld(e, "type") } else { default }))
 #let format-tr-number(e) = {
-  let ty = if has(e, "type") { tx(fld(e, "type")) } else { "Technical Report" }
+  let raw = if has(e, "type") { fld(e, "type") } else { "Technical Report" }
+  let ty = render(raw)
   if has(e, "number") { (c: ty + " " + fld(e, "number"), p: false) }
-  else { (c: ty, p: ends-punct(ty)) }
+  else { (c: ty, p: ends-punct(raw)) }
 }
 #let format-advisor(e) = if has(e, "advisor") {
   V("Advisor(s) " + fld(e, "advisor")) } else { none }
@@ -336,10 +314,10 @@
   let pre = if has(e, "volume") { [Volume #fld(e, "volume") of ] } else { [In ] }
   let ed-empty = not has(e, "editor") or fld(e, "editor") == fld(e, "author", d: "\u{0}")
   let mid = if ed-empty {
-    if has(e, "key") { tx(fld(e, "key")) }
-    else if has(e, "series") { it(tx(fld(e, "series"))) }
+    if has(e, "key") { render(fld(e, "key")) }
+    else if has(e, "series") { it(render(fld(e, "series"))) }
     else { [] }
-  } else { format-crossref-editor(e) }
+  } else { render(format-crossref-editor(e)) }
   (c: pre + mid + [ ] + xref-cite, p: false)
 }
 
@@ -371,7 +349,7 @@
 #let trailing(e) = {
   let items = ()
   if has(e, "note") {
-    let n = txc(fld(e, "note"))
+    let n = render(fld(e, "note"))
     items.push(if ends-punct(fld(e, "note")) { n } else { n + [.] })
   }
   if has(e, "issue") { items.push("Issue " + fld(e, "issue") + ".") }
@@ -385,7 +363,7 @@
   let distinct-url = has(e, "distincturl") and fld(e, "distincturl") != "0"
   if has(e, "url") and (not has(e, "doi") or distinct-url) {
     let u = fld(e, "url")
-    let r = if has(e, "lastaccessed") { [Retrieved #tx(fld(e, "lastaccessed")) from #link(u)[#u]] } else { link(u)[#u] }
+    let r = if has(e, "lastaccessed") { [Retrieved #render(fld(e, "lastaccessed")) from #link(u)[#u]] } else { link(u)[#u] }
     if has(e, "archived") { r = r + [, archived at \[#link(fld(e, "archived"))[#fld(e, "archived")]\]] }
     items.push(r)
   }
@@ -567,8 +545,8 @@
     em = nblock(em)
     em = out(em, format-title(e))          // plain title (not emphasized)
     em = nsentence(em)
-    let ymd = format-day-month-year(e)
-    if ymd != none { em = out(em, (c: ymd.c.trim(), p: false)) }
+    let ymd = format-day-month-year(e, lead: false)
+    if ymd != none { em = out(em, ymd) }
     em = out(em, format-page-count(e))
     // note is required for @unpublished and emitted by the shared trailing block
   } else if t == "misc" or t == "booklet" {
@@ -621,15 +599,12 @@
 // "numeric" (default) or "author-year" — set by the acmart show rule from the
 // `cite-style` option, mirroring acmart's \citestyle{acmnumeric|acmauthoryear}.
 #let cite-style-state = state("acmref-citestyle", "numeric")
-// user TeX-macro overrides for field decoding (acmart() `tex-macros` option)
-#let tex-macros-state = state("acmref-texmacros", (:))
 
 // accept a single path or a list of paths; later files override earlier keys
 #let read-merged(paths) = {
-  let tm = tex-macros-state.final()
   let ps = if type(paths) == array { paths } else { (paths,) }
   let db = (:)
-  for p in ps { db = db + read-bib(p, tex-macros: tm) }
+  for p in ps { db = db + read-bib(p) }
   db
 }
 
@@ -691,8 +666,8 @@
   let t = e.entry-type
   let au = if has(e, "author") { format-lab-names(e.names.author) }
   let ed = if has(e, "editor") { format-lab-names(e.names.editor) }
-  let org = if has(e, "organization") { tx(fld(e, "organization")) }
-  let key = if has(e, "key") { tx(fld(e, "key")) }
+  let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
+  let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
   let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "dataset", "preprint")
   if t in ("book", "inbook", "article") { pick((au, ed, key)) }
   else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key)) }

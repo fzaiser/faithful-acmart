@@ -1,8 +1,8 @@
 %% mathfields — basic inline-math ($...$) in reference fields via the bst backend:
 %% greek letters, super/subscripts, relations and text operators map to base Unicode
 %% (which the text gate's NFKC folds to match LaTeX's math-italic output), plus the
-%% user `tex-macros` escape hatch for custom commands (\widget, \RR). LaTeX twin of
-%% mathfields.typ.
+%% `tex-render` override (composed with default-tex-render) for custom commands
+%% (\widget, \RR). LaTeX twin of mathfields.typ.
 \documentclass[acmsmall,nonacm]{acmart}
 \pagestyle{empty}
 \settopmatter{printacmref=false}

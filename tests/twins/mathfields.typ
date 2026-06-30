@@ -1,9 +1,10 @@
-#import "/src/lib.typ": acmart, acm-cite, acm-bibliography
+#import "/src/lib.typ": acmart, acm-cite, acm-bibliography, default-tex-render
 #show: acmart.with(
   format: "acmsmall",
   bibliography-backend: "bst",
-  // custom commands LaTeX defines via \newcommand; \RR -> ℝ (NFKC-folds to R)
-  tex-macros: (widget: "W", RR: "ℝ"),
+  // custom commands LaTeX defines via \newcommand: compose with the default
+  // renderer to expand them first (\widget -> W, \RR -> ℝ, which NFKC-folds to R).
+  tex-render: s => default-tex-render(s.replace("\\widget", "W").replace("\\RR", "ℝ")),
 )
 
 #let keys = ("lam", "greek", "custom")
