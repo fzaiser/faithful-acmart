@@ -187,8 +187,14 @@
 // \@specialsection does `\par\medskip\small ...`, so the gap is \medskip before
 // 9pt text (tex-skip with sz: "small"). See DESIGN.md "block vertical spacing".
 #let special-line(cfg, label, content) = {
-  v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
-  fm-block(cfg, [#label: #content], justify: false, spacing: comp(cfg, sz: "small"), chunk: true)
+  // Journals (bibstrip) run these in at \small with a plain label; sigplan uses
+  // \noindentparagraph (a level-4 run-in heading) at normalsize, so the LABEL takes
+  // the paragraph heading style — bold italic (\@specialsection, acmart.dtx:6790).
+  let sz = if cfg.bibstrip { "small" } else { "normalsize" }
+  let pf = cfg.sec-fonts.paragraph
+  let head = if cfg.bibstrip { [#label:] } else { text(weight: pf.weight, style: pf.style)[#label:] }
+  v(tex-skip(cfg, cfg.medskip, sz: sz), weak: true)
+  fm-block(cfg, [#head #content], sz: sz, justify: false, spacing: comp(cfg, sz: sz), chunk: true)
 }
 
 // Assign footnote symbols across the whole top matter, matching acmart's shared

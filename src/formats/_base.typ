@@ -101,11 +101,11 @@
   // (\LARGE\sffamily\bfseries title, \normalsize\mdseries subtitle).
   title-font: (family: "sans", weight: "bold", size: "LARGE"),
   subtitle-font: (family: "sans", weight: "regular", size: "normalsize"),
-  // \@authorfont / \@affiliationfont in the conference author grid
-  // (acmart.dtx:7206). Default = the acmsmall journal-list fonts; conf formats
-  // override (e.g. sigconf name=serif LARGE, affiliation=serif large).
-  author-font: (family: "sans", weight: "regular", size: "large"),
-  affil-font: (family: "serif", weight: "regular", size: "small"),
+  // \@authorfont / \@affiliationfont (acmart.dtx:7191/7199). Default = acmart's
+  // generic \Large\sffamily name / \normalsize\normalfont affiliation (used by
+  // acmlarge + manuscript); acmsmall and the conference formats override.
+  author-font: (family: "sans", weight: "regular", size: "Large"),
+  affil-font: (family: "serif", weight: "regular", size: "normalsize"),
   bibstrip: true,              // journal footer (\if@ACM@journal)
   sans-default: false,
   urlstyle-sans: false,

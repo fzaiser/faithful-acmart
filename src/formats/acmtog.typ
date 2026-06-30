@@ -25,9 +25,10 @@
   // \@titlefont \Huge\sffamily (no bold) ; \@subtitlefont \LARGE (sans)
   title-font: (family: "sans", weight: "regular", size: "Huge"),
   subtitle-font: (family: "sans", weight: "regular", size: "LARGE"),
-  // \@authorfont \LARGE\sffamily ; \@affiliationfont \large (acmart.dtx:7213)
+  // \@authorfont \LARGE\sffamily ; \@affiliationfont \large — no \normalfont, so the
+  // affiliation inherits the sans author font (acmart.dtx:7213), unlike acmsmall.
   author-font: (family: "sans", weight: "regular", size: "LARGE"),
-  affil-font: (family: "serif", weight: "regular", size: "large"),
+  affil-font: (family: "sans", weight: "regular", size: "large"),
   // \@secfont/\@subsecfont = \sffamily\large (regular weight, acmart.dtx:8427)
   sec-fonts: generic-sec-fonts + (
     section:    (family: "sans", weight: "regular", style: "normal", size: "large"),

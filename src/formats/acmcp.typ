@@ -21,5 +21,9 @@
   foot-skip: 24 * tp,
   secnumdepth: -1,         // no section numbers (acmart.dtx:8501)
   title-width-reduction: 6 * 12 * tp, // narrow the title by 6pc to clear the infobox
+  // \@authorfont \large\sffamily ; \@affiliationfont \small\normalfont (acmart.dtx:7234,
+  // same as acmsmall — a step smaller than acmart's generic default).
+  author-font: (family: "sans", weight: "regular", size: "large"),
+  affil-font: (family: "serif", weight: "regular", size: "small"),
   // journal single-column top matter + generic sf-bold sections (acmsmall-like).
 )

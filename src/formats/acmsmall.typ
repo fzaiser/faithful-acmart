@@ -27,6 +27,10 @@
     bottom: (722.7 - 85 - 574) * tp,  // = 63.7tp; paperheight - bodytop - textheight
   ),
   foot-skip: 24 * tp,
+  // \@authorfont \large\sffamily ; \@affiliationfont \small\normalfont
+  // (acmart.dtx:7209) — acmsmall is a step smaller than acmart's generic default.
+  author-font: (family: "sans", weight: "regular", size: "large"),
+  affil-font: (family: "serif", weight: "regular", size: "small"),
   // single-column journal: left title, author list, journal bibstrip, generic
   // section fonts (acmart.dtx:6877/7337/2982/8415) — all make-format defaults.
 )

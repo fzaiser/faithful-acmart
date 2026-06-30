@@ -433,7 +433,11 @@
       if badges != none { return make-badges(cfg, badges) }
       return
     }
-    set text(font: cfg.fonts.sans, size: cfg.size.footnotesize)
+    // Running head font: \@headfootfont = \sffamily\footnotesize for every format
+    // EXCEPT manuscript, whose head carries no \@headfootfont and so prints in the
+    // document default (serif) at normalsize (acmart.dtx:8024 vs 7979).
+    let hf = if cfg.name == "manuscript" { (cfg.fonts.body, cfg.size.normalsize) } else { (cfg.fonts.sans, cfg.size.footnotesize) }
+    set text(font: hf.first(), size: hf.last())
     let ap = article-page(p)
     let odd = calc.odd(p)
     if cfg.name == "manuscript" {
@@ -491,11 +495,11 @@
     // Read bottom-to-top (\rotatebox{90}); reflow:true so the placed footprint is
     // the rotated box and top+left anchors deterministically to the page corner.
     // \colorbox{...}{\color{white}\strut <Type> Article} at the head's normalsize
-    // (9pt), \fboxsep (3pt) all round; \strut gives the box a full line's height (so
-    // extra space perpendicular to the rotated text). top-edge/bottom-edge span the
-    // strut's height+depth.
+    // (9pt) in the document default family (serif for acmcp — no \sffamily), \fboxsep
+    // (3pt) all round; \strut gives the box a full line's height (so extra space
+    // perpendicular to the rotated text). top-edge/bottom-edge span the strut.
     let lbl = rotate(-90deg, reflow: true, box(fill: article.color, inset: 3 * tp,
-      text(font: cfg.fonts.sans, size: cfg.size.normalsize, fill: white,
+      text(font: cfg.fonts.body, size: cfg.size.normalsize, fill: white,
         top-edge: "ascender", bottom-edge: "descender")[#article-type Article]))
     context place(top + left, dx: 0pt,
       // Centre on the title (\fancyhead[L] level with the head); step later article
@@ -600,7 +604,8 @@
   // `review`: number every line in the left margin (acmart uses \color{red}
   // \scriptsize — 7pt at this base size; acmart.dtx:7862).
   set par.line(numbering: if review {
-    n => text(fill: red, size: cfg.size.scriptsize)[#n]
+    // LaTeX \color{red} is pure red; Typst's `red` is a softer #ff4136.
+    n => text(fill: rgb(255, 0, 0), size: cfg.size.scriptsize)[#n]
   } else { none })
 
   cfg-state.update(cfg) // publish config for theorem environments
