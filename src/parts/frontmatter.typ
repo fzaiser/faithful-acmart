@@ -11,7 +11,7 @@
 #import "journals.typ": lookup-journal
 #import "strings.typ": lang-record
 
-#let fnsymbols = ("*", "†", "‡", "§", "¶", "‖", "**", "††", "‡‡")
+#let fnsymbols = ("∗", "†", "‡", "§", "¶", "‖", "∗∗", "††", "‡‡")
 
 #let month-names = (
   "January", "February", "March", "April", "May", "June",
@@ -766,12 +766,35 @@
   }
 }
 
+// ACM Engage prints \setengagemetadata lines immediately after the author block
+// and before the Synopsis heading: one no-indent paragraph per key/value pair,
+// with the key bold and no punctuation inserted by the class.
+#let engage-metadata-block(cfg, items) = {
+  if items.len() == 0 { return }
+  block(width: 100%, spacing: 0pt)[
+    #set text(font: cfg.fonts.body, size: cfg.size.normalsize)
+    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: comp(cfg))
+    #for item in items {
+      let label = item.first()
+      let value = item.last()
+      strong(label)
+      [ ]
+      value
+      parbreak()
+    }
+  ]
+}
+
 // In-column top matter: abstract / CCS / keywords / ACM reference format. In
 // two-column formats these follow \@printtopmatter (acmart.dtx:6665) and so flow
 // in the FIRST column beneath the spanning title box; in one column they are
 // contiguous with the head. The leading weak skip collapses at a column top.
 #let make-title-body(cfg, meta) = {
   let abstract-name = if cfg.name == "acmengage" { "Synopsis" } else { "Abstract" }
+
+  if cfg.name == "acmengage" {
+    engage-metadata-block(cfg, meta.engage-metadata)
+  }
 
   // --- Abstract ---
   // Journals (bibstrip) set the abstract in \small with no heading; proceedings do
@@ -823,6 +846,7 @@
   // --- ACM Reference Format ---
   if meta.show-ref {
     let j = lookup-journal(meta.journal)
+    let proceedings-ref = not meta.bibstrip or meta.conference != none
     // \@mkbibcitation does `\par\medskip\small ...`; next block is 9pt
     v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
     context {
@@ -832,7 +856,7 @@
         #{ if meta.anonymous [Anonymous Author(s)] else { andify(meta.authors.map(a => a.name)) } }. #meta.acm-year. #meta.title#{
           if meta.subtitle != none [: #meta.subtitle]
         }. #if not meta.nonacm {
-          if meta.bibstrip {
+          if not proceedings-ref {
             [#if j.short != none { emph(j.short) + " " }#meta.acm-volume, #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta)), #total #if total == 1 [page] else [pages].]
           } else {
             // booktitle is resolved (explicit or derived from the conference) in acmart().

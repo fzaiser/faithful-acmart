@@ -299,6 +299,7 @@ included in the input file; compare the placement of the table here with the
 table in the printed output of this document.
 
 #figure(
+  placement: top,
   caption: [Frequency of Special Characters],
   table(
     columns: 3,
@@ -323,27 +324,22 @@ more desirable. Immediately following this sentence is the point at which
 the placement of the table here with the table in the printed output of this
 document.
 
-#place(top, scope: "parent", float: true)[
-  #block(width: 100%)[
-    #align(center)[
-      #figure(
-        caption: [Some Typical Commands],
-        table(
-          columns: 3,
-          align: (center, center, left),
-          stroke: none,
-          table.hline(stroke: 0.08em),
-          [Command], [A Number], [Comments],
-          table.hline(),
-          [#raw("\\author")], [100], [Author],
-          [#raw("\\table")], [300], [For tables],
-          [#raw("\\table*")], [400], [For wider tables],
-          table.hline(stroke: 0.08em),
-        ),
-      ) <tab:commands>
-    ]
-  ]
-]
+#figure(
+  placement: top,
+  caption: [Some Typical Commands],
+  table(
+    columns: 3,
+    align: (center, center, left),
+    stroke: none,
+    table.hline(stroke: 0.08em),
+    [Command], [A Number], [Comments],
+    table.hline(),
+    [#raw("\\author")], [100], [Author],
+    [#raw("\\table")], [300], [For tables],
+    [#raw("\\table*")], [400], [For wider tables],
+    table.hline(stroke: 0.08em),
+  ),
+) <tab:commands>
 
 Always use midrule to separate table header rows from data rows, and use it only
 for this purpose. This enables assistive technologies to recognise table headers

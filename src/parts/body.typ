@@ -73,11 +73,20 @@
   // from the surrounding text by a \smallskip. tex-skip() converts that topsep
   // to the block gap; tight items inherit the baseline-grid leading.
   let list-gap = tex-skip(cfg, cfg.smallskip)
+  let list-block(it) = {
+    block(above: list-gap, below: list-gap, it)
+    // A list is not a sectioning command: the following paragraph is indented
+    // even though it follows a block. Typst's global `all: false` suppresses
+    // that indent, so add the hanging start explicitly for the next paragraph.
+    h(cfg.parindent)
+  }
+  show enum: it => list-block(it)
+  show list: it => list-block(it)
   set enum(numbering: "(1)(a)(i)(A)", indent: cfg.parindent, body-indent: cfg.list-labelsep,
-    spacing: list-gap)
-  set list(marker: ([•], text(weight: "bold")[–], [∗], [·]),
+    spacing: 0pt)
+  set list(marker: ([$bullet$], text(weight: "bold")[–], [∗], [·]),
     indent: cfg.list-leftmargin - 2 * cfg.list-labelsep, body-indent: cfg.list-labelsep,
-    spacing: list-gap)
+    spacing: 0pt)
 
   // Monospace (Inconsolata/zi4) for inline and block code. Typst's raw default
   // is smaller than LaTeX \texttt/verbatim; force it back to the surrounding

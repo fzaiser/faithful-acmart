@@ -1,0 +1,19 @@
+%% biblatex-test — isolates acmart's BibLaTeX acmnumeric reference formatting.
+\documentclass[acmsmall,nonacm,natbib=false]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmnumeric,
+  ]{biblatex}
+\addbibresource{sample-base.bib}
+\begin{document}
+\thispagestyle{empty}
+
+\section{BibLaTeX}
+This sentence cites a journal article \cite{Abril07}, an online resource
+\cite{Ablamowicz07}, and a proceedings article \cite{Andler79}.
+
+\printbibliography
+
+\end{document}

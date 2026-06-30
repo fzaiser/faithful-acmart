@@ -42,6 +42,12 @@
     is associated with the OER and what, if anything, the students will be asked to
     do.
   ],
+  engage-metadata: (
+    ("Course", "CS1"),
+    ("Programming Language", "Python"),
+    ("Knowledge Unit", "Programming Concepts"),
+    ("CS Topics", [Functions, Data Types, Expressions, Mathematical Reasoning]),
+  ),
   keywords: ("Arithmetic Operators", "Assignment Statements", "Comprehension",
              "Student Voice"),
 )

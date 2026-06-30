@@ -115,6 +115,7 @@
   // acmart.dtx:5914/5929). Both optional; shown in the top-right JDS-logo box.
   code-data-link: none,
   contributions: none,
+  engage-metadata: (),
   copyright: "acmlicensed",
   copyright-year: none,
   cc-type: "by",
@@ -328,6 +329,7 @@
     isbn: isbn,
     code-data-link: code-data-link,
     contributions: contributions,
+    engage-metadata: engage-metadata,
     article-type: article-type,
     bibstrip: cfg.bibstrip,
     authors-per-row: authors-per-row,

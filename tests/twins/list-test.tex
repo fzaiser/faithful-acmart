@@ -1,0 +1,29 @@
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\begin{document}
+\thispagestyle{empty}
+
+\section{Lists}
+Text before the itemized list establishes the paragraph baseline and the
+no-indent paragraph after a section heading.
+
+\begin{itemize}
+\item First bullet item in an itemized list.
+\item Second bullet item, slightly longer so it may wrap around to a second line
+  for spacing checks.
+\item Third bullet item follows immediately with no itemsep glue.
+\end{itemize}
+
+The paragraph after the itemized list should resume the normal ACM paragraph
+indent. It is long enough to wrap so the left edge and the following line can be
+compared.
+
+\begin{enumerate}
+\item First enumerated item.
+\item Second enumerated item follows immediately with no itemsep glue.
+\end{enumerate}
+
+The paragraph after the enumerated list should also be indented.
+
+\end{document}

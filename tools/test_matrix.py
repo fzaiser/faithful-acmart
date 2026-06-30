@@ -184,6 +184,11 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1,
         note="figure & table captions, theorems (plain/definition/proof+QED), lists",
     ),
+    "list-test": Test(
+        kind="twin", pages=1,
+        note="isolated itemize/enumerate geometry: bullet size, zero itemsep, "
+             "topsep, and paragraph indentation after lists.",
+    ),
     "fn-test": Test(
         kind="twin", pages=1,
         note="body footnotes + code/verbatim",
@@ -356,6 +361,24 @@ TESTS: dict[str, Test] = {
              "reflows slightly and line count is reported, not gated. Margins/pitch are "
              "held to the same bar.",
     ),
+    "biblatex-test": Test(
+        kind="twin", pages=1,
+        char_diff="isolates the BibLaTeX acmnumeric-vs-Typst bibliography gap: "
+                  "BibLaTeX/biber uses different title casing, journal names, DOI "
+                  "punctuation, and online retrieval fields than both the CSL and "
+                  "bst renderers.",
+        font_diff="same BibLaTeX formatting gap: the reference entries reflow across "
+                  "different words, so the per-letter font bag is not meaningful.",
+        order_diff="intentional BibLaTeX-vs-Typst bibliography formatting comparison; "
+                   "reference chunks reflow and do not share stable ordering.",
+        text_assertions=(
+            Assertion(engine="latex", text="Communications of the ACM"),
+            Assertion(engine="typst", text="References"),
+        ),
+        note="small BibLaTeX acmnumeric isolator so the full sample-sigconf-biblatex "
+             "reference-format difference can be inspected without the full upstream "
+             "sample body.",
+    ),
     "bib-all": Test(
         kind="twin", pages=1,
         note="Every ACM-Reference-Format entry type via the `bst` bibliography backend "
@@ -509,7 +532,7 @@ TESTS: dict[str, Test] = {
         note="upstream acmlarge sample (wide single-column journal, POMACS).",
     ),
     "sample-sigconf": Test(
-        kind="twin", pages=7, **_SAMPLE_COMMON,
+        kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream sigconf sample: two-column proceedings, spanning title, "
              "centred author grid, teaser figure.",
     ),
@@ -544,7 +567,7 @@ TESTS: dict[str, Test] = {
              "abstract headed by its babel \\abstractname.",
     ),
     "sample-sigconf-authordraft": Test(
-        kind="twin", pages=7, golden=False, **_SAMPLE_COMMON,
+        kind="twin", pages=6, golden=False, **_SAMPLE_COMMON,
         note="upstream sigconf authordraft sample: draft watermark + line numbers "
              "+ inner-edge timestamp. The timestamp embeds the compile date, so "
              "output is non-deterministic — compile-only (no golden), like draft-test.",
@@ -557,10 +580,11 @@ TESTS: dict[str, Test] = {
              "software entry types have no equivalent in the bst backend.",
     ),
     "sample-sigconf-biblatex": Test(
-        kind="twin", pages=7, **_SAMPLE_COMMON,
+        kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
-             "(numeric). Software artifact cites from software.bib are omitted (same "
-             "reason as sample-acmsmall-biblatex).",
+             "(numeric). The Typst port still uses the bst/CSL bibliography machinery, "
+             "so BibLaTeX-specific reference formatting and software artifact entries "
+             "are tracked separately by biblatex-test.",
     ),
     "sample-acmcp": Test(
         kind="twin", pages=1, **_SAMPLE_COMMON,
@@ -572,7 +596,7 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=3, **_SAMPLE_COMMON,
         note="upstream acmengage sample: two-column ACM EngageCSEdu course-material "
              "format, Synopsis abstract, CC license. Engage metadata "
-             "(\\setengagemetadata) is not modelled — metadata table omitted.",
+             "(\\setengagemetadata) is printed before the Synopsis heading.",
     ),
     # Smoke-only docs (no LaTeX twin).
     "siggraph-test": Test(
