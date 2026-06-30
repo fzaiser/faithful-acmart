@@ -88,6 +88,12 @@ class Test:
     so catches a stray comma/period the word bag's edge-strip drops. Set
     ``char_diff`` to a one-line reason to exempt a twin whose char bags cannot
     match (a known content difference, or a pdftotext extraction artifact).
+
+    EVERY twin is ALSO gated by the Tier 1.8 per-letter FONT check (``font_bag``,
+    via PyMuPDF): each alphabetic character must render in the same family (serif/
+    sans/mono), weight, italic, size, and colour as LaTeX. Set ``font_diff`` to a
+    one-line reason to exempt a twin whose fonts cannot match (a known content
+    difference, or a math-fidelity gap).
     """
 
     kind: str
@@ -102,6 +108,7 @@ class Test:
     text_reason: str | None = None
     text_assertions: tuple[Assertion, ...] = ()
     char_diff: str = ""
+    font_diff: str = ""  # exempt a twin from the Tier 1.8 per-letter font/size/colour gate
     link_check: bool = False  # compare hyperlink (/URI) sets LaTeX vs Typst
     note: str = ""
 
@@ -307,6 +314,9 @@ TESTS: dict[str, Test] = {
                   "residual gaps are hayagriva BibTeX->CSL mapping limits (dropped "
                   "lastaccessed date, @periodical journal name, thesis school+advisor and "
                   "\"Ph. D.\" vs \"Doctoral dissertation\" wording, conference address)",
+        font_diff="same CSL-vs-bst content differences (above): the reference list reflows, "
+                  "so per-letter font counts differ on the diverging words (all serif, same "
+                  "sizes — not a font bug)",
         note="bibliography. src/styles/acm-reference-format.csl is forked to track the "
              "bundled ACM-Reference-Format.bst (doi: prefix, abbreviated months, report "
              "genre label, thesis note, conference-location parens). The remaining "
@@ -388,6 +398,9 @@ TESTS: dict[str, Test] = {
     ),
     "mathfields": Test(
         kind="twin", pages=1,
+        font_diff="math glyphs come from different math fonts (LaTeX LibertineMath/txsym "
+                  "vs Typst NewCMMath) and LaTeX sets math letters italic where Typst's "
+                  "upright; a known math-fidelity gap, not a body-text font bug",
         note="inline math ($...$) in reference fields via the bst backend, rendered as "
              "REAL Typst math (tex.typ tokenizer -> math evaluator -> eval): greek "
              "letters, ^/_ grouping, relations/operators (\\leq, \\log), \\frac, "

@@ -412,9 +412,11 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   `acm-jdslogo.png`) over the optional `code-data-link` / `keywords` /
   `contributions` / author contact information — are reproduced; the title alone is
   narrowed by 6pc to clear the box (acmart.dtx:6988). The one approximation is the
-  infobox's vertical position: acmart uses two-pass `zref` measurement
+  infobox's vertical position: acmart uses a two-pass `zref` measurement
   (acmart.dtx:6733) to butt its bottom against the frame bottom on short documents;
-  we top-align it with the body. The code/data link shows the full URL (`\url`,
+  we can't run that cross-run feedback in a single Typst pass, so we nudge it down a
+  fixed ~3 baselineskips from the body top (near LaTeX for a short cover, but it
+  doesn't track the body length — see TODO.md). The code/data link shows the full URL (`\url`,
   char-exact); being wider than the 5pc box it wraps where LaTeX overflows, so only
   that one word-bag token splits. Normal contact/copyright footnotes and normal
   keyword top matter are suppressed for `acmcp`, as in LaTeX.

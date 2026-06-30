@@ -143,7 +143,7 @@ program, `tools/test.py`, driven by the test matrix in `tools/test_matrix.py`.
 
 ```sh
 # one-time: create the Python venv used by the harness
-python3 -m venv tools/venv && tools/venv/bin/pip install pillow numpy fonttools
+python3 -m venv tools/venv && tools/venv/bin/pip install pillow numpy fonttools pymupdf
 ```
 
 You also need **Typst**, a **TeX Live** install (`pdflatex`, `bibtex`), and
@@ -222,6 +222,14 @@ gates without recompiling:
   assertions for noisy PDFs (two-column order, author grids, bibliography).
 - **Tier 1.6 (expected errors)** — invalid option cases must fail with the
   intended diagnostic.
+- **Tier 1.7 (hyperlinks)** — for twins that opt in, the `/URI` link set must match
+  LaTeX+hyperref (links are invisible to `pdftotext`).
+- **Tier 1.8 (fonts)** — per-letter font check via **PyMuPDF**: every alphabetic
+  character must render in the same family (serif/sans/mono), weight, italic, size,
+  and colour as LaTeX. Catches what the text gates (characters only) can't — a wrong
+  family (serif where acmart sets `\sffamily`), a too-small author block, a stray
+  colour. Mono *size* is skipped (LaTeX's zi4 and the bundled Inconsolata scale
+  differently); a `font_diff` exempts known content/math gaps.
 - **Tier 2 (metrics)** — cross-engine layout geometry (left/top margin, baseline
   pitch) gated against `test_matrix` tolerances; right margin & line count are
   reported only (cross-engine line-breaking makes them noisy).

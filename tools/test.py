@@ -833,6 +833,88 @@ def gate_links(report: bool = False) -> list[str]:
     return failures
 
 
+# --- Tier 1.8: per-letter font/size/colour gate (PyMuPDF) ---
+# pdftotext sees only characters; this catches a letter rendered in the wrong font
+# family, weight, size, or colour — e.g. sigchi-a body that should be sans (acmart's
+# \sffamily document default) but came out serif, or an author block a step too small.
+def _font_role(font: str) -> str:
+    """Canonical family for a PDF BaseFont, so LinBiolinum (LaTeX) and LibertinusSans
+    (Typst) both map to 'sans'. Math/symbol fonts collapse to 'sym'."""
+    f = font.lower()
+    if any(k in f for k in ("mono", "inconsolata", "zi4", "dejavu")):
+        return "mono"
+    if any(k in f for k in ("math", "txsy", "newcm", "dingbat", "cmsy", "cmmi", "cmex", "msam", "msbm")):
+        return "sym"
+    if "biolinum" in f or "sans" in f:
+        return "sans"
+    if "libertine" in f or "serif" in f:
+        return "serif"
+    return "other:" + f
+
+
+def _font_color(c: int) -> tuple[int, int, int]:
+    """Quantise an sRGB int to a 16-step grid — absorbs the engines' 8-bit CMYK
+    rounding (e.g. link blue #155195 vs #155095) while keeping real colours apart."""
+    q = lambda x: min(255, (x + 8) // 16 * 16)
+    return (q((c >> 16) & 255), q((c >> 8) & 255), q(c & 255))
+
+
+def font_bag(pdf: Path) -> Counter:
+    """Multiset of (letter, family, bold, italic, size, colour) over every glyph.
+    LETTERS only — punctuation and symbols sit at font boundaries / come from
+    divergent symbol fonts, so their family is noise. Mono SIZE is dropped: LaTeX's
+    zi4 and our bundled Inconsolata are scaled differently, so the nominal size is
+    incomparable (the family still is)."""
+    import fitz
+    counts: Counter = Counter()
+    with fitz.open(pdf) as doc:
+        for page in doc:
+            for block in page.get_text("dict")["blocks"]:
+                for line in block.get("lines", []):
+                    for span in line["spans"]:
+                        fam = _font_role(span["font"])
+                        size = None if fam == "mono" else round(span["size"] * 2) / 2
+                        key = (fam, bool(span["flags"] & 16), bool(span["flags"] & 2),
+                               size, _font_color(span["color"]))
+                        for ch in unicodedata.normalize("NFKC", span["text"]):
+                            ch = _CHAR_FOLD.get(ch, ch)
+                            if unicodedata.category(ch).startswith("L"):
+                                counts[(ch,) + key] += 1
+    return counts
+
+
+def gate_fonts(report: bool = False) -> list[str]:
+    """Tier 1.8 — per-letter font gate. Every alphabetic character must match LaTeX
+    in family/weight/italic/size/colour. Needs PyMuPDF (skips with a note if absent);
+    twins with a documented ``font_diff`` (content differences, math gaps) are exempt."""
+    try:
+        import fitz  # noqa: F401
+    except ImportError:
+        print("skip Tier 1.8 (fonts): PyMuPDF not installed (tools/venv/bin/pip install pymupdf)")
+        return []
+    failures: list[str] = []
+    for name, t in TESTS.items():
+        if t.kind != "twin":
+            continue
+        lref, tpdf = latex_pdf(name, t), typst_pdf(name)
+        if not lref.exists() or not tpdf.exists():
+            failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
+            continue
+        if t.font_diff:
+            if report:
+                print(f"skip  {name}: font exempt ({t.font_diff})")
+            continue
+        miss, extra = (lb := font_bag(lref)) - (tb := font_bag(tpdf)), tb - lb
+        if miss or extra:
+            failures.append(
+                f"{name}: per-letter fonts differ (PyMuPDF; key = char,family,bold,italic,size,colour)\n"
+                f"    only in LaTeX: {dict(list(miss.items())[:8])}\n"
+                f"    only in Typst: {dict(list(extra.items())[:8])}")
+        elif report:
+            print(f"ok   {name}: fonts match")
+    return failures
+
+
 def gate_unit(report: bool = False) -> list[str]:
     """Tier 0.5 — pure-Typst unit tests (tests/unit/*.typ). These import a module
     and assert on its output via #assert.eq, so a failure aborts the compile with
@@ -878,6 +960,8 @@ def cmd_check(args) -> int:
     ok &= _run_gate("Tier 1.6 (expected errors)", gate_errors())
     print("\n== Tier 1.7 (hyperlinks) ==")
     ok &= _run_gate("Tier 1.7 (hyperlinks)", gate_links())
+    print("\n== Tier 1.8 (fonts) ==")
+    ok &= _run_gate("Tier 1.8 (fonts)", gate_fonts())
     print("\n== Tier 2 (metrics) ==")
     ok &= _run_gate("Tier 2 (metrics)", gate_metrics())
     return 0 if ok else 1
