@@ -159,7 +159,7 @@ PY=tools/venv/bin/python
 $PY tools/test.py build                     # LaTeX references + all Typst PDFs + the example
 $PY tools/test.py check                     # all regression gates (compiles Typst once, then gates)
 $PY tools/test.py accept                    # rebuild Typst PDFs and bless the golden hashes
-$PY tools/test.py overlay                   # vector overlay.pdf (Typst red / LaTeX blue) + side-by-side.pdf, all twins
+$PY tools/test.py overlay                   # per twin: <name>-overlay.pdf (Typst red / LaTeX blue) + <name>-side-by-side.pdf
 $PY tools/test.py overlay acmcp-test sigchi-a-test  # ... or just the named twins
 $PY tools/test.py validate                  # copyright/option variants vs LaTeX (mismatch %)
 $PY tools/test.py probe --format sigconf    # dump a format's dimensions from the bundled class
@@ -193,7 +193,7 @@ All generated output lives under `tests/out/` (gitignored):
 ```
 tests/out/latex/   LaTeX builds: acmart.cls (from the bundled acmart/), samples, reference PDFs (+ aux)
 tests/out/typst/   Typst output PDFs
-tests/out/diff/    overlay.pdf / side-by-side.pdf — vector visual diffs from `overlay` (Typst red / LaTeX blue)
+tests/out/diff/    <name>-overlay.pdf / <name>-side-by-side.pdf — per-twin vector visual diffs from `overlay`
 ```
 
 The committed golden artifact is `tests/golden/typst.sha256`.
