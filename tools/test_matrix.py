@@ -485,13 +485,22 @@ TESTS: dict[str, Test] = {
 # Each case compiles a tiny acmsmall document with the bad option spliced in and
 # asserts the compile fails with a diagnostic containing the expected substring.
 # name -> (extra acmart.with(...) argument, expected diagnostic substring)
-ERROR_CASES: dict[str, tuple[str, str]] = {
+# name -> (extra acmart.with arg, expected substring[, custom body]).
+ERROR_CASES: dict[str, tuple] = {
     "bad-copyright": ('copyright: "definitely-not-a-mode",', "unsupported copyright mode"),
     "bad-cc-type": ('copyright: "cc", cc-type: "by-mystery",', "unsupported Creative Commons type"),
     "bad-cc-version": ('copyright: "cc", cc-version: "2.5",', "unsupported Creative Commons version"),
     "bad-font-size": ('font-size: "13pt",', "font-size"),
     "bad-language": ('language: "klingon",', "unsupported language"),
     "draft-option": ("draft: true,", "option `draft` has no effect"),
+    # the "bst" backend errors on an unsupported TeX command rather than passing
+    # it through silently, pointing the user at the tex-render callback.
+    "bst-unknown-cmd": (
+        "",
+        "unsupported TeX command",
+        '#import "/src/lib.typ": default-tex-render\n'
+        '#default-tex-render("a \\\\frobnicate{x} title")',
+    ),
 }
 
 

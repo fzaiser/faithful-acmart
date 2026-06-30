@@ -11,7 +11,7 @@
 // result) — so this is an oracle test against a closed, finite spec, not against
 // our own assumptions.
 
-#import "/src/parts/tex.typ": purify, change-case
+#import "/src/parts/tex.typ": purify, change-case, tex-to-string, tex-to-content
 
 #let chk(fn, args, want) = assert.eq(fn, want,
   message: args + "\n  got:  " + repr(fn) + "\n  want: " + repr(want))
@@ -38,3 +38,34 @@
 #chk(change-case("a {\\OE}uvre and {\\AA}ngstr", "t"), "change-case t foreign", "a {\\oe}uvre and {\\aa}ngstr")
 #chk(change-case("title with {Nested {deep}}", "t"), "change-case t nested", "title with {Nested {deep}}")
 #chk(change-case("Research Note", "t"), "change-case t simple", "Research note")
+
+// ---- tex-to-string (raw TeX -> plain string: tokenizer + string evaluator) -
+// Exact output (accents compose as combining sequences, which the text gate's
+// NFKC folds; here we pin the literal codepoints).
+#chk(tex-to-string("h\\'el\\`ene"),   "accents h'el`ene",  "he\u{0301}le\u{0300}ne")
+#chk(tex-to-string("P\\'erez {ACM}"), "accent + braces",   "Pe\u{0301}rez ACM")
+#chk(tex-to-string("{\\oe}uvre"),      "special letter oe", "œuvre")
+#chk(tex-to-string("Stra\\ss e"),      "special letter ss + swallowed space", "Straße")
+#chk(tex-to-string("\\AA ngstr\\\"om"),"AA + accent",       "Ångstro\u{0308}m")
+#chk(tex-to-string("a--b---c and ``q'' `r'"), "input ligatures",
+  "a\u{2013}b\u{2014}c and \u{201C}q\u{201D} \u{2018}r\u{2019}")
+#chk(tex-to-string("Vol.~5"),          "tie -> nbsp",       "Vol.\u{00A0}5")
+#chk(tex-to-string("10\\,000 \\& 5\\%"), "thin space + escapes", "10\u{2009}000 & 5%")
+#chk(tex-to-string("a \\textsc{x} \\texttt{y} \\textbf{z} \\emph{w}"),
+  "formatting dropped to text", "a x y z w")
+#chk(tex-to-string("\\noopsort{aaa}Smith"), "noopsort discarded", "Smith")
+
+// ---- tex-to-content (tokenizer + content evaluator): structural checks -----
+// (content equality carries empty-sequence wrappers; assert the element kind via
+// repr instead.) Each names the Typst element the command must produce.
+#let has(s, sub) = assert(repr(tex-to-content(s)).contains(sub),
+  message: "tex-to-content(" + repr(s) + ") should contain a " + sub + " element\n  got: " + repr(tex-to-content(s)))
+#has("x \\textbf{y}", "strong")
+#has("a \\emph{b}", "emph")
+#has("\\textit{b}", "emph")
+#has("\\textsc{acm}", "smallcaps")
+#has("\\underline{u}", "underline")
+#has("x\\textsuperscript{2}", "super")
+#has("see \\url{http://a.b}", "link")
+#has("ref \\href{http://a.b}{text}", "link")
+#has("math $\\frac{n}{2} \\leq x^{2n}$", "equation")  // real Typst math

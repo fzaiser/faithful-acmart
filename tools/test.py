@@ -666,7 +666,7 @@ def gate_text(report: bool = False) -> list[str]:
     return failures
 
 
-def _error_source(extra_arg: str) -> str:
+def _error_source(extra_arg: str, body: str = "= Body\nText.") -> str:
     return f"""#import "/src/lib.typ": acmart
 
 #show: acmart.with(
@@ -677,8 +677,7 @@ def _error_source(extra_arg: str) -> str:
   {extra_arg}
 )
 
-= Body
-Text.
+{body}
 """
 
 
@@ -686,9 +685,11 @@ def gate_errors() -> list[str]:
     """Tier 1.6 — expected compile-error gate."""
     ERROR.mkdir(parents=True, exist_ok=True)
     failures: list[str] = []
-    for name, (extra, expected) in M.ERROR_CASES.items():
+    for name, case in M.ERROR_CASES.items():
+        extra, expected = case[0], case[1]
+        body = case[2] if len(case) > 2 else "= Body\nText."
         src = ERROR / f"{name}.typ"
-        src.write_text(_error_source(extra))
+        src.write_text(_error_source(extra, body))
         proc = subprocess.run(
             [str(TC), "compile", str(src), str(ERROR / f"{name}.pdf"),
              "--diagnostic-format", "short"],
