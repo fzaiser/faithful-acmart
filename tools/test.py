@@ -15,8 +15,7 @@ Commands
   check            run all regression gates (smoke / unit / golden / text / errors / metrics)
   unit             run the pure-Typst unit tests in tests/unit/*.typ (no LaTeX needed)
   accept           rebuild Typst PDFs and refresh the Tier 1 golden hashes
-  diff STEM        per-page side-by-side + overlay vs the LaTeX reference (--pages, --dpi)
-  overlay [stems]  combined vector overlay.pdf + side-by-side.pdf across all twins
+  overlay [stems]  combined vector overlay.pdf + side-by-side.pdf vs LaTeX, all twins (or given stems)
   validate [names] copyright/option variants vs LaTeX, page-1 mismatch %
   probe            dump a format's ground-truth dimensions from the bundled class (--format)
   reference [name] build a LaTeX sample reference PDF (default: acmsmall)
@@ -925,92 +924,6 @@ def cmd_probe(args) -> int:
     return 0
 
 
-# --- Shared visual-diff primitives (used by `diff` and `overlay`) ----------
-
-def _render_pdf_pages(pdf: Path, dpi: int, tmp: Path, tag: str) -> list[Path]:
-    """Rasterize every page of `pdf` to tmp/<tag>-NN.png, return them in order."""
-    subprocess.run(["pdftoppm", "-r", str(dpi), "-png", str(pdf), str(tmp / tag)],
-                   check=True, capture_output=True)
-    return sorted(tmp.glob(f"{tag}-*.png"))
-
-
-def _to_gray(p: Path):
-    import numpy as np
-    from PIL import Image
-    return np.asarray(Image.open(p).convert("L"), dtype=np.float32)
-
-
-def _pad(arr, h, w):
-    import numpy as np
-    o = np.full((h, w), 255.0, dtype=arr.dtype)
-    o[:arr.shape[0], :arr.shape[1]] = arr[:h, :w]
-    return o
-
-
-def _compare_page(r, o):
-    """Two gray pages -> (overlay RGB, side-by-side gray, mismatch %).
-
-    Overlay: ref ink red / our ink blue / shared ink dark. Side-by-side: ref on
-    the left, ours on the right, separated by a thin gutter — both padded to a
-    common box so a page-count or page-size skew still lines up."""
-    import numpy as np
-    h, w = max(r.shape[0], o.shape[0]), max(r.shape[1], o.shape[1])
-    r, o = _pad(r, h, w), _pad(o, h, w)
-    mismatch = float((np.abs(r - o) > 40).mean()) * 100.0
-    ref_ink, our_ink = 255 - r, 255 - o
-    overlay = np.full((h, w, 3), 255, dtype=np.uint8)
-    overlay[..., 0] = (255 - our_ink).astype(np.uint8)
-    overlay[..., 2] = (255 - ref_ink).astype(np.uint8)
-    overlay[..., 1] = (255 - np.maximum(ref_ink, our_ink)).astype(np.uint8)
-    gap = 16
-    sbs = np.full((h, w * 2 + gap), 255, dtype=np.uint8)
-    sbs[:, :w] = r.astype(np.uint8)
-    sbs[:, w + gap:] = o.astype(np.uint8)
-    return overlay, sbs, mismatch
-
-
-def _parse_pages(spec: str | None, n: int) -> list[int]:
-    if not spec:
-        return list(range(n))
-    out: set[int] = set()
-    for part in spec.split(","):
-        if "-" in part:
-            a, b = part.split("-")
-            out.update(range(int(a) - 1, int(b)))
-        else:
-            out.add(int(part) - 1)
-    return sorted(i for i in out if 0 <= i < n)
-
-
-def cmd_diff(args) -> int:
-    from PIL import Image
-
-    t = TESTS.get(args.stem)
-    ref_stem = reference_for(args.stem, t) if t else args.stem
-    ref = LATEX / f"{ref_stem}.pdf"
-    ours = typst_pdf(args.stem)
-    DIFF.mkdir(parents=True, exist_ok=True)
-
-    with tempfile.TemporaryDirectory() as td:
-        tmp = Path(td)
-        ref_pngs = _render_pdf_pages(ref, args.dpi, tmp, "ref")
-        our_pngs = _render_pdf_pages(ours, args.dpi, tmp, "our")
-        npages = max(len(ref_pngs), len(our_pngs))
-        pages = _parse_pages(args.pages, npages)
-        print(f"reference: {len(ref_pngs)} pages, ours: {len(our_pngs)} pages, dpi={args.dpi}")
-        for i in pages:
-            if i >= len(ref_pngs) or i >= len(our_pngs):
-                print(f"page {i+1}: MISSING in {'ours' if i >= len(our_pngs) else 'reference'}")
-                continue
-            overlay, sbs, mismatch = _compare_page(_to_gray(ref_pngs[i]), _to_gray(our_pngs[i]))
-            print(f"page {i+1}: {mismatch:5.2f}% mismatch  (ref {ref.name}, our {ours.name})")
-            Image.fromarray(overlay).save(DIFF / f"overlay-p{i+1:02d}.png")
-            Image.fromarray(sbs).save(DIFF / f"side-p{i+1:02d}.png")
-    print(f"\nwrote diffs to {DIFF.relative_to(ROOT)}/ "
-          "(overlay-pNN.png = ref red / ours blue / shared dark; side-pNN.png = ref | ours)")
-    return 0
-
-
 # --- Vector recolor-overlay primitives (gs + qpdf + pdfjam, no rasterization) ---
 
 def _page_count(pdf: Path) -> int:
@@ -1366,12 +1279,6 @@ def main() -> int:
                    help="run all regression gates").set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
     sub.add_parser("unit", help="run pure-Typst unit tests (tests/unit/*.typ); no LaTeX").set_defaults(fn=cmd_unit)
-
-    d = sub.add_parser("diff", help="visual diff a Typst output vs its LaTeX reference")
-    d.add_argument("stem")
-    d.add_argument("--pages", default=None, help="e.g. 1-2 or 1,3 (default: all)")
-    d.add_argument("--dpi", type=int, default=150)
-    d.set_defaults(fn=cmd_diff)
 
     o = sub.add_parser("overlay",
                        help="combined vector overlay.pdf + side-by-side.pdf across all twins")
