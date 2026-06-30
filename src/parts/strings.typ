@@ -16,23 +16,26 @@
 // LaTeX+babel build (tests/language-test).
 
 // Per-language table. `code` is the Typst text-lang code (drives hyphenation).
+// `abstract` is babel's \abstractname, used to head each translated abstract
+// (acmart's translatedabstract environment, acmart.dtx:3420) — secondary
+// -language papers label every translated abstract with that language's name.
 #let _langs = (
   english: (code: "en",
     keywords: "Additional Key Words and Phrases",
     keywords_proceedings: "Keywords",
-    acks: "Acknowledgements", proof: "Proof", table: "Table"),
+    acks: "Acknowledgements", proof: "Proof", table: "Table", abstract: "Abstract"),
   french: (code: "fr",
     keywords: "Mots Clés et Phrases Supplémentaires",
     keywords_proceedings: "Mots clés",
-    acks: "Remerciements", proof: "Démonstration", table: "Table"),
+    acks: "Remerciements", proof: "Démonstration", table: "Table", abstract: "Résumé"),
   german: (code: "de",
     keywords: "Zusätzliche Schlagwörter und Phrasen",
     keywords_proceedings: "Schlagwörter",
-    acks: "Danksagungen", proof: "Beweis", table: "Tabelle"),
+    acks: "Danksagungen", proof: "Beweis", table: "Tabelle", abstract: "Zusammenfassung"),
   spanish: (code: "es",
     keywords: "Palabras y Frases Claves Adicionales",
     keywords_proceedings: "Palabras claves",
-    acks: "Expresiones de gratitud", proof: "Demostración", table: "Cuadro"),
+    acks: "Expresiones de gratitud", proof: "Demostración", table: "Cuadro", abstract: "Resumen"),
 )
 
 // Monolingual default (no `language` option). \keywordsname for journals is set

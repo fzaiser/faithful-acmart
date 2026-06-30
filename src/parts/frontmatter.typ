@@ -766,10 +766,13 @@
   // main one; proceedings repeat the abstract heading per language.
   for (l, ab) in meta.translated-abstract {
     let rec = lang-record(l)
+    // Each translated abstract is headed by its own language's \abstractname
+    // (babel: Résumé / Zusammenfassung / Resumen / …), not the English one.
+    let name = rec.at("abstract", default: abstract-name)
     if meta.bibstrip {
       fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent)
     } else {
-      heading(numbering: none, outlined: false)[#abstract-name]
+      heading(numbering: none, outlined: false)[#name]
       fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent, sz: "normalsize")
     }
   }

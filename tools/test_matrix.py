@@ -524,6 +524,13 @@ TESTS: dict[str, Test] = {
         note="upstream acmtog-for-a-conference sample (acmtog two-column with "
              "conference metadata + teaser; author-year citations via the bst backend).",
     ),
+    "sample-sigconf-i13n": Test(
+        kind="upstream-ref", reference="sigconf-i13n", pages=6,
+        _page_parity=False, page1_only=True,
+        note="upstream sigconf internationalization sample: \\translatedtitle + "
+             "translatedabstract in French/German/Spanish (English main), each "
+             "abstract headed by its babel \\abstractname.",
+    ),
     "sample-sigconf-authordraft": Test(
         kind="upstream-ref", reference="sigconf-authordraft", pages=6,
         _page_parity=False, page1_only=True, golden=False,
