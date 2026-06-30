@@ -230,6 +230,17 @@ gates without recompiling:
   family (serif where acmart sets `\sffamily`), a too-small author block, a stray
   colour. Mono *size* is skipped (LaTeX's zi4 and the bundled Inconsolata scale
   differently); a `font_diff` exempts known content/math gaps.
+- **Tier 1.9 (order)** — per-chunk reading-order check via **pikepdf**
+  (`tools/pdf_chunks.py`): Typst writes a *tagged* PDF, so each logical chunk
+  (title, an author line, the contact-info block, a heading, a bib entry) is read
+  back in logical order from the structure tree and its tokens checked — by LCS
+  alignment — to occur in that order in the *flat* (untagged) LaTeX `pdftotext`
+  stream. Catches an element emitted out of order (an affiliation/email swap, a
+  reordered citation field) that the order-independent word/char bags can't see;
+  the LCS sub-sequence match is immune to reflow, page breaks and column flow. An
+  `order_diff` exempts a twin whose chunk order can't be checked (an extraction
+  asymmetry). Run `tools/test.py order` for a per-twin report, or
+  `tools/pdf_chunks.py <stem>` to dump one document's chunks + per-chunk disorder.
 - **Tier 2 (metrics)** — cross-engine layout geometry (left/top margin, baseline
   pitch) gated against `test_matrix` tolerances; right margin & line count are
   reported only (cross-engine line-breaking makes them noisy).

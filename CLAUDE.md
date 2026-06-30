@@ -23,7 +23,7 @@ missed.
 - **Validate against real LaTeX.** The harness is `tools/test.py` (run via
   `tools/venv/bin/python`), driven by the matrix in `tools/test_matrix.py`:
   `test.py build` (LaTeX refs + Typst PDFs), `test.py check`
-  (smoke/unit/golden/text/errors/metrics), `test.py validate` (copyright modes +
+  (smoke/unit/golden/text/errors/hyperlinks/fonts/order/metrics), `test.py validate` (copyright modes +
   options), then `test.py diff <stem> --pages <n>` when visual inspection is
   needed. `test.py unit` runs the pure-Typst `tests/unit/*.typ` assertion tests
   alone (no LaTeX) — they import a module and `#assert.eq` on its output (the
@@ -101,8 +101,9 @@ conference metadata (`conference`/`booktitle`/`isbn`) ARE modelled. See DESIGN.m
 approximations" / "Known limitations" for the full list.
 Author *line grouping* now follows acmart's exact structural rule (an
 affiliation-less author andifies onto the next; affiliations are never compared —
-`group-authors`); the remaining author-side approximation is contact-info *field
-order* (we emit affiliation-then-email, not source-declaration order).
+`group-authors`), and the contact-info *field order* now matches acmart's
+source-declaration order (email/affiliation replayed in the author dict's key
+order, `contact-line`), guarded by the Tier 1.9 order gate.
 
 ## Git workflow
 

@@ -94,6 +94,14 @@ class Test:
     sans/mono), weight, italic, size, and colour as LaTeX. Set ``font_diff`` to a
     one-line reason to exempt a twin whose fonts cannot match (a known content
     difference, or a math-fidelity gap).
+
+    EVERY twin is ALSO gated by the Tier 1.9 per-chunk reading-ORDER check
+    (``pdf_chunks``, via pikepdf): the tagged Typst PDF's logical chunks (title,
+    each author line, contact-info, headings, bib entries) must appear in the flat
+    LaTeX stream in the same intra-chunk order — catching an element emitted out of
+    order (an affiliation/email swap, a reordered citation field) that the order
+    -independent word/char bags cannot see. Set ``order_diff`` to a one-line reason
+    to exempt a twin whose chunk order cannot be checked (an extraction asymmetry).
     """
 
     kind: str
@@ -109,6 +117,7 @@ class Test:
     text_assertions: tuple[Assertion, ...] = ()
     char_diff: str = ""
     font_diff: str = ""  # exempt a twin from the Tier 1.8 per-letter font/size/colour gate
+    order_diff: str = ""  # exempt a twin from the Tier 1.9 per-chunk reading-order gate
     link_check: bool = False  # compare hyperlink (/URI) sets LaTeX vs Typst
     note: str = ""
 

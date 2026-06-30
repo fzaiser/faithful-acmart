@@ -919,6 +919,52 @@ def gate_fonts(report: bool = False) -> list[str]:
     return failures
 
 
+# --- Tier 1.9: per-chunk reading-order gate (tagged structure tree) ---
+# The word/char bags are order-independent by design, so an element emitted in the
+# wrong place — an affiliation/email swap in the contact line, a reordered citation
+# field — slips through them. Typst writes a tagged PDF, so each logical chunk
+# (title, an author line, the contact block, a heading, a bib entry) is recoverable
+# in logical order from the structure tree; we check by LCS that its tokens occur in
+# that order in the flat (untagged) LaTeX stream. See tools/pdf_chunks.py.
+def gate_order(report: bool = False) -> list[str]:
+    """Tier 1.9 — intra-chunk reading order vs LaTeX. Each tagged Typst chunk's
+    tokens must appear in the flat LaTeX stream in the chunk's own order (other
+    content may interpose — the check is sub-sequence/LCS based, so it is immune to
+    reflow, page breaks and column flow). Needs pikepdf (skips with a note if
+    absent); twins with a documented ``order_diff`` are exempt."""
+    try:
+        import pikepdf  # noqa: F401
+    except ImportError:
+        print("skip Tier 1.9 (order): pikepdf not installed (tools/venv/bin/pip install pikepdf)")
+        return []
+    import pdf_chunks as PC
+    failures: list[str] = []
+    for name, t in TESTS.items():
+        if t.kind != "twin":
+            continue
+        lref, tpdf = latex_pdf(name, t), typst_pdf(name)
+        if not lref.exists() or not tpdf.exists():
+            failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
+            continue
+        if t.order_diff:
+            if report:
+                print(f"skip  {name}: order exempt ({t.order_diff})")
+            continue
+        stream = PC.latex_stream(lref)
+        bad = [(role, toks, r) for role, toks in PC.typst_chunks(tpdf)
+               if (r := PC.chunk_order(toks, stream))["disorder"]]
+        if bad:
+            lines = [f"{name}: {len(bad)} chunk(s) out of order vs LaTeX "
+                     f"(structure-tree order vs flat stream; read both pdftotext dumps)"]
+            for role, toks, r in bad[:4]:
+                lines.append(f"    <{role}> disorder={r['disorder']}/{r['present']}: "
+                             f"{' '.join(toks)[:70]!r}")
+            failures.append("\n".join(lines))
+        elif report:
+            print(f"ok   {name}: chunk order matches")
+    return failures
+
+
 def gate_unit(report: bool = False) -> list[str]:
     """Tier 0.5 — pure-Typst unit tests (tests/unit/*.typ). These import a module
     and assert on its output via #assert.eq, so a failure aborts the compile with
@@ -966,6 +1012,8 @@ def cmd_check(args) -> int:
     ok &= _run_gate("Tier 1.7 (hyperlinks)", gate_links())
     print("\n== Tier 1.8 (fonts) ==")
     ok &= _run_gate("Tier 1.8 (fonts)", gate_fonts())
+    print("\n== Tier 1.9 (order) ==")
+    ok &= _run_gate("Tier 1.9 (order)", gate_order())
     print("\n== Tier 2 (metrics) ==")
     ok &= _run_gate("Tier 2 (metrics)", gate_metrics())
     return 0 if ok else 1
@@ -1285,6 +1333,12 @@ def cmd_metrics(_args) -> int:
     return 0
 
 
+def cmd_order(_args) -> int:
+    for f in gate_order(report=True):
+        print(f)
+    return 0
+
+
 def cmd_linepitch(args) -> int:
     import numpy as np
     from PIL import Image
@@ -1371,6 +1425,7 @@ def main() -> int:
     sub.add_parser("list", help="print the test matrix").set_defaults(fn=cmd_list)
     sub.add_parser("clean", help="remove tests/out/").set_defaults(fn=cmd_clean)
     sub.add_parser("metrics", help="print the Tier 2 metric table (no gating)").set_defaults(fn=cmd_metrics)
+    sub.add_parser("order", help="report the Tier 1.9 per-chunk reading-order check").set_defaults(fn=cmd_order)
 
     lp = sub.add_parser("linepitch", help="measure baseline pitch / first-line position")
     lp.add_argument("pdf")
