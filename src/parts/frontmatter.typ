@@ -148,12 +148,28 @@
   [.]
 }
 
+// Wrap inline content as an explicit paragraph so Typst's PDF tagger emits it as
+// its own <P> structure element. Typst fuses several CONSECUTIVE inline-only
+// blocks into a single <Span> (e.g. the author note + the contact-info block
+// would merge); a block whose body is an explicit paragraph is tagged separately.
+// Layout-neutral — the paragraph already existed implicitly, so the rendering is
+// byte-identical; the only effect is to give the content its own structure-tree
+// chunk, in reading order, so the text-comparison harness can check intra-chunk
+// element order (e.g. each author's name→affiliation→email) instead of one fused
+// blob. Only safe for SINGLE-paragraph content — `par` collapses paragraph breaks.
+#let tagged-par(body) = par(body)
+
 // A full-width frontmatter text block at one font-size step (default "small" =
 // 9pt), with intra-block leading and inter-paragraph spacing on the baseline
 // grid (comp()). `indent` sets the first-line indent (0pt = none); `spacing` is
 // the outer block gap to neighbours. Used for the abstract, CCS/keywords lines,
 // and the ACM reference format.
-#let fm-block(cfg, body, sz: "small", justify: true, indent: 0pt, spacing: 0pt) = {
+// `chunk: true` wraps a SINGLE-paragraph body in `tagged-par` so it tags as its
+// own <P> structure element instead of fusing into a neighbour's <Span> (see
+// tagged-par). Only safe for single-paragraph content — `par` collapses
+// paragraph breaks — so it is off by default and the multi-paragraph abstract
+// keeps it off.
+#let fm-block(cfg, body, sz: "small", justify: true, indent: 0pt, spacing: 0pt, chunk: false) = {
   let lead = comp(cfg, sz: sz)
   block(width: 100%, spacing: spacing)[
     #set text(font: cfg.fonts.serif, size: cfg.size.at(sz))
@@ -163,7 +179,7 @@
       first-line-indent: if indent == 0pt { 0pt } else { (amount: indent, all: false) },
       spacing: lead,
     )
-    #body
+    #if chunk { tagged-par(body) } else { body }
   ]
 }
 
@@ -172,7 +188,7 @@
 // 9pt text (tex-skip with sz: "small"). See DESIGN.md "block vertical spacing".
 #let special-line(cfg, label, content) = {
   v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
-  fm-block(cfg, [#label: #content], justify: false, spacing: comp(cfg, sz: "small"))
+  fm-block(cfg, [#label: #content], justify: false, spacing: comp(cfg, sz: "small"), chunk: true)
 }
 
 // Assign footnote symbols across the whole top matter, matching acmart's shared
@@ -289,7 +305,7 @@
     if ni.notes.len() > 0 {
       rule(cfg.footnote-rule-short)
       for n in ni.notes {
-        block(spacing: lead)[#super(n.symbol)#n.body]
+        block(spacing: lead, tagged-par[#super(n.symbol)#n.body])
       }
     }
 
@@ -300,7 +316,7 @@
       rule(100%)
       let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
       let contacts = meta.authors.map(contact-line).join("; ")
-      block(spacing: lead)[#label #contacts.]
+      block(spacing: lead, tagged-par[#label #contacts.])
     }
 
     // 3. Copyright / permission (faithful to acmart's assembly). nonacm
@@ -424,7 +440,10 @@
   block(spacing: 0pt)[
     #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), top-edge: "cap-height")
     #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: tf.size), spacing: comp(cfg, sz: tf.size))
-    #meta.title#if mark != none { super(mark) }
+    // tagged-par so the title is its own <P> chunk, not fused into the author
+    // head's <Span>. Translated titles are already separate paragraphs (parbreak)
+    // and tag separately on their own.
+    #tagged-par[#meta.title#if mark != none { super(mark) }]
     #for (l, t) in meta.translated-title {
       parbreak()
       text(lang: lang-record(l).code, t)
@@ -442,7 +461,7 @@
   block(spacing: tex-skip(cfg, 0pt))[
     #set text(font: cfg.fonts.at(sf.family), weight: sf.weight, size: cfg.size.at(sf.size))
     #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: sf.size), spacing: comp(cfg, sz: sf.size))
-    #meta.subtitle#if mark != none { super(mark) }
+    #tagged-par[#meta.subtitle#if mark != none { super(mark) }]
     #for (l, t) in meta.translated-subtitle {
       parbreak()
       text(lang: lang-record(l).code, t)
@@ -497,7 +516,7 @@
   if meta.anonymous {
     block(spacing: 0pt)[
       #set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
-      #upper[Anonymous Author(s)]
+      #tagged-par[#upper[Anonymous Author(s)]]
     ]
   } else {
   block(spacing: 0pt)[
@@ -505,13 +524,15 @@
     #for g in group-authors(mark-authors(meta, ni)) {
       // andify preserves the per-name content marks (superscript symbols).
       let names = g.authors.map(a => { upper(a.name); render-marks(a._marks) })
+      // tagged-par so each author line is its own <P> chunk (author order can be
+      // checked) rather than fusing into one frontmatter <Span>.
       block(spacing: comp(cfg, sz: af.size))[
-        #text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))[#andify(names)]#{
+        #tagged-par[#text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))[#andify(names)]#{
           let aff = affil-short(g.affiliation)
           if aff != none {
             text(font: cfg.fonts.at(aff-f.family), weight: aff-f.weight, size: cfg.size.at(aff-f.size))[, #aff]
           }
-        }
+        }]
       ]
     }
   ]
@@ -614,7 +635,7 @@
     special-line(cfg, label, if lang != none { text(lang: lang, content) } else { content })
   } else {
     heading(numbering: none, outlined: false)[#label]
-    fm-block(cfg, if lang != none { text(lang: lang, content) } else { content }, justify: false)
+    fm-block(cfg, if lang != none { text(lang: lang, content) } else { content }, justify: false, chunk: true)
   }
 }
 
@@ -688,7 +709,7 @@
         }#{
           if meta.doi != none [ #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]]
         }
-      ])
+      ], chunk: true)
     }
   }
 
