@@ -70,6 +70,34 @@
 #has("ref \\href{http://a.b}{text}", "link")
 #has("math $\\frac{n}{2} \\leq x^{2n}$", "equation")  // real Typst math
 
+// Multi-letter math runs: Typst reads `ab` as ONE (undefined) identifier and
+// errors, so the math evaluator must split a run into separate atoms. These would
+// panic ("unknown variable: ab" / "x2") if the run were emitted whole; reaching
+// the asserts proves it doesn't, and the atoms stay separate.
+#has("$ab$", "[a]")
+#has("$ab$", "[b]")
+#has("$x_{ab}$", "attach")        // multi-letter subscript, was a crash
+#has("$x2$", "equation")          // letter+digit run, was "unknown variable: x2"
+// \ensuremath switches to math (was routed to text mode -> \alpha panicked).
+#has("\\ensuremath{\\alpha}", "equation")
+
+// Declaration *switches* restyle the REST of the group, not just the next char:
+// `{\it a b}` -> emph over the whole "a b" (the old arg-grab gave emph over "a"
+// only). `[a b]` as one leaf inside the emph is the discriminator.
+#has("{\\it a b} c", "emph")
+#has("{\\it a b} c", "[a b]")
+#has("x {\\bf y z}", "strong")
+#has("{\\sc a b}", "smallcaps")
+#chk(tex-to-string("{\\it a b} c"), "switch drops formatting in string mode", "a b c")
+// ...but \textit/\textbf are argument-takers: only the braced group is styled.
+#chk(tex-to-string("\\textit{a} b"), "arg-form styles only its argument", "a b")
+
+// Robustness (compile-only): these must not crash the generated math source.
+//   - \text{..} with an embedded " and \ (must be escaped, not injected)
+//   - the math spacing control symbols \, \: \; \! \(space) and ~
+#let _esc = tex-to-content("$\\text{a\"b\\c} + 1$")
+#let _spc = tex-to-content("$a\\,b\\;c\\!d\\:e\\ f~g$")
+
 // regression: an accent grabbing the LAST char of a run (run = 1 cluster) — the
 // tail `().join("")` is `none`, which once built a `value: none` text token.
 #chk(tex-to-string("Caf\\'e"), "accent at end of field", "Cafe\u{0301}")

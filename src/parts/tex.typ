@@ -205,6 +205,8 @@
 // Mode-independent: `^`/`_` are emitted as `special` regardless of mode; the
 // evaluators give them meaning (scripts in math, an error bare in text).
 #let _is-alpha(c) = (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
+#let _is-num(c) = c >= "0" and c <= "9"
+#let _is-alnum(c) = _is-alpha(c) or _is-num(c)
 #let _tokenize(cp, i, stop) = {
   let n = cp.len()
   let toks = ()
@@ -296,10 +298,22 @@
   o: "ø", O: "Ø", l: "ł", L: "Ł", i: "ı", j: "ȷ",
 )
 #let _logos = (LaTeX: "LaTeX", TeX: "TeX", BibTeX: "BibTeX", LaTeXe: "LaTeX2e")
-#let _emph-cw = ("emph", "textit", "it", "textsl")
-#let _strong-cw = ("textbf", "bf")
-#let _sc-cw = ("textsc", "sc")
-#let _id-cw = ("textrm", "textsf", "textnormal", "textup", "textmd", "mbox", "text", "ensuremath")
+// Argument-taking inline formatting: \textit{x}, \emph{x}, \textbf{x}, \textsc{x}.
+#let _emph-cw = ("emph", "textit", "textsl")
+#let _strong-cw = ("textbf",)
+#let _sc-cw = ("textsc",)
+#let _id-cw = ("textrm", "textsf", "textnormal", "textup", "textmd", "mbox", "text")
+// Declaration *switches* (NO argument): they restyle the REST of the enclosing
+// group — `{\it a b}` italicizes "a b", not just the next char. Name -> styler tag
+// (em/bf/sc/tt, or id = a font *reset*, which we approximate as identity).
+#let _switch-cw = (
+  it: "em", itshape: "em", sl: "em", slshape: "em", em: "em",
+  bf: "bf", bfseries: "bf",
+  sc: "sc", scshape: "sc",
+  tt: "tt", ttfamily: "tt",
+  rm: "id", rmfamily: "id", sf: "id", sffamily: "id",
+  normalfont: "id", upshape: "id", mdseries: "id",
+)
 #let _noop-cw = ("relax", "protect", "noindent")
 #let _cs-literal = ("&": "&", "%": "%", "$": "$", "#": "#", "_": "_", "{": "{", "}": "}")
 #let _cs-space = (" ": " ", ",": "\u{2009}", ";": " ", ":": " ")
@@ -312,6 +326,24 @@
   s = s.replace("``", "\u{201C}").replace("''", "\u{201D}")
   s = s.replace("`", "\u{2018}").replace("'", "\u{2019}")
   s
+}
+
+// In math, each letter is its OWN italic identifier and a digit-run is a number.
+// Typst reads consecutive letters as one (usually undefined) identifier and ERRORS
+// (`$ab$` -> "unknown variable: ab"; `$x2$` likewise), so a raw run must be split:
+// insert a space between adjacent alphanumerics unless both are digits (keeping a
+// multi-digit number intact). Non-alphanumerics (operators, parens) pass through.
+#let _math-run(s) = {
+  let out = ""
+  let prev = none
+  for c in s.codepoints() {
+    if prev != none and _is-alnum(prev) and _is-alnum(c) and not (_is-num(prev) and _is-num(c)) {
+      out += " "
+    }
+    out += c
+    prev = c
+  }
+  out
 }
 
 // ---- math: tokens -> Typst-math source string ------------------------------
@@ -356,6 +388,17 @@
 #let _math-fn2 = (frac: "frac", tfrac: "frac", dfrac: "frac", binom: "binom")
 #let _math-noop = ("left", "right", "displaystyle", "textstyle", "scriptstyle",
   "limits", "nolimits", "bigl", "bigr", "big", "Big", "biggl", "biggr")
+// Math spacing control symbols: a literal " " is IGNORED by Typst math, so each
+// maps to a real spacing keyword. \, = thin, \: \> = medium, \; = thick,
+// \(space) = normal, \! = negative thin (LaTeX's are 3/4/5/-3 of 18mu = 1/6 em).
+#let _math-cs-space = (
+  ",": "thin", ":": "med", ">": "med", ";": "thick", " ": "space",
+  "!": "#h(-(1em)/6)",
+)
+
+// Apply a formatting tag to already-evaluated inner content `x` (content mode
+// only — in string/math modes formatting is dropped and `x` passes through).
+#let _apply(tag, x, cont) = if not cont { x } else if tag == "em" { emph(x) } else if tag == "bf" { strong(x) } else if tag == "sc" { smallcaps(x) } else if tag == "ul" { underline(x) } else { x }
 
 // ---- the evaluator: tokens -> content / string / math-source ---------------
 // ONE recursive function over three modes, so every call is self-referential
@@ -381,17 +424,21 @@
     let piece = if cont { [] } else { "" }
 
     if t.kind == "text" {
-      piece = if math { t.value + " " } else { _render-run(t.value) }
+      piece = if math { _math-run(t.value) + " " } else { _render-run(t.value) }
     } else if t.kind == "group" {
       let g = _eval(t.body, mode)
-      piece = if math { "(" + g + ") " } else { g }
+      // A `{group}` is invisible grouping (NOT parentheses); in math we just inline
+      // the body. (A following ^/_ then attaches to the body's last atom, not the
+      // whole group — an accepted approximation; explicit scripts use `^{..}`.)
+      piece = if math { g + " " } else { g }
     } else if t.kind == "math" {
-      if cont { piece = eval("$" + _eval(t.body, "math") + "$", mode: "markup") }
+      if cont { piece = eval(_eval(t.body, "math"), mode: "math") }
       else if math { piece = _eval(t.body, "math") }
       else { _unsupported("inline math in a name/label field") }
     } else if t.kind == "special" {
       if math {
-        if t.char == "~" { piece = " " }
+        // `~` in math is a (non-breaking) interword space; a literal " " is ignored.
+        if t.char == "~" { piece = "space.nobreak " }
         else { let (a, r) = _grab(tail); piece = t.char + "(" + _eval(a, "math") + ") "; next = r }
       } else if t.char == "~" { piece = "\u{00A0}" }
       else { _unsupported("character '" + t.char + "' outside math mode (use $...$, \\textasciicircum or \\textunderscore)") }
@@ -401,20 +448,35 @@
         if nm in _math-sym { piece = _math-sym.at(nm) + " " }
         else if nm in _math-fn1 { let (a, r) = _grab(tail); piece = _math-fn1.at(nm) + "(" + _eval(a, "math") + ") "; next = r }
         else if nm in _math-fn2 { let (a, r) = _grab(tail); let (b, r2) = _grab(r); piece = _math-fn2.at(nm) + "(" + _eval(a, "math") + ", " + _eval(b, "math") + ") "; next = r2 }
-        else if nm == "text" or nm == "mbox" or nm == "textrm" { let (a, r) = _grab(tail); piece = "\"" + _eval(a, "string") + "\" "; next = r }
+        else if nm == "text" or nm == "mbox" or nm == "textrm" {
+          // \text{..} -> a quoted Typst string literal; escape \ and " so the
+          // generated math source can't be broken by the field's own characters.
+          let (a, r) = _grab(tail)
+          let s = _eval(a, "string").replace("\\", "\\\\").replace("\"", "\\\"")
+          piece = "\"" + s + "\" "; next = r
+        }
         else if nm in _math-noop { }
         else { _unsupported("math command \\" + nm) }
       } else if nm in _special-letters { piece = _special-letters.at(nm) }
       else if nm in _logos { piece = _logos.at(nm) }
+      else if nm == "ensuremath" {
+        let (a, r) = _grab(tail); next = r
+        piece = if cont { eval(_eval(a, "math"), mode: "math") } else { _unsupported("\\ensuremath in a name/label field") }
+      }
       else if nm in _accent-cw { let (a, r) = _grab(tail); piece = _eval(a, "string") + _accent-cw.at(nm); next = r }
       else if nm in _id-cw { let (a, r) = _grab(tail); piece = _eval(a, mode); next = r }
-      else if nm in _emph-cw { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { emph(x) } else { x }; next = r }
-      else if nm in _strong-cw { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { strong(x) } else { x }; next = r }
-      else if nm in _sc-cw { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { smallcaps(x) } else { x }; next = r }
-      else if nm == "underline" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { underline(x) } else { x }; next = r }
+      else if nm in _switch-cw {                  // declaration switch: restyle REST of group
+        let tag = _switch-cw.at(nm); next = ()
+        if tag == "tt" { let s = _eval(tail, "string"); piece = if cont { raw(s) } else { s } }
+        else { piece = _apply(tag, _eval(tail, mode), cont) }
+      }
+      else if nm in _emph-cw { let (a, r) = _grab(tail); piece = _apply("em", _eval(a, mode), cont); next = r }
+      else if nm in _strong-cw { let (a, r) = _grab(tail); piece = _apply("bf", _eval(a, mode), cont); next = r }
+      else if nm in _sc-cw { let (a, r) = _grab(tail); piece = _apply("sc", _eval(a, mode), cont); next = r }
+      else if nm == "underline" { let (a, r) = _grab(tail); piece = _apply("ul", _eval(a, mode), cont); next = r }
       else if nm == "textsuperscript" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { super(x) } else { x }; next = r }
       else if nm == "textsubscript" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { sub(x) } else { x }; next = r }
-      else if nm == "texttt" or nm == "tt" { let (a, r) = _grab(tail); let s = _eval(a, "string"); piece = if cont { raw(s) } else { s }; next = r }
+      else if nm == "texttt" { let (a, r) = _grab(tail); let s = _eval(a, "string"); piece = if cont { raw(s) } else { s }; next = r }
       else if nm == "url" { let (a, r) = _grab(tail); let u = _eval(a, "string"); piece = if cont { link(u)[#u] } else { u }; next = r }
       else if nm == "href" { let (a, r) = _grab(tail); let (b, r2) = _grab(r); let u = _eval(a, "string"); let x = _eval(b, mode); piece = if cont { link(u)[#x] } else { x }; next = r2 }
       else if nm == "noopsort" { let (a, r) = _grab(tail); next = r }
@@ -423,7 +485,7 @@
     } else if t.kind == "cs" {
       let nm = t.name
       if math {
-        if nm == "," or nm == ";" or nm == " " or nm == "!" or nm == ":" { piece = " " }
+        if nm in _math-cs-space { piece = _math-cs-space.at(nm) + " " }
         else { _unsupported("math command \\" + nm) }
       } else if nm in _accent-cs { let (a, r) = _grab(tail); piece = _eval(a, "string") + _accent-cs.at(nm); next = r }
       else if nm in _cs-literal { piece = _cs-literal.at(nm) }
