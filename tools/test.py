@@ -864,7 +864,10 @@ def font_bag(pdf: Path) -> Counter:
     LETTERS only — punctuation and symbols sit at font boundaries / come from
     divergent symbol fonts, so their family is noise. Mono SIZE is dropped: LaTeX's
     zi4 and our bundled Inconsolata are scaled differently, so the nominal size is
-    incomparable (the family still is)."""
+    incomparable (the family still is). The ITALIC flag is dropped for math/symbol
+    glyphs: it comes from the font descriptor, which is unreliable for combined math
+    fonts (Typst's NewCMMath reports non-italic even though it renders the
+    mathematical-italic glyphs slanted, just like LaTeX's separate italic math font)."""
     import fitz
     counts: Counter = Counter()
     with fitz.open(pdf) as doc:
@@ -874,7 +877,8 @@ def font_bag(pdf: Path) -> Counter:
                     for span in line["spans"]:
                         fam = _font_role(span["font"])
                         size = None if fam == "mono" else round(span["size"] * 2) / 2
-                        key = (fam, bool(span["flags"] & 16), bool(span["flags"] & 2),
+                        italic = False if fam == "sym" else bool(span["flags"] & 2)
+                        key = (fam, bool(span["flags"] & 16), italic,
                                size, _font_color(span["color"]))
                         for ch in unicodedata.normalize("NFKC", span["text"]):
                             ch = _CHAR_FOLD.get(ch, ch)

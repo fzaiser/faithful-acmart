@@ -398,9 +398,10 @@ TESTS: dict[str, Test] = {
     ),
     "mathfields": Test(
         kind="twin", pages=1,
-        font_diff="math glyphs come from different math fonts (LaTeX LibertineMath/txsym "
-                  "vs Typst NewCMMath) and LaTeX sets math letters italic where Typst's "
-                  "upright; a known math-fidelity gap, not a body-text font bug",
+        font_diff="residual math-rendering gap (variables now match — both slant via the "
+                  "math-italic codepoints): \\log renders in LaTeX's serif text font but "
+                  "Typst's math font, and math subscripts use a slightly different "
+                  "scriptstyle size (6 vs 5.5pt); not a body-text font bug",
         note="inline math ($...$) in reference fields via the bst backend, rendered as "
              "REAL Typst math (tex.typ tokenizer -> math evaluator -> eval): greek "
              "letters, ^/_ grouping, relations/operators (\\leq, \\log), \\frac, "
