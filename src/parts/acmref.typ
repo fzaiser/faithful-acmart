@@ -13,6 +13,7 @@
 
 #import "bibtex.typ": read-bib, parse-names
 #import "bib-data.typ": journal-canon
+#import "scan.typ": match-brace, split-list-and
 #import "tex.typ": tex-to-string, tex-to-content, purify, change-case
 
 // ACM journal.canon.abbrev: map a full journal name to its canonical abbreviation
@@ -217,7 +218,7 @@
   let nums = p.matches(regex("[0-9]+"))
   let p1 = if nums.len() > 0 { nums.at(0).text } else { none }
   let p3 = if nums.len() > 2 { nums.at(2).text } else { none }
-  if p1 == "1" and p3 == none { nums.at(1).text } else { p }
+  if nums.len() >= 2 and p1 == "1" and p3 == none { nums.at(1).text } else { p }
 }
 // calc.format.page.count: "<count> pages" (misc/periodical/articleno paths)
 #let format-page-count(e) = {
@@ -249,10 +250,12 @@
 #let format-journal-block(e) = {
   if not has(e, "journal") { return none }
   let c = it(render(canon-abbrev(fld(e, "journal"))))
-  if has(e, "number") {
+  if has(e, "volume") and has(e, "number") {
     c = c + " " + fld(e, "volume") + ", " + fld(e, "number")
   } else if has(e, "volume") {
     c = c + " " + fld(e, "volume")
+  } else if has(e, "number") {
+    c = c + " " + fld(e, "number")
   }
   let dmy = format-day-month-year(e)
   if e.entry-type != "inproceedings" and dmy != none { c = c + dmy.c }
@@ -264,8 +267,7 @@
 }
 
 // ---- "In booktitle (city)" variants ---------------------------------------
-#let format-city(e, prev-empty) = {
-  if prev-empty { return "" }
+#let format-city(e) = {
   let loc = if has(e, "location") { fld(e, "location") } else if has(e, "city") { fld(e, "city") } else { none }
   let date = if has(e, "date") { fld(e, "date") } else { none }
   if loc == none and date == none { "" }
@@ -276,12 +278,12 @@
 #let format-in-emph-booktitle(e) = {
   let bt = format-emph-booktitle(e)
   if bt == none { return none }
-  (c: [In ] + bt.c + format-city(e, false), p: false)
+  (c: [In ] + bt.c + format-city(e), p: false)
 }
 #let format-in-ed-booktitle(e) = {
   let bt = format-emph-booktitle(e)
   if bt == none { return none }
-  let c = [In ] + bt.c + format-city(e, false)
+  let c = [In ] + bt.c + format-city(e)
   if has(e, "editor") {
     c = c + ", " + join-names(e.names.editor) + (if e.names.editor.len() > 1 { " (Eds.)" } else { " (Ed.)" })
   }
@@ -527,7 +529,7 @@
     em = out-year(em, ysuf(year-value(e)))
     em = nblock(em)
     let bt = format-btitle(e)
-    if bt != none { bt = (c: bt.c + format-city(e, false), p: false) }
+    if bt != none { bt = (c: bt.c + format-city(e), p: false) }
     em = out(em, bt)
     em = nsentence(em)
     em = out(em, format-bvolume(e))
@@ -597,21 +599,6 @@
 // below are named after the source macros/drivers where practical, but they emit
 // Typst content directly and share the parser, TeX renderer, sort/cite state, and
 // hyperlink machinery with the ACM-Reference-Format.bst port above.
-#let blx-match-brace(cp, i) = {
-  let depth = 0
-  let j = i
-  while j < cp.len() {
-    let c = cp.at(j)
-    if c == "\\" { j += 2; continue }
-    if c == "{" { depth += 1 } else if c == "}" {
-      depth -= 1
-      if depth == 0 { return j }
-    }
-    j += 1
-  }
-  j
-}
-
 #let blx-has-cased(s) = s.codepoints().any(c => lower(c) != upper(c))
 
 // BibLaTeX numeric inherits a sentence-casing title formatter. Keep TeX control
@@ -633,7 +620,7 @@
       }
       if i == start and i < cp.len() { out += cp.at(i); i += 1 }
     } else if c == "{" {
-      let j = blx-match-brace(cp, i)
+      let j = match-brace(cp, i)
       let g = cp.slice(i, calc.min(j + 1, cp.len())).join("")
       out += g
       if first and blx-has-cased(g) { first = false }
@@ -735,17 +722,6 @@
   } else {
     (c: c, p: p)
   }
-}
-#let blx-title-emph(e, style: "numeric", sentence: true) = {
-  let raw = blx-title-raw(e)
-  if raw == none { return none }
-  let shown = if style == "numeric" and sentence { blx-sentence-case(raw) } else { raw }
-  (c: it(render(shown)), p: blx-ends-punct(shown))
-}
-#let blx-book-title(e) = {
-  let raw = blx-title-raw(e)
-  if raw == none { return none }
-  (c: it(render(raw)), p: blx-ends-punct(raw))
 }
 #let blx-booktitle(e, with-in: false, style: "numeric") = {
   if not has(e, "booktitle") { return none }
@@ -895,13 +871,6 @@
   else if pub != none { pub }
   else { pg }
 }
-#let blx-volume-series(e) = {
-  if has(e, "volume") and has(e, "series") { (c: render(fld(e, "series")) + ". Vol. " + fld(e, "volume"), p: false) }
-  else if has(e, "series") { V(fld(e, "series")) }
-  else if has(e, "volume") { (c: "Vol. " + fld(e, "volume"), p: false) }
-  else { none }
-}
-#let blx-series(e) = if has(e, "series") { V(fld(e, "series")) } else { none }
 #let blx-volume(e) = if has(e, "volume") { (c: "Vol. " + fld(e, "volume"), p: false) } else { none }
 #let blx-ed-by(e) = if has(e, "editor") {
   (c: "Ed. by " + render(join-names(e.names.editor)), p: false)
@@ -1009,14 +978,14 @@
   }
   out
 }
-#let blx-article-like(e, style: "numeric", suffix: "", quoted: false) = blx-blocks(
+#let blx-article-like(e, style: "numeric", suffix: "") = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
   blx-journal(e),
   blx-note(e),
   ..blx-tail(e),
 )
-#let blx-inproceedings(e, style: "numeric", suffix: "", quoted: false) = {
+#let blx-inproceedings(e, style: "numeric", suffix: "") = {
   let title-led = style == "author-year" and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
   blx-blocks(
     if title-led { none } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) },
@@ -1030,7 +999,7 @@
     ..blx-tail(e),
   )
 }
-#let blx-incollection(e, style: "numeric", suffix: "", quoted: false) = blx-blocks(
+#let blx-incollection(e, style: "numeric", suffix: "") = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
   blx-booktitle-simple(e, with-in: true, style: style),
@@ -1044,7 +1013,7 @@
   blx-isbn(e),
   ..blx-tail(e),
 )
-#let blx-inbook(e, style: "numeric", suffix: "", quoted: false) = {
+#let blx-inbook(e, style: "numeric", suffix: "") = {
   let lead = blx-inbook-lead(e, style: style, suffix: suffix)
   blx-blocks(
     lead,
@@ -1206,30 +1175,8 @@
   out
 }
 
-#let blx-split-list-and(raw) = {
-  let cp = raw.codepoints()
-  let n = cp.len()
-  let parts = ()
-  let cur = ""
-  let depth = 0
-  let i = 0
-  while i < n {
-    let c = cp.at(i)
-    if c == "{" { depth += 1 } else if c == "}" { depth -= 1 }
-    if (depth == 0 and c == "a" and i > 0 and i + 3 < n
-        and cp.at(i + 1) == "n" and cp.at(i + 2) == "d"
-        and cp.at(i - 1) in (" ", "\n", "\t", "\r")
-        and cp.at(i + 3) in (" ", "\n", "\t", "\r")) {
-      parts.push(cur.trim()); cur = ""; i += 3; continue
-    }
-    cur += c; i += 1
-  }
-  parts.push(cur.trim())
-  parts.filter(p => p != "")
-}
-
 #let blx-list-content(raw) = {
-  let parts = blx-split-list-and(raw).map(render)
+  let parts = split-list-and(raw, trim: true, filter-empty: true).map(render)
   if parts.len() == 0 { return [] }
   let out = []
   for (i, p) in parts.enumerate() {
@@ -1351,9 +1298,8 @@
 }
 
 #let blx-handle(e, style: "numeric", year-suffix: "") = {
-  let quoted = style == "author-year"
   let t = e.entry-type
-  if t == "article" { blx-article-like(e, style: style, suffix: year-suffix, quoted: quoted) }
+  if t == "article" { blx-article-like(e, style: style, suffix: year-suffix) }
   else if t == "underreview" {
     blx-blocks(
       blx-lead(e, style: style, suffix: year-suffix),
@@ -1363,10 +1309,10 @@
       ..blx-tail(e),
     )
   }
-  else if t == "inproceedings" or t == "conference" { blx-inproceedings(e, style: style, suffix: year-suffix, quoted: quoted) }
+  else if t == "inproceedings" or t == "conference" { blx-inproceedings(e, style: style, suffix: year-suffix) }
   else if t == "presentation" { blx-presentation(e, style: style, suffix: year-suffix) }
-  else if t == "incollection" { blx-incollection(e, style: style, suffix: year-suffix, quoted: quoted) }
-  else if t == "inbook" { blx-inbook(e, style: style, suffix: year-suffix, quoted: quoted) }
+  else if t == "incollection" { blx-incollection(e, style: style, suffix: year-suffix) }
+  else if t == "inbook" { blx-inbook(e, style: style, suffix: year-suffix) }
   else if t == "book" or t == "proceedings" or t == "collection" { blx-book-like(e, style: style, suffix: year-suffix) }
   else if t in blx-software-types { blx-software-driver(e, t) }
   else if t == "online" or t == "manual" or t == "misc" or t == "game" or t == "video" or t == "artifactdataset" or t == "dataset" or t == "preprint" {

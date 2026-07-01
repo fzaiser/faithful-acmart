@@ -226,14 +226,18 @@
   let idx = 0
   let title-mark = none
   let subtitle-mark = none
+  let symbol-at(i) = {
+    assert(i < fnsymbols.len(), message: "acmart: too many top-matter notes for the available footnote symbols")
+    fnsymbols.at(i)
+  }
 
   if meta.title-note != none {
-    title-mark = fnsymbols.at(idx)
+    title-mark = symbol-at(idx)
     notes.push((symbol: title-mark, body: if anon { [Title note] } else { meta.title-note }))
     idx += 1
   }
   if meta.subtitle-note != none {
-    subtitle-mark = fnsymbols.at(idx)
+    subtitle-mark = symbol-at(idx)
     notes.push((symbol: subtitle-mark, body: if anon { [Subtitle note] } else { meta.subtitle-note }))
     idx += 1
   }
@@ -246,7 +250,7 @@
     if a.note != none and not anon {
       let key = repr(a.note)
       if key not in seen {
-        seen.insert(key, fnsymbols.at(idx))
+        seen.insert(key, symbol-at(idx))
         notes.push((symbol: seen.at(key), body: a.note))
         idx += 1
       }
@@ -627,6 +631,7 @@
 // centered independently (acmart \centering per row), so a partial final row is
 // centered under the full rows rather than left-aligned.
 #let make-authors-grid(cfg, groups, authors-per-row: 0) = {
+  if groups.len() == 0 { return [] }
   let sep = 12pt // \author@bx@sep = 1pc
   let tw = cfg.paper.width - cfg.margin.inside - cfg.margin.outside
   let n = if authors-per-row > 0 { authors-per-row } else {

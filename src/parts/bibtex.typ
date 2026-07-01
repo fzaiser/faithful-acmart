@@ -12,6 +12,7 @@
 // (TeX-significant: {ACM} casing, \url{...}); the formatter's tx() resolves them.
 
 #import "bib-data.typ": journal-macros
+#import "scan.typ": match-brace, match-delim, split-list-and
 
 // ACM journal-style month macros (full name if <=5 letters, else abbreviated)
 #let months = (
@@ -20,22 +21,6 @@
 )
 
 #let ws = (" ", "\n", "\t", "\r")
-
-// Index of the "}" matching the "{" at position `i` in codepoint array `cp`.
-#let match-brace(cp, i) = {
-  let depth = 0
-  let j = i
-  while j < cp.len() {
-    let c = cp.at(j)
-    if c == "\\" { j += 2; continue }    // escaped char: \{ and \} are literal
-    if c == "{" { depth += 1 } else if c == "}" {
-      depth -= 1
-      if depth == 0 { return j }
-    }
-    j += 1
-  }
-  j
-}
 
 #let skip-ws(cp, i) = {
   while i < cp.len() and cp.at(i) in ws { i += 1 }
@@ -102,27 +87,6 @@
 // .bib files put "and" on its own line). A leading/trailing "and" is not a
 // separator (it has no whitespace on the outer side); two consecutive "and"s
 // yield an empty name in between. Matches biblatex's split_token_lists_with_kw.
-#let split-and(raw) = {
-  let cp = raw.codepoints()
-  let n = cp.len()
-  let parts = ()
-  let cur = ""
-  let depth = 0
-  let i = 0
-  while i < n {
-    let c = cp.at(i)
-    if c == "{" { depth += 1 } else if c == "}" { depth -= 1 }
-    if (depth == 0 and c == "a" and i > 0 and i + 3 < n
-        and cp.at(i + 1) == "n" and cp.at(i + 2) == "d"
-        and cp.at(i - 1) in ws and cp.at(i + 3) in ws) {
-      parts.push(cur); cur = ""; i += 3; continue
-    }
-    cur += c; i += 1
-  }
-  parts.push(cur)
-  parts
-}
-
 // Split `s` at every char in `seps` that sits at brace depth 0; brace groups are
 // kept intact, so "{de la}" stays one token and "{Robert and Sons, Inc.}" keeps
 // its comma. Matches biblatex's split_at_normal_char (commas/spaces inside braces
@@ -268,15 +232,15 @@
   r.pairs().map(((k, v)) => (k, if v == none { "" } else { v })).to-dict()
 }
 
-#let parse-names(raw) = split-and(raw).map(parse-one-name)
+#let parse-names(raw) = split-list-and(raw).map(parse-one-name)
 
-// ---- one entry: "@type{key, f = v, ...}" ----
+// ---- one entry: "@type{key, f = v, ...}" / "@type(key, f = v, ...)" ----
 #let parse-entry(block, macros) = {
-  let m = block.match(regex("(?s)^@(\w+)\s*\{\s*([^,]+),"))
+  let m = block.match(regex("(?s)^@(\w+)\s*[\{\(]\s*([^,]+),"))
   if m == none { return none }
   let etype = lower(m.captures.at(0))
   let key = m.captures.at(1).trim()
-  let cp = block.slice(m.end).codepoints()
+  let cp = block.slice(m.end, -1).codepoints()
   let fields = (:)
   let i = 0
   while i < cp.len() {
@@ -305,7 +269,7 @@
   (key: key, entry: (entry-type: etype, fields: fields, names: names))
 }
 
-// span of every top-level @...{...} block
+// span of every top-level @...{...} or @...(...) block
 #let scan-blocks(cp) = {
   let out = ()
   let i = 0
@@ -316,9 +280,11 @@
     }
     if cp.at(i) != "@" { i += 1; continue }
     let b = i
-    while b < cp.len() and cp.at(b) != "{" { b += 1 }
+    while b < cp.len() and not (cp.at(b) in ("{", "(")) { b += 1 }
     if b >= cp.len() { break }
-    let e = match-brace(cp, b)
+    let open = cp.at(b)
+    let close = if open == "{" { "}" } else { ")" }
+    let e = match-delim(cp, b, open: open, close: close)
     out.push((start: i, brace: b, end: e))
     i = e + 1
   }

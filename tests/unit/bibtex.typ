@@ -138,6 +138,11 @@
 #assert.eq(db.keys(), ("k1",))
 #assert.eq(db.k1.entry-type, "book")
 
+// BibTeX accepts parentheses as entry delimiters too.
+#let paren-db = parse-bib("@string(monthname = \"May\")
+@misc(p1, title = {Paren ) Entry}, note = \"quoted ) value\", month = monthname, year = 2026)")
+#assert.eq(paren-db.p1.fields, (title: "Paren ) Entry", note: "quoted ) value", month: "May", year: "2026"))
+
 // ---- % line comments (regression for the audit fix) -----------------------
 // biblatex supports `%` line comments; the old reader silently dropped the rest
 // of the entry. A `%` after a value, after a comma, or after the key is skipped;
