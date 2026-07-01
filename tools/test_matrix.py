@@ -180,6 +180,11 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1, uniform_pitch=True,
         note="section / subsection / subsubsection / paragraph (run-in) headings",
     ),
+    "figure-heading-test": Test(
+        kind="twin", pages=1,
+        note="figures immediately followed by display/run-in/paragraph headings; "
+             "guards the post-figure paragraph-indent shim from leaking into headings.",
+    ),
     "body2-test": Test(
         kind="twin", pages=1,
         note="figure & table captions, theorems (plain/definition/proof+QED), lists",
@@ -523,7 +528,7 @@ TESTS: dict[str, Test] = {
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
-        kind="twin", pages=10, **_SAMPLE_COMMON,
+        kind="twin", pages=9, **_SAMPLE_COMMON,
         note="upstream manuscript sample (manuscript,screen,review + proceedings "
              "metadata). Single-column review style with margin line numbers.",
     ),
@@ -534,7 +539,10 @@ TESTS: dict[str, Test] = {
     "sample-sigconf": Test(
         kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream sigconf sample: two-column proceedings, spanning title, "
-             "centred author grid, teaser figure.",
+             "centred author grid, teaser figure. The table* twin uses Typst's "
+             "parent-scoped floating figure: it spans both columns and preserves "
+             "source order, but Typst does not implement LaTeX's deferred top "
+             "double-float queue.",
     ),
     "sample-sigplan": Test(
         kind="twin", pages=7, **_SAMPLE_COMMON,
@@ -570,7 +578,8 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=6, golden=False, **_SAMPLE_COMMON,
         note="upstream sigconf authordraft sample: draft watermark + line numbers "
              "+ inner-edge timestamp. The timestamp embeds the compile date, so "
-             "output is non-deterministic — compile-only (no golden), like draft-test.",
+             "output is non-deterministic — compile-only (no golden), like draft-test. "
+             "The table* caveat follows sample-sigconf.",
     ),
     "sample-acmsmall-biblatex": Test(
         kind="twin", pages=11, **_SAMPLE_COMMON,
@@ -584,7 +593,8 @@ TESTS: dict[str, Test] = {
         note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
              "(numeric). The Typst port still uses the bst/CSL bibliography machinery, "
              "so BibLaTeX-specific reference formatting and software artifact entries "
-             "are tracked separately by biblatex-test.",
+             "are tracked separately by biblatex-test. The table* caveat follows "
+             "sample-sigconf.",
     ),
     "sample-acmcp": Test(
         kind="twin", pages=1, **_SAMPLE_COMMON,

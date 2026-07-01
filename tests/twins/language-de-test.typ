@@ -34,11 +34,13 @@ Dieses Dokument prüft, dass die lokalisierten Zeichenketten zwischen der
 LaTeX-Klasse und der Typst-Portierung übereinstimmen.
 
 #figure(
+  placement: none,
   rect(width: 4cm, height: 2cm, fill: black),
   caption: [Eine Abbildung; das Etikett bleibt englisch.],
 )
 
 #figure(
+  placement: none,
   table(
     columns: 2,
     stroke: none,

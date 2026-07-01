@@ -34,11 +34,13 @@ Este documento comprueba que las cadenas localizadas coinciden entre la clase
 LaTeX y el porte de Typst.
 
 #figure(
+  placement: none,
   rect(width: 4cm, height: 2cm, fill: black),
   caption: [Una figura; la etiqueta permanece en inglés.],
 )
 
 #figure(
+  placement: none,
   table(
     columns: 2,
     stroke: none,

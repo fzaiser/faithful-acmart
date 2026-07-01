@@ -34,7 +34,10 @@
 // a weak v() supplies the vertical space before without breaking the run-in.
 #let run-in-heading(it, cfg, before: 0pt, indent: 0pt, f: (:), num: none, dot: true) = {
   v(before, weak: true)
-  // Cancel the automatic first-line indent down to the desired `indent`.
+  // Cancel the automatic first-line indent down to the desired `indent`. This
+  // also absorbs the paragraph-start shim emitted after ACM block environments
+  // (figures/tables/lists), so a figure immediately followed by a run-in heading
+  // does not gain a second indent.
   h(indent - cfg.parindent)
   set text(font: f.font, style: f.style, weight: f.weight, size: f.size)
   if num != none [#num#h(1em)]

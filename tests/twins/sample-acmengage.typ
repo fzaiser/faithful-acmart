@@ -1,13 +1,13 @@
 // sample-acmengage — port of the upstream acmart sample (acmart/samples,
 // acmengage.dtx). ACM EngageCSEdu course-material format: two-column, Synopsis
-// instead of Abstract, CC license, engage metadata (\setengagemetadata not
-// modelled — metadata key/value pairs appear before Synopsis in LaTeX but are
-// omitted here; keyword/body structure otherwise matches.
+// instead of Abstract, CC license, engage metadata before Synopsis, and the
+// ACM-Reference-Format bibliography through the bst backend.
 // Diffed against out/latex/acmengage.pdf.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(
   format: "acmengage",
+  bibliography-backend: "bst",
   title: "EngageCSEdu Submission Title (600 char limit)",
   booktitle: "ACM EngageCSEdu",
   acm-year: 2022, acm-month: 5,

@@ -1,0 +1,39 @@
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\begin{document}
+\thispagestyle{empty}
+
+\section{Figure Heading Indent}
+Text before the first figure establishes the normal body left edge.
+
+\begin{figure}[h]
+\centering
+\rule{3cm}{1cm}
+\caption{Display heading case.}
+\end{figure}
+
+\subsection{Display Heading After Figure}
+The display heading after the figure should start at the normal heading left
+edge, with no paragraph-indent shim leaking through.
+
+\begin{figure}[h]
+\centering
+\rule{3cm}{1cm}
+\caption{Run-in heading case.}
+\end{figure}
+
+\subsubsection{Run-In Heading After Figure}
+The run-in heading after the figure should start at the normal text left edge.
+
+\begin{figure}[h]
+\centering
+\rule{3cm}{1cm}
+\caption{Paragraph heading case.}
+\end{figure}
+
+\paragraph{Paragraph Heading After Figure}
+This paragraph heading is intentionally indented by the ACM paragraph-heading
+rule.
+
+\end{document}

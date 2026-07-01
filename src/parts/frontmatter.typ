@@ -536,7 +536,10 @@
 #let teaser-block(cfg, meta) = {
   if meta.teaser == none { return }
   v(tex-skip(cfg, cfg.bigskip), weak: true)
-  block(width: 100%, spacing: 0pt, meta.teaser)
+  block(width: 100%, spacing: 0pt)[
+    #set figure(placement: none)
+    #meta.teaser
+  ]
 }
 
 // The journal @i spanning head (acmart.dtx:6986): left-aligned title/subtitle,

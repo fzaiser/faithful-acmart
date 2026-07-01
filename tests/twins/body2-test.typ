@@ -5,11 +5,13 @@
 Text before a figure to establish context for the caption comparison below.
 
 #figure(
+  placement: none,
   rect(width: 4cm, height: 2cm, fill: black),
   caption: [A sample figure caption that is long enough to wrap onto a second line so we can examine caption typography.],
 )
 
 #figure(
+  placement: none,
   table(
     columns: 2,
     stroke: none,

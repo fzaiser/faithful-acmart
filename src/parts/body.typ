@@ -14,6 +14,10 @@
   show figure.where(kind: image): set figure(supplement: if cfg.bibstrip { [Fig.] } else { [Figure] })
   show figure.where(kind: table): set figure(supplement: cfg.strings.table)
   show figure.where(kind: table): set figure.caption(position: top)
+  // In LaTeX, figure/table environments are floats unless the source opts into a
+  // non-floating placement. Typst's figure() is in-flow by default, so give ACM
+  // body figures a floating default and let special wrappers opt out explicitly.
+  set figure(placement: auto)
   set figure.caption(separator: if cfg.bibstrip or cfg.name == "sigplan" { [. ] } else { [: ] })
 
   // Caption typography + singlelinecheck (center if one line, else left-justify)
@@ -38,7 +42,21 @@
   // Float spacing: \intextsep (12pt) around [h] floats, \abovecaptionskip (12pt)
   // between figure body and caption. (Floats sit on \lineskip, not \baselineskip,
   // so unlike text blocks they take no line-box compensation.)
-  show figure: set block(above: cfg.intextsep, below: cfg.intextsep)
+  let env-block(it, above: 0pt, below: 0pt) = {
+    block(above: above, below: below, it)
+    // LaTeX environments such as figure/table/list end with normal paragraph
+    // indentation enabled. Typst's global `all: false` only knows "after any
+    // block", so reintroduce the paragraph start after ACM block environments.
+    // If the next item is a heading, this does not visibly indent it: display
+    // headings are blocks, and run-in headings cancel/adjust the ambient indent
+    // in parts/headings.typ.
+    h(cfg.parindent)
+  }
+  show figure: it => {
+    set block(above: cfg.intextsep, below: cfg.intextsep)
+    it
+    h(cfg.parindent)
+  }
   set figure(gap: cfg.abovecaptionskip)
 
   // Tables: booktabs-like tight rows. booktabs.sty v1.61803398 sets
@@ -73,20 +91,14 @@
   // from the surrounding text by a \smallskip. tex-skip() converts that topsep
   // to the block gap; tight items inherit the baseline-grid leading.
   let list-gap = tex-skip(cfg, cfg.smallskip)
-  let list-block(it) = {
-    block(above: list-gap, below: list-gap, it)
-    // A list is not a sectioning command: the following paragraph is indented
-    // even though it follows a block. Typst's global `all: false` suppresses
-    // that indent, so add the hanging start explicitly for the next paragraph.
-    h(cfg.parindent)
-  }
+  let list-block(it) = env-block(it, above: list-gap, below: list-gap)
   show enum: it => list-block(it)
   show list: it => list-block(it)
   set enum(numbering: "(1)(a)(i)(A)", indent: cfg.parindent, body-indent: cfg.list-labelsep,
-    spacing: 0pt)
+    spacing: comp(cfg))
   set list(marker: ([$bullet$], text(weight: "bold")[–], [∗], [·]),
     indent: cfg.list-leftmargin - 2 * cfg.list-labelsep, body-indent: cfg.list-labelsep,
-    spacing: 0pt)
+    spacing: comp(cfg))
 
   // Monospace (Inconsolata/zi4) for inline and block code. Typst's raw default
   // is smaller than LaTeX \texttt/verbatim; force it back to the surrounding

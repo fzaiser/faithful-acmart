@@ -325,7 +325,8 @@ the placement of the table here with the table in the printed output of this
 document.
 
 #figure(
-  placement: top,
+  scope: "parent",
+  placement: auto,
   caption: [Some Typical Commands],
   table(
     columns: 3,
