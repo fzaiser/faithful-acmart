@@ -314,9 +314,7 @@ def _locate_window(chunk: list[str], pos: dict, n_stream: int) -> tuple[int, int
 
 
 def _reconcile_boundaries(chunk: list[str], window: list[str]) -> list[str]:
-    """Split a chunk token the structure tree glued across a line break back into
-    the stream's tokenization, so the boundary disagreement doesn't hide content
-    from the order check.
+    """Reconcile chunk/stream token-boundary disagreements before LCS.
 
     Word boundaries are unrecoverable from the tag tree: a line break renders no
     space and drops the hyphenation hyphen, so consecutive marked-content runs
@@ -326,15 +324,44 @@ def _reconcile_boundaries(chunk: list[str], window: list[str]) -> list[str]:
     window vocabulary) is replaced by those tokens. This is the "sub-token prefix"
     rule, done at word granularity — so unlike a char-level match it neither
     re-flags content reorders the bags already own nor reacts to a single stray
-    char. Its payoff: an email glued onto an affiliation line is un-glued, so its
-    ORDER is actually checked (the conference author grid, otherwise a blind spot).
+    char. The inverse also happens: URL/ISBN fragments and letter-spaced words can
+    be separate structure-tree tokens but one pdftotext token ("4"+"555" vs
+    "4555", "l e v e l" vs "level"). Merge those consecutive chunk tokens to the
+    stream token before the split pass. Its payoff: an email glued onto an
+    affiliation line is un-glued, and a line-broken identifier is not mistaken for
+    a local reorder.
     """
     vocab = set(window)
+    remaining = Counter(window)
     by_len = sorted(vocab, key=len, reverse=True)   # longest-prefix first
     out: list[str] = []
-    for t in chunk:
+    i = 0
+    def consume(toks: list[str]) -> None:
+        for tok in toks:
+            if remaining[tok] > 0:
+                remaining[tok] -= 1
+
+    while i < len(chunk):
+        merged = None
+        acc = ""
+        for j in range(i, min(len(chunk), i + 8)):
+            acc += chunk[j]
+            parts = chunk[i:j + 1]
+            needs_merge = any(t not in vocab for t in parts)
+            needs_merge = needs_merge or any(Counter(parts)[t] > remaining[t] for t in set(parts))
+            if j > i and acc in vocab and needs_merge:
+                merged = (acc, j + 1)
+        if merged is not None:
+            out.append(merged[0])
+            consume([merged[0]])
+            i = merged[1]
+            continue
+
+        t = chunk[i]
         if t in vocab:
             out.append(t)
+            consume([t])
+            i += 1
             continue
         pieces, rest = [], t
         while rest:
@@ -344,7 +371,10 @@ def _reconcile_boundaries(chunk: list[str], window: list[str]) -> list[str]:
                 break
             pieces.append(m)
             rest = rest[len(m):]
-        out.extend(pieces if pieces and len(pieces) > 1 else [t])
+        added = pieces if pieces and len(pieces) > 1 else [t]
+        out.extend(added)
+        consume(added)
+        i += 1
     return out
 
 
@@ -365,20 +395,27 @@ def chunk_order(chunk: list[str], stream: list[str]) -> dict:
     for i, t in enumerate(stream):
         fullpos.setdefault(t, []).append(i)
     lo, hi = _locate_window(chunk, fullpos, len(stream))
-    window = stream[lo:hi + 1]
-    tokens = _reconcile_boundaries(chunk, window)
-    avail: Counter = Counter(window)
-    present: list[str] = []
-    missing: list[str] = []
-    for t in tokens:
-        if avail[t] > 0:
-            present.append(t); avail[t] -= 1
-        else:
-            missing.append(t)
-    disorder = len(present) - _lcs_len(present, window)
-    norm = disorder / len(present) if present else 0.0
-    return {"disorder": disorder, "present": len(present), "norm": norm,
-            "missing": missing, "window": (lo, hi)}
+    def score(window: list[str], span: tuple[int, int]) -> dict:
+        tokens = _reconcile_boundaries(chunk, window)
+        avail: Counter = Counter(window)
+        present: list[str] = []
+        missing: list[str] = []
+        for t in tokens:
+            if avail[t] > 0:
+                present.append(t); avail[t] -= 1
+            else:
+                missing.append(t)
+        disorder = len(present) - _lcs_len(present, window)
+        norm = disorder / len(present) if present else 0.0
+        return {"disorder": disorder, "present": len(present), "norm": norm,
+                "missing": missing, "window": span}
+
+    local = score(stream[lo:hi + 1], (lo, hi))
+    if local["disorder"] and local["missing"]:
+        wide = score(stream, (0, len(stream) - 1))
+        if wide["disorder"] < local["disorder"]:
+            return wide
+    return local
 
 
 # --- CLI: inspect chunks + order vs the LaTeX twin -------------------------

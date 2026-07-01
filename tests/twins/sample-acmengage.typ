@@ -10,7 +10,7 @@
   bibliography-backend: "bst",
   title: "EngageCSEdu Submission Title (600 char limit)",
   booktitle: "ACM EngageCSEdu",
-  acm-year: 2022, acm-month: 5,
+  acm-year: "May 2022", acm-month: 5, copyright-year: 2022,
   doi: "XXXXXXX.XXXXXXX",
   copyright: "cc", cc-type: "by",
   authors: (
@@ -100,7 +100,8 @@ EngageCSEdu requires that all materials that are part of the OER submission be
 included with the submission and not just URL links to materials stored on other
 sites. However, any related background or reference material used to provide
 instructor or student knowledge as opposed to instructional material may be included
-as citations within the paper (see @sec:citations) or you may include a numbered
+as citations within the paper (see section #ref(<sec:citations>, supplement: none))
+or you may include a numbered
 list of external links and extensions in an optional section titled "Auxilary
 Materials" that should come immediately before "References".
 

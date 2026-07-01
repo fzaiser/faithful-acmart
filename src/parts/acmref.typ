@@ -631,6 +631,10 @@
       out += g
       if first and blx-has-cased(g) { first = false }
       i = j + 1
+    } else if c in (".", "!", "?") {
+      out += c
+      if i + 1 < cp.len() and cp.at(i + 1) == " " { first = true }
+      i += 1
     } else if lower(c) != upper(c) {
       out += if first { upper(c) } else { lower(c) }
       first = false
@@ -695,6 +699,11 @@
 #let blx-date-if-month(e) = {
   let p = blx-date-parts(e)
   if p.month != none and p.year != none { (c: "(" + blx-printdate(e) + ")", p: false) } else { none }
+}
+#let blx-eprint-date(e) = {
+  if not has(e, "eprint") { return blx-date-if-month(e) }
+  let p = blx-date-parts(e)
+  if p.year != none { (c: "(" + blx-printdate(e) + ")", p: false) } else { none }
 }
 
 #let blx-title-raw(e) = {
@@ -795,6 +804,14 @@
 #let blx-ed-by(e) = if has(e, "editor") {
   (c: "Ed. by " + render(join-names(e.names.editor)), p: false)
 } else { none }
+#let blx-editor-block(e, style: "numeric") = if not has(e, "editor") {
+  none
+} else if style == "author-year" {
+  blx-ed-by(e)
+} else {
+  let suffix = if e.names.editor.len() > 1 { ", (Eds.)" } else { ", (Ed.)" }
+  (c: render(join-names(e.names.editor)) + suffix, p: true)
+}
 #let blx-isbn(e) = if has(e, "isbn") { (c: "isbn: " + fld(e, "isbn"), p: false) } else { none }
 #let blx-journal(e) = {
   if not has(e, "journal") { return none }
@@ -874,7 +891,7 @@
   ..blx-tail(e),
 )
 #let blx-inproceedings(e, style: "numeric", suffix: "", quoted: false) = {
-  let title-led = not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
+  let title-led = style == "author-year" and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
   blx-blocks(
     if title-led { none } else { blx-lead(e, style: style, suffix: suffix) },
     blx-title(e, style: style, quoted: quoted),
@@ -893,7 +910,7 @@
   blx-edition(e),
   blx-series(e),
   blx-volume(e),
-  blx-ed-by(e),
+  blx-editor-block(e, style: style),
   blx-publisher-pages(e),
   blx-isbn(e),
   ..blx-tail(e),
@@ -902,7 +919,7 @@
   let lead = if has(e, "author") {
     blx-lead(e, style: style, suffix: suffix)
   } else if has(e, "editor") {
-    blx-ed-by(e)
+    if style == "author-year" { blx-ed-by(e) } else { blx-lead(e, style: style, suffix: suffix) }
   } else {
     blx-lead(e, style: style, suffix: suffix)
   }
@@ -912,7 +929,7 @@
     blx-edition(e),
     blx-volume(e),
     blx-series(e),
-    if has(e, "author") { blx-ed-by(e) } else { none },
+    if has(e, "author") { blx-editor-block(e, style: style) } else { none },
     blx-publisher-location-date(e),
     blx-chapter-pages(e),
     blx-isbn(e),
@@ -940,10 +957,18 @@
     blx-field(e, "version"),
     blx-note(e),
     blx-list-field(e, "organization"),
-    blx-date-if-month(e),
+    blx-eprint-date(e),
     blx-eprint(e),
+    blx-doi(e),
     blx-url-urldate(e),
   )
+}
+#let blx-institution-location(e) = {
+  let inst = blx-list-field(e, "school", "institution")
+  let loc = blx-list-field(e, "location", "address")
+  if inst != none and loc != none { (c: inst.c + ", " + loc.c, p: false) }
+  else if inst != none { inst }
+  else { loc }
 }
 #let blx-report(e, style: "numeric", suffix: "", thesis: false) = {
   let ty = if thesis {
@@ -956,9 +981,8 @@
     blx-title(e, style: style, quoted: style == "author-year", sentence: style == "numeric"),
     ty,
     blx-field(e, "version"),
+    blx-institution-location(e),
     blx-note(e),
-    blx-list-field(e, "school", "institution"),
-    blx-list-field(e, "location", "address"),
     blx-chapter-pages(e),
     ..blx-tail(e),
   )
@@ -1193,7 +1217,15 @@
 #let blx-handle(e, style: "numeric", year-suffix: "") = {
   let quoted = style == "author-year"
   let t = e.entry-type
-  if t == "article" or t == "underreview" { blx-article-like(e, style: style, suffix: year-suffix, quoted: quoted and t == "article") }
+  if t == "article" { blx-article-like(e, style: style, suffix: year-suffix, quoted: quoted) }
+  else if t == "underreview" {
+    blx-blocks(
+      blx-lead(e, style: style, suffix: year-suffix),
+      blx-title(e, style: style, quoted: false, sentence: style == "numeric"),
+      blx-note(e),
+      ..blx-tail(e),
+    )
+  }
   else if t == "inproceedings" or t == "conference" or t == "presentation" { blx-inproceedings(e, style: style, suffix: year-suffix, quoted: quoted) }
   else if t == "incollection" { blx-incollection(e, style: style, suffix: year-suffix, quoted: quoted) }
   else if t == "inbook" { blx-inbook(e, style: style, suffix: year-suffix, quoted: quoted) }

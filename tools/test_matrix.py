@@ -518,8 +518,8 @@ TESTS: dict[str, Test] = {
         text_reason="word bag still differs on Poppler extraction artifacts: "
                     "proceedings-template/horizontally-is line-break glue and "
                     "wrapped numeric URL/DOI chunks",
-        char_diff="same extraction artifacts leave only quote/tie punctuation and "
-                  "wrapped URL/DOI digits after review-line cleanup",
+        char_diff="same extraction artifacts leave only quote punctuation and one "
+                  "wrapped URL/DOI digit after review-line cleanup",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="nonzero chunks are the wide-table paragraph and math formula "
                    "fragments in the full multi-page sample",
@@ -528,10 +528,11 @@ TESTS: dict[str, Test] = {
     "sample-manuscript": Test(
         kind="twin", pages=11, metrics=False,
         text_equal=False,
-        text_reason="review line numbers are treated as layout, but word bag still "
-                    "differs on TeX tie glyphs and one wrapped numeric DOI token",
-        char_diff="after stripping standalone review line numbers, only TeX tie/quote "
-                  "punctuation and a wrapped DOI token remain different",
+        text_reason="review line numbers are layout; after stripping standalone "
+                    "line-number lines, six numeric extraction tokens still leak from "
+                    "the review/reference stream",
+        char_diff="review-line numeric leakage plus quote/comma/semicolon extraction "
+                  "punctuation remain",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="remaining order deltas are inline/display math chunks and one "
                    "reference span in the review-layout flat stream",
@@ -541,9 +542,9 @@ TESTS: dict[str, Test] = {
     "sample-acmlarge": Test(
         kind="twin", pages=11, metrics=False,
         text_equal=False,
-        text_reason="word bag differs on wrapped DOI/URL number chunks plus TeX tie "
-                    "extraction in the full reference-heavy sample",
-        char_diff="quote/tie punctuation and wrapped DOI digits remain after shared "
+        text_reason="word bag differs on wrapped DOI/URL number chunks in the full "
+                    "reference-heavy sample",
+        char_diff="quote punctuation and one wrapped DOI digit remain after shared "
                   "tokenization",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="nonzero chunks are the wide-table paragraph and math formula "
@@ -553,9 +554,10 @@ TESTS: dict[str, Test] = {
     "sample-sigconf": Test(
         kind="twin", pages=6, metrics=False,
         text_equal=False,
-        text_reason="word bag differs on TeX tie punctuation and a wrapped DOI path "
-                    "component in the two-column sample",
-        char_diff="quote/tie punctuation and one wrapped DOI component remain different",
+        text_reason="word bag differs on one wrapped DOI component digit in the "
+                    "two-column sample (raw PDFs both contain woot07-S422)",
+        char_diff="quote/comma/semicolon punctuation plus that wrapped DOI digit "
+                  "remain different",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="two-column float/table/math chunks are tagged in source order but "
                    "interleaved differently in LaTeX's flat text stream",
@@ -569,9 +571,9 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=7, metrics=False,
         text_equal=False,
         text_reason="word bag differs on sigplan-specific abstract line wrapping, "
-                    "LATEX logo extraction, and TeX tie tokens",
-        char_diff="sigplan abstract/logo extraction leaves quote/tie punctuation and "
-                  "a few wrapped numeric tokens different",
+                    "letter-spaced LATEX-logo extraction, and wrapped numeric tokens",
+        char_diff="sigplan abstract/logo extraction leaves quote punctuation and a "
+                  "few wrapped numeric tokens different",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="sigplan abstract spans, table text, and math chunks reorder under "
                    "two-column extraction",
@@ -582,7 +584,7 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         text_reason="anonymous-review line numbers are layout, but word bag still "
                     "differs on proceedings-template/horizontally-is extraction glue",
-        char_diff="after line-number cleanup, only quote/tie punctuation and wrapped "
+        char_diff="after line-number cleanup, only quote punctuation and wrapped "
                   "numeric extraction artifacts remain",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="review-layout formula chunks and a reference span still reorder in "
@@ -593,9 +595,11 @@ TESTS: dict[str, Test] = {
     "sample-acmsmall-conf": Test(
         kind="twin", pages=11, metrics=False,
         text_equal=False,
-        text_reason="known metadata gap: acmsmall conference footer/bibstrip wording "
-                    "extracts differently across pages",
-        char_diff="same acmsmall-conference footer/bibstrip metadata wording gap",
+        text_reason="conference metadata now matches; remaining word-bag deltas are "
+                    "proceedings-template/horizontally-is extraction glue and wrapped "
+                    "numeric URL/DOI chunks",
+        char_diff="same extraction artifacts leave only quote punctuation and wrapped "
+                  "numeric URL/DOI chunks",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="remaining order deltas are math chunks and one reference span in "
                    "the full multi-page sample",
@@ -605,9 +609,9 @@ TESTS: dict[str, Test] = {
     "sample-acmtog": Test(
         kind="twin", pages=6, metrics=False,
         text_equal=False,
-        text_reason="word bag differs on table-label extraction, TeX tie punctuation, "
-                    "and one wrapped numeric URL token",
-        char_diff="table-label/URL extraction leaves quote/tie punctuation and a few "
+        text_reason="word bag differs on table-label extraction and wrapped numeric "
+                    "URL/DOI tokens",
+        char_diff="table-label/URL extraction leaves quote punctuation and a few "
                   "wrapped digits different",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="TOG table cells and math chunks still reorder in the flat extraction",
@@ -617,9 +621,10 @@ TESTS: dict[str, Test] = {
     "sample-acmtog-conf": Test(
         kind="twin", pages=6, metrics=False,
         text_equal=False,
-        text_reason="known metadata gap: acmtog conference footer/bibstrip wording "
-                    "extracts differently across pages",
-        char_diff="same acmtog-conference footer/bibstrip metadata wording gap",
+        text_reason="conference metadata now matches; remaining word-bag deltas are "
+                    "wrapped numeric URL/DOI chunks in the two-column stream",
+        char_diff="wrapped URL/DOI digits plus quote/comma/period extraction "
+                  "punctuation remain",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="wide-table paragraph and formula chunks still reorder in the flat "
                    "two-column stream",
@@ -629,9 +634,9 @@ TESTS: dict[str, Test] = {
     "sample-sigconf-i13n": Test(
         kind="twin", pages=7, metrics=False,
         text_equal=False,
-        text_reason="word bag differs on localized quote glyph extraction and a "
-                    "wrapped DOI component",
-        char_diff="localized French/German quote glyphs plus quote/tie punctuation "
+        text_reason="word bag differs on one wrapped DOI component digit in the "
+                    "translated two-column sample",
+        char_diff="quote/comma/semicolon punctuation plus that wrapped DOI digit "
                   "remain different after normalization",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="translated abstract spans, table text, and math chunks reorder "
@@ -646,7 +651,7 @@ TESTS: dict[str, Test] = {
         text_reason="authordraft embeds the compile timestamp in the margin and still "
                     "has two-column line-break extraction artifacts",
         char_diff="timestamp digits are intentionally non-deterministic; remaining "
-                  "differences are quote/tie punctuation and wrapped DOI chunks",
+                  "differences are quote punctuation and wrapped DOI chunks",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="draft watermark, timestamp margin text, and table/math chunks "
                    "reorder in the flat two-column stream",
@@ -658,10 +663,11 @@ TESTS: dict[str, Test] = {
     "sample-acmsmall-biblatex": Test(
         kind="twin", pages=11, metrics=False,
         text_equal=False,
-        text_reason="BibLaTeX word bag still differs on software SWHID/URL wrapping, "
-                    "month abbreviation extraction, and full-sample line-break glue",
-        char_diff="BibLaTeX software identifiers and URL/SWHID wrapping still extract "
-                  "with different punctuation/character splits",
+        text_reason="BibLaTeX word bag still differs on open driver gaps and "
+                    "extraction artifacts: software SWHID/URL wrapping, month/date "
+                    "strings, and full-sample line-break glue",
+        char_diff="remaining BibLaTeX driver/extraction deltas in software identifiers, "
+                  "dates, editor strings, URL/SWHID wrapping, and punctuation",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="wide-table paragraph, math chunks, and long BibLaTeX software "
                    "identifier spans reorder in the flat extraction",
@@ -680,10 +686,11 @@ TESTS: dict[str, Test] = {
     "sample-sigconf-biblatex": Test(
         kind="twin", pages=7, _page_parity=False, metrics=False,
         text_equal=False,
-        text_reason="BibLaTeX numeric sample still differs on software SWHID/URL "
-                    "wrapping and full two-column line-break extraction",
-        char_diff="BibLaTeX software identifiers and long URL/SWHID strings extract "
-                  "with different punctuation/character splits",
+        text_reason="BibLaTeX numeric sample still differs on open driver gaps plus "
+                    "software SWHID/URL wrapping and full two-column line-break "
+                    "extraction",
+        char_diff="remaining BibLaTeX driver/extraction deltas in software identifiers, "
+                  "dates, editor strings, URL/SWHID wrapping, and punctuation",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="two-column table/math chunks and long BibLaTeX software identifier "
                    "spans reorder in the flat stream",
@@ -695,7 +702,9 @@ TESTS: dict[str, Test] = {
         note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
              "(numeric), including biblatex-software artifact cites from software.bib. "
              "BibLaTeX-specific regular reference formatting is tracked by "
-             "biblatex-test; the table* caveat follows sample-sigconf.",
+             "biblatex-test; the table* caveat follows sample-sigconf. Page parity is "
+             "still disabled because the remaining BibLaTeX/software reference reflow "
+             "pushes Typst to 7 pages while LaTeX fits in 6.",
     ),
     "sample-acmcp": Test(
         kind="twin", pages=1, metrics=False, text_equal="bag",
@@ -708,14 +717,12 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmengage": Test(
         kind="twin", pages=3, metrics=False,
-        text_equal=False,
-        text_reason="Engage sample still differs on CC/license date placeholders and "
-                    "hyphenated heading words such as synopsis/prerequisite",
-        char_diff="CC/license placeholder date text and bracket extraction differ from "
-                  "LaTeX in this format",
+        text_equal="bag",
+        char_diff="word bag is exact; residual char-bag delta is punctuation-only "
+                  "(one LaTeX comma vs Typst square brackets in extracted prose)",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="Engage metadata sidebar, section prose, and CS Concepts heading "
-                   "still reorder in the flat extraction",
+        order_diff="Engage metadata sidebar, section prose, CS Concepts heading, and "
+                   "one URL chunk still reorder in the flat extraction",
         note="upstream acmengage sample: two-column ACM EngageCSEdu course-material "
              "format, Synopsis abstract, CC license. Engage metadata "
              "(\\setengagemetadata) is printed before the Synopsis heading.",

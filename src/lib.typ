@@ -117,7 +117,7 @@
   // ISBN line (acmart.dtx:6654). Ignored by the journal formats.
   conference: none,
   booktitle: none,
-  isbn: none,
+  isbn: "978-x-xxxx-xxxx-x/YYYY/MM",
   // acmcp cover-page infobox content (acmart \acmCodeLink / \acmContributions,
   // acmart.dtx:5914/5929). Both optional; shown in the top-right JDS-logo box.
   code-data-link: none,
@@ -358,8 +358,12 @@
   }
   let journal-footer = {
     let j = lookup-journal(journal)
-    if not nonacm and j.short != none {
-      [#j.short, Vol. #acm-volume, No. #acm-number#if acm-article != none [, Article #acm-article]. Publication date: #pub-date(meta).]
+    if not nonacm and (j.short != none or (cfg.name == "acmsmall" and conference != none)) {
+      let prefix = if j.short != none { j.short } else { [] }
+      let article = if acm-article != none or (cfg.name == "acmsmall" and conference != none) {
+        [, Article #if acm-article != none { acm-article }]
+      } else { [] }
+      [#prefix, Vol. #acm-volume, No. #acm-number#article. Publication date: #pub-date(meta).]
     }
   }
   let manuscript-footer = if not nonacm [Manuscript submitted to ACM]
@@ -394,6 +398,8 @@
       if j.short != none {
         [#j.name, Volume #acm-volume, Issue #acm-number#if acm-article != none [, Article #acm-article] (#pub-date(meta))#if doi != none { linebreak(); link("https://doi.org/" + doi)[https:\/\/doi.org\/#doi] }]
       }
+    } else if cfg.name == "acmtog" and conference != none {
+      conference-line
     } else if cfg.name in ("acmsmall", "acmlarge", "acmtog") {
       journal-footer
     } else if cfg.name == "manuscript" {

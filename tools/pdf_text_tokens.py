@@ -15,6 +15,9 @@ CHAR_FOLD = {
     "’": "'",
     "“": '"',
     "”": '"',
+    "«": '"',
+    "»": '"',
+    "„": '"',
     "∗": "*",
     "⁎": "*",
     "∙": "•",
@@ -34,10 +37,17 @@ _EDGE_PUNCT = ".,;:!?()[]{}\"'*•-/"
 _DROP_DASHES = str.maketrans("", "", "­‐‑‒–—−-")
 _URL_SCHEME = re.compile(r"https?\s*:\s*/\s*/")
 _EOL_HYPHEN = re.compile(r"[­‐‑-]\s*\n\s*")
+_WORD_HYPHEN_SPACE = re.compile(r"([^\W\d_]{2,})[­‐‑-]\s+([^\W\d_]{2,})", re.UNICODE)
 _STANDALONE_NUMBER_LINE = re.compile(r"(?m)^\s*\d+\s*$")
 _PAGE_FOLIO_LINE = re.compile(r"(?m)^[^\S\r\n]*\d+[^\S\r\n]*(?=\r?\n\s*\f|\f|\Z)")
 _URLISH_TLD = re.compile(r"(?i)^[\w.-]+\.(?:com|org|edu|net|gov|io|cfm|pdf|html?)\b")
 _URL_COMPONENT = re.compile(r"[\w]+", re.UNICODE)
+
+
+def _split_fragile_component(token: str) -> list[str]:
+    if "_" in token or (len(token) > 4 and any(ch.isdigit() for ch in token)):
+        return list(token)
+    return [token]
 
 
 def _is_variation_selector(ch: str) -> bool:
@@ -87,19 +97,37 @@ def _join_eol_hyphen(match: re.Match, text: str) -> str:
     start, end = match.span()
     before = re.split(r"\s+", text[max(0, start - 80):start])[-1]
     after = re.split(r"\s+", text[end:end + 80])[0]
-    context = before + "-" + after
+    context = text[max(0, start - 120):min(len(text), end + 120)]
     return "-" if _looks_urlish(context) else ""
+
+
+def _join_word_hyphen_space(match: re.Match, text: str) -> str:
+    """Join Poppler's same-line rendering of a line-break hyphen.
+
+    Some LaTeX discretionary/source hyphens extract as ``synop- sis`` rather
+    than ``synop-\nsis``. This is the same layout artifact as an EOL hyphen; keep
+    real URL hyphens when the surrounding text is URL-looking.
+    """
+    start, end = match.span()
+    context = text[max(0, start - 120):min(len(text), end + 120)]
+    return match.group(1) + ("-" if _looks_urlish(context) else "") + match.group(2)
 
 
 def _prepare_for_tokens(raw: str) -> str:
     text = _URL_SCHEME.sub("", _without_standalone_number_lines(_clean(raw)))
     text = _EOL_HYPHEN.sub(lambda m: _join_eol_hyphen(m, text), text)
+    text = _WORD_HYPHEN_SPACE.sub(lambda m: _join_word_hyphen_space(m, text), text)
     text = text.replace("­", "")
     return re.sub(r"\s+", " ", text).strip()
 
 
 def _url_tokens(piece: str) -> list[str]:
-    return [t for t in _URL_COMPONENT.findall(piece.strip(_EDGE_PUNCT)) if t]
+    out: list[str] = []
+    for t in _URL_COMPONENT.findall(piece.strip(_EDGE_PUNCT)):
+        if not t:
+            continue
+        out.extend(_split_fragile_component(t))
+    return out
 
 
 def _word_symbol_tokens(piece: str) -> list[str]:
@@ -118,13 +146,19 @@ def _word_symbol_tokens(piece: str) -> list[str]:
             buf.append(ch)
         elif ch == "'" and 0 < i < len(piece) - 1:
             buf.append(ch)
+        elif ch == "~":
+            flush()
         elif cat[0] == "S":
             flush()
             out.append(ch)
         else:
             flush()
     flush()
-    return [t for t in out if t]
+    split: list[str] = []
+    for t in out:
+        if t:
+            split.extend(_split_fragile_component(t))
+    return split
 
 
 def tokenize(raw: str) -> list[str]:
@@ -154,6 +188,7 @@ def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
 def char_bag(raw: str) -> Counter:
     """Whitespace-, dash-, variation-selector-, and page-folio-free char bag."""
     text = _without_review_line_number_lines(_without_page_folio_lines(_clean(raw))).translate(_DROP_DASHES)
+    text = text.replace("~", "")
     for old, new in CHAR_FOLD.items():
         text = text.replace(old, new)
     return Counter(re.sub(r"\s+", "", text))

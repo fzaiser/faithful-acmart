@@ -23,6 +23,8 @@
 // Assembled as content (not a joined string) so the year int renders directly.
 #let pub-date(meta) = [#month-names.at(meta.acm-month - 1) #meta.acm-year]
 
+#let has-isbn(meta) = meta.isbn != none and str(meta.isbn) != ""
+
 // Match LaTeX \@textsuperscript marks. Typst's super() scales its body further;
 // the Dingbats-style envelope needs less inner scaling than text glyph marks.
 #let note-super(mark) = super(text(size: if mark == "✉" { 1.05em } else { 1.22em })[#mark])
@@ -397,7 +399,10 @@
         // Conference info line, between the permission text and the © line
         // (acmart.dtx:6615-6622): italic "<conf short>, <conf venue>", or for the
         // engage/booktitle path "<booktitle>, <year>.". Journal/tog skip it.
-        if not meta.bibstrip {
+        let proceedings-copyright = cfg.name != "manuscript" and (
+          not meta.bibstrip or meta.conference != none
+        )
+        if proceedings-copyright {
           let cl = conf-info-line(cfg, meta)
           if cl != none { cl; linebreak() }
         }
@@ -413,7 +418,7 @@
         // (acmart.dtx:6631-6656).
         if cfg.name == "manuscript" {
           [Manuscript submitted to ACM]
-        } else if meta.bibstrip {
+        } else if meta.bibstrip and meta.conference == none {
           // ACM <issn>/<year>/<month>-ART<article> then DOI (acmart.dtx:6651).
           // \@acmArticle defaults to empty, so ART may have no number. str() on the
           // month delimits the number from the following "-ART" (markup would
@@ -427,7 +432,7 @@
           }
         } else {
           // conference: ACM ISBN <isbn> then DOI (acmart.dtx:6654).
-          if meta.isbn != none { [ACM ISBN #meta.isbn]; linebreak() }
+          if has-isbn(meta) { [ACM ISBN #meta.isbn]; linebreak() }
           if meta.doi != none {
             link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
           }
