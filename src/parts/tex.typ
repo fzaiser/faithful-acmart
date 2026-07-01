@@ -300,7 +300,13 @@
   ss: "ß", SS: "ẞ", ae: "æ", AE: "Æ", oe: "œ", OE: "Œ", aa: "å", AA: "Å",
   o: "ø", O: "Ø", l: "ł", L: "Ł", i: "ı", j: "ȷ",
 )
+#let tex-logo = box(height: 1em)[T#h(-0.1667em)E#h(-0.125em)X]
+#let latex-logo = box(height: 1em)[L#h(-0.36em)#text(size: 0.82em)[A]#h(-0.15em)T#h(-0.1667em)E#h(-0.125em)X]
+#let bibtex-logo = box(height: 1em)[BibT#h(-0.1667em)E#h(-0.125em)X]
+#let latexe-logo = box(height: 1em)[L#h(-0.36em)#text(size: 0.82em)[A]#h(-0.15em)T#h(-0.1667em)E#h(-0.125em)X2e]
+
 #let _logos = (LaTeX: "LATEX", TeX: "TEX", BibTeX: "BibTEX", LaTeXe: "LATEX2e")
+#let _logo-content = (LaTeX: latex-logo, TeX: tex-logo, BibTeX: bibtex-logo, LaTeXe: latexe-logo)
 // Argument-taking inline formatting: \textit{x}, \emph{x}, \textbf{x}, \textsc{x}.
 #let _emph-cw = ("emph", "textit", "textsl")
 #let _strong-cw = ("textbf",)
@@ -461,7 +467,7 @@
         else if nm in _math-noop { }
         else { _unsupported("math command \\" + nm) }
       } else if nm in _special-letters { piece = _special-letters.at(nm) }
-      else if nm in _logos { piece = _logos.at(nm) }
+      else if nm in _logos { piece = if cont { _logo-content.at(nm) } else { _logos.at(nm) } }
       else if nm == "ensuremath" {
         let (a, r) = _grab(tail); next = r
         piece = if cont { eval(_eval(a, "math"), mode: "math") } else { _unsupported("\\ensuremath in a name/label field") }

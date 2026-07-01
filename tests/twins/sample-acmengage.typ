@@ -3,7 +3,7 @@
 // instead of Abstract, CC license, engage metadata before Synopsis, and the
 // ACM-Reference-Format bibliography through the bst backend.
 // Diffed against out/latex/acmengage.pdf.
-#import "/src/lib.typ": acmart
+#import "/src/lib.typ": acmart, acm-cite
 
 #show: acmart.with(
   format: "acmengage",
@@ -232,7 +232,7 @@ where "`bibfile`" is the name, without the "`.bib`" suffix, of the BibTEX file.
 
 Here are a few examples of the types of things you might cite in an EngageCSEdu
 submission: a book @Kosiur01, a journal article @Abril07, an informally published
-work @Harel78, an online document / world wide web resource @Thornburg01 @Ablamowicz07,
+work @Harel78, an online document / world wide web resource #acm-cite("Thornburg01", "Ablamowicz07"),
 a video @Obama08, a software package @R, and an online dataset @UMassCitations.
 
 For other examples, see the file sample-acmsmall-conf.tex @CTANacmart.

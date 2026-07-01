@@ -68,14 +68,21 @@ class ExtractionArtifact:
 
 
 @dataclass(frozen=True)
-class TypstTranslation:
-    """A tolerated mismatch caused by an unfaithful Typst translation."""
+class AcceptedTypstBehavior:
+    """A documented Typst-vs-LaTeX behavior difference we explicitly accept."""
 
     reason: str
 
 
-DiffCause = ExtractionArtifact | TypstTranslation
-DIFF_CAUSE_TYPES = (ExtractionArtifact, TypstTranslation)
+@dataclass(frozen=True)
+class TypstBug:
+    """A documented Typst-vs-LaTeX behavior difference that should be fixed."""
+
+    reason: str
+
+
+DiffCause = ExtractionArtifact | AcceptedTypstBehavior | TypstBug
+DIFF_CAUSE_TYPES = (ExtractionArtifact, AcceptedTypstBehavior, TypstBug)
 
 
 @dataclass(frozen=True)
@@ -131,8 +138,11 @@ class Test:
     only page 1 instead of all shared pages. ``metrics_uniform_pitch`` documents
     why baseline pitch is meaningful enough to gate. ``text_equal`` /
     ``expected_text_diffs`` / ``text_assertions`` drive Tier 1.5. ``note`` is
-    documentation only. Expected diff entries explain their cause with either
-    ``ExtractionArtifact("...")`` or ``TypstTranslation("...")``.
+    documentation only. Expected diff entries explain their cause with
+    ``ExtractionArtifact("...")`` for PDF extraction noise,
+    ``AcceptedTypstBehavior("...")`` for intentionally accepted Typst-vs-LaTeX
+    differences, or ``TypstBug("...")`` for known Typst-vs-LaTeX gaps that
+    should still be fixed.
 
     ``text_equal`` selects the Tier 1.5 whole-document text gate:
     ``True`` exact normalized-sequence equality; ``"bag"`` exact word multiset
@@ -203,7 +213,7 @@ _FULL_SAMPLE_FONT_EVIDENCE = (
     ExpectedFontDiff(
         latex="A formula that appears in the running text",
         typst="A formula that appears in the running text",
-        cause=TypstTranslation(
+        cause=AcceptedTypstBehavior(
             "Full samples include math/reference/sidebar font cases covered by focused twins."
         ),
     ),
@@ -460,20 +470,20 @@ TESTS: dict[str, Test] = {
             ExpectedTextDiff(
                 latex="bibliography style [1] [4] [3] [7] [6] [2] [8] [5]. References",
                 typst="bibliography style [1-8]. References",
-                cause=TypstTranslation("cite list compaction"),
+                cause=AcceptedTypstBehavior("native CSL citation range compaction"),
             ),
             ExpectedTextDiff(
                 latex="version 11. Retrieved February 28, 2008 from "
                       "http://math.tntech.edu/rafal/cliff11/index.html",
                 typst="version 11. Retrieved from "
                       "http://math.tntech.edu/rafal/cliff11/index.html",
-                cause=TypstTranslation("dropped last-accessed date"),
+                cause=AcceptedTypstBehavior("Hayagriva/CSL last-accessed mapping"),
             ),
             ExpectedTextDiff(
                 latex="Ph. D. Dissertation. Stanford University, Stanford, CA, USA. "
                       "Advisor(s) Yao, Andrew C.",
                 typst="Doctoral dissertation. Stanford, CA, USA. AAT 8506171.",
-                cause=TypstTranslation("thesis type and school mapping"),
+                cause=AcceptedTypstBehavior("Hayagriva/CSL thesis field mapping"),
             ),
         ),
         expected_font_diffs=(
@@ -481,10 +491,10 @@ TESTS: dict[str, Test] = {
                 latex="Ph. D. Dissertation. Stanford University, Stanford, CA, USA. "
                       "Advisor(s) Yao, Andrew C.",
                 typst="Doctoral dissertation. Stanford, CA, USA. AAT 8506171.",
-                cause=TypstTranslation("CSL/BST reference-content font fallout"),
+                cause=AcceptedTypstBehavior("Hayagriva/CSL reference-content fallout"),
             ),
         ),
-        note="CSL bibliography parity fixture; remaining Hayagriva mapping gaps are documented diffs.",
+        note="Native CSL bibliography fixture; acceptable Hayagriva/CSL mapping gaps are documented diffs.",
     ),
     "biblatex-test": Test(
         kind="twin", pages=1,
@@ -523,6 +533,16 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="isbn: 978-1-23456-789-7"),
         ),
         note="BibLaTeX driver order for book, inbook, and incollection fields.",
+    ),
+    "biblatex-driver-numeric-test": Test(
+        kind="twin", pages=1,
+        text_assertions=(
+            Assertion(engine="both", text="Riley Report. 2023. MIXED Case Report Title. "
+                      "Research Note RN-7. Example Lab, Ann Arbor, MI."),
+            Assertion(engine="both", text="Tara Techreport. 2024. UPPERCASE Techreport Title. "
+                      "Technical Memorandum TM-9. Legacy Lab, Palo Alto, CA."),
+        ),
+        note="BibLaTeX numeric report drivers, including legacy @techreport aliasing.",
     ),
     "bib-all": Test(
         kind="twin", pages=1,
@@ -570,7 +590,7 @@ TESTS: dict[str, Test] = {
             ExpectedFontDiff(
                 latex="Bounds of 𝑂 (𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞",
                 typst="Bounds of 𝑂(𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞",
-                cause=TypstTranslation("math operator font and scriptstyle size"),
+                cause=TypstBug("math operator font and scriptstyle size"),
             ),
         ),
         note="BST reference-field math rendering, including operators, scripts, blackboard, and overrides.",
@@ -825,7 +845,7 @@ TESTS: dict[str, Test] = {
             ExpectedTextDiff(
                 latex="Publication date: July 2018. Trovato et al.",
                 typst="Publication date: June 2018. Trovato et al.",
-                cause=TypstTranslation("conference month extraction"),
+                cause=TypstBug("conference month extraction"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
@@ -1028,13 +1048,6 @@ TESTS: dict[str, Test] = {
                       "trovato@corporation.com",
                 cause=ExtractionArtifact("author-note marker extraction"),
             ),
-            ExpectedTextDiff(
-                latex="David Harel. 1978. LOGICS of Programs: AXIOMATICS and "
-                      "DESCRIPTIVE POWER.",
-                typst="David Harel. 1978. Logics of programs: axiomatics and "
-                      "descriptive power.",
-                cause=TypstTranslation("BibLaTeX title-case extraction"),
-            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
@@ -1065,33 +1078,19 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
         text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
-        expected_font_diffs=(
-            ExpectedFontDiff(
-                latex="Authors’ Contact Information: Ben Trovato",
-                typst="Authors' Contact Information: Ben Trovato",
-                cause=TypstTranslation("ACMCP contact-sidebar font size"),
-            ),
-        ),
         note="upstream acmcp sample: JDS banner, cover infobox, and author contributions.",
     ),
     "sample-acmengage": Test(
         kind="twin", pages=3, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_ENGAGE_LINK_DIFF,
         text_equal="bag",
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="document / world wide web resource [1, 9], a video [6]",
-                typst="document / world wide web resource [9] [1], a video [6]",
-                cause=TypstTranslation("citation punctuation extraction"),
-            ),
-        ),
         expected_font_diffs=(
             ExpectedFontDiff(
                 latex="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
                       "https://doi.org/XXXXXXX.XXXXXXX",
                 typst="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
                       "https://doi.org/XXXXXXX.XXXXXXX",
-                cause=TypstTranslation("Engage DOI/ISBN sidebar font family"),
+                cause=TypstBug("Engage DOI/ISBN sidebar font family"),
             ),
         ),
         expected_order_diffs=(

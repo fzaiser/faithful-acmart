@@ -3,7 +3,7 @@
 // format: single-column, rotated article-type banner, cover infobox on the right
 // with code/data links and author contributions. No abstract, CCS, keywords, or
 // bibliography in this variant. Diffed against out/latex/acmcp.pdf.
-#import "/src/lib.typ": acmart
+#import "/src/lib.typ": acmart, latex-logo
 
 #show: acmart.with(
   format: "acmcp",
@@ -61,7 +61,7 @@ In this document we discuss how to write an ACM article.
 
 = Methods
 
-This document provides LATEX templates for the article. We demonstrate different
+This document provides #latex-logo templates for the article. We demonstrate different
 versions of ACM styles and show various options and commands. We add extensive
 documentation for these commands and show examples of their use.
 

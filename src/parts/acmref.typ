@@ -778,20 +778,24 @@
     // acmnumeric.bbx inherits trad-standard.bbx: most titles are plain and
     // sentence-cased; book, inbook, manual, thesis, and proceedings titles are
     // emphasized.
-    if t in ("book", "inbook", "manual", "thesis", "mastersthesis",
+    if t in ("book", "collection", "inbook", "manual", "thesis", "mastersthesis",
              "phdthesis", "proceedings") {
       "emph"
     } else { default }
   }
 }
+#let blx-numeric-preserve-titlecase-types = (
+  "book", "collection", "manual", "periodical", "proceedings", "report",
+  "techreport", "thesis", "mastersthesis", "phdthesis",
+)
 #let blx-title-field(e, style: "numeric", format: auto, sentence: auto) = {
   let raw = blx-title-raw(e)
   if raw == none { return none }
   let sentence = if sentence == auto {
-    // trad-standard.bbx MakeTitleCase sentence-cases most non-book-like entry
-    // titles; authoryear-comp/standard keeps the supplied title case.
-    style == "numeric" and e.entry-type not in ("book", "manual", "periodical",
-      "proceedings", "report", "thesis", "mastersthesis", "phdthesis")
+    // trad-standard.bbx MakeTitleCase sentence-cases article/chapter/paper-like
+    // titles in numeric style. Whole-volume/report/thesis titles preserve the
+    // supplied case; authoryear-comp/standard keeps supplied title case too.
+    style == "numeric" and e.entry-type not in blx-numeric-preserve-titlecase-types
   } else { sentence }
   let shown = if sentence { blx-sentence-case(raw) } else { raw }
   let fmt = if format == auto { blx-title-format(e, style: style) } else { format }
@@ -1133,7 +1137,8 @@
   let out = (:)
   for (k, e0) in db {
     let e = e0
-    if e.entry-type == "artifactsoftware" { e = e + (entry-type: "software") }
+    if e.entry-type == "techreport" { e = e + (entry-type: "report") }
+    else if e.entry-type == "artifactsoftware" { e = e + (entry-type: "software") }
     else if e.entry-type == "artifactdataset" { e = e + (entry-type: "dataset") }
     out.insert(k, e)
   }

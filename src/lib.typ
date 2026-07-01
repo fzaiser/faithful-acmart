@@ -28,7 +28,7 @@
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
 #import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citeyear, bbl-citeauthor, bbl-bibliography, cite-style-state, tex-render-state
 // the built-in "bst" field renderer, exported so a custom `tex-render` can wrap it
-#import "parts/tex.typ": tex-to-content as default-tex-render
+#import "parts/tex.typ": tex-to-content as default-tex-render, latex-logo as _latex-logo, tex-logo as _tex-logo, bibtex-logo as _bibtex-logo
 
 // ACM bibliography backends (pure-Typst ACM-Reference-Format and ACM BibLaTeX
 // ports). Use these in place of `@key` / `#bibliography(...)` when routing
@@ -39,6 +39,9 @@
 #let acm-citet = bbl-citet
 #let acm-citeyear = bbl-citeyear
 #let acm-citeauthor = bbl-citeauthor
+#let latex-logo = _latex-logo
+#let tex-logo = _tex-logo
+#let bibtex-logo = _bibtex-logo
 #let acm-bibliography(path, title: [References]) = context {
   let cfg = cfg-state.get()
   if cfg == none {
@@ -369,7 +372,7 @@
   let manuscript-footer = if not nonacm [Manuscript submitted to ACM]
   let conference-line = {
     if cfg.name == "acmengage" {
-      [EngageCSEdu.#if doi != none { [ https:\/\/doi.org\/#doi] }]
+      [EngageCSEdu.#if doi != none { text(font: cfg.fonts.body)[ https:\/\/doi.org\/#doi] }]
     } else if conference != none {
       let short = conference.at("short", default: conference.at("name", default: none))
       let date = conference.at("date", default: none)

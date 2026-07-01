@@ -1,0 +1,19 @@
+%% biblatex-driver-numeric-test - focused ACM BibLaTeX numeric driver cases.
+\documentclass[acmsmall,nonacm,natbib=false]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmnumeric,
+  ]{biblatex}
+\addbibresource{biblatex-driver-test.bib}
+\begin{document}
+\thispagestyle{empty}
+
+\section*{BibLaTeX Numeric Driver Cases}
+This sentence cites a report \cite{DriverReport} and a legacy techreport
+\cite{DriverTechreport}.
+
+\printbibliography
+
+\end{document}
