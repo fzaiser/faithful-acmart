@@ -142,30 +142,12 @@ def reference_for(name: str, t: Test) -> str:
     return t.reference if t.reference is not None else name
 
 
-# Shared gate settings for all bundled-sample twins. Visual fidelity is checked
-# via `test.py overlay`; text/font/metrics/order gates are all exempted:
-# - text_equal=False / char_diff: \\LaTeX logo → "LATEX" in LaTeX vs "LaTeX" in
-#   Typst, ACM bibstrip/copyright wording, math glyph encoding differences, and
-#   multi-column extraction ordering all cause word/char bag divergence.
-# - font_diff: math + verbatim blocks cause per-letter font-count differences as
-#   body text reflows between engines; not a body-text font bug.
-# - metrics=False: mode-specific layout (line numbers, anonymous margins, Huge
-#   title positions) causes Tier-2 geometry differences not worth gating here —
-#   the specialized -test twins gate each mode's geometry precisely.
-# - order_diff: the reading-order gate assumes structural regularity not met by
-#   complex multi-page docs with floats, appendices, and multi-column flow.
-_SAMPLE_COMMON = dict(
-    _page_parity=False, page1_only=True, metrics=False,
-    text_equal=False,
-    text_reason="whole-doc word bag diverges on \\LaTeX logo rendering, ACM "
-                "bibstrip/copyright wording, and multi-column extraction order; "
-                "visual fidelity is checked via test.py overlay instead",
-    char_diff="\\LaTeX logo → different codepoints, ACM bibstrip wording, and math "
-              "glyph encoding differ between engines across the full sample document",
-    font_diff="math + verbatim blocks cause per-letter font-count divergence as body "
-              "reflows between engines; not a body-text font bug",
-    order_diff="complex multi-page layout (floats, appendices, multi-column); "
-               "reading-order gate does not apply to the full bundled sample",
+# Full bundled samples are broad integration fixtures. Focused twins above gate
+# the exact geometry, fonts, order, and bibliography details; these samples keep
+# only the gates that are meaningful for their current extraction profile.
+_FULL_SAMPLE_FONT_DIFF = (
+    "full sample mixes math, verbatim, references, and sidebars that reflow "
+    "differently; focused twins gate body fonts"
 )
 
 # --- The test matrix -------------------------------------------------------
@@ -530,24 +512,53 @@ TESTS: dict[str, Test] = {
     # sample-franklin.png, sampleteaser.*) are vendored into tests/twins/ so the
     # build does not depend on the acmart/ reference folder. They share one body via
     # _sample-common.typ; only the preamble (format + options) differs.
-    # _page_parity is off: acmart's \flushbottom rubber-fills full pages, Typst is
-    # ragged-bottom, so Typst typically runs 1-2 pages shorter on multi-page docs.
-    # text_equal=False / order_diff: see _SAMPLE_COMMON above.
     "sample-acmsmall": Test(
-        kind="twin", pages=11, **_SAMPLE_COMMON,
+        kind="twin", pages=11, metrics=False,
+        text_equal=False,
+        text_reason="word bag still differs on Poppler extraction artifacts: "
+                    "proceedings-template/horizontally-is line-break glue and "
+                    "wrapped numeric URL/DOI chunks",
+        char_diff="same extraction artifacts leave only quote/tie punctuation and "
+                  "wrapped URL/DOI digits after review-line cleanup",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="nonzero chunks are the wide-table paragraph and math formula "
+                   "fragments in the full multi-page sample",
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
-        kind="twin", pages=11, **_SAMPLE_COMMON,
+        kind="twin", pages=11, metrics=False,
+        text_equal=False,
+        text_reason="review line numbers are treated as layout, but word bag still "
+                    "differs on TeX tie glyphs and one wrapped numeric DOI token",
+        char_diff="after stripping standalone review line numbers, only TeX tie/quote "
+                  "punctuation and a wrapped DOI token remain different",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="remaining order deltas are inline/display math chunks and one "
+                   "reference span in the review-layout flat stream",
         note="upstream manuscript sample (manuscript,screen,review + proceedings "
              "metadata). Single-column review style with margin line numbers.",
     ),
     "sample-acmlarge": Test(
-        kind="twin", pages=11, **_SAMPLE_COMMON,
+        kind="twin", pages=11, metrics=False,
+        text_equal=False,
+        text_reason="word bag differs on wrapped DOI/URL number chunks plus TeX tie "
+                    "extraction in the full reference-heavy sample",
+        char_diff="quote/tie punctuation and wrapped DOI digits remain after shared "
+                  "tokenization",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="nonzero chunks are the wide-table paragraph and math formula "
+                   "fragments in the full multi-page sample",
         note="upstream acmlarge sample (wide single-column journal, POMACS).",
     ),
     "sample-sigconf": Test(
-        kind="twin", pages=6, **_SAMPLE_COMMON,
+        kind="twin", pages=6, metrics=False,
+        text_equal=False,
+        text_reason="word bag differs on TeX tie punctuation and a wrapped DOI path "
+                    "component in the two-column sample",
+        char_diff="quote/tie punctuation and one wrapped DOI component remain different",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="two-column float/table/math chunks are tagged in source order but "
+                   "interleaved differently in LaTeX's flat text stream",
         note="upstream sigconf sample: two-column proceedings, spanning title, "
              "centred author grid, teaser figure. The table* twin uses Typst's "
              "parent-scoped floating figure: it spans both columns and preserves "
@@ -555,44 +566,105 @@ TESTS: dict[str, Test] = {
              "double-float queue.",
     ),
     "sample-sigplan": Test(
-        kind="twin", pages=7, **_SAMPLE_COMMON,
+        kind="twin", pages=7, metrics=False,
+        text_equal=False,
+        text_reason="word bag differs on sigplan-specific abstract line wrapping, "
+                    "LATEX logo extraction, and TeX tie tokens",
+        char_diff="sigplan abstract/logo extraction leaves quote/tie punctuation and "
+                  "a few wrapped numeric tokens different",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="sigplan abstract spans, table text, and math chunks reorder under "
+                   "two-column extraction",
         note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
     ),
     "sample-acmsmall-submission": Test(
-        kind="twin", pages=10, **_SAMPLE_COMMON,
+        kind="twin", pages=10, metrics=False,
+        text_equal=False,
+        text_reason="anonymous-review line numbers are layout, but word bag still "
+                    "differs on proceedings-template/horizontally-is extraction glue",
+        char_diff="after line-number cleanup, only quote/tie punctuation and wrapped "
+                  "numeric extraction artifacts remain",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="review-layout formula chunks and a reference span still reorder in "
+                   "the flat extraction stream",
         note="upstream acmsmall double-anonymous review sample "
              "(screen,anonymous,review): anonymized author strip + line numbers.",
     ),
     "sample-acmsmall-conf": Test(
-        kind="twin", pages=11, **_SAMPLE_COMMON,
+        kind="twin", pages=11, metrics=False,
+        text_equal=False,
+        text_reason="known metadata gap: acmsmall conference footer/bibstrip wording "
+                    "extracts differently across pages",
+        char_diff="same acmsmall-conference footer/bibstrip metadata wording gap",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="remaining order deltas are math chunks and one reference span in "
+                   "the full multi-page sample",
         note="upstream acmsmall-for-a-conference sample (acmsmall journal format "
              "with conference metadata replacing the journal metadata).",
     ),
     "sample-acmtog": Test(
-        kind="twin", pages=6, **_SAMPLE_COMMON,
+        kind="twin", pages=6, metrics=False,
+        text_equal=False,
+        text_reason="word bag differs on table-label extraction, TeX tie punctuation, "
+                    "and one wrapped numeric URL token",
+        char_diff="table-label/URL extraction leaves quote/tie punctuation and a few "
+                  "wrapped digits different",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="TOG table cells and math chunks still reorder in the flat extraction",
         note="upstream acmtog sample (two-column TOG journal). Uses the author-year "
              "citation style (\\citestyle{acmauthoryear}) via the bst backend.",
     ),
     "sample-acmtog-conf": Test(
-        kind="twin", pages=6, **_SAMPLE_COMMON,
+        kind="twin", pages=6, metrics=False,
+        text_equal=False,
+        text_reason="known metadata gap: acmtog conference footer/bibstrip wording "
+                    "extracts differently across pages",
+        char_diff="same acmtog-conference footer/bibstrip metadata wording gap",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="wide-table paragraph and formula chunks still reorder in the flat "
+                   "two-column stream",
         note="upstream acmtog-for-a-conference sample (acmtog two-column with "
              "conference metadata + teaser; author-year citations via the bst backend).",
     ),
     "sample-sigconf-i13n": Test(
-        kind="twin", pages=7, **_SAMPLE_COMMON,
+        kind="twin", pages=7, metrics=False,
+        text_equal=False,
+        text_reason="word bag differs on localized quote glyph extraction and a "
+                    "wrapped DOI component",
+        char_diff="localized French/German quote glyphs plus quote/tie punctuation "
+                  "remain different after normalization",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="translated abstract spans, table text, and math chunks reorder "
+                   "under two-column extraction",
         note="upstream sigconf internationalization sample: \\translatedtitle + "
              "translatedabstract in French/German/Spanish (English main), each "
              "abstract headed by its babel \\abstractname.",
     ),
     "sample-sigconf-authordraft": Test(
-        kind="twin", pages=6, golden=False, **_SAMPLE_COMMON,
+        kind="twin", pages=6, metrics=False, golden=False,
+        text_equal=False,
+        text_reason="authordraft embeds the compile timestamp in the margin and still "
+                    "has two-column line-break extraction artifacts",
+        char_diff="timestamp digits are intentionally non-deterministic; remaining "
+                  "differences are quote/tie punctuation and wrapped DOI chunks",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="draft watermark, timestamp margin text, and table/math chunks "
+                   "reorder in the flat two-column stream",
         note="upstream sigconf authordraft sample: draft watermark + line numbers "
              "+ inner-edge timestamp. The timestamp embeds the compile date, so "
              "output is non-deterministic — compile-only (no golden), like draft-test. "
              "The table* caveat follows sample-sigconf.",
     ),
     "sample-acmsmall-biblatex": Test(
-        kind="twin", pages=11, **_SAMPLE_COMMON,
+        kind="twin", pages=11, metrics=False,
+        text_equal=False,
+        text_reason="BibLaTeX word bag still differs on software SWHID/URL wrapping, "
+                    "month abbreviation extraction, and full-sample line-break glue",
+        char_diff="BibLaTeX software identifiers and URL/SWHID wrapping still extract "
+                  "with different punctuation/character splits",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="wide-table paragraph, math chunks, and long BibLaTeX software "
+                   "identifier spans reorder in the flat extraction",
         text_assertions=(
             Assertion(engine="both", text="Software project: [Delebecque et al. 1994; "
                    "The CGAL Project 1996]. Software Version: [Greenman and Felleisen "
@@ -606,7 +678,15 @@ TESTS: dict[str, Test] = {
              "@codefragment).",
     ),
     "sample-sigconf-biblatex": Test(
-        kind="twin", pages=7, **_SAMPLE_COMMON,
+        kind="twin", pages=7, _page_parity=False, metrics=False,
+        text_equal=False,
+        text_reason="BibLaTeX numeric sample still differs on software SWHID/URL "
+                    "wrapping and full two-column line-break extraction",
+        char_diff="BibLaTeX software identifiers and long URL/SWHID strings extract "
+                  "with different punctuation/character splits",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="two-column table/math chunks and long BibLaTeX software identifier "
+                   "spans reorder in the flat stream",
         text_assertions=(
             Assertion(engine="both", text="Software project: [41, 12]. Software Version: "
                    "[17]. Software Module: [25]. Code fragment: [13]."),
@@ -618,13 +698,24 @@ TESTS: dict[str, Test] = {
              "biblatex-test; the table* caveat follows sample-sigconf.",
     ),
     "sample-acmcp": Test(
-        kind="twin", pages=1, **_SAMPLE_COMMON,
+        kind="twin", pages=1, metrics=False, text_equal="bag",
+        char_diff="exact word bag and chunk order pass; pdftotext extracts one extra "
+                  "semicolon in the Typst contact-info sidebar after John Smith",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
         note="upstream acmcp sample: single-column JDS format, rotated article-type "
              "banner, cover infobox with code/data links and author contributions. "
              "No abstract, CCS, keywords, or bibliography in this variant.",
     ),
     "sample-acmengage": Test(
-        kind="twin", pages=3, **_SAMPLE_COMMON,
+        kind="twin", pages=3, metrics=False,
+        text_equal=False,
+        text_reason="Engage sample still differs on CC/license date placeholders and "
+                    "hyphenated heading words such as synopsis/prerequisite",
+        char_diff="CC/license placeholder date text and bracket extraction differ from "
+                  "LaTeX in this format",
+        font_diff=_FULL_SAMPLE_FONT_DIFF,
+        order_diff="Engage metadata sidebar, section prose, and CS Concepts heading "
+                   "still reorder in the flat extraction",
         note="upstream acmengage sample: two-column ACM EngageCSEdu course-material "
              "format, Synopsis abstract, CC license. Engage metadata "
              "(\\setengagemetadata) is printed before the Synopsis heading.",

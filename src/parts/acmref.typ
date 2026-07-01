@@ -716,6 +716,12 @@
     (c: c, p: p)
   }
 }
+#let blx-title-emph(e, style: "numeric", sentence: true) = {
+  let raw = blx-title-raw(e)
+  if raw == none { return none }
+  let shown = if style == "numeric" and sentence { blx-sentence-case(raw) } else { raw }
+  (c: it(render(shown)), p: ends-punct(shown))
+}
 #let blx-book-title(e) = {
   let raw = blx-title-raw(e)
   if raw == none { return none }
@@ -928,7 +934,8 @@
   let lead = if who == none { none } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) }
   blx-blocks(
     lead,
-    blx-title(e, style: style, sentence: style == "numeric"),
+    if style == "author-year" { blx-title-emph(e, style: style, sentence: false) }
+    else { blx-title(e, style: style, sentence: true) },
     blx-field(e, "howpublished"),
     blx-field(e, "version"),
     blx-note(e),
@@ -1384,6 +1391,11 @@
   }
 }
 
+#let blx-label-title-italic(e) = {
+  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
+  e.entry-type in manual-like and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
+}
+
 #let name-prefix-len(left, right) = {
   let i = 0
   while i < left.len() and i < right.len() and tex-to-string(von-last(left.at(i))) == tex-to-string(von-last(right.at(i))) {
@@ -1460,6 +1472,10 @@
   }
   short
 }
+#let cite-label-content(k, db, order) = {
+  let label = cite-label(k, db, order)
+  if bib-format-state.final() == "biblatex" and blx-label-title-italic(db.at(k)) { it(label) } else { label }
+}
 
 // natbib author-year \citep/\citet: group consecutive same-label entries, then
 // group their years by base year so suffixes collapse ("2020a,b,c"); ", " between
@@ -1470,9 +1486,10 @@
   let lgroups = ()
   for k in ks {
     let lbl = cite-label(k, db, order)
+    let shown = cite-label-content(k, db, order)
     let yr = (base: year-value(db.at(k)).c, suf: extras.at(k, default: ""))
     if lgroups.len() > 0 and lgroups.at(-1).label == lbl { lgroups.at(-1).years.push(yr) }
-    else { lgroups.push((label: lbl, years: (yr,))) }
+    else { lgroups.push((label: lbl, shown: shown, years: (yr,))) }
   }
   let render-years(years) = {
     let ybits = ()
@@ -1482,8 +1499,8 @@
     }
     ybits.map(b => b.base + b.sufs.join(",")).join(", ")
   }
-  let parts = lgroups.map(g => if citet { g.label + " [" + render-years(g.years) + "]" }
-    else { g.label + " " + render-years(g.years) })
+  let parts = lgroups.map(g => if citet { g.shown + " [" + render-years(g.years) + "]" }
+    else { g.shown + " " + render-years(g.years) })
   if citet { parts.join("; ") } else { "[" + parts.join("; ") + "]" }
 }
 
@@ -1554,7 +1571,12 @@
   register-cites(ks)
   context {
     let p = prepared()
-    cite-order(ks, p.order).map(k => cite-label(k, p.db, p.order)).join("; ")
+    let out = []
+    for (i, k) in cite-order(ks, p.order).enumerate() {
+      if i > 0 { out += "; " }
+      out += cite-label-content(k, p.db, p.order)
+    }
+    out
   }
 }
 

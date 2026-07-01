@@ -61,6 +61,12 @@ def _without_page_folio_lines(text: str) -> str:
     return _PAGE_FOLIO_LINE.sub(" ", text)
 
 
+def _without_review_line_number_lines(text: str) -> str:
+    if len(_STANDALONE_NUMBER_LINE.findall(text.replace("\f", "\n"))) < 20:
+        return text
+    return _without_standalone_number_lines(text)
+
+
 def normalize(text: str) -> str:
     """Collapse Poppler text for exact text assertions."""
     text = _without_standalone_number_lines(_clean(text)).replace("­", "")
@@ -147,7 +153,7 @@ def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
 
 def char_bag(raw: str) -> Counter:
     """Whitespace-, dash-, variation-selector-, and page-folio-free char bag."""
-    text = _without_page_folio_lines(_clean(raw)).translate(_DROP_DASHES)
+    text = _without_review_line_number_lines(_without_page_folio_lines(_clean(raw))).translate(_DROP_DASHES)
     for old, new in CHAR_FOLD.items():
         text = text.replace(old, new)
     return Counter(re.sub(r"\s+", "", text))
