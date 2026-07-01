@@ -4,8 +4,8 @@
 This is the Python-owned replacement for the old Makefile + shell scripts. The
 test data lives in `tools/test_matrix.py`; this file turns it into commands.
 
-Run with the project venv (it has Pillow/numpy/fonttools for the visual diff and
-validation):
+Run with the project venv (it has Pillow/numpy/fonttools/PyMuPDF/pikepdf for
+the visual and PDF-structure gates):
 
     tools/venv/bin/python tools/test.py <command> [args]
 
@@ -18,7 +18,6 @@ Commands
   overlay [stems]  per-twin vector <name>-overlay.pdf + <name>-side-by-side.pdf vs LaTeX (all twins, or given stems)
   validate [names] copyright/option variants vs LaTeX, page-1 mismatch %
   probe            dump a format's ground-truth dimensions from the bundled class (--format)
-  reference [name] build a LaTeX sample reference PDF (default: acmsmall)
   example          build the Typst example (template/main.typ)
   list             print the test matrix
   clean            remove all generated output (tests/out/)
@@ -26,7 +25,7 @@ Commands
   linepitch FILE   measure baseline pitch / first-line position in a PDF (--dpi, --page)
 
 External tools required: Typst, TeX Live (pdflatex, bibtex, pdfjam), Poppler
-(pdftoppm, pdftotext, pdfinfo), and — for the `overlay` command — qpdf and
+(pdftoppm, pdftotext, pdfinfo), qpdf, and — for the `overlay` command —
 Ghostscript (gs). All generated output lives under tests/out/ (gitignored).
 """
 
@@ -48,7 +47,7 @@ from pathlib import Path
 
 import test_matrix as M
 from pdf_text_tokens import CHAR_FOLD, bag_coverage, char_bag, normalize
-from test_matrix import TESTS, Test, reference_for
+from test_matrix import TESTS, Test
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "tools"
@@ -68,8 +67,8 @@ TEMPLATE = ROOT / "template" / "main.typ"
 # ---------------------------------------------------------------------------
 # Path helpers
 # ---------------------------------------------------------------------------
-def latex_pdf(name: str, t: Test) -> Path:
-    return LATEX / f"{reference_for(name, t)}.pdf"
+def latex_pdf(name: str, _t: Test) -> Path:
+    return LATEX / f"{name}.pdf"
 
 
 def typst_pdf(name: str) -> Path:
@@ -168,17 +167,23 @@ _URI = re.compile(rb"/URI\s*\(([^)]*)\)")
 
 
 def extract_uris(pdf: Path) -> set[str]:
-    """Hyperlink (/URI) targets in a PDF. LaTeX/hyperref compresses annotations
-    into object streams, so decompress with qpdf when available; Typst writes them
-    uncompressed, so the raw pass already catches those."""
+    """Hyperlink (/URI) targets in a PDF.
+
+    LaTeX/hyperref often compresses annotations into object streams, so qpdf is a
+    required part of the link gate rather than a best-effort enhancer.
+    """
+    if not shutil.which("qpdf"):
+        raise RuntimeError("qpdf is required for the hyperlink gate")
     data = pdf.read_bytes()
     found = set(_URI.findall(data))
-    if shutil.which("qpdf"):
-        out = subprocess.run(
-            ["qpdf", "--qdf", "--object-streams=disable", "--decode-level=all", str(pdf), "-"],
-            capture_output=True,
-        ).stdout
-        found |= set(_URI.findall(out))
+    proc = subprocess.run(
+        ["qpdf", "--qdf", "--object-streams=disable", "--decode-level=all", str(pdf), "-"],
+        capture_output=True,
+    )
+    if proc.returncode not in (0, 3):
+        msg = proc.stderr.decode("utf-8", "replace").strip()
+        raise RuntimeError(f"qpdf failed while decoding links in {pdf.name}: {msg}")
+    found |= set(_URI.findall(proc.stdout))
     return {u.decode("latin1") for u in found}
 
 
@@ -311,9 +316,8 @@ def _pmap(fn, items: list, jobs: int) -> list:
 
 # The LaTeX references are a pure function of their sources. A reference PDF is
 # fresh if it is newer than its own .tex AND newer than every shared input that
-# could change its output: the class source, the bundled sample sources/bibs/bst,
-# and the twins' own .bib files. This is deliberately conservative — touching any
-# .bib rebuilds all refs — because over-invalidating is cheap and correctness
+# could change its output: the class source, bundled assets/bst, and twin
+# bib/image/PDF assets. This deliberately over-invalidates because correctness
 # beats precision here. `--force` bypasses it entirely.
 _shared_inputs_mtime_cache: float | None = None
 
@@ -321,8 +325,14 @@ _shared_inputs_mtime_cache: float | None = None
 def _shared_inputs_mtime() -> float:
     global _shared_inputs_mtime_cache
     if _shared_inputs_mtime_cache is None:
-        paths = [ACMART / "acmart.dtx", ACMART / "ACM-Reference-Format.bst"]
-        paths += list((TESTS_DIR / "twins").glob("*.bib"))
+        paths = [
+            ACMART / "acmart.dtx",
+            ACMART / "acmart.ins",
+            ACMART / "ACM-Reference-Format.bst",
+            ACMART / "acm-jdslogo.png",
+        ]
+        for pattern in ("*.bib", "*.png", "*.jpg", "*.jpeg", "*.pdf"):
+            paths += list((TESTS_DIR / "twins").glob(pattern))
         _shared_inputs_mtime_cache = max(
             (p.stat().st_mtime for p in paths if p.exists()), default=0.0)
     return _shared_inputs_mtime_cache
@@ -378,12 +388,17 @@ def gate_smoke(compiled: dict[str, tuple[int, str]]) -> list[str]:
         if got != t.pages:
             local.append(f"{name}: Typst page count {got} != expected {t.pages}")
 
-        if t.page_parity:
+        if t.kind == "twin":
             lref = latex_pdf(name, t)
             if lref.exists():
                 lp = page_count(lref)
                 if lp != got:
-                    local.append(f"{name}: page-count parity broken (LaTeX {lp} vs Typst {got})")
+                    if not t.expected_page_count_diff:
+                        local.append(
+                            f"{name}: page-count parity broken (LaTeX {lp} vs Typst {got})")
+                elif t.expected_page_count_diff:
+                    local.append(
+                        f"{name}: expected_page_count_diff is set, but page counts match")
             else:
                 local.append(f"{name}: LaTeX reference {lref.name} missing (run `test.py build`)")
 
@@ -396,7 +411,7 @@ def gate_smoke(compiled: dict[str, tuple[int, str]]) -> list[str]:
 def _golden_hashes() -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
     for name, t in TESTS.items():
-        if not t.golden:
+        if t.golden_exempt:
             continue
         pdf = typst_pdf(name)
         if pdf.exists():
@@ -437,8 +452,11 @@ def gate_golden() -> list[str]:
     cur = _golden_hashes()
     failures: list[str] = []
     for name, t in TESTS.items():
-        if not t.golden:
-            print(f"skip {name} (golden disabled)")
+        if t.golden_exempt:
+            if golden.get(name):
+                failures.append(f"{name}: golden_exempt is set, but golden hashes exist")
+            else:
+                print(f"skip {name} (golden exempt: {t.golden_exempt})")
             continue
         g, c = golden.get(name), cur.get(name)
         local: list[str] = []
@@ -692,9 +710,7 @@ def gate_metrics(report: bool = False) -> list[str]:
     tol = M.METRICS_TOLERANCE
     failures: list[str] = []
     for name, t in TESTS.items():
-        if not t.metrics or t.kind != "twin":
-            if not report and t.kind == "twin":
-                print(f"skip {name} (metrics disabled)")
+        if t.kind != "twin":
             continue
         lref, tpdf = latex_pdf(name, t), typst_pdf(name)
         if not lref.exists() or not tpdf.exists():
@@ -714,6 +730,8 @@ def gate_metrics(report: bool = False) -> list[str]:
         if report:
             print(name + ":")
         local: list[str] = []
+        if not pages:
+            local.append(f"{name}: no shared pages for metric comparison")
         for p in pages:
             a, b = lm.get(p), tm.get(p)
             if a is None or b is None:
@@ -738,9 +756,17 @@ def gate_metrics(report: bool = False) -> list[str]:
             if lpd and lpd[1] and lpd[0] > tol["line_pitch"]:
                 local.append(f"{name} p{p}: single-line pitch Δ={lpd[0]:.2f}pt over {lpd[1]} "
                              f"lines (tol {tol['line_pitch']}) — a line is off the body grid")
-        if not report and not local:
+        if report:
+            continue
+        if local:
+            if t.expected_metrics_diff:
+                print(f"diff {name} (expected metrics diff: {t.expected_metrics_diff})")
+            else:
+                failures.extend(local)
+        elif t.expected_metrics_diff:
+            failures.append(f"{name}: expected_metrics_diff is set, but metrics are within tolerance")
+        else:
             print(f"ok   {name}")
-        failures.extend(local)
     return failures
 
 
@@ -780,6 +806,8 @@ def gate_links(report: bool = False) -> list[str]:
     they match, and nonempty when a known mismatch is present.
     """
     failures: list[str] = []
+    if not shutil.which("qpdf"):
+        return ["Tier 1.7 (hyperlinks) requires qpdf on PATH"]
     for name, t in TESTS.items():
         if t.kind != "twin":
             continue
@@ -787,7 +815,11 @@ def gate_links(report: bool = False) -> list[str]:
         if not lref.exists() or not tpdf.exists():
             failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
             continue
-        lu, tu = extract_uris(lref), extract_uris(tpdf)
+        try:
+            lu, tu = extract_uris(lref), extract_uris(tpdf)
+        except RuntimeError as exc:
+            failures.append(f"{name}: {exc}")
+            continue
         miss, extra = lu - tu, tu - lu
         if miss or extra:
             if t.expected_link_diff:
@@ -860,13 +892,12 @@ def font_bag(pdf: Path) -> Counter:
 
 def gate_fonts(report: bool = False) -> list[str]:
     """Tier 1.8 — per-letter font gate. Every alphabetic character must match LaTeX
-    in family/weight/italic/size/colour. Needs PyMuPDF (skips with a note if absent);
-    twins with ``expected_font_diffs`` evidence are exempt."""
+    in family/weight/italic/size/colour. Needs PyMuPDF; twins with
+    ``expected_font_diffs`` evidence may carry a known mismatch."""
     try:
         import fitz  # noqa: F401
     except ImportError:
-        print("skip Tier 1.8 (fonts): PyMuPDF not installed (tools/venv/bin/pip install pymupdf)")
-        return []
+        return ["Tier 1.8 (fonts) requires PyMuPDF (tools/venv/bin/pip install pymupdf)"]
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
@@ -875,14 +906,17 @@ def gate_fonts(report: bool = False) -> list[str]:
         if not lref.exists() or not tpdf.exists():
             failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
             continue
-        if t.expected_font_diffs:
-            failures.extend(_check_expected_font_diffs(
-                name, t, pdf_text(lref), pdf_text(tpdf)))
-            if report:
-                print(f"skip  {name}: font exempt by {len(t.expected_font_diffs)} expected font diff(s)")
-            continue
+        expected_failures = _check_expected_font_diffs(
+            name, t, pdf_text(lref), pdf_text(tpdf)) if t.expected_font_diffs else []
         miss, extra = (lb := font_bag(lref)) - (tb := font_bag(tpdf)), tb - lb
-        if miss or extra:
+        if t.expected_font_diffs:
+            failures.extend(expected_failures)
+            if miss or extra:
+                if report:
+                    print(f"diff  {name}: {len(t.expected_font_diffs)} expected font diff(s)")
+            else:
+                failures.append(f"{name}: expected_font_diffs is set, but fonts match")
+        elif miss or extra:
             failures.append(
                 f"{name}: per-letter fonts differ (PyMuPDF; key = char,family,bold,italic,size,colour)\n"
                 f"    only in LaTeX: {dict(list(miss.items())[:8])}\n"
@@ -903,13 +937,12 @@ def gate_order(report: bool = False) -> list[str]:
     """Tier 1.9 — intra-chunk reading order vs LaTeX. Each tagged Typst chunk's
     tokens must appear in the flat LaTeX stream in the chunk's own order (other
     content may interpose — the check is sub-sequence/LCS based, so it is immune to
-    reflow, page breaks and column flow). Needs pikepdf (skips with a note if
-    absent); twins with ``expected_order_diffs`` evidence are exempt."""
+    reflow, page breaks and column flow). Needs pikepdf; twins with
+    ``expected_order_diffs`` evidence may carry a known mismatch."""
     try:
         import pikepdf  # noqa: F401
     except ImportError:
-        print("skip Tier 1.9 (order): pikepdf not installed (tools/venv/bin/pip install pikepdf)")
-        return []
+        return ["Tier 1.9 (order) requires pikepdf (tools/venv/bin/pip install pikepdf)"]
     import pdf_chunks as PC
     failures: list[str] = []
     for name, t in TESTS.items():
@@ -919,22 +952,30 @@ def gate_order(report: bool = False) -> list[str]:
         if not lref.exists() or not tpdf.exists():
             failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
             continue
+        expected_failures = _check_expected_order_diffs(
+            name, t, pdf_text(lref), pdf_text(tpdf)) if t.expected_order_diffs else []
         if t.expected_order_diffs:
-            failures.extend(_check_expected_order_diffs(
-                name, t, pdf_text(lref), pdf_text(tpdf)))
-            if report:
-                print(f"skip  {name}: order exempt by {len(t.expected_order_diffs)} expected order diff(s)")
-            continue
+            failures.extend(expected_failures)
         stream = PC.latex_stream(lref)
-        bad = [(role, toks, r) for role, toks in PC.typst_chunks(tpdf)
+        chunks = PC.typst_chunks(tpdf)
+        if not chunks:
+            failures.append(f"{name}: Typst PDF has no tagged chunks for the order gate")
+            continue
+        bad = [(role, toks, r) for role, toks in chunks
                if (r := PC.chunk_order(toks, stream))["disorder"]]
         if bad:
-            lines = [f"{name}: {len(bad)} chunk(s) out of order vs LaTeX "
-                     f"(structure-tree order vs flat stream; read both pdftotext dumps)"]
-            for role, toks, r in bad[:4]:
-                lines.append(f"    <{role}> disorder={r['disorder']}/{r['present']}: "
-                             f"{' '.join(toks)[:70]!r}")
-            failures.append("\n".join(lines))
+            if t.expected_order_diffs:
+                if report:
+                    print(f"diff  {name}: {len(t.expected_order_diffs)} expected order diff(s)")
+            else:
+                lines = [f"{name}: {len(bad)} chunk(s) out of order vs LaTeX "
+                         f"(structure-tree order vs flat stream; read both pdftotext dumps)"]
+                for role, toks, r in bad[:4]:
+                    lines.append(f"    <{role}> disorder={r['disorder']}/{r['present']}: "
+                                 f"{' '.join(toks)[:70]!r}")
+                failures.append("\n".join(lines))
+        elif t.expected_order_diffs:
+            failures.append(f"{name}: expected_order_diffs is set, but chunk order matches")
         elif report:
             print(f"ok   {name}: chunk order matches")
     return failures
@@ -961,8 +1002,9 @@ def gate_unit(report: bool = False) -> list[str]:
 
 
 def cmd_unit(_args) -> int:
-    gate_unit(report=True)
-    failures = gate_unit()
+    failures = gate_unit(report=True)
+    for f in failures:
+        print(f, file=sys.stderr)
     return 1 if failures else 0
 
 
@@ -1121,7 +1163,7 @@ def cmd_overlay(args) -> int:
             if t is None:
                 print(f"skip  {name}: not in test matrix")
                 return None
-            ref, ours = LATEX / f"{reference_for(name, t)}.pdf", typst_pdf(name)
+            ref, ours = LATEX / f"{name}.pdf", typst_pdf(name)
             if not ref.exists() or not ours.exists():
                 print(f"skip  {name}: missing {'LaTeX' if not ref.exists() else 'Typst'} PDF")
                 return None
@@ -1265,8 +1307,8 @@ def cmd_list(_args) -> int:
     print("-" * 78)
     for name, t in TESTS.items():
         flags = []
-        if t.reference:
-            flags.append(f"ref={t.reference}")
+        if t.expected_page_count_diff:
+            flags.append("pagediff")
         if t.page1_only:
             flags.append("page1_only")
         if t.uniform_pitch:
@@ -1285,9 +1327,9 @@ def cmd_list(_args) -> int:
             flags.append(f"orderdiff×{len(t.expected_order_diffs)}")
         if t.expected_link_diff:
             flags.append("linkdiff")
-        if not t.metrics:
-            flags.append("no-metrics")
-        if not t.golden:
+        if t.expected_metrics_diff:
+            flags.append("metricdiff")
+        if t.golden_exempt:
             flags.append("no-golden")
         print(f"{name:24} {t.kind:13} {t.pages:>5}  {' '.join(flags)}")
     print(f"\n{len(TESTS)} tests "
@@ -1311,9 +1353,10 @@ def cmd_metrics(_args) -> int:
 
 
 def cmd_order(_args) -> int:
-    for f in gate_order(report=True):
+    failures = gate_order(report=True)
+    for f in failures:
         print(f)
-    return 0
+    return 1 if failures else 0
 
 
 def cmd_linepitch(args) -> int:

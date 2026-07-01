@@ -147,13 +147,13 @@ program, `tools/test.py`, driven by the test matrix in `tools/test_matrix.py`.
 
 ```sh
 # one-time: create the Python venv used by the harness
-python3 -m venv tools/venv && tools/venv/bin/pip install pillow numpy fonttools pymupdf
+python3 -m venv tools/venv && tools/venv/bin/pip install pillow numpy fonttools pymupdf pikepdf
 ```
 
-You also need **Typst**, a **TeX Live** install (`pdflatex`, `bibtex`), and
-**Poppler** (`pdftoppm`, `pdftotext`, `pdfinfo`) on `PATH`. All commands below
-build through `tools/tc`, the `typst` wrapper that points Typst at the bundled
-full Libertinus + Inconsolata fonts (see [Fonts](#fonts--important)).
+You also need **Typst**, a **TeX Live** install (`pdflatex`, `bibtex`),
+**Poppler** (`pdftoppm`, `pdftotext`, `pdfinfo`), and **qpdf** on `PATH`. All
+commands below build through `tools/tc`, the `typst` wrapper that points Typst
+at the bundled full Libertinus + Inconsolata fonts (see [Fonts](#fonts--important)).
 
 ### Commands
 
@@ -167,7 +167,6 @@ $PY tools/test.py overlay                   # per twin: <name>-overlay.pdf (Typs
 $PY tools/test.py overlay acmcp-test sigchi-a-test  # ... or just the named twins
 $PY tools/test.py validate                  # copyright/option variants vs LaTeX (mismatch %)
 $PY tools/test.py probe --format sigconf    # dump a format's dimensions from the bundled class
-$PY tools/test.py reference                 # build just the LaTeX acmsmall sample reference
 $PY tools/test.py example                   # build just the Typst example
 $PY tools/test.py list                      # print the test matrix
 $PY tools/test.py clean                     # remove tests/out/
@@ -180,7 +179,7 @@ $PY tools/test.py clean                     # remove tests/out/
 acmart needs several per doc), so `build`, `check`, and `validate` build the
 twin/variant references **in parallel** (`-j`, default `cpu-2`) and **skip
 references whose cached PDF is already up to date** with its `.tex` and the
-shared inputs (the class source, sample/twin bibs, the `.bst`). Editing only the
+shared inputs (the class source, sample/twin bibs and media, the `.bst`). Editing only the
 Typst port leaves every reference cached, so the inner loop is dominated by the
 ~20ms-per-file Typst compiles. Use `-j N` to cap parallelism and `--force` to
 rebuild every reference (use it if you ever suspect a stale cache):
@@ -217,10 +216,13 @@ The harness compiles every Typst test once, captures warnings, then runs all
 gates without recompiling:
 
 - **Tier 0 (smoke)** — every test compiles with no warnings, page counts match,
-  twins keep LaTeX/Typst page-count parity.
+  twins keep LaTeX/Typst page-count parity. A nonempty
+  `expected_page_count_diff` documents the one accepted parity mismatch and fails
+  if the page counts later match.
 - **Tier 1 (golden)** — each Typst page raster is hashed and compared to
   `tests/golden/typst.sha256` (Typst is deterministic for a pinned engine +
-  bundled fonts). After an intended change, `tools/test.py accept` refreshes it.
+  bundled fonts). `golden_exempt` must explain any test that is not golden-pinned.
+  After an intended change, `tools/test.py accept` refreshes it.
 - **Tier 1.5 (text)** — `pdftotext` extraction is normalized and compared exactly
   for stable twins (`text_equal`), or with targeted `contains`/`absent`
   assertions for noisy PDFs (two-column order, author grids, bibliography).
@@ -231,7 +233,8 @@ gates without recompiling:
 - **Tier 1.6 (expected errors)** — invalid option cases must fail with the
   intended diagnostic.
 - **Tier 1.7 (hyperlinks)** — every twin's `/URI` link set is compared against
-  LaTeX+hyperref (links are invisible to `pdftotext`). A nonempty
+  LaTeX+hyperref with `qpdf` object-stream decoding (links are invisible to
+  `pdftotext`). A nonempty
   `expected_link_diff` documents an expected mismatch; the gate fails if the
   field is empty and links differ, or if the field is set and links match.
 - **Tier 1.8 (fonts)** — per-letter font check via **PyMuPDF**: every alphabetic
@@ -239,8 +242,9 @@ gates without recompiling:
   and colour as LaTeX. Catches what the text gates (characters only) can't — a wrong
   family (serif where acmart sets `\sffamily`), a too-small author block, a stray
   colour. Mono *size* is skipped (LaTeX's zi4 and the bundled Inconsolata scale
-  differently); `expected_font_diffs` exempt known content/math gaps and anchor
-  them to validated PDF fragments.
+  differently); `expected_font_diffs` document known content/math gaps and anchor
+  them to validated PDF fragments. The raw font comparison still runs and fails
+  if an expected font diff has gone stale.
 - **Tier 1.9 (order)** — per-chunk reading-order check via **pikepdf**
   (`tools/pdf_chunks.py`): Typst writes a *tagged* PDF, so each logical chunk
   (title, an author line, the contact-info block, a heading, a bib entry) is read
@@ -249,13 +253,16 @@ gates without recompiling:
   stream. Catches an element emitted out of order (an affiliation/email swap, a
   reordered citation field) that the order-independent word/char bags can't see;
   the LCS sub-sequence match is immune to reflow, page breaks and column flow.
-  `expected_order_diffs` exempt known extraction-order asymmetries and anchor
-  them to validated PDF fragments. Run
+  `expected_order_diffs` document known extraction-order asymmetries and anchor
+  them to validated PDF fragments. The raw order comparison still runs and fails
+  if an expected order diff has gone stale. Run
   `tools/test.py order` for a per-twin report, or
   `tools/pdf_chunks.py <stem>` to dump one document's chunks + per-chunk disorder.
 - **Tier 2 (metrics)** — cross-engine layout geometry (left/top margin, baseline
   pitch) gated against `test_matrix` tolerances; right margin & line count are
-  reported only (cross-engine line-breaking makes them noisy).
+  reported only (cross-engine line-breaking makes them noisy). A nonempty
+  `expected_metrics_diff` documents a known metric mismatch and fails if metrics
+  later pass.
 
 `tools/test.py validate` is a separate, representative visual suite over the
 copyright modes and document options (the package supports every copyright mode;

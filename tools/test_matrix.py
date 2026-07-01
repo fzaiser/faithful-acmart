@@ -126,10 +126,10 @@ class ExpectedOrderDiff:
 class Test:
     """One test stem and how the gates treat it.
 
-    ``page_parity`` defaults to ``True`` for twins (LaTeX/Typst page counts must
-    match) and ``False`` otherwise; pass an explicit bool to override.
-    ``uniform_pitch`` marks tests whose body is on a single baseline grid, so
-    median baseline pitch is meaningful and gated. ``page1_only`` gates absolute
+    Twin page counts must match unless ``expected_page_count_diff`` documents a
+    known mismatch. ``uniform_pitch`` marks tests whose body is on a single
+    baseline grid, so median baseline pitch is meaningful and gated.
+    ``page1_only`` gates absolute
     vertical positions on page 1 only (multi-page docs drift downward via
     acmsmall's \\flushbottom, which Typst can't replicate). ``text_equal`` /
     ``expected_text_diffs`` / ``text_assertions`` drive Tier 1.5. ``note`` is
@@ -160,14 +160,18 @@ class Test:
 
     EVERY twin's hyperlink set is compared against LaTeX. ``expected_link_diff``
     must be empty when links match, and nonempty when a known mismatch remains.
+
+    EVERY twin's Tier 2 layout metrics are gated. ``expected_metrics_diff`` must
+    be empty when metrics pass, and nonempty when a known metric mismatch remains.
+    ``golden_exempt`` removes a test from the Typst raster golden set, and must
+    explain why the rendered PDF is not golden-pinned.
     """
 
     kind: str
     pages: int
-    reference: str | None = None
-    _page_parity: bool | None = None
-    metrics: bool = True
-    golden: bool = True
+    expected_page_count_diff: str = ""
+    expected_metrics_diff: str = ""
+    golden_exempt: str = ""
     page1_only: bool = False
     uniform_pitch: bool = False
     text_equal: bool | str | None = None
@@ -179,26 +183,11 @@ class Test:
     note: str = ""
 
     @property
-    def ref_stem(self) -> str:
-        return self.reference if self.reference is not None else ""
-
-    @property
     def subdir(self) -> str:
         """Tests live in tests/<subdir>/: ``twins`` for the matched
         ``NAME.tex``+``NAME.typ`` pairs, ``typst-only`` for everything else
         (smoke docs and the upstream-ref port, which have no local ``.tex``)."""
         return "twins" if self.kind == "twin" else "typst-only"
-
-    @property
-    def page_parity(self) -> bool:
-        if self._page_parity is not None:
-            return self._page_parity
-        return self.kind == "twin"
-
-
-def reference_for(name: str, t: Test) -> str:
-    """LaTeX stem to compare/diff a test against (defaults to the test name)."""
-    return t.reference if t.reference is not None else name
 
 
 # Full bundled samples are broad integration fixtures. Focused twins above gate
@@ -225,6 +214,35 @@ _BIBLATEX_LINK_DIFF = (
 _ENGAGE_LINK_DIFF = (
     "LaTeX adds implicit Engage author email PDF annotations; Typst currently "
     "renders those fields as text without matching hidden links."
+)
+_TITLE_METRICS_DIFF = (
+    "Title-heavy format geometry has known bbox drift; focused geometry twins own "
+    "the exact body metrics."
+)
+_COVER_METRICS_DIFF = (
+    "Cover/sidebar formats do not expose a stable body-block metric rectangle."
+)
+_LANDSCAPE_METRICS_DIFF = (
+    "Landscape extended-abstract geometry is covered by page parity, text, links, "
+    "and goldens instead of the generic portrait metric gate."
+)
+_FULL_SAMPLE_METRICS_DIFF = (
+    "Full upstream samples include page-fill, column-flow, and float-placement "
+    "drift; focused twins own exact geometry."
+)
+_SIGCONF_BIBLATEX_PAGE_DIFF = (
+    "Typst currently reflows the numeric BibLaTeX/software reference block to "
+    "seven pages while LaTeX fits six."
+)
+_ALIAS_GOLDEN_EXEMPT = (
+    "Compile-only alias smoke; sigconf-test owns the rendered layout golden."
+)
+_DRAFT_GOLDEN_EXEMPT = (
+    "The rendered PDF embeds the compile date, so it is intentionally non-deterministic."
+)
+_AUTHORDRAFT_GOLDEN_EXEMPT = (
+    "Authordraft embeds a compile timestamp in the margin, so it is intentionally "
+    "non-deterministic."
 )
 
 # --- The test matrix -------------------------------------------------------
@@ -348,17 +366,17 @@ TESTS: dict[str, Test] = {
         note="Conference author grid with a centered partial final row.",
     ),
     "sigplan-test": Test(
-        kind="twin", pages=1, metrics=False,
+        kind="twin", pages=1, expected_metrics_diff=_TITLE_METRICS_DIFF,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=sigplan: 10pt proceedings variant; metrics are report-only for title bbox drift.",
     ),
     "acmengage-test": Test(
-        kind="twin", pages=1, metrics=False,
+        kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=acmengage: 10pt sigconf variant with Engage copyright metadata.",
     ),
     "acmcp-test": Test(
-        kind="twin", pages=1, metrics=False, text_equal=False,
+        kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF, text_equal=False,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -383,7 +401,8 @@ TESTS: dict[str, Test] = {
         note="format=acmcp: JDS cover page, infobox, unnumbered sections, and author contributions.",
     ),
     "sigchi-a-test": Test(
-        kind="twin", pages=2, page1_only=True, metrics=False, text_equal="bag",
+        kind="twin", pages=2, page1_only=True,
+        expected_metrics_diff=_LANDSCAPE_METRICS_DIFF, text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=sigchi-a: landscape extended abstract; text bags and page parity are gated.",
     ),
@@ -572,7 +591,7 @@ TESTS: dict[str, Test] = {
     # build does not depend on the acmart/ reference folder. They share one body via
     # _sample-common.typ; only the preamble (format + options) differs.
     "sample-acmsmall": Test(
-        kind="twin", pages=11, metrics=False,
+        kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -603,7 +622,7 @@ TESTS: dict[str, Test] = {
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
-        kind="twin", pages=11, metrics=False,
+        kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -635,7 +654,7 @@ TESTS: dict[str, Test] = {
              "metadata). Single-column review style with margin line numbers.",
     ),
     "sample-acmlarge": Test(
-        kind="twin", pages=11, metrics=False,
+        kind="twin", pages=11,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -665,7 +684,7 @@ TESTS: dict[str, Test] = {
         note="upstream acmlarge sample (wide single-column journal, POMACS).",
     ),
     "sample-sigconf": Test(
-        kind="twin", pages=6, metrics=False,
+        kind="twin", pages=6,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -699,7 +718,7 @@ TESTS: dict[str, Test] = {
         note="upstream sigconf sample: two-column proceedings with author grid and teaser figure.",
     ),
     "sample-sigplan": Test(
-        kind="twin", pages=7, metrics=False,
+        kind="twin", pages=7, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -732,7 +751,7 @@ TESTS: dict[str, Test] = {
         note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
     ),
     "sample-acmsmall-submission": Test(
-        kind="twin", pages=10, metrics=False,
+        kind="twin", pages=10, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -761,7 +780,7 @@ TESTS: dict[str, Test] = {
              "(screen,anonymous,review): anonymized author strip + line numbers.",
     ),
     "sample-acmsmall-conf": Test(
-        kind="twin", pages=11, metrics=False,
+        kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -792,7 +811,7 @@ TESTS: dict[str, Test] = {
              "with conference metadata replacing the journal metadata).",
     ),
     "sample-acmtog": Test(
-        kind="twin", pages=6, metrics=False,
+        kind="twin", pages=6, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -823,7 +842,7 @@ TESTS: dict[str, Test] = {
              "citation style (\\citestyle{acmauthoryear}) via the bst backend.",
     ),
     "sample-acmtog-conf": Test(
-        kind="twin", pages=6, metrics=False,
+        kind="twin", pages=6,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -851,7 +870,7 @@ TESTS: dict[str, Test] = {
              "conference metadata + teaser; author-year citations via the bst backend).",
     ),
     "sample-sigconf-i13n": Test(
-        kind="twin", pages=7, metrics=False,
+        kind="twin", pages=7, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -885,7 +904,8 @@ TESTS: dict[str, Test] = {
              "abstract headed by its babel \\abstractname.",
     ),
     "sample-sigconf-authordraft": Test(
-        kind="twin", pages=6, metrics=False, golden=False,
+        kind="twin", pages=6, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
+        golden_exempt=_AUTHORDRAFT_GOLDEN_EXEMPT,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -911,7 +931,7 @@ TESTS: dict[str, Test] = {
         note="upstream sigconf authordraft sample: draft watermark, line numbers, timestamp.",
     ),
     "sample-acmsmall-biblatex": Test(
-        kind="twin", pages=11, metrics=False,
+        kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_BIBLATEX_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -966,7 +986,7 @@ TESTS: dict[str, Test] = {
         note="upstream acmsmall-biblatex sample with author-year software artifact cites.",
     ),
     "sample-sigconf-biblatex": Test(
-        kind="twin", pages=7, _page_parity=False, metrics=False,
+        kind="twin", pages=7, expected_page_count_diff=_SIGCONF_BIBLATEX_PAGE_DIFF,
         expected_link_diff=_BIBLATEX_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
@@ -1011,7 +1031,8 @@ TESTS: dict[str, Test] = {
         note="upstream sigconf-biblatex sample with numeric software artifact cites; page parity is open.",
     ),
     "sample-acmcp": Test(
-        kind="twin", pages=1, metrics=False, text_equal="bag",
+        kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
+        text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
         expected_font_diffs=(
             ExpectedFontDiff(
@@ -1023,7 +1044,7 @@ TESTS: dict[str, Test] = {
         note="upstream acmcp sample: JDS banner, cover infobox, and author contributions.",
     ),
     "sample-acmengage": Test(
-        kind="twin", pages=3, metrics=False,
+        kind="twin", pages=3, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_ENGAGE_LINK_DIFF,
         text_equal="bag",
         expected_text_diffs=(
@@ -1056,24 +1077,24 @@ TESTS: dict[str, Test] = {
     ),
     # Smoke-only docs (no LaTeX twin).
     "siggraph-test": Test(
-        kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
+        kind="smoke", pages=1, golden_exempt=_ALIAS_GOLDEN_EXEMPT,
         note="obsolete `siggraph` option aliases to sigconf; compile-only smoke.",
     ),
     "sigchi-test": Test(
-        kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
+        kind="smoke", pages=1, golden_exempt=_ALIAS_GOLDEN_EXEMPT,
         note="obsolete public option `sigchi` aliases to sigconf (matching the bundled "
              "LaTeX class). Typst-only alias compile check (see siggraph-test).",
     ),
     "draft-test": Test(
-        kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
+        kind="smoke", pages=1, golden_exempt=_DRAFT_GOLDEN_EXEMPT,
         note="author-draft timestamp mode; non-deterministic compile-only smoke.",
     ),
     "urlbreak-test": Test(
-        kind="smoke", pages=1, _page_parity=False, metrics=False,
+        kind="smoke", pages=1,
         note="`urlbreakonhyphens: false` smoke with golden-pinned Typst URL breaking.",
     ),
     "feature-test": Test(
-        kind="smoke", pages=1, _page_parity=False, metrics=False,
+        kind="smoke", pages=1,
         note="Typst-only smoke for badges, teaser, title notes, and subtitle notes.",
     ),
 }

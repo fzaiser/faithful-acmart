@@ -3,7 +3,7 @@
 The build & validation harness:
 
 - [`test.py`](test.py) — the one command runner (`build`, `check`, `accept`,
-  `diff`, `validate`, `probe`, `reference`, `example`, `list`, `clean`, plus the
+  `overlay`, `validate`, `probe`, `example`, `list`, `clean`, plus the
   `metrics`/`linepitch` tuning views).
 - [`test_matrix.py`](test_matrix.py) — the test matrix and gate data (tests, text
   assertions, metric tolerances, expected errors, validation variants, the pinned
