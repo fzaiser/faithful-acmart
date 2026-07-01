@@ -574,17 +574,29 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmsmall-biblatex": Test(
         kind="twin", pages=11, **_SAMPLE_COMMON,
+        text_assertions=(
+            Assertion(engine="both", text="Software project: [Delebecque et al. 1994; "
+                   "The CGAL Project 1996]. Software Version: [Greenman and Felleisen "
+                   "2020]. Software Module: [Karavelas 2020]. Code fragment: "
+                   "[Di Cosmo and Danelutto 2020]."),
+            Assertion(engine="both", text="[SW exc.] Roberto Di Cosmo and Marco Danelutto"),
+        ),
         note="upstream acmsmall-biblatex sample: acmsmall with BibLaTeX acmauthoryear "
-             "style (author-year). Software artifact cites from software.bib "
-             "(@software/@softwaremodule/@codefragment) are still omitted because "
-             "biblatex-software is not fully ported.",
+             "style (author-year), including biblatex-software artifact cites "
+             "from software.bib (@software/@softwareversion/@softwaremodule/"
+             "@codefragment).",
     ),
     "sample-sigconf-biblatex": Test(
-        kind="twin", pages=6, **_SAMPLE_COMMON,
+        kind="twin", pages=7, **_SAMPLE_COMMON,
+        text_assertions=(
+            Assertion(engine="both", text="Software project: [41, 12]. Software Version: "
+                   "[17]. Software Module: [25]. Code fragment: [13]."),
+            Assertion(engine="both", text="[SW Rel.] Ben Greenman and Matthias Felleisen"),
+        ),
         note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
-             "(numeric). BibLaTeX-specific regular reference formatting is tracked by "
-             "biblatex-test; biblatex-software artifact entries remain omitted. The "
-             "table* caveat follows sample-sigconf.",
+             "(numeric), including biblatex-software artifact cites from software.bib. "
+             "BibLaTeX-specific regular reference formatting is tracked by "
+             "biblatex-test; the table* caveat follows sample-sigconf.",
     ),
     "sample-acmcp": Test(
         kind="twin", pages=1, **_SAMPLE_COMMON,

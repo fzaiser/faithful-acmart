@@ -69,9 +69,8 @@
 // option string echoed in the "Citations and Bibliographies" verbatim example,
 // e.g. "acmsmall" or "sigconf" — the only per-format text in the body.
 //
-// Citations route through the bst backend so the sample's reference ordering and
-// numeric labels match ACM-Reference-Format.bst. `author-year` still selects the
-// acmauthoryear citation style in the sample preamble.
+// Citations route through the selected ACM backend so the sample's reference
+// ordering and numeric/author-year labels follow the LaTeX preamble being ported.
 #let sample-body(documentclass: "acmsmall", author-year: false, biblatex: false) = {
   let cit(..keys) = acm-cite(..keys.pos())
   [
@@ -499,9 +498,9 @@ review #cit("Baggett2025"). A couple of citations with DOIs:
 #cit("TUGInstmem", "Thornburg01", "CTANacmart").
 #if biblatex [
   Data Artifacts: #cit("UMassCitations").
-  // GAP: software artifact cites (cgal/delebecque/gf-tag/simplemapper) use
-  // biblatex-software @software/@softwaremodule/@codefragment entry types that
-  // neither the CSL nor BST backend supports; they are omitted here.
+  Software project: #cit("cgal", "delebecque:hal-02090402"). Software Version:
+  #cit("gf-tag-sound-repo"). Software Module: #cit("cgal:lp-gi-20a"). Code fragment:
+  #cit("simplemapper").
 ] else [
   Artifacts: #cit("R") and #cit("UMassCitations").
 ]
@@ -579,7 +578,11 @@ societal risks beyond those considered by institutional review boards, and the
 dimensions considered by any review of the user study design or dataset licenses
 could be provided in this statement.
 
-#acm-bibliography("/tests/twins/sample-base.bib")
+#if biblatex {
+  acm-bibliography(("/tests/twins/software.bib", "/tests/twins/sample-base.bib"))
+} else {
+  acm-bibliography("/tests/twins/sample-base.bib")
+}
 
 // GAP: \appendix — acmart switches section numbering to letters (A, A.1, ...).
 // Emulated by resetting the heading counter and switching the numbering format.

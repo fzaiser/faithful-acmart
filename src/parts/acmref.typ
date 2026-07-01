@@ -579,10 +579,17 @@
   em-render(em, trailing(e))
 }
 
-// ---- BibLaTeX ACM drivers (acmnumeric/acmauthoryear) ----------------------
-// A compact visible-text port of acmnumeric.bbx plus the acmauthoryear.bbx
-// deltas. It intentionally reuses the same parsed .bib records, citation order,
-// and author-year suffix machinery as the bst backend above.
+// ---- BibLaTeX ACM driver port ---------------------------------------------
+// Source files mirrored here:
+//   * acmnumeric.bbx / acmauthoryear.bbx (ACM's BibLaTeX drivers/macros),
+//   * software.bbx (driver extension loaded by both ACM styles),
+//   * software.dbx (software-family datamodel + inheritance),
+//   * english-software.lbx (visible software labels/strings).
+//
+// This is a visible-output port rather than a TeX macro interpreter: the functions
+// below are named after the source macros/drivers where practical, but they emit
+// Typst content directly and share the parser, TeX renderer, sort/cite state, and
+// hyperlink machinery with the ACM-Reference-Format.bst port above.
 #let blx-match-brace(cp, i) = {
   let depth = 0
   let j = i
@@ -643,12 +650,52 @@
   }
   none
 }
-#let blx-date(e, full: false, suffix: "") = {
-  let y = if has(e, "year") { fld(e, "year") } else if has(e, "date") { fld(e, "date").slice(0, 4) } else { "[n. d.]" }
-  let body = if full and has(e, "month") { render(fld(e, "month")) + " " + y + suffix } else { y + suffix }
-  (c: body, p: false)
+#let blx-months = (
+  "1": "Jan.", "01": "Jan.", jan: "Jan.", january: "Jan.",
+  "2": "Feb.", "02": "Feb.", feb: "Feb.", february: "Feb.",
+  "3": "Mar.", "03": "Mar.", mar: "Mar.", march: "Mar.",
+  "4": "Apr.", "04": "Apr.", apr: "Apr.", april: "Apr.",
+  "5": "May", "05": "May", may: "May",
+  "6": "Jun.", "06": "Jun.", jun: "Jun.", june: "Jun.",
+  "7": "Jul.", "07": "Jul.", jul: "Jul.", july: "Jul.",
+  "8": "Aug.", "08": "Aug.", aug: "Aug.", august: "Aug.",
+  "9": "Sept.", "09": "Sept.", sep: "Sept.", sept: "Sept.", september: "Sept.",
+  "10": "Oct.", oct: "Oct.", october: "Oct.",
+  "11": "Nov.", nov: "Nov.", november: "Nov.",
+  "12": "Dec.", dec: "Dec.", december: "Dec.",
+)
+#let blx-month(raw) = {
+  let k = lower(raw.replace(".", ""))
+  blx-months.at(k, default: raw)
 }
-#let blx-date-if-month(e) = if has(e, "month") { (c: "(" + render(fld(e, "month")) + " " + fld(e, "year") + ")", p: false) } else { none }
+#let blx-date-parts(e) = {
+  let raw = if has(e, "date") { fld(e, "date") } else { "" }
+  let y = if has(e, "year") { fld(e, "year") }
+    else if raw.len() >= 4 { raw.slice(0, 4) }
+    else { none }
+  let m = if has(e, "month") { fld(e, "month") }
+    else if raw.len() >= 7 and raw.slice(4, 5) == "-" { raw.slice(5, 7) }
+    else { none }
+  let d = if has(e, "day") { fld(e, "day") }
+    else if raw.len() >= 10 and raw.slice(7, 8) == "-" { raw.slice(8, 10) }
+    else { none }
+  (year: y, month: m, day: d)
+}
+#let blx-printdate(e, suffix: "", month-ok: true) = {
+  let p = blx-date-parts(e)
+  if p.year == none { return "[n. d.]" + suffix }
+  if month-ok and p.month != none {
+    let d = if p.day != none { p.day + " " } else { "" }
+    d + blx-month(p.month) + " " + p.year + suffix
+  } else { p.year + suffix }
+}
+#let blx-date(e, full: false, suffix: "") = {
+  (c: blx-printdate(e, suffix: suffix, month-ok: full), p: false)
+}
+#let blx-date-if-month(e) = {
+  let p = blx-date-parts(e)
+  if p.month != none and p.year != none { (c: "(" + blx-printdate(e) + ")", p: false) } else { none }
+}
 
 #let blx-title-raw(e) = {
   if not has(e, "title") { return none }
@@ -848,6 +895,233 @@
     ..blx-tail(e),
   )
 }
+
+// ---- BibLaTeX software.dbx + software.bbx port ----------------------------
+#let blx-software-types = ("software", "softwareversion", "softwaremodule", "codefragment")
+#let blx-software-labels = (
+  software: "[SW]",
+  softwareversion: "[SW Rel.]",
+  softwaremodule: "[SW Mod.]",
+  codefragment: "[SW exc.]",
+)
+
+// acmnumeric.bbx/acmauthoryear.bbx DeclareStyleSourcemap.
+#let blx-acm-sourcemap(db) = {
+  let out = (:)
+  for (k, e0) in db {
+    let e = e0
+    if e.entry-type == "artifactsoftware" { e = e + (entry-type: "software") }
+    else if e.entry-type == "artifactdataset" { e = e + (entry-type: "dataset") }
+    out.insert(k, e)
+  }
+  out
+}
+
+// software.bbx DeclareStyleSourcemap: strip whitespace in swhid and derive
+// swhidcore from the part before the first semicolon.
+#let blx-software-sourcemap-entry(e) = {
+  if has(e, "swhid") {
+    let clean = fld(e, "swhid").replace(regex("\s+"), "")
+    e.fields.insert("swhid", clean)
+    if not has(e, "swhidcore") {
+      e.fields.insert("swhidcore", clean.split(";").at(0))
+    }
+  }
+  e
+}
+
+#let blx-fill-date-fields(e) = {
+  let p = blx-date-parts(e)
+  if p.year != none and not has(e, "year") { e.fields.insert("year", p.year) }
+  if p.month != none and not has(e, "month") { e.fields.insert("month", p.month) }
+  if p.day != none and not has(e, "day") { e.fields.insert("day", p.day) }
+  e
+}
+
+#let blx-software-can-inherit(parent, child) = {
+  if parent == "software" { child in ("softwareversion", "softwaremodule", "codefragment") }
+  else if parent == "softwareversion" { child in ("softwaremodule", "codefragment") }
+  else if parent == "softwaremodule" { child == "codefragment" }
+  else { false }
+}
+
+// software.dbx DeclareDataInheritance, resolved recursively so a codefragment
+// inherits through softwareversion to the top-level software project.
+#let blx-software-inherit-entry(db, key, seen: ()) = {
+  let e = blx-fill-date-fields(blx-software-sourcemap-entry(db.at(key)))
+  if e.entry-type not in blx-software-types or not has(e, "crossref") { return e }
+  let xr = fld(e, "crossref")
+  if xr not in db or xr in seen { return e }
+  let parent = blx-software-inherit-entry(db, xr, seen: seen + (key,))
+  if not blx-software-can-inherit(parent.entry-type, e.entry-type) { return e }
+  for (fk, fv) in parent.fields {
+    if fk == "crossref" { continue }
+    if fk not in e.fields {
+      e.fields.insert(fk, fv)
+      if fk == "author" or fk == "editor" { e.names.insert(fk, parse-names(fv)) }
+    }
+  }
+  e
+}
+
+#let blx-biber-datamodel(db) = {
+  let mapped = blx-acm-sourcemap(db)
+  let out = (:)
+  for (k, e) in mapped {
+    let r = if e.entry-type in blx-software-types {
+      blx-software-inherit-entry(mapped, k)
+    } else {
+      blx-fill-date-fields(e)
+    }
+    out.insert(k, r)
+  }
+  out
+}
+
+#let blx-split-list-and(raw) = {
+  let cp = raw.codepoints()
+  let n = cp.len()
+  let parts = ()
+  let cur = ""
+  let depth = 0
+  let i = 0
+  while i < n {
+    let c = cp.at(i)
+    if c == "{" { depth += 1 } else if c == "}" { depth -= 1 }
+    if (depth == 0 and c == "a" and i > 0 and i + 3 < n
+        and cp.at(i + 1) == "n" and cp.at(i + 2) == "d"
+        and cp.at(i - 1) in (" ", "\n", "\t", "\r")
+        and cp.at(i + 3) in (" ", "\n", "\t", "\r")) {
+      parts.push(cur.trim()); cur = ""; i += 3; continue
+    }
+    cur += c; i += 1
+  }
+  parts.push(cur.trim())
+  parts.filter(p => p != "")
+}
+
+#let blx-list-content(raw) = {
+  let parts = blx-split-list-and(raw).map(render)
+  if parts.len() == 0 { return [] }
+  let out = []
+  for (i, p) in parts.enumerate() {
+    if i > 0 {
+      if parts.len() == 2 { out += " and " }
+      else if i == parts.len() - 1 { out += ", and " }
+      else { out += ", " }
+    }
+    out += p
+  }
+  out
+}
+
+#let blx-printlist(e, name) = if has(e, name) {
+  (c: blx-list-content(fld(e, name)), p: false)
+} else { none }
+
+#let blx-sw-version(e) = if has(e, "version") { " version " + render(fld(e, "version")) } else { [] }
+#let blx-sw-editor(e) = if has(e, "editor") {
+  [ (Coord.by #render(join-names(e.names.editor)))]
+} else { [] }
+
+// software.bbx: \newbibmacro*{swtitleauthoreditoryear}
+#let blx-swtitleauthoreditoryear(e) = {
+  let c = []
+  if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
+  c += render(fld(e, "title", d: ""))
+  let has-version = has(e, "version")
+  let has-editor = has(e, "editor")
+  c += blx-sw-version(e)
+  c += blx-sw-editor(e)
+  let date = blx-printdate(e)
+  if has-version or has-editor { c += ", " + date } else { c += " " + date }
+  (c: c, p: false)
+}
+
+#let blx-sw-subtitle(e) = if has(e, "subtitle") {
+  "\u{201C}" + render(fld(e, "subtitle")) + ",\u{201D}"
+} else { [] }
+
+// software.bbx: \newbibmacro*{swsubtitleauthoreditoryear}
+#let blx-swsubtitleauthoreditoryear(e) = {
+  let c = []
+  if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
+  if has(e, "subtitle") { c += blx-sw-subtitle(e) + " part of " }
+  c += render(fld(e, "title", d: ""))
+  let has-version = has(e, "version")
+  let has-editor = has(e, "editor")
+  c += blx-sw-version(e)
+  c += blx-sw-editor(e)
+  let date = blx-printdate(e)
+  if has-version or has-editor { c += ", " + date } else { c += " " + date }
+  (c: c, p: false)
+}
+
+// software.bbx: \newbibmacro*{codefragmenttitleauthoreditoryear}
+#let blx-codefragmenttitleauthoreditoryear(e) = {
+  let c = []
+  if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
+  if has(e, "subtitle") { c += blx-sw-subtitle(e) + " from " }
+  c += render(fld(e, "title", d: ""))
+  let has-version = has(e, "version")
+  let has-editor = has(e, "editor")
+  c += blx-sw-version(e)
+  c += blx-sw-editor(e)
+  let date = blx-printdate(e)
+  if has-version or has-editor { c += ", " + date } else { c += " " + date }
+  (c: c, p: false)
+}
+
+#let blx-sw-url(e) = if has(e, "url") {
+  let u = fld(e, "url")
+  (c: [url: #link(u)[#u]], p: false)
+} else { none }
+#let blx-sw-hal-id(e) = if has(e, "hal_id") {
+  let id = fld(e, "hal_id") + fld(e, "hal_version", d: "")
+  (c: [hal: #link("https://hal.archives-ouvertes.fr/" + id)[⟨#id⟩]], p: false)
+} else { none }
+#let blx-sw-repository(e) = if has(e, "repository") {
+  let u = fld(e, "repository")
+  (c: [vcs: #link(u)[#u]], p: false)
+} else { none }
+#let blx-sw-swhid(e) = if has(e, "swhid") {
+  let id = fld(e, "swhid")
+  (c: [swhid: #link("http://archive.softwareheritage.org/" + id)[⟨#id⟩]], p: false)
+} else { none }
+
+// software.bbx: \newbibmacro*{swids}. ACM sets license=false, halid/swhid/vcs
+// true in acmnumeric.bbx/acmauthoryear.bbx.
+#let blx-swids(e) = {
+  let pieces = (
+    blx-doi(e),
+    blx-sw-hal-id(e),
+    blx-eprint(e),
+    blx-sw-url(e),
+    blx-sw-repository(e),
+    blx-sw-swhid(e),
+  ).filter(v => v != none and v.c != none and v.c != [] and v.c != "")
+  if pieces.len() == 0 { return none }
+  let c = []
+  for (i, v) in pieces.enumerate() {
+    if i > 0 { c += ", " }
+    c += v.c
+  }
+  (c: c, p: false)
+}
+
+#let blx-software-driver(e, kind) = {
+  let body = if kind == "software" { blx-swtitleauthoreditoryear(e) }
+    else if kind == "codefragment" { blx-codefragmenttitleauthoreditoryear(e) }
+    else { blx-swsubtitleauthoreditoryear(e) }
+  let labelled = (c: blx-software-labels.at(kind) + " " + body.c, p: body.p)
+  blx-blocks(
+    labelled,
+    blx-printlist(e, "institution"),
+    blx-printlist(e, "organization"),
+    blx-swids(e),
+  )
+}
+
 #let blx-handle(e, style: "numeric", year-suffix: "") = {
   let quoted = style == "author-year"
   let t = e.entry-type
@@ -855,7 +1129,8 @@
   else if t == "inproceedings" or t == "conference" or t == "presentation" { blx-inproceedings(e, style: style, suffix: year-suffix, quoted: quoted) }
   else if t == "incollection" or t == "inbook" { blx-inproceedings(e, style: style, suffix: year-suffix, quoted: quoted) }
   else if t == "book" or t == "proceedings" or t == "collection" { blx-book-like(e, style: style, suffix: year-suffix) }
-  else if t == "online" or t == "manual" or t == "misc" or t == "game" or t == "video" or t == "artifactsoftware" or t == "artifactdataset" or t == "dataset" or t == "software" or t == "preprint" {
+  else if t in blx-software-types { blx-software-driver(e, t) }
+  else if t == "online" or t == "manual" or t == "misc" or t == "game" or t == "video" or t == "artifactdataset" or t == "dataset" or t == "preprint" {
     blx-online(e, style: style, suffix: year-suffix)
   }
   else if t == "mastersthesis" or t == "phdthesis" or t == "thesis" { blx-report(e, style: style, suffix: year-suffix, thesis: true) }
@@ -883,6 +1158,7 @@
 
 #let cited-state = state("acmref-cited", ())
 #let bib-path-state = state("acmref-bibpath", none)
+#let bib-format-state = state("acmref-bibformat", "bst")
 // "numeric" (default) or "author-year" — set by the acmart show rule from the
 // `cite-style` option, mirroring acmart's \citestyle{acmnumeric|acmauthoryear}.
 #let cite-style-state = state("acmref-citestyle", "numeric")
@@ -933,8 +1209,19 @@
   (db: db2, order: listed.sorted(key: k => sort-key(db2.at(k))))
 }
 
+#let resolve-biblatex(db, cited) = {
+  let db2 = blx-biber-datamodel(db)
+  let listed = cited.filter(k => k in db2)
+  (db: db2, order: listed.sorted(key: k => sort-key(db2.at(k))))
+}
+
 // resolved (db, order) for the current cited set
-#let prepared() = resolve-crossref(read-merged(bib-path-state.final()), cited-state.final())
+#let prepared() = {
+  let db = read-merged(bib-path-state.final())
+  let cited = cited-state.final()
+  if bib-format-state.final() == "biblatex" { resolve-biblatex(db, cited) }
+  else { resolve-crossref(db, cited) }
+}
 
 // ---- author-year labels (format.lab.names + calc.basic.label dispatch) -----
 // short citation label: von+Last only, " and " for two, "et al." for >2 (or "and
@@ -958,7 +1245,7 @@
   let ed = if has(e, "editor") { format-lab-names(e.names.editor) }
   let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
   let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
-  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "dataset", "preprint")
+  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
   if t in ("book", "inbook", "article") { pick((au, ed, key)) }
   else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key)) }
   else if t in manual-like { pick((au, ed, org, key)) }
@@ -1029,7 +1316,8 @@
   cur
 })
 
-// numeric: collapsed bracketed numbers; author-year: \citep "[Label Year]"
+// numeric: .bst collapses ranges, BibLaTeX preserves command order; author-year:
+// \citep "[Label Year]"
 #let bbl-cite(..keys) = {
   let ks = keys.pos()
   register-cites(ks)
@@ -1039,7 +1327,9 @@
       cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order))
     } else {
       let nums = ks.map(k => p.order.position(x => x == k)).filter(x => x != none).map(x => x + 1)
-      if nums.len() == 0 { [[?]] } else { [[#collapse(nums)]] }
+      if nums.len() == 0 { [[?]] }
+      else if bib-format-state.final() == "biblatex" { [[#nums.map(str).join(", ")]] }
+      else { [[#collapse(nums)]] }
     }
   }
 }
@@ -1054,7 +1344,9 @@
       cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order), citet: true)
     } else {
       let nums = ks.map(k => p.order.position(x => x == k)).filter(x => x != none).map(x => x + 1)
-      if nums.len() == 0 { [[?]] } else { [[#collapse(nums)]] }
+      if nums.len() == 0 { [[?]] }
+      else if bib-format-state.final() == "biblatex" { [[#nums.map(str).join(", ")]] }
+      else { [[#collapse(nums)]] }
     }
   }
 }
@@ -1080,6 +1372,7 @@
 
 #let bbl-bibliography(path, title: [References], size: 8pt, leading: auto, format: "bst") = {
   bib-path-state.update(path)
+  bib-format-state.update(format)
   context {
     let p = prepared()
     let db = p.db

@@ -30,9 +30,10 @@ Validated page-by-page against real LaTeX acmart output (see `tools/`). Covered:
   or `"bst"` — a pure-Typst port of the `.bst` itself (`src/parts/{bibtex,acmref}.typ`,
   no extra dependencies) that reproduces the bibtex reference text *exactly* across
   every entry type; or `"biblatex"` — a pure-Typst ACM BibLaTeX renderer for
-  `acmnumeric` / `acmauthoryear` reference formatting. The ACM backends are used
-  via native `@key` / `#bibliography` routing or `acm-cite` / `acm-bibliography`
-  (see DESIGN.md)
+  `acmnumeric` / `acmauthoryear` reference formatting, including ACM's
+  `biblatex-software` artifact entries. The ACM backends are used via native
+  `@key` / `#bibliography` routing or `acm-cite` / `acm-bibliography` (see
+  DESIGN.md)
 - All copyright modes (acmcopyright/acmlicensed/rightsretained, the US/Canada/other
   -gov family, iw3c2w3[g], and Creative Commons with its licence badge). Unknown
   copyright modes, CC types, and unsupported CC versions are rejected.
@@ -47,8 +48,8 @@ Known differences from LaTeX (engine limits, not spacing errors — see
   pages and different page breaks.
 - `sigchi-a` omits margin-note footnotes; `acmcp` top-aligns its cover infobox
   with the body rather than LaTeX's two-pass `zref` bottom-anchoring.
-- Minor: residual ACM-CSL vs `.bst` gaps (hayagriva BibTeX→CSL data limits) and
-  `biblatex-software` artifact entries (see DESIGN.md); author note/✉ mark order; list hanging-label
+- Minor: residual ACM-CSL vs `.bst` gaps (hayagriva BibTeX→CSL data limits);
+  author note/✉ mark order; list hanging-label
   indent (no LaTeX `\llap`); `screen` link colour ~1/255 (Typst 8-bit CMYK).
 - Math fidelity is still best-effort.
 

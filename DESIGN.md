@@ -222,13 +222,19 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   against the real bibtex binary (oracle cases pinned in `tests/unit/bibtex.typ`).
 - **`"biblatex"` — ACM BibLaTeX, no extra dependencies.** A sibling renderer in
   [`parts/acmref.typ`](src/parts/acmref.typ) ports the visible reference formatting
-  of ACM's `acmnumeric.bbx` and the `acmauthoryear.bbx` deltas while reusing the
-  same `.bib` reader, sort/cite state, native `@key` / `#bibliography` routing, and
-  `cite-style: "numeric" | "author-year"` switch as the `.bst` backend. This covers
-  BibLaTeX's sentence-cased numeric titles, preserved/quoted author-year titles,
-  full journal names, `doi: <id>` punctuation, `lastaccessed` retrieval dates,
-  BibLaTeX `In:`/booktitle italics, and journal italics. The `biblatex-test` twin
-  gates the acmnumeric isolator against biber with no char/font/order exemption.
+  of ACM's `acmnumeric.bbx`, the `acmauthoryear.bbx` deltas, and the
+  `biblatex-software` files they load (`software.bbx`, `software.dbx`,
+  `english-software.lbx`) while reusing the same `.bib` reader, sort/cite state,
+  native `@key` / `#bibliography` routing, and `cite-style: "numeric" |
+  "author-year"` switch as the `.bst` backend. This covers BibLaTeX's
+  sentence-cased numeric titles, preserved/quoted author-year titles, full journal
+  names, `doi: <id>` punctuation, `lastaccessed` retrieval dates, BibLaTeX
+  `In:`/booktitle italics, journal italics, software-family data inheritance,
+  SWHID source-map normalization, ACM's software labels (`[SW]`, `[SW Rel.]`,
+  `[SW Mod.]`, `[SW exc.]`), and HAL/URL/VCS/SWHID identifier blocks. The
+  `biblatex-test` twin gates the acmnumeric isolator against biber with no
+  char/font/order exemption; the full BibLaTeX samples exercise the software
+  artifact cite block against the upstream references.
 
   **Implemented (each validated against real bibtex):**
   - **Author-year citation mode** — `cite-style: "author-year"` (acmart's
@@ -435,13 +441,11 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   the cap-top fall where the font's cap height puts it. Imperceptible; the sigplan
   twin marks its Tier-2 top check report-only for this reason.
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
-- **`biblatex-software` artifact entry types** (`@software`, `@softwaremodule`,
-  `@softwareversion`, `@codefragment` from the `biblatex-software` CTAN package)
-  are still not a full port of `software.bbx`. The `sample-acmsmall-biblatex`
-  and `sample-sigconf-biblatex` upstream-ref ports therefore omit the
-  Software-project/version/module/fragment cite block from the Citations section,
-  noting it as a known gap; regular `sample-base.bib` entries can use the
-  `"biblatex"` backend.
+- **Full BibLaTeX sample layout drift**: `sample-sigconf-biblatex` uses the
+  `"biblatex"` backend and includes the software artifact block, but the dense
+  two-column bibliography reflows to one extra Typst page. The full bundled
+  samples already gate visual snapshots rather than page parity; the isolated
+  `biblatex-test` remains the exact text gate for regular BibLaTeX formatting.
 - **Engine-variant and accessibility-tagged samples** (three of the 18 bundled
   acmart samples) are not ported as upstream-ref tests: `sigconf-lualatex` is
   docstrip-identical to `sigconf` (same flags, just a different engine note in the

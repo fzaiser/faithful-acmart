@@ -1,14 +1,14 @@
 // sample-sigconf-biblatex — port of the upstream acmart sample (acmart/samples,
 // docstrip option `all,proceedings,sigconf,biblatex`). The sigconf proceedings
-// format with the BibLaTeX acmnumeric style (numbered citations, default). Software
-// artifact cites from software.bib (@software/@softwaremodule/@codefragment entry
-// types) are not fully ported and are omitted.
+// format with the BibLaTeX acmnumeric style (numbered citations, default),
+// including the biblatex-software artifact entries from software.bib.
 // Diffed against out/latex/sigconf-biblatex.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 
 #show: acmart.with(
   format: "sigconf",
+  bibliography-backend: "biblatex",
   title: "The Name of the Title Is Hope",
   short-authors: "Trovato et al.",
   conference: (
