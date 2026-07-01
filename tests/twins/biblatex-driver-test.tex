@@ -1,0 +1,19 @@
+%% biblatex-driver-test - focused ACM BibLaTeX driver-order cases.
+\documentclass[acmsmall,nonacm,natbib=false]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmauthoryear,
+  ]{biblatex}
+\addbibresource{biblatex-driver-test.bib}
+\begin{document}
+\thispagestyle{empty}
+
+\section*{BibLaTeX Driver Cases}
+This sentence cites a book \cite{DriverBook}, an in-book chapter
+\cite{DriverInbook}, and an in-collection chapter \cite{DriverIncollection}.
+
+\printbibliography
+
+\end{document}

@@ -764,13 +764,54 @@
   let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
   (c: pre + c, p: false)
 }
+#let blx-title-format(e, style: "numeric", default: "plain") = {
+  let t = e.entry-type
+  if style == "author-year" {
+    // acmauthoryear.bbx inherits biblatex's standard title formats: article,
+    // inbook, incollection, inproceedings, patent, thesis, and unpublished are
+    // quoted; all other title fields use the default emphasized title format.
+    if t in ("article", "inbook", "incollection", "inproceedings", "conference",
+             "patent", "thesis", "mastersthesis", "phdthesis", "unpublished") {
+      "quoted"
+    } else { "emph" }
+  } else {
+    // acmnumeric.bbx inherits trad-standard.bbx: most titles are plain and
+    // sentence-cased; book, inbook, manual, thesis, and proceedings titles are
+    // emphasized.
+    if t in ("book", "inbook", "manual", "thesis", "mastersthesis",
+             "phdthesis", "proceedings") {
+      "emph"
+    } else { default }
+  }
+}
+#let blx-title-field(e, style: "numeric", format: auto, sentence: auto) = {
+  let raw = blx-title-raw(e)
+  if raw == none { return none }
+  let sentence = if sentence == auto {
+    // trad-standard.bbx MakeTitleCase sentence-cases most non-book-like entry
+    // titles; authoryear-comp/standard keeps the supplied title case.
+    style == "numeric" and e.entry-type not in ("book", "manual", "periodical",
+      "proceedings", "report", "thesis", "mastersthesis", "phdthesis")
+  } else { sentence }
+  let shown = if sentence { blx-sentence-case(raw) } else { raw }
+  let fmt = if format == auto { blx-title-format(e, style: style) } else { format }
+  let p = blx-ends-punct(shown)
+  if fmt == "quoted" {
+    let inner = render(shown) + if p { [] } else { [.] }
+    (c: "\u{201C}" + inner + "\u{201D}", p: true)
+  } else if fmt == "emph" {
+    (c: it(render(shown)), p: p)
+  } else {
+    (c: render(shown), p: p)
+  }
+}
 #let blx-ordinal-edition(n) = {
   let suf = if n.ends-with("11") or n.ends-with("12") or n.ends-with("13") { "th" }
     else if n.ends-with("1") { "st" }
     else if n.ends-with("2") { "nd" }
     else if n.ends-with("3") { "rd" }
     else { "th" }
-  n + suf + "."
+  n + suf
 }
 #let blx-edition(e) = if has(e, "edition") {
   let ed = fld(e, "edition")
@@ -789,6 +830,47 @@
   else if ch != none { (c: "Chap. " + ch, p: false) }
   else { pg }
 }
+#let blx-series-number(e, style: "numeric") = {
+  if not has(e, "series") and not has(e, "number") { return none }
+  let series = if has(e, "series") {
+    // trad-standard.bbx emphasizes series for book/inproceedings/proceedings
+    // but not inbook/incollection; standard.bbx leaves it plain.
+    if style == "numeric" and e.entry-type in ("book", "inproceedings", "conference", "proceedings") {
+      it(render(fld(e, "series")))
+    } else {
+      render(fld(e, "series"))
+    }
+  } else { none }
+  if style == "numeric" {
+    // trad-standard.bbx \series+number: \printfield{number} "in"
+    // \printfield{series}; ACM's number field format is bare for the custom
+    // inproceedings macro, but incollection/book use the inherited "Number N".
+    if has(e, "series") and has(e, "number") {
+      (c: "Number " + render(fld(e, "number")) + " in " + series, p: false)
+    } else if has(e, "number") {
+      (c: "Number " + render(fld(e, "number")), p: false)
+    } else {
+      (c: series, p: blx-ends-punct(fld(e, "series")))
+    }
+  } else {
+    // standard.bbx \series+number: \printfield{series} [space]
+    // \printfield{number}.
+    let c = []
+    if has(e, "series") { c += series }
+    if has(e, "number") {
+      if c != [] { c += " " }
+      c += render(fld(e, "number"))
+    }
+    (c: c, p: false)
+  }
+}
+#let blx-volumes(e) = if has(e, "volumes") {
+  (c: render(fld(e, "volumes")) + " volumes", p: false)
+} else { none }
+#let blx-bookauthor(e) = if has(e, "bookauthor") and fld(e, "bookauthor") != fld(e, "author", d: "\u{0}") {
+  if "bookauthor" in e.names { (c: render(join-names(e.names.bookauthor)), p: false) }
+  else { V(fld(e, "bookauthor")) }
+} else { none }
 #let blx-publisher-location-date(e) = {
   let parts = ()
   if has(e, "publisher") { parts.push(render(fld(e, "publisher"))) }
@@ -899,6 +981,20 @@
   let sep = if style == "numeric" and who.kind == "editor" { " " } else { ". " }
   (c: who.c + sep + dt.c, p: false)
 }
+#let blx-inbook-lead(e, style: "numeric", suffix: "") = {
+  // acmnumeric.bbx/acmauthoryear.bbx use \iffieldundef{author} here, not
+  // \ifnameundef{author}. Since author is a name list rather than a literal
+  // field, real BibLaTeX takes the "author undefined" branch even when the .bib
+  // entry has an author name. Mirror that visible behavior: byeditor+others is
+  // the only name lead in this ACM inbook driver.
+  if has(e, "editor") {
+    // acmnumeric.bbx then prints the year; acmauthoryear.bbx does not.
+    let c = "Ed. by " + render(join-names(e.names.editor))
+    if style == "numeric" { c += ". " + blx-date(e, suffix: suffix).c }
+    return (c: c, p: false)
+  }
+  if style == "numeric" { blx-date(e, suffix: suffix) } else { none }
+}
 #let blx-blocks(..vals) = {
   let pieces = vals.pos().filter(v => v != none and v.c != none and v.c != [] and v.c != "")
   let out = []
@@ -911,7 +1007,7 @@
 }
 #let blx-article-like(e, style: "numeric", suffix: "", quoted: false) = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
-  blx-title(e, style: style, quoted: quoted),
+  blx-title-field(e, style: style),
   blx-journal(e),
   blx-note(e),
   ..blx-tail(e),
@@ -920,7 +1016,7 @@
   let title-led = style == "author-year" and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
   blx-blocks(
     if title-led { none } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) },
-    blx-title(e, style: style, quoted: quoted),
+    blx-title-field(e, style: style),
     blx-booktitle(e, with-in: true, style: style),
     blx-editor-block(e, style: style),
     blx-volume(e),
@@ -932,31 +1028,30 @@
 }
 #let blx-incollection(e, style: "numeric", suffix: "", quoted: false) = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
-  blx-title(e, style: style, quoted: quoted),
+  blx-title-field(e, style: style),
   blx-booktitle-simple(e, with-in: true, style: style),
+  blx-series-number(e, style: style),
   blx-edition(e),
-  blx-series(e),
   blx-volume(e),
+  blx-volumes(e),
   blx-editor-block(e, style: style),
+  blx-note(e),
   blx-publisher-pages(e),
   blx-isbn(e),
   ..blx-tail(e),
 )
 #let blx-inbook(e, style: "numeric", suffix: "", quoted: false) = {
-  let lead = if has(e, "author") {
-    blx-lead(e, style: style, suffix: suffix)
-  } else if has(e, "editor") {
-    if style == "author-year" { blx-ed-by(e) } else { blx-lead(e, style: style, suffix: suffix) }
-  } else {
-    blx-lead(e, style: style, suffix: suffix)
-  }
+  let lead = blx-inbook-lead(e, style: style, suffix: suffix)
   blx-blocks(
     lead,
-    blx-title(e, style: style, quoted: quoted, sentence: style == "numeric"),
+    blx-title-field(e, style: style),
+    blx-bookauthor(e),
+    blx-booktitle-simple(e, with-in: false, style: style),
     blx-edition(e),
     blx-volume(e),
-    blx-series(e),
-    if has(e, "author") { blx-editor-block(e, style: style) } else { none },
+    blx-volumes(e),
+    blx-series-number(e, style: style),
+    blx-note(e),
     blx-publisher-location-date(e),
     blx-chapter-pages(e),
     blx-isbn(e),
@@ -965,9 +1060,11 @@
 }
 #let blx-book-like(e, style: "numeric", suffix: "") = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
-  blx-book-title(e),
+  blx-title-field(e, style: style),
   blx-edition(e),
-  blx-volume-series(e),
+  blx-series-number(e, style: style),
+  blx-volume(e),
+  blx-volumes(e),
   blx-note(e),
   blx-publisher-pages(e),
   blx-isbn(e),
@@ -980,8 +1077,7 @@
   } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) }
   blx-blocks(
     lead,
-    if style == "author-year" { blx-title-emph(e, style: style, sentence: false) }
-    else { blx-title(e, style: style, sentence: true) },
+    blx-title-field(e, style: style),
     blx-field(e, "howpublished"),
     blx-field(e, "version"),
     blx-note(e),
@@ -994,7 +1090,7 @@
 }
 #let blx-presentation(e, style: "numeric", suffix: "") = blx-blocks(
   blx-lead(e, style: style, suffix: suffix, key-ok: false),
-  blx-title(e, style: style, quoted: false, sentence: style == "numeric"),
+  blx-title-field(e, style: style, format: "plain"),
   blx-date-parens(e),
   ..blx-tail(e),
 )
@@ -1013,7 +1109,7 @@
   else { none }
   blx-blocks(
     blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false),
-    blx-title(e, style: style, quoted: thesis and style == "author-year", sentence: false),
+    blx-title-field(e, style: style),
     ty,
     blx-field(e, "version"),
     blx-institution-location(e),
@@ -1276,7 +1372,7 @@
   else if t == "periodical" {
     blx-blocks(
       blx-lead(e, style: style, suffix: year-suffix),
-      blx-title(e, style: style, quoted: false, sentence: false),
+      blx-title-field(e, style: style, sentence: false),
       blx-periodical-journal(e),
       blx-note(e),
       ..blx-tail(e),

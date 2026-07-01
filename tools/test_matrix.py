@@ -376,6 +376,22 @@ TESTS: dict[str, Test] = {
              "video/howpublished month handling, authorless online entries, and ISBN "
              "output for multivolume books.",
     ),
+    "biblatex-driver-test": Test(
+        kind="twin", pages=1,
+        text_assertions=(
+            Assertion(engine="both", text="Series book. (1st ed.). Book Series 11. "
+                      "Vol. 3. Companion volume."),
+            Assertion(engine="both", text="Ed. by Evan Editor. \"A contributed chapter.\" "
+                      "Beatrice Bookauthor. Big Book of Drivers. (2nd ed.). Vol. 5."),
+            Assertion(engine="both", text="Driver Series 7. (3rd ed.). Vol. 2. "
+                      "Ed. by Eve Editor and Oscar Organizer"),
+            Assertion(engine="both", text="isbn: 978-1-23456-789-7"),
+        ),
+        note="Focused acmauthoryear driver-order regression from the actual ACM "
+             "BibLaTeX stack: acmauthoryear.bbx plus inherited standard.bbx "
+             "macros for book, inbook, and incollection with series/number, "
+             "edition, volume, editor, note, chapter/pages, and ISBN fields.",
+    ),
     "bib-all": Test(
         kind="twin", pages=1,
         note="Every ACM-Reference-Format entry type via the `bst` bibliography backend "
