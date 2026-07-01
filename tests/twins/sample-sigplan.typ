@@ -6,6 +6,7 @@
 
 #show: acmart.with(
   format: "sigplan",
+  bib-backend: "bibtex",
   screen: true,
   title: "The Name of the Title Is Hope",
   teaser: figure(

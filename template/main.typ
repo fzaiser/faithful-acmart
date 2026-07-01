@@ -2,8 +2,10 @@
 //
 // When the package is published you would write:
 //   #import "@preview/acmart:0.0.1": *
-// In this repository we import the library directly:
-#import "/src/lib.typ": acmart, theorem, lemma, definition, proof
+// The wildcard brings in `acmart`, the theorem environments, the citation helpers
+// (cite-text/cite-year/cite-author), and the `cite`/`bibliography` shadows that
+// route through the active `bib-backend`. In this repo we import the library directly:
+#import "/src/lib.typ": *
 
 #show: acmart.with(
   format: "acmsmall",
@@ -111,4 +113,6 @@ We can also use lists:
 + Write your paper
 + Submit
 
+// A single relative bibliography path works on every backend. (Multiple .bib files on
+// the `bibtex`/`biblatex` backends must use project-absolute paths, e.g. "/refs.bib".)
 #bibliography("refs.bib")

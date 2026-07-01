@@ -9,6 +9,7 @@
 
 #show: acmart.with(
   format: "manuscript",
+  bib-backend: "bibtex",
   screen: true,
   review: true,
   title: "The Name of the Title Is Hope",

@@ -3,7 +3,7 @@
 // abstract, CCS concepts, \received dates, and document body — only the
 // preamble (format, journal/conference metadata, copyright, class options)
 // differs. Each sample-<format>.typ sets that preamble and calls `sample-body`.
-#import "/src/lib.typ": acks, acm-cite, acm-bibliography
+#import "/src/lib.typ": *
 
 #let sample-authors = (
   // Trovato carries NO affiliation; Tobin holds the shared one, so acmart's
@@ -72,7 +72,7 @@
 // Citations route through the selected ACM backend so the sample's reference
 // ordering and numeric/author-year labels follow the LaTeX preamble being ported.
 #let sample-body(documentclass: "acmsmall", author-year: false, biblatex: false) = {
-  let cit(..keys) = acm-cite(..keys.pos())
+  let cit(..keys) = cite(..keys.pos())
   [
 = Introduction
 ACM's consolidated article template, introduced in 2017, provides a consistent
@@ -579,9 +579,9 @@ dimensions considered by any review of the user study design or dataset licenses
 could be provided in this statement.
 
 #if biblatex {
-  acm-bibliography(("/tests/twins/software.bib", "/tests/twins/sample-base.bib"))
+  bibliography(("/tests/twins/software.bib", "/tests/twins/sample-base.bib"))
 } else {
-  acm-bibliography("/tests/twins/sample-base.bib")
+  bibliography("/tests/twins/sample-base.bib")
 }
 
 // GAP: \appendix — acmart switches section numbering to letters (A, A.1, ...).

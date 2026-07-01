@@ -8,6 +8,7 @@
 
 #show: acmart.with(
   format: "acmsmall",
+  bib-backend: "bibtex",
   title: "The Name of the Title Is Hope",
   teaser: figure(
     image("/tests/twins/sampleteaser.jpg", width: 100%,

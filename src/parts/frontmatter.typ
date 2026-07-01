@@ -876,7 +876,7 @@
   }
 
   // --- ACM Reference Format ---
-  if meta.show-ref {
+  if meta.print-acm-reference {
     let j = lookup-journal(meta.journal)
     let proceedings-ref = not meta.bibstrip or meta.conference != none
     // \@mkbibcitation does `\par\medskip\small ...`; next block is 9pt

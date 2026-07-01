@@ -8,7 +8,7 @@
 
 #show: acmart.with(
   format: "acmsmall",
-  bibliography-backend: "biblatex",
+  bib-backend: "biblatex",
   cite-style: "author-year",
   title: "The Name of the Title Is Hope",
   short-authors: "Trovato et al.",

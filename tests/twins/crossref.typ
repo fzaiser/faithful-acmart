@@ -1,9 +1,9 @@
-#import "/src/lib.typ": acmart, acm-cite, acm-bibliography
-#show: acmart.with(format: "acmsmall", bibliography-backend: "bst")
+#import "/src/lib.typ": *
+#show: acmart.with(format: "acmsmall", bib-backend: "bibtex")
 
 #let keys = ("xchild1", "xchild2", "xsolo", "prockey", "durl")
 
 = Introduction
-Crossref + small bst features #acm-cite(..keys).
+Crossref + small bst features #cite(..keys).
 
-#acm-bibliography("/tests/twins/crossref.bib")
+#bibliography("/tests/twins/crossref.bib")

@@ -2,8 +2,10 @@
 //
 // acmart loads babel with the languages given by repeated `language=` keys; the
 // LAST one is the document's main language, the others are secondary (used only
-// for translated top matter). We model the same: `language` is a babel language
-// name or an ordered list whose final entry is the main language.
+// for translated top matter). We expose this more safely: `language` names the
+// single MAIN language, and secondary languages are the keys of the `translations`
+// argument (which carries the translated top matter) — so there is no error-prone
+// "last item wins" list.
 //
 // Only a handful of fixed strings are language-dependent in output, and acmart
 // itself renews just two of them per language — \keywordsname and \acksname
@@ -60,18 +62,16 @@
   _langs.at(name)
 }
 
-// Resolve the `language` option into the active string set. Returns a dict with
-// `code` (main Typst lang), the translated fixed strings, `main` (name or none),
-// and `all` (the declared list, for validating translated-* keys).
+// Resolve the `language` option into the active string set. `language` is the
+// document's single MAIN language (a supported name) or none for the monolingual
+// default. Returns a dict with `code` (main Typst lang), the fixed strings, and
+// `main` (the name, or none). Secondary languages are declared by the keys of the
+// `translations` argument, not here, so no list is needed.
 #let resolve-language(language) = {
   if language == none {
-    return (..default-strings, main: none, all: ())
+    return (..default-strings, main: none)
   }
-  let given = if type(language) == array { language } else { (language,) }
-  assert(given.len() > 0, message: "acmart: `language` list must be non-empty")
-  // acmart always seeds the babel list with english (acmart.dtx:2853-2854), so
-  // english is a declared (secondary) language even when only another is named.
-  let all = ("english",) + given
-  let m = lang-record(given.last())
-  (..m, main: given.last(), all: all)
+  assert(type(language) == str, message: "acmart: `language` must be a single "
+    + "language name; secondary languages go in `translations`.")
+  (..lang-record(language), main: language)
 }

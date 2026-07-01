@@ -184,8 +184,8 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 > titles, so always validate against the bundled class — the LaTeX build is wired
 > to generate it from [`acmart/`](acmart/) (see `tools/test.py`'s `ensure_class`).
 
-**Bibliography — three backends (`bibliography-backend`):**
-- **`"csl"` (default)** — idiomatic Typst: native `bibliography()` with a vendored
+**Bibliography — three backends (`bib-backend`):**
+- **`"typst"` (default)** — idiomatic Typst: native `bibliography()` with a vendored
   fork of the upstream ACM CSL at [`src/styles/acm-reference-format.csl`](src/styles/acm-reference-format.csl),
   edited to track the bundled `.bst` (DOI prints `doi:<id>`, abbreviated months,
   report genre label, thesis trailing note, conference-location parens — see the
@@ -195,7 +195,7 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   journal names, thesis `school`/advisor, conference `address`, the `genre` wording
   (`Doctoral dissertation` vs the .bst's `Ph. D. Dissertation`), and full-URL `doi`
   fields the .bst's `strip.doi` would trim.
-- **`"bst"` — exact, no extra dependencies.** A pure-Typst port of
+- **`"bibtex"` — exact, no extra dependencies.** A pure-Typst port of
   `ACM-Reference-Format.bst`: [`parts/bibtex.typ`](src/parts/bibtex.typ) parses the
   `.bib` (via `read()`), [`parts/acmref.typ`](src/parts/acmref.typ) reimplements the
   `.bst`'s output state machine + `format.*` helpers + every entry-type handler +
@@ -203,10 +203,10 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   carries the `.bst`'s built-in journal MACRO table + `journal.canon.abbrev`
   (auto-extracted, so `journal = csur` → "Comput. Surveys" like bibtex). DOI / URL /
   arXiv-eprint / `\url`-in-note render as **real Typst hyperlinks** (acmart loads
-  hyperref). Reached via native `@key` / `#cite` / `#bibliography` (`show ref:` /
-  `show cite:` / `show bibliography:` rules route them to the engine, gated to this
-  backend — see "Implemented" below) or the equivalent exported `acm-cite` (`\citep`) /
-  `acm-citet` / `acm-citeyear` / `acm-citeauthor` / `acm-bibliography`. It reproduces
+  hyperref). Reached via native `@key` (a `show ref:` rule routes it to the engine,
+  gated to this backend — see "Implemented" below) and the shadowed `cite` /
+  `bibliography` functions (`#cite(<a>, <b>)` grouped, `#bibliography("/refs.bib")`),
+  plus `cite-text` (`\citet`) / `cite-year` / `cite-author`. It reproduces
   the `.bst`'s reference text *exactly*: the
   `bib-all` (20 entry-type handlers), `bib-edge` (field/path edge cases),
   `crossref` (crossref + org→key + distinctURL), `authoryear` (author-year mode),
@@ -226,7 +226,7 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   `biblatex-software` files they load (`software.bbx`, `software.dbx`,
   `english-software.lbx`) while reusing the same `.bib` reader, sort/cite state,
   native `@key` / `#bibliography` routing, and `cite-style: "numeric" |
-  "author-year"` switch as the `.bst` backend. This covers BibLaTeX's
+  "author-year"` switch as the `bibtex` backend. This covers BibLaTeX's
   sentence-cased numeric titles, preserved/quoted author-year titles, full journal
   names, `doi: <id>` punctuation, `lastaccessed` retrieval dates, BibLaTeX
   `In:`/booktitle italics, journal italics, software-family data inheritance,
@@ -243,8 +243,8 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     year-disambiguation suffix assigned over `(label, year)`-equal entries in sort
     order (the `forward.pass`/`reverse.pass` algorithm), a reference list with **no
     leading numbers**, and the natbib `\citep`/`\citet` renderers with same-author
-    year compression (`[Smith and Doe 2020a,b]`). `acm-cite` = `\citep`, `acm-citet`
-    = `\citet`, plus `acm-citeyear`/`acm-citeauthor`.
+    year compression (`[Smith and Doe 2020a,b]`). Grouped `cite` (= `\citep`),
+    `cite-text` (= `\citet`), plus `cite-year`/`cite-author`.
   - **`crossref`** — BibTeX *engine* behaviour (not in the `.bst`): the parent's
     missing fields are inherited into the child; the parent is listed only when
     crossref'd ≥ `min_crossrefs` (=2) times or cited directly; a child whose parent
@@ -257,20 +257,42 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     organization leads with its `key` — both in the reference text *and* the sort key.
   - **`distinctURL`** — the per-entry field that prints the URL alongside a DOI
     (`output.url`'s `distinctURL empty.or.zero not`).
-  - **Native `@key` / `#cite` / `#bibliography` routing.** Document-level
-    `show ref:`/`show cite:`/`show bibliography:` rules (in `lib.typ`, gated to
-    `bibliography-backend != "csl"`) intercept citations *and* the reference list and
-    render them through the engine — the same show-rule hook `alexandria` /
-    `pergamon` use. A `ref` whose target resolves to no document label
-    (`it.element == none`) is a citation; real elements (figures/headings/equations)
-    pass through. `show bibliography:` reads `it.sources`/`it.title` and forwards to
-    `acm-bibliography`. Numbering reuses the `state` pass `acm-cite` already runs, so
-    the whole flow can be idiomatic Typst — `@Cohen07` + `#bibliography("refs.bib")` —
-    with `acm-cite`/`acm-bibliography` as equivalent explicit forms. For the `csl`
-    backend all three rules are the identity, so native syntax keeps Typst's built-in
-    behaviour. *Caveat:* Typst validates a `#bibliography` source through hayagriva
-    when it constructs the element, so a file hayagriva can't parse errors before the
-    rule fires — `acm-bibliography(path)` bypasses hayagriva entirely.
+  - **Native `@key` / `#cite` / `#bibliography` routing.** The flow is idiomatic
+    Typst for every backend — `@Cohen07`, grouped `#cite(<a>, <b>)`,
+    `#bibliography("/refs.bib")` — via two complementary mechanisms in `lib.typ`:
+    - `@key` is Typst *syntax* (a `ref` element, unshadowable), so a document-level
+      `show ref:` rule (gated `bib-backend != "typst"`) routes it to the engine — the
+      same show-rule hook `alexandria` / `pergamon` use. A `ref` whose target resolves
+      to no document label (`it.element == none`) is a citation; real elements
+      (figures/headings/equations) pass through. Numbering reuses the `state` pass the
+      cite layer already runs.
+    - `cite` and `bibliography` are *function* names, so they are **shadowed**
+      (`#let cite` / `#let bibliography`). `cite` groups multiple keys into one bracket
+      (the per-element show rule can't merge adjacent citations); `bibliography` renders
+      the list through the engine. This is required for `bibliography` in particular:
+      Typst validates a native `#bibliography` source through hayagriva *at element
+      construction* — before any show rule could fire — so a `.bst`-only feature such
+      as a journal-abbreviation string macro (`journal = csur`) would error out; the
+      shadow never constructs a native element, bypassing hayagriva entirely. These
+      engines `read()` the `.bib` deep inside the package and *lazily* (during cite
+      resolution, from `state`). Typst resolves a `read()` path against wherever the
+      path value was *written*, and that origin survives only on an `arguments` value
+      that is never indexed into. So the shadow **threads a single positional path as
+      an un-indexed `arguments` value** all the way to the engine's `read(..args)` —
+      and a **relative path keeps the caller's location** on every backend. The moment
+      it must index (several files, an array, or a `title:`) the origin is lost, so
+      those cases require a **project-absolute** path (`"/refs.bib"`) and the shadow
+      asserts it with a clear message. (`read-merged` branches on `type(paths) ==
+      arguments` for the threaded case vs the extracted string/array case.)
+
+    For the `"typst"` backend the `show ref:` rule is the identity and both shadows
+    delegate to the native `std.cite` / `std.bibliography` (the vendored CSL
+    `set bibliography(style: …)` in `body.typ` then styles the list), so native syntax
+    keeps Typst's built-in behaviour. `bibliography` forwards the caller's `arguments`
+    value verbatim (`std.bibliography(..args)`), so relative paths work there too (and
+    for multiple files, since Typst's own reader takes the whole args). The textual
+    helpers `cite-text`/`cite-year`/
+    `cite-author` likewise map to `std.cite(form: "prose"/"year"/"author")` there.
   - **TeX-string handling follows BibTeX literally** (`src/parts/tex.typ`). BibTeX
     never normalizes to Unicode — it carries the **raw** TeX string through its whole
     pipeline and only applies two string→string built-ins: `purify$` (sort keys) and

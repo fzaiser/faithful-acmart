@@ -25,15 +25,16 @@ Validated page-by-page against real LaTeX acmart output (see `tools/`). Covered:
   and suppressed normal copyright/contact footnotes
 - Body elements: figure/table captions, theorem environments
   (theorem/lemma/…/definition/proof with QED), lists, footnotes, code
-- Bibliography, three backends (`bibliography-backend`): `"csl"` (default) — native
+- Bibliography, three backends (`bib-backend`): `"typst"` (default) — native
   Typst + a vendored ACM CSL (`src/styles/`) forked to track `ACM-Reference-Format.bst`;
-  or `"bst"` — a pure-Typst port of the `.bst` itself (`src/parts/{bibtex,acmref}.typ`,
+  or `"bibtex"` — a pure-Typst port of the `.bst` itself (`src/parts/{bibtex,acmref}.typ`,
   no extra dependencies) that reproduces the bibtex reference text *exactly* across
   every entry type; or `"biblatex"` — a pure-Typst ACM BibLaTeX renderer for
   `acmnumeric` / `acmauthoryear` reference formatting, including ACM's
-  `biblatex-software` artifact entries. The ACM backends are used via native
-  `@key` / `#bibliography` routing or `acm-cite` / `acm-bibliography` (see
-  DESIGN.md)
+  `biblatex-software` artifact entries. All three are driven by idiomatic native
+  syntax — `@key`, grouped `#cite(<a>, <b>)`, `#bibliography("/refs.bib")` (the
+  `cite` and `bibliography` names are shadowed to route through the active backend) —
+  plus `cite-text` / `cite-year` / `cite-author` for textual citations (see DESIGN.md)
 - All copyright modes (acmcopyright/acmlicensed/rightsretained, the US/Canada/other
   -gov family, iw3c2w3[g], and Creative Commons with its licence badge). Unknown
   copyright modes, CC types, and unsupported CC versions are rejected.
@@ -81,8 +82,15 @@ If you install the full Libertinus + Inconsolata fonts system-wide, you can run
 
 ## Usage
 
+Import with the wildcard (`*`). Besides `acmart` and the theorem environments, it
+brings in the **shadowed `cite` and `bibliography`** and the textual-citation
+helpers (`cite-text` / `cite-year` / `cite-author`) — these route `#cite` and
+`#bibliography` through the active `bib-backend`, so they must be in scope. With a
+selective import you would get Typst's built-ins instead, which only work on the
+default `"typst"` backend.
+
 ```typst
-#import "/src/lib.typ": acmart, theorem, lemma, definition, proof
+#import "/src/lib.typ": *
 // once published: #import "@preview/acmart:0.0.1": *
 
 #show: acmart.with(

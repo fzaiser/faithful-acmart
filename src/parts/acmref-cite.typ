@@ -1,6 +1,6 @@
 // ACM bibliography cite, sort, and bibliography orchestration.
 
-#import "bibtex.typ": read-bib, parse-names
+#import "bibtex.typ": read-bib, parse-bib, parse-names
 #import "tex.typ": tex-to-string
 #import "acmref-common.typ": fld, has, is-others, von-last, year-value, it
 #import "acmref-bst.typ": handle, sort-key
@@ -14,8 +14,13 @@
 // `cite-style` option, mirroring acmart's \citestyle{acmnumeric|acmauthoryear}.
 #let cite-style-state = state("acmref-citestyle", "numeric")
 
-// accept a single path or a list of paths; later files override earlier keys
+// accept a single path, a list of paths, or an `arguments` value carrying one path.
+// The `arguments` case comes from the `bibliography` shadow for a single source: it
+// is threaded here un-indexed and read with `read(..paths)` so a RELATIVE path keeps
+// the caller's location (Typst resolves it against where the args were constructed).
+// Extracted string/array paths have lost that origin, so they must be absolute.
 #let read-merged(paths) = {
+  if type(paths) == arguments { return parse-bib(read(..paths)) }
   let ps = if type(paths) == array { paths } else { (paths,) }
   let db = (:)
   for p in ps { db = db + read-bib(p) }

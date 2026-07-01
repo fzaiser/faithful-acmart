@@ -10,7 +10,6 @@
   format: "acmsmall",
   language: "german",
   title: "Eine Notiz über Berechnungskomplexität",
-  translated-title: (english: "A note on computational complexity"),
   journal: "JACM",
   acm-volume: 37, acm-number: 4, acm-article: 111, acm-year: 2018, acm-month: 8,
   doi: "XXXXXXX.XXXXXXX",
@@ -26,7 +25,10 @@
     übersetzten Zeichenketten zu prüfen.
   ],
   keywords: ("Komplexität", "Algorithmen", "Berechnung"),
-  translated-keywords: (english: ("complexity", "algorithms", "computation")),
+  translations: (english: (
+    title: "A note on computational complexity",
+    keywords: ("complexity", "algorithms", "computation"),
+  )),
 )
 
 = Einleitung

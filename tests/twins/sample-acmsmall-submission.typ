@@ -8,6 +8,7 @@
 
 #show: acmart.with(
   format: "acmsmall",
+  bib-backend: "bibtex",
   screen: true,
   anonymous: true,
   review: true,

@@ -1,7 +1,7 @@
-#import "/src/lib.typ": acmart, acm-cite, acm-citet, acm-bibliography
-#show: acmart.with(format: "acmsmall", bibliography-backend: "bst", cite-style: "author-year")
+#import "/src/lib.typ": *
+#show: acmart.with(format: "acmsmall", bib-backend: "bibtex", cite-style: "author-year")
 
 = Introduction
-Text #acm-cite("smithA", "smithB"). Also #acm-citet("jones") and #acm-cite("green").
+Text #cite("smithA", "smithB"). Also #cite-text("jones") and #cite("green").
 
-#acm-bibliography("/tests/twins/authoryear.bib")
+#bibliography("/tests/twins/authoryear.bib")

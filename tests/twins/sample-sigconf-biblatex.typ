@@ -8,7 +8,7 @@
 
 #show: acmart.with(
   format: "sigconf",
-  bibliography-backend: "biblatex",
+  bib-backend: "biblatex",
   title: "The Name of the Title Is Hope",
   short-authors: "Trovato et al.",
   conference: (

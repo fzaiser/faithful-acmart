@@ -1,6 +1,6 @@
-// urlbreak-test — the `urlbreakonhyphens: false` path (compile + golden, no twin).
+// urlbreak-test — the `url-break-on-hyphens: false` path (compile + golden, no twin).
 //
-// Not a matched twin: acmart's `urlbreakonhyphens` only changes *where* a long
+// Not a matched twin: acmart's `url-break-on-hyphens` only changes *where* a long
 // URL may wrap, and Typst and LaTeX choose different break points, so a
 // page-by-page raster diff against LaTeX isn't meaningful. Instead we pin the
 // Typst output with a golden hash to guard the feature: with the option false a
@@ -12,12 +12,12 @@
 #show: acmart.with(
   format: "acmsmall",
   title: "Forbidding URL Breaks on Hyphens",
-  urlbreakonhyphens: false,
+  url-break-on-hyphens: false,
 )
 
 = Test
 Padding text to push the link toward the right margin so that it is forced to wrap
-onto the next line, in order to show that with `urlbreakonhyphens` disabled the
+onto the next line, in order to show that with `url-break-on-hyphens` disabled the
 hyphenated URL wraps as a unit (only at the slash) rather than breaking after one of
 its hyphens. See
 #link("https://example.com/a-hyphenated-path-that-stays-on-one-line")

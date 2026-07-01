@@ -660,7 +660,7 @@ def gate_text(report: bool = False) -> list[str]:
 
 
 def _error_source(extra_arg: str, body: str = "= Body\nText.") -> str:
-    return f"""#import "/src/lib.typ": acmart
+    return f"""#import "/src/lib.typ": *
 
 #show: acmart.with(
   format: "acmsmall",

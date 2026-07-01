@@ -7,6 +7,7 @@
 
 #show: acmart.with(
   format: "acmlarge",
+  bib-backend: "bibtex",
   title: "The Name of the Title Is Hope",
   journal: "POMACS",
   acm-volume: 37, acm-number: 4, acm-article: 111, acm-year: 2018, acm-month: 8,

@@ -1,5 +1,5 @@
-#import "/src/lib.typ": acmart
-#show: acmart.with(format: "acmsmall", bibliography-backend: "bst")
+#import "/src/lib.typ": *
+#show: acmart.with(format: "acmsmall", bib-backend: "bibtex")
 
 = Introduction
 Native Typst citations @Cohen07, @Kosiur01, and @Harel78 route through the bst engine.

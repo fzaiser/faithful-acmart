@@ -1,5 +1,5 @@
-#import "/src/lib.typ": acmart
-#show: acmart.with(format: "acmsmall", bibliography-backend: "biblatex")
+#import "/src/lib.typ": *
+#show: acmart.with(format: "acmsmall", bib-backend: "biblatex")
 
 = BibLaTeX
 This sentence cites a journal article @Abril07, an online resource

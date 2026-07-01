@@ -1123,6 +1123,11 @@ TESTS: dict[str, Test] = {
         kind="smoke", pages=1,
         note="Typst-only smoke for badges, teaser, title notes, and subtitle notes.",
     ),
+    "bib-relative-test": Test(
+        kind="smoke", pages=1,
+        note="Regression: a single relative #bibliography path resolves against the "
+             "caller on the bibtex engine backend (arguments-origin threaded to read()).",
+    ),
 }
 
 
@@ -1146,6 +1151,15 @@ ERROR_CASES: dict[str, tuple] = {
         "unsupported TeX command",
         '#import "/src/lib.typ": default-tex-render\n'
         '#default-tex-render("a \\\\frobnicate{x} title")',
+    ),
+    # A SINGLE relative .bib works on every backend (bib-relative-test), but MULTIPLE
+    # files force the shadow to index into the arguments, dropping each path's origin
+    # — so a multi-file relative bibliography on the engine backends is rejected with a
+    # clear message asking for absolute paths, rather than a confusing "file not found".
+    "bibtex-relative-multi": (
+        'bib-backend: "bibtex",',
+        "must use project-absolute",
+        '#bibliography(("a.bib", "b.bib"))',
     ),
 }
 

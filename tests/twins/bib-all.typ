@@ -1,5 +1,5 @@
-#import "/src/lib.typ": acmart, acm-cite, acm-bibliography
-#show: acmart.with(format: "acmsmall", bibliography-backend: "bst")
+#import "/src/lib.typ": *
+#show: acmart.with(format: "acmsmall", bib-backend: "bibtex")
 
 #let keys = (
   "Cohen07", "JCohen96", "Kosiur01", "Editor00", "Editor00a", "Spector90",
@@ -9,6 +9,6 @@
 )
 
 = Introduction
-Every entry type, exercised through the bst backend #acm-cite(..keys).
+Every entry type, exercised through the bst backend #cite(..keys).
 
-#acm-bibliography(("/tests/twins/sample-base.bib", "/tests/twins/bib-all-extra.bib"))
+#bibliography(("/tests/twins/sample-base.bib", "/tests/twins/bib-all-extra.bib"))

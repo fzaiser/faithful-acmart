@@ -1,9 +1,9 @@
-#import "/src/lib.typ": acmart, acm-cite, acm-bibliography
-#show: acmart.with(format: "acmsmall", bibliography-backend: "bst")
+#import "/src/lib.typ": *
+#show: acmart.with(format: "acmsmall", bib-backend: "bibtex")
 
 #let keys = ("UnpubX", "MacroJournal", "ConcatTest", "DoiUrl", "ArtPages", "ColonPages", "MiscPages", "BookPages", "TRnoNum", "BookPagesField", "IssueTest", "HowPub", "KeyOnly", "ArtHP", "IpHP", "Accents", "VonNames", "Formatting")
 
 = Introduction
-Field-level edge cases through the bst backend #acm-cite(..keys).
+Field-level edge cases through the bst backend #cite(..keys).
 
-#acm-bibliography("/tests/twins/bib-all-extra.bib")
+#bibliography("/tests/twins/bib-all-extra.bib")

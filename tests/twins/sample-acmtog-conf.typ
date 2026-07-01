@@ -8,7 +8,7 @@
 
 #show: acmart.with(
   format: "acmtog",
-  bibliography-backend: "bst",
+  bib-backend: "bibtex",
   cite-style: "author-year",
   title: "The Name of the Title Is Hope",
   teaser: figure(

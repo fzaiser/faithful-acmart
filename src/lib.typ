@@ -1,7 +1,11 @@
 // typst-acmart — a Typst port of the LaTeX acmart class.
 //
-// Public entry point: apply with a show rule, e.g.
-//   #import "@preview/acmart:0.0.1": acmart
+// Public entry point: apply with a show rule. Import with the wildcard so the
+// shadowed `cite` / `bibliography` and the `cite-text` / `cite-year` / `cite-author`
+// helpers (which route citations and the reference list through the active
+// `bib-backend`) are in scope — a selective import gets Typst's built-in `cite` /
+// `bibliography`, which only behave correctly on the default "typst" backend:
+//   #import "@preview/acmart:0.0.1": *
 //   #show: acmart.with(format: "acmsmall", title: [...], ...)
 //
 // All public acmart formats are accepted (see _formats below): the single-column
@@ -27,22 +31,59 @@
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
 #import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citeyear, bbl-citeauthor, bbl-bibliography, cite-style-state, tex-render-state
-// the built-in "bst" field renderer, exported so a custom `tex-render` can wrap it
+// the built-in bibtex-backend field renderer, exported so a custom `tex-render` can wrap it
 #import "parts/tex.typ": tex-to-content as default-tex-render, latex-logo as _latex-logo, tex-logo as _tex-logo, bibtex-logo as _bibtex-logo
 
-// ACM bibliography backends (pure-Typst ACM-Reference-Format and ACM BibLaTeX
-// ports). Use these in place of `@key` / `#bibliography(...)` when routing
-// through an ACM backend.
-// acm-cite = \citep (numeric "[N]" or author-year "[Author Year]"); acm-citet =
-// \citet ("Author [Year]"); acm-citeyear / acm-citeauthor = the bare parts.
-#let acm-cite = bbl-cite
-#let acm-citet = bbl-citet
-#let acm-citeyear = bbl-citeyear
-#let acm-citeauthor = bbl-citeauthor
+// A citation key may be given as a label (`<smith20>`, idiomatic) or a string
+// ("smith20", for keys built dynamically or with characters awkward in a label).
+// `str` yields the key name and `_cite-label` the label form (Typst 0.14 has no
+// `label.name`).
+#let _cite-label(k) = if type(k) == label { k } else { label(k) }
+
+// Public `cite` — SHADOWS Typst's built-in so `#cite(<a>, <b>)` accepts MULTIPLE
+// keys and renders one grouped bracket ("[1, 2]", like LaTeX \cite{a,b}); single
+// `@key` / `#cite(<a>)` work too. Our per-element `show` rules can't merge adjacent
+// citations, so this variadic form is the only way to group through the bibtex/
+// biblatex backends. For "typst" it emits adjacent native cites (which Typst groups
+// itself); otherwise it renders the group through the ACM engine.
+#let cite(..args) = context {
+  let cfg = cfg-state.get()
+  let keys = args.pos()
+  if cfg == none or cfg.bib-backend == "typst" {
+    keys.map(k => std.cite(_cite-label(k))).join()
+  } else {
+    bbl-cite(..keys.map(str))
+  }
+}
+
+// Textual citation helpers (natbib's \citet / \citeyear / \citeauthor), each taking
+// one key (label or string). On the bibtex/biblatex backends they render through the
+// ACM engine (\citet -> "Author [Year]"); on the native "typst" backend they map to
+// Typst's own cite forms, bounded by the active CSL style.
+//   cite-text   — "Author [Year]"      (\citet      / form: "prose")
+//   cite-year   — the bare year/number (\citeyear   / form: "year")
+//   cite-author — the bare author name (\citeauthor / form: "author")
+#let _cite-variant(bbl-fn, native-form) = key => context {
+  let cfg = cfg-state.get()
+  if cfg == none or cfg.bib-backend == "typst" {
+    std.cite(_cite-label(key), form: native-form)
+  } else {
+    bbl-fn(str(key))
+  }
+}
+#let cite-text = _cite-variant(bbl-citet, "prose")
+#let cite-year = _cite-variant(bbl-citeyear, "year")
+#let cite-author = _cite-variant(bbl-citeauthor, "author")
+// Friendly alias for the acknowledgments environment (acmart names it `acks`).
+#let acknowledgments = acks
 #let latex-logo = _latex-logo
 #let tex-logo = _tex-logo
 #let bibtex-logo = _bibtex-logo
-#let acm-bibliography(path, title: [References]) = context {
+
+// Direct ACM reference-list renderer for the bibtex/biblatex backends: reads the
+// .bib with the pure-Typst parser, so it never constructs a native bibliography
+// element and never invokes hayagriva. Used by the `bibliography` shadow below.
+#let _acm-bibliography(path, title: [References]) = context {
   let cfg = cfg-state.get()
   if cfg == none {
     bbl-bibliography(path, title: title)
@@ -54,6 +95,50 @@
       leading: comp(cfg, sz: "footnotesize"),
       format: if cfg.bib-backend == "biblatex" { "biblatex" } else { "bst" },
     )
+  }
+}
+
+// Public `bibliography` — SHADOWS Typst's built-in so `#bibliography("refs.bib")`
+// is the single idiomatic path for every backend. For "typst" it forwards the
+// caller's `arguments` verbatim to the native element (the ACM CSL `set bibliography
+// (style: …)` rule in body.typ then styles it); for "bibtex"/"biblatex" it renders
+// through `_acm-bibliography`, which never constructs a native element and so never
+// runs hayagriva (whose stricter BibTeX parser rejects valid ACM .bib features such
+// as journal-abbreviation string macros — Typst validates a native `#bibliography`
+// source at element construction, before any show rule could intercept, so shadowing
+// is the only way to bypass it). `@key` resolves via `show ref`; `#cite` via the
+// shadow above.
+#let bibliography(..args) = context {
+  let cfg = cfg-state.get()
+  let backend = if cfg == none { "typst" } else { cfg.bib-backend }
+  if backend == "typst" {
+    // Forward the `arguments` value verbatim: it remembers where it was constructed,
+    // so a RELATIVE path resolves against the user's file, not this package. Passes
+    // single/array paths + title/full/style through unchanged.
+    std.bibliography(..args)
+  } else {
+    // The bibtex/biblatex engines read the .bib with our own parser, deep inside the
+    // package and *lazily* (during cite resolution, from `state`). Typst carries a
+    // path's origin only through a value that is never indexed into: an `arguments`
+    // value threaded whole to `read(..args)` keeps the caller's location; the moment
+    // we extract a string (`.pos().first()`, iterating an array) the origin is lost
+    // and a relative path would resolve against the package.
+    //   • one positional path, no other args -> thread `args` verbatim; RELATIVE OK.
+    //   • several files / an array / a `title:` -> must index, so require ABSOLUTE.
+    let t = args.named().at("title", default: auto)
+    let title = if t == auto { [References] } else { t }
+    if args.pos().len() == 1 and args.named().len() == 0 and type(args.pos().first()) == str {
+      _acm-bibliography(args, title: title)
+    } else {
+      let path = args.pos().first()
+      for p in (if type(path) == array { path } else { (path,) }) {
+        assert(type(p) != str or p.starts-with("/"),
+          message: "acmart: with bib-backend " + repr(backend) + ", a bibliography of "
+            + "multiple files (or one given with a `title:`) must use project-absolute "
+            + "paths (start with \"/\"); a single file may be relative. Got " + repr(p) + ".")
+      }
+      _acm-bibliography(path, title: title)
+    }
   }
 }
 
@@ -85,6 +170,15 @@
   subtitle: none,
   title-note: none,
   subtitle-note: none,
+  // Authors: a list of dicts. Each honors:
+  //   name          (required) — the author's name, uppercased in the title block.
+  //   affiliation   — a dict (institution / city / state / country), or an array of
+  //                   such dicts for multiple affiliations. All fields optional.
+  //   email         — contact email.
+  //   note          — a title footnote (e.g. "Both authors contributed equally").
+  //   corresponding — true marks the corresponding author.
+  // The email/affiliation declaration order is preserved in the contact line, as
+  // acmart replays \email/\affiliation in source order (see normalize-author).
   authors: (),
   abstract: none,
   ccs: none,
@@ -92,17 +186,16 @@
   teaser: none,
   received: none,
   badges: none,
-  // Multilingual papers (acmart `language` option, acmart.dtx:2847). A babel
-  // language name or an ordered list whose LAST entry is the main language;
-  // sets hyphenation + the language-dependent fixed strings (keywords/acks/...).
-  // Supported: english, french, german, spanish. The translated-* arguments give
-  // secondary-language top matter (\translatedtitle etc., acmart.dtx:3362-3440):
-  // each is a dict keyed by language name -> content.
+  // Multilingual papers (acmart `language` option, acmart.dtx:2847). `language` is
+  // the document's MAIN language — a single babel language name (english, french,
+  // german, spanish) — setting hyphenation + the language-dependent fixed strings
+  // (keywords/acks/...). `translations` carries secondary-language top matter
+  // (\translatedtitle etc., acmart.dtx:3362-3440): a dict keyed by language name,
+  // each entry a dict of the translated fields (any of title/subtitle/keywords/
+  // abstract), e.g. `translations: (french: (title: [...], abstract: [...]))`.
+  // Secondary languages are exactly the keys used here; english is always available.
   language: none,
-  translated-title: (:),
-  translated-subtitle: (:),
-  translated-keywords: (:),
-  translated-abstract: (:),
+  translations: (:),
   // publication metadata. LaTeX-faithful defaults (acmart.dtx): \acmVolume{1},
   // \acmNumber{1}, \acmYear{\the\year}, \acmMonth{\the\month}. The system clock
   // (datetime.today) is only read when the date arg is omitted, so documents that
@@ -125,26 +218,33 @@
   // acmart.dtx:5914/5929). Both optional; shown in the top-right JDS-logo box.
   code-data-link: none,
   contributions: none,
+  // acmengage front-matter metadata rows: an ordered list of (label, value) pairs,
+  // each rendered as a bold label followed by its value (\@engagemetadata).
   engage-metadata: (),
   copyright: "acmlicensed",
   copyright-year: none,
   cc-type: "by",
   cc-version: "4.0",
-  // \settopmatter keys (acmart.dtx:1076). show-ref is acmart's `printacmref`;
-  // `auto` resolves to `not nonacm` below (nonacm flips the bibstrip off by
-  // default, re-enableable with show-ref: true).
-  show-ref: auto,
+  // \settopmatter keys (acmart.dtx:1076). print-acm-reference is acmart's
+  // `printacmref` (the "ACM Reference Format" block); `auto` resolves to `not
+  // nonacm` below (nonacm flips it off by default, re-enableable with
+  // print-acm-reference: true).
+  print-acm-reference: auto,
   print-ccs: true,
   print-folios: auto,
-  // Bibliography engine. "csl" (default) uses Typst's native bibliography() with
-  // the vendored ACM CSL — idiomatic, but bounded by hayagriva's BibTeX->CSL data
-  // mapping. "bst" uses the pure-Typst port of ACM-Reference-Format.bst, and
-  // "biblatex" uses the pure-Typst ACM BibLaTeX acmnumeric/acmauthoryear port.
-  bibliography-backend: "csl",
+  // Bibliography engine, selecting which renderer the `bibliography` shadow and the
+  // `@key`/`#cite` show rules route through:
+  //   "typst"    (default) — native Typst bibliography() with the vendored ACM CSL.
+  //              Idiomatic, but bounded by hayagriva's BibTeX->CSL data mapping.
+  //   "bibtex"   — pure-Typst port of ACM-Reference-Format.bst (what LaTeX gets from
+  //              \bibliographystyle{ACM-Reference-Format}); reads .bib with our own
+  //              parser, bypassing hayagriva.
+  //   "biblatex" — pure-Typst port of the ACM BibLaTeX acmnumeric/acmauthoryear styles.
+  bib-backend: "typst",
   // Citation style for ACM bibliography backends, mirroring acmart's \citestyle:
   // "numeric" (default, "[N]") or "author-year" ("[Author Year]" + a/b/c years).
   cite-style: "numeric",
-  // Override how the "bst" backend renders the RAW TeX of a reference field to
+  // Override how the "bibtex" backend renders the RAW TeX of a reference field to
   // content: a function `(raw-tex: str) => content`. `auto` uses the built-in
   // renderer (accents/special letters/inline math -> Unicode, \url/\href ->
   // links, \emph -> italics). Compose with the default to extend it, e.g.
@@ -170,7 +270,8 @@
   // No effect outside their relevant formats — accepted for API parity (so
   // the names aren't forgotten) but inert here, exactly as in real acmart:
   //   balance/pbalance — column balancing, a two-column-only feature
-  //   natbib           — selects the LaTeX citation package (bibliography is CSL here)
+  //   natbib           — selects the LaTeX citation package (bibliography is handled
+  //                      by `bib-backend` here)
   //   authors-per-row  — only the conference author grid honours it (\@mkauthors@iii,
   //                      acmart.dtx:7448); acmsmall lists authors via \@mkauthors@i
   //   article-type     — the coloured banner is an acmcp feature
@@ -186,7 +287,7 @@
   // \do@url@hyp, acmart.dtx:3631). Typst's line-breaker already breaks URLs at
   // hyphens, so `true` is native; `false` re-renders hyphens in link text as
   // U+2011 to forbid those breaks (see the `show link` rule below).
-  urlbreakonhyphens: true,
+  url-break-on-hyphens: true,
   // Recognized but intentionally inert — and rejected (not silently ignored) so
   // the user isn't misled. `draft` only sets \overfullrule in acmart (a rule
   // marking overfull lines, acmart.dtx:2865); Typst has no equivalent, and no
@@ -235,9 +336,9 @@
   )
 
   // \settopmatter{printacmref} defaults true; nonacm flips it off unless the
-  // author forces it back on with show-ref: true (acmart.dtx:2717). acmcp also
-  // forces it off (\@ACM@printacmreffalse, acmart.dtx:3006).
-  let show-ref = if show-ref == auto { not nonacm and cfg.name != "acmcp" } else { show-ref }
+  // author forces it back on with print-acm-reference: true (acmart.dtx:2717). acmcp
+  // also forces it off (\@ACM@printacmreffalse, acmart.dtx:3006).
+  let print-acm-reference = if print-acm-reference == auto { not nonacm and cfg.name != "acmcp" } else { print-acm-reference }
   // authordraft turns on timestamp + review (acmart.dtx:2819-2820); resolve those
   // first so the downstream folio/line-number/footer logic sees the effective values.
   let timestamp = timestamp or author-draft
@@ -265,33 +366,39 @@
     acks: lang.acks,
     proof: lang.proof,
     table: lang.table,
-  ), lang: lang.code, bib-backend: bibliography-backend)
-  assert(bibliography-backend in ("csl", "bst", "biblatex"),
-    message: "acmart: `bibliography-backend` must be \"csl\", \"bst\", or \"biblatex\".")
+  ), lang: lang.code, bib-backend: bib-backend)
+  assert(bib-backend in ("typst", "bibtex", "biblatex"),
+    message: "acmart: `bib-backend` must be \"typst\", \"bibtex\", or \"biblatex\".")
   assert(cite-style in ("numeric", "author-year"),
     message: "acmart: `cite-style` must be \"numeric\" or \"author-year\".")
   cite-style-state.update(cite-style)
   if tex-render != auto { tex-render-state.update(_ => tex-render) }
 
-  // The translated-* top matter requires `language` (acmart \ACM@lang@check,
-  // acmart.dtx:3346) — a secondary-language block is meaningless monolingual.
-  // Normalize each to an ordered (lang, content) list and check the language is
-  // declared, mirroring babel's \selectlanguage.
-  let norm-translated(name, val) = {
-    if val == none or val == (:) { return () }
-    assert(language != none, message: "acmart: `" + name + "` needs the "
-      + "`language` option set (it typesets secondary-language top matter).")
-    for (l, content) in val {
-      let _ = lang-record(l) // validate the language name
-      assert(l in lang.all, message: "acmart: `" + name + "` uses language "
-        + repr(l) + ", which is not in `language` " + repr(lang.all) + ".")
+  // `translations` carries the secondary-language top matter, grouped by language:
+  //   translations: (french: (title: [...], abstract: [...], keywords: (...)))
+  // Validate each key is a supported language other than the main one, and each
+  // entry uses only known fields; then pivot into the per-field ordered lists the
+  // frontmatter renders (translated title/subtitle/keywords/abstract each live in a
+  // different block). Field order across all blocks follows `translations` insertion
+  // order (acmart's \selectlanguage sequence). english is always available as a key.
+  let main-lang = if lang.main != none { lang.main } else { "english" }
+  let _fields = ("title", "subtitle", "keywords", "abstract")
+  for (l, entry) in translations {
+    let _ = lang-record(l) // validate the language name
+    assert(l != main-lang, message: "acmart: `translations` includes the main "
+      + "language " + repr(l) + "; it is for OTHER languages (main is `language`).")
+    for k in entry.keys() {
+      assert(k in _fields, message: "acmart: `translations." + l + "` has unknown "
+        + "field " + repr(k) + "; expected any of " + repr(_fields) + ".")
     }
-    val.pairs()
   }
-  let translated-title = norm-translated("translated-title", translated-title)
-  let translated-subtitle = norm-translated("translated-subtitle", translated-subtitle)
-  let translated-keywords = norm-translated("translated-keywords", translated-keywords)
-  let translated-abstract = norm-translated("translated-abstract", translated-abstract)
+  let pick-translated(field) = translations.pairs()
+    .filter(p => field in p.at(1))
+    .map(p => (p.at(0), p.at(1).at(field)))
+  let translated-title = pick-translated("title")
+  let translated-subtitle = pick-translated("subtitle")
+  let translated-keywords = pick-translated("keywords")
+  let translated-abstract = pick-translated("abstract")
 
   // \copyrightyear defaults to \@acmYear; it can't be a signature default because
   // it references another parameter.
@@ -346,7 +453,7 @@
     copyright-year: copyright-year,
     cc-type: cc-type,
     cc-version: cc-version,
-    show-ref: show-ref,
+    print-acm-reference: print-acm-reference,
     print-ccs: print-ccs,
     nonacm: nonacm,
     author-version: author-version,
@@ -584,13 +691,13 @@
       text(fill: if type(dest) == str { acm-dark-blue } else { acm-purple }, body)
     } else { body }
   }
-  // `urlbreakonhyphens` (default true): acmart adds `-` to hyperref's URL break
+  // `url-break-on-hyphens` (default true): acmart adds `-` to hyperref's URL break
   // set (\do@url@hyp, acmart.dtx:3631), and Typst's line-breaker already breaks
   // URLs after hyphens — so the default needs nothing and stays the plain `it`.
   // When false, re-render literal hyphens in the link text as U+2011 (a
   // non-breaking hyphen, visually identical) to forbid those breaks, while `/`
   // and `.` stay breakable, exactly as acmart's `urlbreakonhyphens=false`.
-  show link: it => if urlbreakonhyphens {
+  show link: it => if url-break-on-hyphens {
     colorize(it.dest, it)
   } else {
     // Transform `it` in place (a nested string show rule); reconstructing a
@@ -598,26 +705,18 @@
     colorize(it.dest, { show "-": "\u{2011}"; it })
   }
 
-  // ACM bibliography backends: route bare `@key` / `#cite` through the ACM engine
-  // (acm-cite),
-  // the way alexandria/pergamon hook native citations. A `ref` whose target resolves
-  // to no document label (`it.element == none`) is a citation; figures/headings/
-  // equations (a real element) pass through unchanged. `acm-cite` & friends still
-  // work too. The gate is INSIDE the closure (not an `if` block) so the rule reaches
-  // the body below; for the "csl" backend both rules are the identity, leaving
-  // Typst's native `@key` / `#cite` untouched.
-  show ref: it => if bibliography-backend != "csl" and it.element == none {
+  // Route bare `@key` (Typst syntax, a `ref` element — not shadowable) through the
+  // ACM engine, the way alexandria/pergamon hook native citations. A `ref` whose
+  // target resolves to no document label (`it.element == none`) is a citation;
+  // figures/headings/equations (a real element) pass through unchanged. For the
+  // "typst" backend the rule is the identity, leaving native `@key` untouched.
+  // Explicit `#cite(...)` is handled by the `cite` shadow (above), and the reference
+  // LIST by the `bibliography` shadow: Typst validates a native `#bibliography`
+  // source through hayagriva at element construction — before any show rule could
+  // fire — so shadowing the name is the only way to bypass hayagriva for the
+  // bibtex/biblatex backends.
+  show ref: it => if bib-backend != "typst" and it.element == none {
     bbl-cite(str(it.target))
-  } else { it }
-  show cite: it => if bibliography-backend != "csl" { bbl-cite(str(it.key)) } else { it }
-  // …and the reference list: a native `#bibliography(...)` is redirected to the bst
-  // renderer too, so the whole flow can be idiomatic Typst (`@key` + `#bibliography`)
-  // rather than `acm-cite`/`acm-bibliography`. `it.sources` is the path list; the
-  // title falls back to acmart's "References". (Caveat: Typst still validates the
-  // source through hayagriva when constructing the element, so a file hayagriva can't
-  // parse errors before this rule — use `acm-bibliography` to bypass that entirely.)
-  show bibliography: it => if bibliography-backend != "csl" {
-    acm-bibliography(it.sources, title: if it.title == auto { [References] } else { it.title })
   } else { it }
 
   // `review`: number every line in the left margin (acmart uses \color{red}
