@@ -20,7 +20,11 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography integration |
 | `parts/theorems.typ` | theorem-like environments + shared counter; reads the active format via `state` (`cfg-state`) since users call them in the body |
 | `parts/bibtex.typ` | pure-Typst BibTeX reader (`.bib` → field dicts) for the ACM bibliography backends |
-| `parts/acmref.typ` | pure-Typst port of `ACM-Reference-Format.bst` plus ACM BibLaTeX `acmnumeric`/`acmauthoryear` and `biblatex-software` visible reference formatting (output state machines + per-type handlers + crossref/BibLaTeX data-model resolution + numeric & author-year cite/sort layer + DOI/URL/arXiv/HAL/VCS/SWHID hyperlinks); driven by native `@key`/`#cite`/`#bibliography` (via `show ref:`/`show cite:`/`show bibliography:` rules in `lib.typ`) or the equivalent exported `acm-cite`/`acm-citet`/`acm-citeyear`/`acm-citeauthor` / `acm-bibliography`. The `.bst` path is gated by the `bib-all`/`bib-edge`/`crossref`/`authoryear`/`mathfields`/`keycite` twins; the BibLaTeX path by `biblatex-test` plus the full `sample-*-biblatex` twins |
+| `parts/acmref.typ` | public facade for the pure-Typst ACM bibliography backends; re-exports the cite/bibliography functions and state used by `lib.typ` |
+| `parts/acmref-common.typ` | shared bibliography rendering primitives: TeX render state, rendered-value helpers, field/name helpers, date/year helpers |
+| `parts/acmref-bst.typ` | pure-Typst port of `ACM-Reference-Format.bst`: output state machine, per-entry handlers, crossref text, trailing DOI/URL/arXiv rendering, BST sort key |
+| `parts/acmref-biblatex.typ` | ACM BibLaTeX `acmnumeric`/`acmauthoryear` plus `biblatex-software` visible reference formatting and software data-model inheritance |
+| `parts/acmref-cite.typ` | cite registration, BibTeX crossref resolution, BibLaTeX data-model preparation, numeric and author-year labels, and bibliography output |
 | `parts/bib-data.typ` | the `.bst`'s built-in journal MACRO table + `journal.canon.abbrev` map (auto-extracted from `ACM-Reference-Format.bst`), used by the `bst` backend |
 | `assets/` | bundled image assets, addressed root-absolute (`/src/assets/…`): `acm-jdslogo.png` (acmcp cover) and `cc/` (Creative Commons licence badges) |
 | `styles/` | `acm-reference-format.csl` — vendored fork of the upstream ACM CSL, edited to track the bundled `ACM-Reference-Format.bst` (see the file header for the deltas) |
