@@ -375,6 +375,25 @@ TESTS: dict[str, Test] = {
         note="small BibLaTeX acmnumeric isolator so the full sample-sigconf-biblatex "
              "reference-format path is checked without the full upstream sample body.",
     ),
+    "biblatex-edge": Test(
+        kind="twin", pages=1,
+        text_assertions=(
+            Assertion(engine="both", text="Lecture Notes in Computer Science. Vol. 1494. "
+                      "Ed. by Grzegorz Rozenberg and Frits W. Vaandrager"),
+            Assertion(engine="both", text="Ed. by Ian Editor. \"The title of book one. "
+                      "The book subtitle.\" (1st. ed.). Vol. 9."),
+            Assertion(engine="both", text="Dave Novak. Mar. 2003. \"Solder man.\""),
+            Assertion(engine="both", text="Barack Obama. Mar. 2008. A more perfect union. "
+                      "Video. (Mar. 2008)."),
+            Assertion(engine="both", text="isbn: 3-540-13829-3"),
+            Assertion(engine="both", text="Institutional members of the TEX Users Group. "
+                      "Retrieved May 27, 2017"),
+        ),
+        note="Focused ACM BibLaTeX acmauthoryear edge cases from the full upstream "
+             "sample: inbook/incollection drivers, series/volume/editor order, "
+             "video/howpublished month handling, authorless online entries, and ISBN "
+             "output for multivolume books.",
+    ),
     "bib-all": Test(
         kind="twin", pages=1,
         note="Every ACM-Reference-Format entry type via the `bst` bibliography backend "

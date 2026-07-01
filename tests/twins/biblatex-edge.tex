@@ -1,0 +1,21 @@
+%% biblatex-edge - focused ACM BibLaTeX author-year reference edge cases.
+\documentclass[acmsmall,nonacm,natbib=false]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmauthoryear,
+  ]{biblatex}
+\addbibresource{sample-base.bib}
+\begin{document}
+\thispagestyle{empty}
+
+\section*{BibLaTeX Edge Cases}
+This sentence cites divisible books \cite{Editor00,Editor00a}, in-collection
+chapters \cite{Spector90,Douglass98}, video entries \cite{Obama08,Novak03},
+multi-volume books \cite{MR781536,MR781537}, a proceedings-in-series article
+\cite{Hagerup1993}, and an authorless online resource \cite{TUGInstmem}.
+
+\printbibliography
+
+\end{document}

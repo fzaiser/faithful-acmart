@@ -665,7 +665,8 @@
   "12": "Dec.", dec: "Dec.", december: "Dec.",
 )
 #let blx-month(raw) = {
-  let k = lower(raw.replace(".", ""))
+  let parts = raw.replace(".", "").split(regex("[\\s,/-]+")).filter(p => p != "")
+  let k = if parts.len() > 0 { lower(parts.first()) } else { lower(raw.replace(".", "")) }
   blx-months.at(k, default: raw)
 }
 #let blx-date-parts(e) = {
@@ -685,8 +686,7 @@
   let p = blx-date-parts(e)
   if p.year == none { return "[n. d.]" + suffix }
   if month-ok and p.month != none {
-    let d = if p.day != none { p.day + " " } else { "" }
-    d + blx-month(p.month) + " " + p.year + suffix
+    blx-month(p.month) + " " + p.year + suffix
   } else { p.year + suffix }
 }
 #let blx-date(e, full: false, suffix: "") = {
@@ -716,6 +716,11 @@
     (c: c, p: p)
   }
 }
+#let blx-book-title(e) = {
+  let raw = blx-title-raw(e)
+  if raw == none { return none }
+  (c: it(render(raw)), p: ends-punct(raw))
+}
 #let blx-booktitle(e, with-in: false, style: "numeric") = {
   if not has(e, "booktitle") { return none }
   let c = it(render(fld(e, "booktitle")))
@@ -723,6 +728,13 @@
   if has(e, "series") { c += " (" + render(fld(e, "series")) + ")" }
   if has(e, "number") { c += " " + render(fld(e, "number")) }
   if articleno-of(e) != none { c += ", Article " + articleno-of(e) }
+  let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
+  (c: pre + c, p: false)
+}
+#let blx-booktitle-simple(e, with-in: false, style: "numeric") = {
+  if not has(e, "booktitle") { return none }
+  let c = it(render(fld(e, "booktitle")))
+  if has(e, "booksubtitle") { c += ". " + render(fld(e, "booksubtitle")) }
   let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
   (c: pre + c, p: false)
 }
@@ -756,7 +768,7 @@
   if has(e, "publisher") { parts.push(render(fld(e, "publisher"))) }
   if has(e, "location") { parts.push(render(fld(e, "location"))) }
   else if has(e, "address") { parts.push(render(fld(e, "address"))) }
-  if has(e, "month") { parts.push("(" + render(fld(e, "month")) + " " + fld(e, "year") + ")") }
+  if has(e, "month") { parts.push("(" + blx-printdate(e) + ")") }
   if parts.len() == 0 { none } else { (c: parts.join(", "), p: false) }
 }
 #let blx-publisher-pages(e) = {
@@ -767,11 +779,17 @@
   else { pg }
 }
 #let blx-volume-series(e) = {
-  if has(e, "volume") and has(e, "series") { (c: "Vol. " + fld(e, "volume") + ". " + render(fld(e, "series")), p: false) }
+  if has(e, "volume") and has(e, "series") { (c: render(fld(e, "series")) + ". Vol. " + fld(e, "volume"), p: false) }
   else if has(e, "series") { V(fld(e, "series")) }
   else if has(e, "volume") { (c: "Vol. " + fld(e, "volume"), p: false) }
   else { none }
 }
+#let blx-series(e) = if has(e, "series") { V(fld(e, "series")) } else { none }
+#let blx-volume(e) = if has(e, "volume") { (c: "Vol. " + fld(e, "volume"), p: false) } else { none }
+#let blx-ed-by(e) = if has(e, "editor") {
+  (c: "Ed. by " + render(join-names(e.names.editor)), p: false)
+} else { none }
+#let blx-isbn(e) = if has(e, "isbn") { (c: "isbn: " + fld(e, "isbn"), p: false) } else { none }
 #let blx-journal(e) = {
   if not has(e, "journal") { return none }
   let parts = (it(render(fld(e, "journal"))),)
@@ -815,18 +833,18 @@
   items
 }
 
-#let blx-person-label(e, editor-ok: true, org-ok: true) = {
+#let blx-person-label(e, editor-ok: true, org-ok: true, key-ok: true) = {
   if has(e, "author") { return (c: render(join-names(e.names.author)), kind: "author") }
   if editor-ok and has(e, "editor") {
     let suffix = if e.names.editor.len() > 1 { ", (Eds.)" } else { ", (Ed.)" }
     return (c: render(join-names(e.names.editor)) + suffix, kind: "editor")
   }
   if org-ok and has(e, "organization") { return (c: render(fld(e, "organization")), kind: "organization") }
-  if has(e, "key") { return (c: render(fld(e, "key")), kind: "key") }
+  if key-ok and has(e, "key") { return (c: render(fld(e, "key")), kind: "key") }
   none
 }
-#let blx-lead(e, style: "numeric", suffix: "", editor-ok: true, org-ok: true) = {
-  let who = blx-person-label(e, editor-ok: editor-ok, org-ok: org-ok)
+#let blx-lead(e, style: "numeric", suffix: "", editor-ok: true, org-ok: true, key-ok: true) = {
+  let who = blx-person-label(e, editor-ok: editor-ok, org-ok: org-ok, key-ok: key-ok)
   let dt = blx-date(e, full: style == "author-year", suffix: suffix)
   if who == none { return dt }
   let sep = if style == "numeric" and who.kind == "editor" { " " } else { ". " }
@@ -849,34 +867,77 @@
   blx-note(e),
   ..blx-tail(e),
 )
-#let blx-inproceedings(e, style: "numeric", suffix: "", quoted: false) = blx-blocks(
+#let blx-inproceedings(e, style: "numeric", suffix: "", quoted: false) = {
+  let title-led = not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
+  blx-blocks(
+    if title-led { none } else { blx-lead(e, style: style, suffix: suffix) },
+    blx-title(e, style: style, quoted: quoted),
+    blx-booktitle(e, with-in: true, style: style),
+    blx-volume(e),
+    blx-list-field(e, "organization"),
+    blx-publisher-pages(e),
+    blx-isbn(e),
+    ..blx-tail(e),
+  )
+}
+#let blx-incollection(e, style: "numeric", suffix: "", quoted: false) = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
   blx-title(e, style: style, quoted: quoted),
-  blx-booktitle(e, with-in: true, style: style),
-  blx-list-field(e, "organization"),
+  blx-booktitle-simple(e, with-in: true, style: style),
+  blx-edition(e),
+  blx-series(e),
+  blx-volume(e),
+  blx-ed-by(e),
   blx-publisher-pages(e),
+  blx-isbn(e),
   ..blx-tail(e),
 )
+#let blx-inbook(e, style: "numeric", suffix: "", quoted: false) = {
+  let lead = if has(e, "author") {
+    blx-lead(e, style: style, suffix: suffix)
+  } else if has(e, "editor") {
+    blx-ed-by(e)
+  } else {
+    blx-lead(e, style: style, suffix: suffix)
+  }
+  blx-blocks(
+    lead,
+    blx-title(e, style: style, quoted: quoted, sentence: style == "numeric"),
+    blx-edition(e),
+    blx-volume(e),
+    blx-series(e),
+    if has(e, "author") { blx-ed-by(e) } else { none },
+    blx-publisher-location-date(e),
+    blx-chapter-pages(e),
+    blx-isbn(e),
+    ..blx-tail(e),
+  )
+}
 #let blx-book-like(e, style: "numeric", suffix: "") = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
-  blx-title(e, style: style, sentence: false),
+  blx-book-title(e),
   blx-edition(e),
   blx-volume-series(e),
   blx-note(e),
-  blx-publisher-location-date(e),
-  blx-chapter-pages(e),
+  blx-publisher-pages(e),
+  blx-isbn(e),
   ..blx-tail(e),
 )
-#let blx-online(e, style: "numeric", suffix: "") = blx-blocks(
-  blx-lead(e, style: style, suffix: suffix),
-  blx-title(e, style: style, sentence: style == "numeric"),
-  blx-field(e, "version"),
-  blx-note(e),
-  blx-list-field(e, "organization"),
-  blx-date-if-month(e),
-  blx-eprint(e),
-  blx-url-urldate(e),
-)
+#let blx-online(e, style: "numeric", suffix: "") = {
+  let who = blx-person-label(e, key-ok: false)
+  let lead = if who == none { none } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) }
+  blx-blocks(
+    lead,
+    blx-title(e, style: style, sentence: style == "numeric"),
+    blx-field(e, "howpublished"),
+    blx-field(e, "version"),
+    blx-note(e),
+    blx-list-field(e, "organization"),
+    blx-date-if-month(e),
+    blx-eprint(e),
+    blx-url-urldate(e),
+  )
+}
 #let blx-report(e, style: "numeric", suffix: "", thesis: false) = {
   let ty = if thesis {
     if has(e, "type") { blx-field(e, "type") } else if e.entry-type == "phdthesis" { (c: "Ph.D. Dissertation", p: false) } else { (c: "Master's thesis", p: false) }
@@ -1127,7 +1188,8 @@
   let t = e.entry-type
   if t == "article" or t == "underreview" { blx-article-like(e, style: style, suffix: year-suffix, quoted: quoted and t == "article") }
   else if t == "inproceedings" or t == "conference" or t == "presentation" { blx-inproceedings(e, style: style, suffix: year-suffix, quoted: quoted) }
-  else if t == "incollection" or t == "inbook" { blx-inproceedings(e, style: style, suffix: year-suffix, quoted: quoted) }
+  else if t == "incollection" { blx-incollection(e, style: style, suffix: year-suffix, quoted: quoted) }
+  else if t == "inbook" { blx-inbook(e, style: style, suffix: year-suffix, quoted: quoted) }
   else if t == "book" or t == "proceedings" or t == "collection" { blx-book-like(e, style: style, suffix: year-suffix) }
   else if t in blx-software-types { blx-software-driver(e, t) }
   else if t == "online" or t == "manual" or t == "misc" or t == "game" or t == "video" or t == "artifactdataset" or t == "dataset" or t == "preprint" {
@@ -1237,9 +1299,38 @@
   s = tex-to-string(s)
   s
 }
+#let format-lab-names-full(people) = {
+  people.map(n => tex-to-string(von-last(n))).join(" and ")
+}
+#let format-blx-lab-names(people, full: false, count: none) = {
+  let last = people.map(n => if is-others(n) { "et al." } else { tex-to-string(von-last(n)) })
+  if last.len() == 0 { return "" }
+  if full or count != none and count >= last.len() {
+    if last.len() == 1 { return last.first() }
+    if last.len() == 2 {
+      if last.at(1) == "et al." { return last.first() + " et al." }
+      return last.first() + " and " + last.at(1)
+    }
+    return last.slice(0, -1).join(", ") + ", and " + last.last()
+  }
+  if count != none {
+    if count <= 1 { return last.first() + " et al." }
+    return last.slice(0, count).join(", ") + ", et al."
+  }
+  if last.len() == 1 { return last.first() }
+  if last.len() == 2 {
+    if last.at(1) == "et al." { return last.first() + " et al." }
+    return last.first() + " and " + last.at(1)
+  }
+  last.first() + " et al."
+}
 #let pick(arr) = { let r = arr.find(x => x != none); if r == none { "" } else { r } }
-// calc.basic.label's type dispatch: which field supplies the citation label
-#let lab-label(e) = {
+#let label-title(e, quoted: false) = if has(e, "title") {
+  let t = tex-to-string(fld(e, "title"))
+  if quoted { "\u{201C}" + t + "\u{201D}" } else { t }
+}
+// calc.basic.label's type dispatch: which field supplies the .bst citation label
+#let bst-lab-label(e) = {
   let t = e.entry-type
   let au = if has(e, "author") { format-lab-names(e.names.author) }
   let ed = if has(e, "editor") { format-lab-names(e.names.editor) }
@@ -1252,9 +1343,73 @@
   else { pick((au, key)) }
 }
 
+#let bst-lab-disambiguation-label(e) = {
+  let t = e.entry-type
+  let au = if has(e, "author") { format-lab-names-full(e.names.author) }
+  let ed = if has(e, "editor") { format-lab-names-full(e.names.editor) }
+  let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
+  let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
+  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
+  if t in ("book", "inbook", "article") { pick((au, ed, key)) }
+  else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key)) }
+  else if t in manual-like { pick((au, ed, org, key)) }
+  else { pick((au, key)) }
+}
+
+#let blx-lab-label(e, full: false) = {
+  let t = e.entry-type
+  let au = if has(e, "author") { format-blx-lab-names(e.names.author, full: full) }
+  let ed = if has(e, "editor") { format-blx-lab-names(e.names.editor, full: full) }
+  let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
+  let title = label-title(e, quoted: t in ("article", "inproceedings", "conference", "presentation", "incollection"))
+  let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
+  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
+  if t in ("book", "inbook", "article") { pick((au, ed, title, key)) }
+  else if t in ("proceedings", "periodical", "collection") { pick((ed, org, title, key)) }
+  else if t in manual-like { pick((au, ed, org, title, key)) }
+  else { pick((au, ed, org, title, key)) }
+}
+
+#let blx-label-people(e) = {
+  let t = e.entry-type
+  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
+  if t in ("book", "inbook", "article") {
+    if has(e, "author") { e.names.author } else if has(e, "editor") { e.names.editor } else { none }
+  } else if t in ("proceedings", "periodical", "collection") {
+    if has(e, "editor") { e.names.editor } else { none }
+  } else if t in manual-like {
+    if has(e, "author") { e.names.author } else if has(e, "editor") { e.names.editor } else { none }
+  } else {
+    if has(e, "author") { e.names.author } else if has(e, "editor") { e.names.editor } else { none }
+  }
+}
+
+#let name-prefix-len(left, right) = {
+  let i = 0
+  while i < left.len() and i < right.len() and tex-to-string(von-last(left.at(i))) == tex-to-string(von-last(right.at(i))) {
+    i += 1
+  }
+  i
+}
+
+#let lab-label(e) = if bib-format-state.final() == "biblatex" {
+  blx-lab-label(e)
+} else {
+  bst-lab-label(e)
+}
+
+#let lab-disambiguation-label(e) = if bib-format-state.final() == "biblatex" {
+  blx-lab-label(e, full: true)
+} else {
+  bst-lab-disambiguation-label(e)
+}
+
 // \natexlab a/b/c suffixes: a..z over consecutive (label, year)-equal entries in
 // sorted order (forward.pass/reverse.pass); singletons get "".
-#let lab-dedup-key(e) = lab-label(e) + "\u{0}" + year-value(e).c
+#let lab-dedup-key(e) = {
+  let label = if bib-format-state.final() == "biblatex" { lab-disambiguation-label(e) } else { bst-lab-label(e) }
+  label + "\u{0}" + year-value(e).c
+}
 #let extra-labels(db, order) = {
   let res = (:)
   let i = 0
@@ -1273,6 +1428,39 @@
 // cited keys reordered into reference-list (sorted) order
 #let cite-order(keys, order) = keys.filter(k => k in order).sorted(key: k => order.position(x => x == k))
 
+#let cite-label(k, db, order) = {
+  let e = db.at(k)
+  if bib-format-state.final() != "biblatex" { return lab-label(e) }
+  let people = blx-label-people(e)
+  if people != none and people.len() > 2 {
+    let full = format-blx-lab-names(people, full: true)
+    let count = 1
+    for ok in order {
+      if ok == k { continue }
+      let other = blx-label-people(db.at(ok))
+      if other == none { continue }
+      if format-blx-lab-names(other, full: true) == full { continue }
+      let prefix = name-prefix-len(people, other)
+      if prefix > 0 and prefix + 1 > count { count = prefix + 1 }
+    }
+    if count > 1 {
+      if count > people.len() { count = people.len() }
+      return format-blx-lab-names(people, count: count)
+    }
+  }
+  let short = blx-lab-label(e)
+  let full = blx-lab-label(e, full: true)
+  let year = year-value(e).c
+  for ok in order {
+    if ok == k { continue }
+    let oe = db.at(ok)
+    if year-value(oe).c == year and blx-lab-label(oe) == short and blx-lab-label(oe, full: true) != full {
+      return full
+    }
+  }
+  short
+}
+
 // natbib author-year \citep/\citet: group consecutive same-label entries, then
 // group their years by base year so suffixes collapse ("2020a,b,c"); ", " between
 // distinct years, "; " between author groups. \citet puts years in brackets.
@@ -1281,7 +1469,7 @@
   if ks.len() == 0 { return if citet { "[?]" } else { "[?]" } }
   let lgroups = ()
   for k in ks {
-    let lbl = lab-label(db.at(k))
+    let lbl = cite-label(k, db, order)
     let yr = (base: year-value(db.at(k)).c, suf: extras.at(k, default: ""))
     if lgroups.len() > 0 and lgroups.at(-1).label == lbl { lgroups.at(-1).years.push(yr) }
     else { lgroups.push((label: lbl, years: (yr,))) }
@@ -1366,7 +1554,7 @@
   register-cites(ks)
   context {
     let p = prepared()
-    cite-order(ks, p.order).map(k => lab-label(p.db.at(k))).join("; ")
+    cite-order(ks, p.order).map(k => cite-label(k, p.db, p.order)).join("; ")
   }
 }
 
