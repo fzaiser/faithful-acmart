@@ -29,9 +29,17 @@
 // Resolve the amsart size ladder for a base font size (one of "8pt".."12pt").
 // Returns the `size`/`bls` step dicts, the resolved normalsize font-size and
 // baselineskip, and the amsart \small/\med/\bigskip (0.7x the article values,
-// via amsart's \@adjustvertspacing). `allowed` names the sizes a given format
-// accepts (acmsmall takes the full 8..12 range).
-#let size-ladder(font-size, allowed: ("8pt", "9pt", "10pt", "11pt", "12pt"), format: "") = {
+// via amsart's \@adjustvertspacing). `baseline-stretch` models LaTeX's
+// \baselinestretch after the font-size table is resolved: sizes stay unchanged,
+// but every effective baselineskip and derived vertical skip is multiplied.
+// `allowed` names the sizes a given format accepts (acmsmall takes the full
+// 8..12 range).
+#let size-ladder(
+  font-size,
+  allowed: ("8pt", "9pt", "10pt", "11pt", "12pt"),
+  format: "",
+  baseline-stretch: 1,
+) = {
   assert(
     font-size in allowed,
     message: "acmart: option `font-size` must be one of " + allowed.join("/")
@@ -46,7 +54,7 @@
   let bls = (:)
   for step in _step-offset.keys() {
     size.insert(step, pick(_ladder-size, step) * tp)
-    bls.insert(step, pick(_ladder-bls, step) * tp)
+    bls.insert(step, baseline-stretch * pick(_ladder-bls, step) * tp)
   }
   // amsart's \@adjustvertspacing derives the skips from the normalsize
   // baselineskip: \bigskip = .7\baselineskip, \medskip = \bigskip/2,

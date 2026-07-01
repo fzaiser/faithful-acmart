@@ -519,7 +519,7 @@ TESTS: dict[str, Test] = {
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
-        kind="twin", pages=9, **_SAMPLE_COMMON,
+        kind="twin", pages=11, **_SAMPLE_COMMON,
         note="upstream manuscript sample (manuscript,screen,review + proceedings "
              "metadata). Single-column review style with margin line numbers.",
     ),
