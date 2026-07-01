@@ -279,11 +279,13 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
       path value was *written*, and that origin survives only on an `arguments` value
       that is never indexed into. So the shadow **threads a single positional path as
       an un-indexed `arguments` value** all the way to the engine's `read(..args)` —
-      and a **relative path keeps the caller's location** on every backend. The moment
-      it must index (several files, an array, or a `title:`) the origin is lost, so
-      those cases require a **project-absolute** path (`"/refs.bib"`) and the shadow
-      asserts it with a clear message. (`read-merged` branches on `type(paths) ==
-      arguments` for the threaded case vs the extracted string/array case.)
+      and a **relative path keeps the caller's location** on every backend. (`title` is
+      an explicit named parameter of the shadow, so it is peeled off `..args`
+      automatically and a relative path still works alongside it.) The moment the
+      shadow must index — *several* files or an array — the origin is lost, so those
+      require a **project-absolute** path (`"/refs.bib"`) and the shadow asserts it with
+      a clear message. (`read-merged` branches on `type(paths) == arguments` for the
+      threaded case vs the extracted string/array case.)
 
     For the `"typst"` backend the `show ref:` rule is the identity and both shadows
     delegate to the native `std.cite` / `std.bibliography` (the vendored CSL

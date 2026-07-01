@@ -108,14 +108,17 @@
 // source at element construction, before any show rule could intercept, so shadowing
 // is the only way to bypass it). `@key` resolves via `show ref`; `#cite` via the
 // shadow above.
-#let bibliography(..args) = context {
+// `title` is an explicit named parameter so it is peeled off automatically — `..args`
+// then holds only the path(s), which is what the engine backends thread to `read`.
+#let bibliography(title: auto, ..args) = context {
   let cfg = cfg-state.get()
   let backend = if cfg == none { "typst" } else { cfg.bib-backend }
   if backend == "typst" {
     // Forward the `arguments` value verbatim: it remembers where it was constructed,
-    // so a RELATIVE path resolves against the user's file, not this package. Passes
-    // single/array paths + title/full/style through unchanged.
-    std.bibliography(..args)
+    // so a RELATIVE path resolves against the user's file, not this package. `title`
+    // is re-attached only when set, so `auto` still defers to body.typ's `set
+    // bibliography(title: [References])`. Passes single/array paths + full/style too.
+    if title == auto { std.bibliography(..args) } else { std.bibliography(..args, title: title) }
   } else {
     // The bibtex/biblatex engines read the .bib with our own parser, deep inside the
     // package and *lazily* (during cite resolution, from `state`). Typst carries a
@@ -123,10 +126,9 @@
     // value threaded whole to `read(..args)` keeps the caller's location; the moment
     // we extract a string (`.pos().first()`, iterating an array) the origin is lost
     // and a relative path would resolve against the package.
-    //   • one positional path, no other args -> thread `args` verbatim; RELATIVE OK.
-    //   • several files / an array / a `title:` -> must index, so require ABSOLUTE.
-    let t = args.named().at("title", default: auto)
-    let title = if t == auto { [References] } else { t }
+    //   • one positional path -> thread `args` (title already peeled); RELATIVE OK.
+    //   • several files / an array -> must index, so require ABSOLUTE.
+    let title = if title == auto { [References] } else { title }
     if args.pos().len() == 1 and args.named().len() == 0 and type(args.pos().first()) == str {
       _acm-bibliography(args, title: title)
     } else {
@@ -134,8 +136,8 @@
       for p in (if type(path) == array { path } else { (path,) }) {
         assert(type(p) != str or p.starts-with("/"),
           message: "acmart: with bib-backend " + repr(backend) + ", a bibliography of "
-            + "multiple files (or one given with a `title:`) must use project-absolute "
-            + "paths (start with \"/\"); a single file may be relative. Got " + repr(p) + ".")
+            + "multiple files must use project-absolute paths (start with \"/\"); a "
+            + "single file may be relative. Got " + repr(p) + ".")
       }
       _acm-bibliography(path, title: title)
     }
