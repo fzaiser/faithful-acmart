@@ -300,7 +300,7 @@
   ss: "ß", SS: "ẞ", ae: "æ", AE: "Æ", oe: "œ", OE: "Œ", aa: "å", AA: "Å",
   o: "ø", O: "Ø", l: "ł", L: "Ł", i: "ı", j: "ȷ",
 )
-#let _logos = (LaTeX: "LaTeX", TeX: "TeX", BibTeX: "BibTeX", LaTeXe: "LaTeX2e")
+#let _logos = (LaTeX: "LATEX", TeX: "TEX", BibTeX: "BibTEX", LaTeXe: "LATEX2e")
 // Argument-taking inline formatting: \textit{x}, \emph{x}, \textbf{x}, \textsc{x}.
 #let _emph-cw = ("emph", "textit", "textsl")
 #let _strong-cw = ("textbf",)

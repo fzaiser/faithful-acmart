@@ -18,7 +18,7 @@
   ),
   translated-abstract: (
     french: [
-      Un document LaTeX clair et bien documenté est présenté comme un article
+      Un document LATEX clair et bien documenté est présenté comme un article
       formaté pour publication par ACM dans les actes d'une conférence ou parution
       dans une revue. Basé sur la classe de document "acmart", ce l'article
       présente et explique de nombreuses variations courantes, ainsi que autant
@@ -26,7 +26,7 @@
       la documentation de leur travail.
     ],
     german: [
-      Es wird ein übersichtliches und gut dokumentiertes LaTeX-Dokument
+      Es wird ein übersichtliches und gut dokumentiertes LATEX-Dokument
       präsentiert, welches für die Veröffentlichung durch ACM in einem Tagungsband
       oder als Zeitschriftenpublikation formatiert wurde. Basierend auf der
       Dokumentenklasse "acmart" präsentiert und erklärt dieser Artikel viele der
@@ -34,7 +34,7 @@
       Autor bei der Beschreibung seiner Arbeit verwenden darf.
     ],
     spanish: [
-      Un documento LaTeX claro y bien documentado se presenta como un artículo
+      Un documento LATEX claro y bien documentado se presenta como un artículo
       formateado para su publicación por ACM en las actas de una conferencia o
       publicación de una revista. Basado en la clase de documento "acmart", este
       artículo presenta y explica muchas de las variaciones comunes, así como

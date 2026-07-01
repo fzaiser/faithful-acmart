@@ -47,6 +47,7 @@ from collections import Counter
 from pathlib import Path
 
 import test_matrix as M
+from pdf_text_tokens import CHAR_FOLD, bag_coverage, char_bag, normalize
 from test_matrix import TESTS, Test, reference_for
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -161,85 +162,6 @@ def pdf_text(pdf: Path, page: int | None = None) -> str:
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or f"pdftotext failed for {pdf}")
     return proc.stdout
-
-
-def normalize(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text)
-    replacements = {
-        "­": "",    # soft hyphen
-        "‐": "-", "‑": "-", "‒": "-", "–": "-",
-        "—": "-", "−": "-",
-        "‘": "'", "’": "'", "“": '"', "”": '"',
-        "∗": "*", "⁎": "*", "∙": "•",
-    }
-    for old, new in replacements.items():
-        text = text.replace(old, new)
-    # pdftotext often emits page folios as standalone lines; these are visual
-    # page-style artifacts, not document text, and can differ harmlessly.
-    text = re.sub(r"(?m)^\s*\d+\s*$", " ", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-
-# Edge punctuation stripped from each token before the word-bag comparison: we
-# compare word *content*, so a trailing `,` vs `;` (where contact-info field
-# separators or author-list joins differ between engines) is not a mismatch.
-_EDGE_PUNCT = ".,;:!?()[]{}\"'*•-/"
-# A hyphen at a line break (soft hyphen or a printable hyphen + EOL) is a
-# typesetting artifact, not part of the word: rejoin `confer-\nence` -> `conference`
-# so cross-engine line-breaking doesn't split one word into two tokens.
-_EOL_HYPHEN = re.compile(r"[­‐‑-]\s*\n\s*")
-
-
-# URL scheme prefix, tolerant of whitespace the engines insert at a break (LaTeX
-# can split a DOI as `https:` <newline> `//doi…`). Stripped from both bags: where
-# a URL breaks after the scheme pdftotext splits it off, and acmart vs our port
-# disagree on whether the scheme is even shown — cosmetic; the path is what counts.
-_URL_SCHEME = re.compile(r"https?\s*:\s*/\s*/")
-
-
-def bag_tokens(raw: str) -> Counter:
-    """Token multiset for order-independent text comparison of a raw pdftotext dump."""
-    text = _URL_SCHEME.sub("", normalize(_EOL_HYPHEN.sub("", raw)))
-    return Counter(t for w in text.split() if (t := w.strip(_EDGE_PUNCT)))
-
-
-def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
-    """Fraction of tokens that agree as MULTISETS, plus the LaTeX-only / Typst-only rests.
-
-    1.0 means identical bags regardless of order; lower means tokens went missing
-    or appeared. Insensitive to block reordering, line breaks, and edge punctuation.
-    """
-    ca, cb = bag_tokens(a), bag_tokens(b)
-    miss, extra = ca - cb, cb - ca
-    total = sum(ca.values()) + sum(cb.values())
-    return 1 - sum((miss + extra).values()) / max(1, total), miss, extra
-
-
-# Quote/star/bullet glyph variants the two engines encode differently, folded to
-# a canonical form for the char bag. Dashes are NOT here — they're dropped wholesale
-# (below), because line-break hyphenation differs between engines (they break
-# different words) and pdftotext drops the break hyphen inconsistently, so any
-# surviving dash count is noise.
-_CHAR_FOLD = {"‘": "'", "’": "'", "“": '"', "”": '"', "∗": "*", "⁎": "*", "∙": "•"}
-_DROP_DASHES = str.maketrans("", "", "­‐‑‒–—−-")  # soft hyphen, hyphens, dashes, minus
-
-
-def char_bag(raw: str) -> Counter:
-    """Whitespace- and dash-free character multiset (NFKC + quote/star folding).
-
-    A stricter tripwire than the word bag: order- and line-break-independent too,
-    but it keeps punctuation, so a stray comma or period the word bag's edge-strip
-    hides shows up here. Deliberately self-contained (not via normalize()) — it
-    needs none of the word bag's tokenization machinery. What it does NOT check is
-    delegated elsewhere: numbers and dashes to the word bag's tokens, page folios
-    to the fixtures (titleless twins re-assert \\thispagestyle{empty} so neither
-    engine prints one). Whatever difference survives here is real.
-    """
-    text = unicodedata.normalize("NFKC", raw).translate(_DROP_DASHES)
-    for old, new in _CHAR_FOLD.items():
-        text = text.replace(old, new)
-    return Counter(re.sub(r"\s+", "", text))
 
 
 _URI = re.compile(rb"/URI\s*\(([^)]*)\)")
@@ -852,7 +774,7 @@ def font_bag(pdf: Path) -> Counter:
                         key = (fam, bool(span["flags"] & 16), italic,
                                size, _font_color(span["color"]))
                         for ch in unicodedata.normalize("NFKC", span["text"]):
-                            ch = _CHAR_FOLD.get(ch, ch)
+                            ch = CHAR_FOLD.get(ch, ch)
                             if unicodedata.category(ch).startswith("L"):
                                 counts[(ch,) + key] += 1
     return counts

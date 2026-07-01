@@ -42,7 +42,7 @@
 )
 
 #let sample-abstract = [
-  A clear and well-documented LaTeX document is presented as an article
+  A clear and well-documented LATEX document is presented as an article
   formatted for publication by ACM in a conference proceedings or journal
   publication. Based on the "acmart" document class, this article presents and
   explains many of the common variations, as well as many of the formatting
@@ -76,9 +76,9 @@
   [
 = Introduction
 ACM's consolidated article template, introduced in 2017, provides a consistent
-LaTeX style for use across ACM publications, and incorporates accessibility and
+LATEX style for use across ACM publications, and incorporates accessibility and
 metadata-extraction functionality necessary for future Digital Library
-endeavors. Numerous ACM and SIG-specific LaTeX templates have been examined, and
+endeavors. Numerous ACM and SIG-specific LATEX templates have been examined, and
 their unique features incorporated into this single new template.
 
 If you are new to publishing with ACM, this document is a valuable guide to the
@@ -100,7 +100,7 @@ Abstract, and more --- all by selecting the appropriate _template style_ and
 _template parameters_.
 
 This document will explain the major features of the document class. For further
-information, the _LaTeX User's Guide_ is available from
+information, the _LATEX User's Guide_ is available from
 #link("https://www.acm.org/publications/proceedings-template").
 
 == Template Styles
@@ -130,7 +130,7 @@ The majority of conference proceedings documentation will use the
 In addition to specifying the _template style_ to be used in formatting your
 work, there are a number of _template parameters_ which modify some part of the
 applied template style. A complete list of these parameters can be found in the
-_LaTeX User's Guide._
+_LATEX User's Guide._
 
 Frequently-used parameters, or combinations of parameters, include:
 - #raw("anonymous,review"): Suitable for a "double-anonymous" conference
@@ -157,7 +157,7 @@ discovered.*
 = Typefaces
 
 The "#raw("acmart")" document class requires the use of the "Libertine"
-typeface family. Your TeX installation should include this set of packages.
+typeface family. Your TEX installation should include this set of packages.
 Please do not substitute other typefaces. The "#raw("lmodern")" and
 "#raw("ltimes")" packages should not be used, as they will override the
 built-in typeface families.
@@ -220,7 +220,7 @@ author, this may be copyright transfer, permission, license, or an OA (open
 access) agreement.
 
 Regardless of the rights management choice, the author will receive a copy of
-the completed rights form once it has been submitted. This form contains LaTeX
+the completed rights form once it has been submitted. This form contains LATEX
 commands that must be copied into the source document. When the document source
 is compiled, these commands and their parameters add formatted text to several
 areas of the final document:
@@ -243,7 +243,7 @@ The ACM Computing Classification System ---
 #link("https://www.acm.org/publications/class-2012") --- is a set of classifiers
 and concepts that describe the computing discipline. Authors can select entries
 from this classification system, via #link("https://dl.acm.org/ccs/ccs.cfm"),
-and generate the commands to be included in the LaTeX source.
+and generate the commands to be included in the LATEX source.
 
 User-defined keywords are a comma-separated list of words and phrases of the
 authors' choosing, providing a more flexible way of describing the research being
@@ -254,7 +254,7 @@ pages in length, and are optional for one- and two-page articles (or abstracts).
 
 = Sectioning Commands
 
-Your work should use standard LaTeX sectioning commands: #raw("\\section"),
+Your work should use standard LATEX sectioning commands: #raw("\\section"),
 #raw("\\subsection"), #raw("\\subsubsection"), #raw("\\paragraph"), and
 #raw("\\subparagraph"). The sectioning levels up to #raw("\\subsubsection")
 should be numbered; do not remove the numbering from the commands.
@@ -291,7 +291,7 @@ typically the top of the page nearest their initial cite. To ensure this proper
 table's contents and the table caption. The contents of the table itself must go
 in the *tabular* environment, to be aligned properly in rows and columns, with
 the desired horizontal and vertical rules. Again, detailed instructions on
-*tabular* material are found in the _LaTeX User's Guide._
+*tabular* material are found in the _LATEX User's Guide._
 
 Immediately following this sentence is the point at which @tab:freq is
 included in the input file; compare the placement of the table here with the
@@ -354,7 +354,7 @@ A formula that appears in the running text is called an inline or in-text formul
 It is produced by the *math* environment, which can be invoked with the usual
 #raw("\\begin\u{2026}\\end") construction or with the short form #raw("$\u{2026}$").
 You can use any of the symbols and structures, from $alpha$ to $omega$, available
-in LaTeX #cit("Lamport:LaTeX")\; this section will simply show a few examples of in-text
+in LATEX #cit("Lamport:LaTeX")\; this section will simply show a few examples of in-text
 equations in context. Notice how this equation: $lim_(n -> infinity) x = 0$, set
 here in in-line math style, looks slightly different when set in display style.
 (See next section).
@@ -365,7 +365,7 @@ centered horizontally---is produced by the *equation* environment. An unnumbered
 display equation is produced by the *displaymath* environment.
 
 Again, in either environment, you can use any of the symbols and structures
-available in LaTeX; this section will just give a couple of examples of display
+available in LATEX; this section will just give a couple of examples of display
 equations in context. First, consider the equation, shown as an inline equation
 above:
 $ lim_(n -> infinity) x = 0 $
@@ -377,7 +377,7 @@ environment. Now, we'll enter an unnumbered equation:
 ]
 and follow it with another numbered equation:
 $ sum_(i=0)^infinity x_i = integral_0^(pi+2) f $
-just to demonstrate LaTeX's able handling of numbering.
+just to demonstrate LATEX's able handling of numbering.
 
 = Figures
 
@@ -430,7 +430,7 @@ command immediately before the #raw("\\maketitle") command:
 
 = Citations and Bibliographies
 
-The use of BibTeX for the preparation and formatting of one's references is
+The use of BibTEX for the preparation and formatting of one's references is
 strongly recommended. Authors' names should be complete --- use full first names
 ("Donald E. Knuth") not initials ("D. E. Knuth") --- and the salient identifying
 features of a reference should be included: title, year, volume, number, pages,
@@ -443,8 +443,8 @@ article DOI, etc.
     \printbibliography
   ```
 
-  The command `\addbibresource{bibfile}` declares the BibTeX file to use in the
-  *preamble* (before the command "`\begin{document}`") of your LaTeX source where
+  The command `\addbibresource{bibfile}` declares the BibTEX file to use in the
+  *preamble* (before the command "`\begin{document}`") of your LATEX source where
   "`bibfile`" is the name, _with_ the "`.bib`" suffix. Notice that
   `\addbibresource` takes only one argument: to declare multiple files, use
   multiple instances of the command.
@@ -453,7 +453,7 @@ article DOI, etc.
   publications have citations and references formatted in the "author year" style;
   for these exceptions, please pass the option `style=acmauthoryear` to the
   `biblatex` package loaded in the *preamble* (before the command
-  "`\begin{document}`") of your LaTeX source.
+  "`\begin{document}`") of your LATEX source.
 ] else [
   The bibliography is included in your source document with these two commands,
   placed just before the #raw("\\end{document}") command:
@@ -462,12 +462,12 @@ article DOI, etc.
     \bibliography{bibfile}
   ```
   where "#raw("bibfile")" is the name, without the "#raw(".bib")" suffix, of the
-  BibTeX file.
+  BibTEX file.
 
   Citations and references are numbered by default. A small number of ACM
   publications have citations and references formatted in the "author year" style;
   for these exceptions, please include this command in the *preamble* (before the
-  command "#raw("\\begin{document}")") of your LaTeX source:
+  command "#raw("\\begin{document}")") of your LATEX source:
   ```
     \citestyle{acmauthoryear}
   ```

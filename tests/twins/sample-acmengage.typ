@@ -203,7 +203,7 @@ license from the following list:
 - CC BY
 
 The correct typesetting of materials under creative commons license requires the
-corresponding CC icon. A modern TeX distribution includes these icons in the package
+corresponding CC icon. A modern TEX distribution includes these icons in the package
 _doclicense_ @doclicense. In case your distribution does not have them, ACM provides
 a file `ccicons.zip` with these icons. Just unzip it in the same directory where
 your document is.
@@ -220,14 +220,14 @@ When you make a submission using ScholarOne you must upload:
 
 = Citations and References
 <sec:citations>
-We recommend using BibTeX to prepare your references. The bibliography is included in
+We recommend using BibTEX to prepare your references. The bibliography is included in
 your source document with these two commands, placed just before the
 `\end{document}` command:
 ```
   \bibliographystyle{ACM-Reference-Format}
   \bibliography{bibfile}
 ```
-where "`bibfile`" is the name, without the "`.bib`" suffix, of the BibTeX file.
+where "`bibfile`" is the name, without the "`.bib`" suffix, of the BibTEX file.
 
 Here are a few examples of the types of things you might cite in an EngageCSEdu
 submission: a book @Kosiur01, a journal article @Abril07, an informally published

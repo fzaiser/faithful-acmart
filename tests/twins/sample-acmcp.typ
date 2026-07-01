@@ -61,7 +61,7 @@ In this document we discuss how to write an ACM article.
 
 = Methods
 
-This document provides LaTeX templates for the article. We demonstrate different
+This document provides LATEX templates for the article. We demonstrate different
 versions of ACM styles and show various options and commands. We add extensive
 documentation for these commands and show examples of their use.
 

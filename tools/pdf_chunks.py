@@ -14,8 +14,8 @@ and order is a 1-D property a flat stream is enough to verify against.
 Two things the global word/char bags (tools/test.py) can't see, but this can:
   * a chunk's tokens going missing/appearing, *localized* to that chunk; and
   * a chunk's elements emitted in the WRONG order (affiliation<->email swap,
-    reordered citation fields, flipped author order) — caught as Kendall-tau
-    inversions of the chunk's tokens against the flat stream.
+    reordered citation fields, flipped author order) — caught as LCS disorder
+    against the flat stream.
 
 Crucially, INTER-chunk order is NOT checked: Typst emits footnote/contact chunks
 first in the tree even though they render at the page bottom, so tag-tree order
@@ -23,11 +23,9 @@ disagrees with pdftotext reading order by design. Only the order WITHIN each
 chunk is gated; the chunk is matched as a sub-sequence of the stream, so other
 content may interpose between its tokens (robust to reflow, unlike bigrams).
 
-Tokenization mirrors tools/test.py's word bag (NFKC + dash/quote folding + edge
--punctuation strip) so chunk tokens align with the stream. It is kept self
--contained here, rather than imported, to avoid an import cycle with the gate
-that consumes this module from test.py. The two tokenizers must stay in step;
-both are small and exercised by the same twins.
+Tokenization is shared with tools/test.py's word bag via pdf_text_tokens.py, so
+chunk tokens and global text tokens always agree on URL, symbol, dash, and PDF
+extraction cleanup.
 """
 
 from __future__ import annotations
@@ -35,42 +33,10 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
-import unicodedata
 from collections import Counter
 from pathlib import Path
 
-# --- tokenization (mirror of tools/test.py's word bag) ---------------------
-_EDGE_PUNCT = ".,;:!?()[]{}\"'*•-/"
-_EOL_HYPHEN = re.compile(r"[­‐‑-]\s*\n\s*")
-_URL_SCHEME = re.compile(r"https?\s*:\s*/\s*/")
-_REPLACE = {
-    "­": "", "‐": "-", "‑": "-", "‒": "-", "–": "-", "—": "-", "−": "-",
-    "‘": "'", "’": "'", "“": '"', "”": '"', "∗": "*", "⁎": "*", "∙": "•",
-}
-
-
-def normalize(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text)
-    for old, new in _REPLACE.items():
-        text = text.replace(old, new)
-    text = re.sub(r"(?m)^\s*\d+\s*$", " ", text)   # standalone page folios
-    return re.sub(r"\s+", " ", text).strip()
-
-
-# All hyphens/dashes dropped from each token (not just edges): line-break
-# hyphenation differs between engines (they break different words), and the Typst
-# structure-tree decode keeps the break hyphen with no newline for _EOL_HYPHEN to
-# rejoin (`amplifi-carique`), so an interior dash is noise — same call the char bag
-# makes. Folding "Paris-Rocquencourt" -> "ParisRocquencourt" on both sides is fine
-# for an order check.
-_DROP_DASHES = str.maketrans("", "", "­‐‑‒–—−-")
-
-
-def tokenize(raw: str) -> list[str]:
-    """Ordered token list for a raw text dump (the list form of test.py's bag)."""
-    text = _URL_SCHEME.sub("", normalize(_EOL_HYPHEN.sub("", raw)))
-    return [t for w in text.split()
-            if (t := w.strip(_EDGE_PUNCT).translate(_DROP_DASHES))]
+from pdf_text_tokens import tokenize
 
 
 # --- Typst side: decode the tagged structure tree --------------------------
@@ -155,6 +121,15 @@ _DROP = {"Lbl"}
 # from heading chunks so the order check sees only the title words.
 _HEADING = {"H", "H1", "H2", "H3", "H4", "H5", "H6"}
 _NUMBERING = re.compile(r"^\d+(\.\d+)*$")
+
+
+def _strip_generated_heading_number(role: str, toks: list[str]) -> list[str]:
+    if role.strip() not in _HEADING or not toks:
+        return toks
+    i = 0
+    while i < len(toks) and _NUMBERING.fullmatch(re.sub(r"\s+", "", toks[i])):
+        i += 1
+    return toks[i:] if i else toks
 
 
 def _role(elem) -> str:
@@ -249,8 +224,7 @@ def typst_chunks(pdf_path: Path) -> list[tuple[str, list[str]]]:
         role = _role(elem)
         if _has_direct_text(elem):
             toks = tokenize(_flatten(elem, mcid_text, pdf, _page_index(pdf, elem)))
-            if role in _HEADING and toks and _NUMBERING.match(toks[0]):
-                toks = toks[1:]
+            toks = _strip_generated_heading_number(role, toks)
             if toks:
                 chunks.append((role, toks))
             for bb in _block_break_descendants(elem):   # relocated footnotes etc.
