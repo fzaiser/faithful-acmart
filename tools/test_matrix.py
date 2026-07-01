@@ -37,8 +37,8 @@ METRICS_TOLERANCE = {
     "left": 1.0,   # text-block left edge — true horizontal invariant, gated tightly
     "top": 4.5,    # first-content vertical position — loose: absorbs glyph-bbox
                    # ascent conventions and title-page variance, still catches gross shifts
-    "pitch": 0.6,  # median baseline-to-baseline pitch — gated only on uniform_pitch tests
-    "line_pitch": 0.8,  # max single-line pitch deviation — gated on uniform_pitch tests
+    "pitch": 0.6,  # median baseline-to-baseline pitch — gated only with metrics_uniform_pitch
+    "line_pitch": 0.8,  # max single-line pitch deviation — gated with metrics_uniform_pitch
                         # whose lines break identically across engines (so the per-line
                         # pitch sequences align). Catches one mis-spaced line that the
                         # median absorbs; skipped when line counts diverge.
@@ -127,11 +127,9 @@ class Test:
     """One test stem and how the gates treat it.
 
     Twin page counts must match unless ``expected_page_count_diff`` documents a
-    known mismatch. ``uniform_pitch`` marks tests whose body is on a single
-    baseline grid, so median baseline pitch is meaningful and gated.
-    ``page1_only`` gates absolute
-    vertical positions on page 1 only (multi-page docs drift downward via
-    acmsmall's \\flushbottom, which Typst can't replicate). ``text_equal`` /
+    known mismatch. ``metrics_page1_only`` documents why Tier 2 metrics compare
+    only page 1 instead of all shared pages. ``metrics_uniform_pitch`` documents
+    why baseline pitch is meaningful enough to gate. ``text_equal`` /
     ``expected_text_diffs`` / ``text_assertions`` drive Tier 1.5. ``note`` is
     documentation only. Expected diff entries explain their cause with either
     ``ExtractionArtifact("...")`` or ``TypstTranslation("...")``.
@@ -172,8 +170,8 @@ class Test:
     expected_page_count_diff: str = ""
     expected_metrics_diff: str = ""
     golden_exempt: str = ""
-    page1_only: bool = False
-    uniform_pitch: bool = False
+    metrics_page1_only: str = ""
+    metrics_uniform_pitch: str = ""
     text_equal: bool | str | None = None
     expected_text_diffs: tuple[ExpectedTextDiff, ...] = ()
     text_assertions: tuple[Assertion, ...] = ()
@@ -181,6 +179,14 @@ class Test:
     expected_order_diffs: tuple[ExpectedOrderDiff, ...] = ()
     expected_link_diff: str = ""  # nonempty reason for an expected hyperlink-set mismatch
     note: str = ""
+
+    def __post_init__(self) -> None:
+        if self.metrics_page1_only and self.pages <= 1:
+            raise ValueError("metrics_page1_only is only meaningful for multi-page tests")
+        if self.metrics_page1_only and self.kind != "twin":
+            raise ValueError("metrics_page1_only only applies to twin tests")
+        if self.metrics_uniform_pitch and self.kind != "twin":
+            raise ValueError("metrics_uniform_pitch only applies to twin tests")
 
     @property
     def subdir(self) -> str:
@@ -230,6 +236,21 @@ _FULL_SAMPLE_METRICS_DIFF = (
     "Full upstream samples include page-fill, column-flow, and float-placement "
     "drift; focused twins own exact geometry."
 )
+_PAGE1_METRICS_SCOPE = (
+    "Only page 1 has stable absolute metrics; later pages include LaTeX page-fill/"
+    "column-flow drift not mirrored by Typst."
+)
+_UNIFORM_PITCH_METRICS = (
+    "Fixture is designed around a single baseline grid, so baseline pitch is gated."
+)
+_FONT_SIZE_PITCH_METRICS = (
+    "Fixture isolates base font-size changes while keeping a single baseline grid, "
+    "so pitch is gated."
+)
+_BIB_PITCH_METRICS = (
+    "Bibliography fixture keeps the reference list on a stable baseline grid, so "
+    "pitch is gated."
+)
 _SIGCONF_BIBLATEX_PAGE_DIFF = (
     "Typst currently reflows the numeric BibLaTeX/software reference block to "
     "seven pages while LaTeX fits six."
@@ -250,11 +271,12 @@ _AUTHORDRAFT_GOLDEN_EXEMPT = (
 # Order is the run/report order. Twins come first, then smoke-only docs.
 TESTS: dict[str, Test] = {
     "body-test": Test(
-        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        kind="twin", pages=1, metrics_uniform_pitch=_UNIFORM_PITCH_METRICS,
+        text_equal=True,
         note="body typography: font, size, baseline grid, justification, indent",
     ),
     "head-test": Test(
-        kind="twin", pages=1, uniform_pitch=True,
+        kind="twin", pages=1, metrics_uniform_pitch=_UNIFORM_PITCH_METRICS,
         note="section / subsection / subsubsection / paragraph (run-in) headings",
     ),
     "figure-heading-test": Test(
@@ -276,7 +298,8 @@ TESTS: dict[str, Test] = {
         note="body footnotes + code/verbatim",
     ),
     "full-test": Test(
-        kind="twin", pages=2, page1_only=True, uniform_pitch=True,
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        metrics_uniform_pitch=_UNIFORM_PITCH_METRICS,
         note="multi-page cumulative spacing (reveals the \\flushbottom difference)",
     ),
     "title-test": Test(
@@ -291,7 +314,8 @@ TESTS: dict[str, Test] = {
              "with the generic sans-bold section fonts shared with acmsmall.",
     ),
     "manuscript-pages-test": Test(
-        kind="twin", pages=2, page1_only=True, text_equal="bag",
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
@@ -307,7 +331,8 @@ TESTS: dict[str, Test] = {
              "\\sffamily\\large (regular-weight) section headings (acmart.dtx:8424).",
     ),
     "acmlarge-pages-test": Test(
-        kind="twin", pages=2, page1_only=True, text_equal="bag",
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
@@ -318,14 +343,15 @@ TESTS: dict[str, Test] = {
              "gated order-independently (word-bag).",
     ),
     "acmtog-test": Test(
-        kind="twin", pages=1, page1_only=True,
+        kind="twin", pages=1,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=acmtog: two-column JOURNAL. Spanning left @i title + author list, "
              "contact-info footnote + ACM bibstrip + journal footer, 9pt parindent, "
              "sans-large sections.",
     ),
     "acmtog-pages-test": Test(
-        kind="twin", pages=2, page1_only=True, text_equal="bag",
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
@@ -337,7 +363,7 @@ TESTS: dict[str, Test] = {
              "extraction, so text is gated order-independently (word-bag).",
     ),
     "sigconf-test": Test(
-        kind="twin", pages=1, page1_only=True, text_equal="bag",
+        kind="twin", pages=1, text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", text="Abstract"),
@@ -350,7 +376,8 @@ TESTS: dict[str, Test] = {
         note="format=sigconf: two-column proceedings title page; text is word-bag gated.",
     ),
     "sigconf-pages-test": Test(
-        kind="twin", pages=2, page1_only=True, text_equal="bag",
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
@@ -361,7 +388,7 @@ TESTS: dict[str, Test] = {
              "extraction, so text is gated order-independently (word-bag).",
     ),
     "sigconf-authors-test": Test(
-        kind="twin", pages=1, page1_only=True,
+        kind="twin", pages=1,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         note="Conference author grid with a centered partial final row.",
     ),
@@ -401,30 +428,34 @@ TESTS: dict[str, Test] = {
         note="format=acmcp: JDS cover page, infobox, unnumbered sections, and author contributions.",
     ),
     "sigchi-a-test": Test(
-        kind="twin", pages=2, page1_only=True,
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         expected_metrics_diff=_LANDSCAPE_METRICS_DIFF, text_equal="bag",
         expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=sigchi-a: landscape extended abstract; text bags and page parity are gated.",
     ),
     "fontsize-8-test": Test(
-        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
+        text_equal=True,
         note="Base font-size option `8pt`: amsart \\@typesizes ladder + "
              "baselineskip-derived heading/skip scaling. Body is on one grid, so pitch is gated.",
     ),
     "fontsize-9-test": Test(
-        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
+        text_equal=True,
         note="Base font-size option `9pt`.",
     ),
     "fontsize-11-test": Test(
-        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
+        text_equal=True,
         note="Base font-size option `11pt`.",
     ),
     "fontsize-12-test": Test(
-        kind="twin", pages=1, uniform_pitch=True, text_equal=True,
+        kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
+        text_equal=True,
         note="Base font-size option `12pt`.",
     ),
     "bib-test": Test(
-        kind="twin", pages=1, uniform_pitch=True,
+        kind="twin", pages=1, metrics_uniform_pitch=_BIB_PITCH_METRICS,
         expected_text_diffs=(
             ExpectedTextDiff(
                 latex="bibliography style [1] [4] [3] [7] [6] [2] [8] [5]. References",
@@ -558,7 +589,7 @@ TESTS: dict[str, Test] = {
              "The title block and footnote stack mix leadings, so pitch is reported, not gated.",
     ),
     "options-test": Test(
-        kind="twin", pages=2, page1_only=True,
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         expected_link_diff=_AUTHOR_LINK_DIFF,
         note="option toggles for nonacm, printccs, printfolios, balance, and natbib.",
     ),

@@ -717,16 +717,21 @@ def gate_metrics(report: bool = False) -> list[str]:
             failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
             continue
         lm, tm = _metrics_for(lref), _metrics_for(tpdf)
-        pages = [1] if t.page1_only else sorted(set(lm) & set(tm))
+        pages = [1] if t.metrics_page1_only else sorted(set(lm) & set(tm))
         gated = [("left", tol["left"], "left margin"), ("top", tol["top"], "top margin")]
-        if t.uniform_pitch:
+        if t.metrics_uniform_pitch:
             gated.append(("pitch", tol["pitch"], "baseline pitch"))
 
-        # Per-line pitch is gated only on SINGLE-page uniform_pitch twins. A
+        # Per-line pitch is gated only on single-page uniform-pitch twins. A
         # multi-page doc's page 1 is full, so acmsmall's \@textbottom rubber glue
         # stretches its paragraph gaps to the bottom margin (the documented fill we
         # can't replicate) — gating per-line spacing there would chase that drift.
-        line_pitch = t.uniform_pitch and t.pages == 1
+        line_pitch = bool(t.metrics_uniform_pitch) and t.pages == 1
+        gated_summary = "L/T"
+        if t.metrics_uniform_pitch:
+            gated_summary += "/pitch"
+        if line_pitch:
+            gated_summary += "/line-pitch"
         if report:
             print(name + ":")
         local: list[str] = []
@@ -744,7 +749,7 @@ def gate_metrics(report: bool = False) -> list[str]:
                       f"L {a['left']:.1f}/{b['left']:.1f}  R {a['right']:.1f}/{b['right']:.1f}  "
                       f"T {a['top']:.1f}/{b['top']:.1f}  "
                       f"lines {a['lines']}/{b['lines']}  pitch {a['pitch']:.2f}/{b['pitch']:.2f}"
-                      f"{lpd_s}   (L/T/pitch/line-pitch gated; R/lines report-only)")
+                      f"{lpd_s}   ({gated_summary} gated; R/lines report-only)")
                 continue
             for key, lim, label in gated:
                 d = abs(a[key] - b[key])
@@ -1309,10 +1314,10 @@ def cmd_list(_args) -> int:
         flags = []
         if t.expected_page_count_diff:
             flags.append("pagediff")
-        if t.page1_only:
-            flags.append("page1_only")
-        if t.uniform_pitch:
-            flags.append("uniform_pitch")
+        if t.metrics_page1_only:
+            flags.append("page1metrics")
+        if t.metrics_uniform_pitch:
+            flags.append("pitchmetrics")
         if t.text_equal is True:
             flags.append("text_equal")
         elif t.text_equal == "bag":

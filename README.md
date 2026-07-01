@@ -261,8 +261,10 @@ gates without recompiling:
 - **Tier 2 (metrics)** — cross-engine layout geometry (left/top margin, baseline
   pitch) gated against `test_matrix` tolerances; right margin & line count are
   reported only (cross-engine line-breaking makes them noisy). A nonempty
-  `expected_metrics_diff` documents a known metric mismatch and fails if metrics
-  later pass.
+  `metrics_page1_only` documents why a multi-page twin compares page 1 only.
+  A nonempty `metrics_uniform_pitch` documents why baseline pitch is meaningful
+  enough to gate. A nonempty `expected_metrics_diff` documents a known metric
+  mismatch and fails if metrics later pass.
 
 `tools/test.py validate` is a separate, representative visual suite over the
 copyright modes and document options (the package supports every copyright mode;

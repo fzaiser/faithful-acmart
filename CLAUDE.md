@@ -55,8 +55,10 @@ missed.
   `expected_font_diffs` / `expected_order_diffs` entries. Link mismatches live in
   `expected_link_diff`; the link gate always runs and fails if the field does not
   match reality. Page-count and metric mismatches use
-  `expected_page_count_diff` / `expected_metrics_diff`; golden opt-outs use
-  `golden_exempt`. Avoid adding new bare skip booleans.
+  `expected_page_count_diff` / `expected_metrics_diff`; metric scope and stricter
+  pitch opt-ins use reason strings (`metrics_page1_only`,
+  `metrics_uniform_pitch`); golden opt-outs use `golden_exempt`. Avoid adding new
+  bare skip booleans.
   When asked *why* a normalization step is needed,
   verify the mechanism (ablate it; read both `pdftotext` dumps) before answering —
   in this codebase the plausible explanation was wrong more than once.
