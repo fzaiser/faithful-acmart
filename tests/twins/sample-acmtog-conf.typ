@@ -25,7 +25,7 @@
   ),
   isbn: "978-1-4503-XXXX-X/2018/06",
   doi: "XXXXXXX.XXXXXXX",
-  acm-year: 2018, acm-month: 6,
+  acm-year: 2018,
   copyright: "acmlicensed", copyright-year: 2018,
   short-authors: "Trovato et al.",
   authors: sample-authors,

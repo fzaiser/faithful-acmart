@@ -63,6 +63,15 @@ TC = TOOLS / "tc"
 ACMART = ROOT / "acmart"
 TEMPLATE = ROOT / "template" / "main.typ"
 
+# Pin TeX's \year/\month and Typst's datetime.today() for regression builds.
+# July keeps upstream proceedings samples that omit \acmMonth faithful to the
+# current cached LaTeX oracle while making that default deterministic.
+TEST_SOURCE_DATE_EPOCH = "1782907200"  # 2026-07-01 12:00:00 UTC
+TEST_CLOCK_ENV = {
+    "SOURCE_DATE_EPOCH": TEST_SOURCE_DATE_EPOCH,
+    "FORCE_SOURCE_DATE": "1",
+}
+
 
 # ---------------------------------------------------------------------------
 # Path helpers
@@ -196,6 +205,7 @@ def compile_typst(src: Path, out: Path) -> tuple[int, str]:
     proc = subprocess.run(
         [str(TC), "compile", str(src), str(out), "--diagnostic-format", "short"],
         capture_output=True, text=True,
+        env={**os.environ, **TEST_CLOCK_ENV},
     )
     return proc.returncode, proc.stderr
 
@@ -264,6 +274,7 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
 
     env = {
         **os.environ,
+        **TEST_CLOCK_ENV,
         # acmart.cls in outdir must win over any system install; srcdir carries
         # the twin's own bib/image assets (sample-base.bib, sample-franklin.png…).
         "TEXINPUTS": f"{outdir}:{srcdir}:",

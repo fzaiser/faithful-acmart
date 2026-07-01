@@ -558,6 +558,7 @@
     bottom-edge: 0pt,
     lang: cfg.lang, // main language (acmart `language`); drives hyphenation
   )
+  show math.equation: set text(font: cfg.fonts.math)
 
   set par(
     leading: comp(cfg), // intra-paragraph: baseline pitch = baselineskip

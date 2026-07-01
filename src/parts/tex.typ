@@ -308,7 +308,9 @@
 #let _logos = (LaTeX: "LATEX", TeX: "TEX", BibTeX: "BibTEX", LaTeXe: "LATEX2e")
 #let _logo-content = (LaTeX: latex-logo, TeX: tex-logo, BibTeX: bibtex-logo, LaTeXe: latexe-logo)
 // Argument-taking inline formatting: \textit{x}, \emph{x}, \textbf{x}, \textsc{x}.
-#let _emph-cw = ("emph", "textit", "textsl")
+// LaTeX \emph toggles emphasis, but \textit/\textsl force an italic/slanted shape.
+#let _emph-cw = ("emph",)
+#let _italic-cw = ("textit", "textsl")
 #let _strong-cw = ("textbf",)
 #let _sc-cw = ("textsc",)
 #let _id-cw = ("textrm", "textsf", "textnormal", "textup", "textmd", "mbox", "text")
@@ -316,7 +318,7 @@
 // group — `{\it a b}` italicizes "a b", not just the next char. Name -> styler tag
 // (em/bf/sc/tt, or id = a font *reset*, which we approximate as identity).
 #let _switch-cw = (
-  it: "em", itshape: "em", sl: "em", slshape: "em", em: "em",
+  it: "it", itshape: "it", sl: "it", slshape: "it", em: "em",
   bf: "bf", bfseries: "bf",
   sc: "sc", scshape: "sc",
   tt: "tt", ttfamily: "tt",
@@ -383,6 +385,8 @@
   hbar: "planck.reduce", aleph: "aleph", prime: "prime", dag: "dagger", ddag: "dagger.double",
   ldots: "dots.h", dots: "dots.h", cdots: "dots.c",
   sum: "sum", prod: "product", int: "integral",
+)
+#let _math-op-cw = (
   log: "log", ln: "ln", exp: "exp", sin: "sin", cos: "cos", tan: "tan", cot: "cot",
   sec: "sec", csc: "csc", lim: "lim", limsup: "limsup", liminf: "liminf", max: "max",
   min: "min", sup: "sup", inf: "inf", det: "det", dim: "dim", gcd: "gcd", bmod: "mod",
@@ -407,7 +411,15 @@
 
 // Apply a formatting tag to already-evaluated inner content `x` (content mode
 // only — in string/math modes formatting is dropped and `x` passes through).
-#let _apply(tag, x, cont) = if not cont { x } else if tag == "em" { emph(x) } else if tag == "bf" { strong(x) } else if tag == "sc" { smallcaps(x) } else if tag == "ul" { underline(x) } else { x }
+#let _apply(tag, x, cont) = {
+  if not cont { x }
+  else if tag == "em" { emph(x) }
+  else if tag == "it" { text(style: "italic", x) }
+  else if tag == "bf" { strong(x) }
+  else if tag == "sc" { smallcaps(x) }
+  else if tag == "ul" { underline(x) }
+  else { x }
+}
 
 // ---- the evaluator: tokens -> content / string / math-source ---------------
 // ONE recursive function over three modes, so every call is self-referential
@@ -448,15 +460,25 @@
       if math {
         // `~` in math is a (non-breaking) interword space; a literal " " is ignored.
         if t.char == "~" { piece = "space.nobreak " }
-        else { let (a, r) = _grab(tail); piece = t.char + "(" + _eval(a, "math") + ") "; next = r }
+        else {
+          let (a, r) = _grab(tail)
+          piece = t.char + "(" + _eval(a, "math") + ") "
+          next = r
+        }
       } else if t.char == "~" { piece = "\u{00A0}" }
       else { _unsupported("character '" + t.char + "' outside math mode (use $...$, \\textasciicircum or \\textunderscore)") }
     } else if t.kind == "cw" {
       let nm = t.name
       if math {
-        if nm in _math-sym { piece = _math-sym.at(nm) + " " }
+        if nm in _math-op-cw { piece = "op(\"" + _math-op-cw.at(nm) + "\") " }
+        else if nm in _math-sym { piece = _math-sym.at(nm) + " " }
         else if nm in _math-fn1 { let (a, r) = _grab(tail); piece = _math-fn1.at(nm) + "(" + _eval(a, "math") + ") "; next = r }
-        else if nm in _math-fn2 { let (a, r) = _grab(tail); let (b, r2) = _grab(r); piece = _math-fn2.at(nm) + "(" + _eval(a, "math") + ", " + _eval(b, "math") + ") "; next = r2 }
+        else if nm in _math-fn2 {
+          let (a, r) = _grab(tail)
+          let (b, r2) = _grab(r)
+          piece = _math-fn2.at(nm) + "(" + _eval(a, "math") + ", " + _eval(b, "math") + ") "
+          next = r2
+        }
         else if nm == "text" or nm == "mbox" or nm == "textrm" {
           // \text{..} -> a quoted Typst string literal; escape \ and " so the
           // generated math source can't be broken by the field's own characters.
@@ -480,6 +502,7 @@
         else { piece = _apply(tag, _eval(tail, mode), cont) }
       }
       else if nm in _emph-cw { let (a, r) = _grab(tail); piece = _apply("em", _eval(a, mode), cont); next = r }
+      else if nm in _italic-cw { let (a, r) = _grab(tail); piece = _apply("it", _eval(a, mode), cont); next = r }
       else if nm in _strong-cw { let (a, r) = _grab(tail); piece = _apply("bf", _eval(a, mode), cont); next = r }
       else if nm in _sc-cw { let (a, r) = _grab(tail); piece = _apply("sc", _eval(a, mode), cont); next = r }
       else if nm == "underline" { let (a, r) = _grab(tail); piece = _apply("ul", _eval(a, mode), cont); next = r }

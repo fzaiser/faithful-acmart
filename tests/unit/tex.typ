@@ -62,7 +62,8 @@
   message: "tex-to-content(" + repr(s) + ") should contain a " + sub + " element\n  got: " + repr(tex-to-content(s)))
 #has("x \\textbf{y}", "strong")
 #has("a \\emph{b}", "emph")
-#has("\\textit{b}", "emph")
+#has("\\textit{b}", "styled")
+#has("\\textsl{b}", "styled")
 #has("\\textsc{acm}", "smallcaps")
 #has("\\underline{u}", "underline")
 #has("x\\textsuperscript{2}", "super")
@@ -82,9 +83,9 @@
 #has("\\ensuremath{\\alpha}", "equation")
 
 // Declaration *switches* restyle the REST of the group, not just the next char:
-// `{\it a b}` -> emph over the whole "a b" (the old arg-grab gave emph over "a"
-// only). `[a b]` as one leaf inside the emph is the discriminator.
-#has("{\\it a b} c", "emph")
+// `{\it a b}` -> italic over the whole "a b" (the old arg-grab gave italic over
+// "a" only). `[a b]` as one leaf inside the styled content is the discriminator.
+#has("{\\it a b} c", "styled")
 #has("{\\it a b} c", "[a b]")
 #has("x {\\bf y z}", "strong")
 #has("{\\sc a b}", "smallcaps")

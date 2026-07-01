@@ -588,9 +588,19 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1,
         expected_font_diffs=(
             ExpectedFontDiff(
-                latex="Bounds of 𝑂 (𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞",
-                typst="Bounds of 𝑂(𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞",
-                cause=TypstBug("math operator font and scriptstyle size"),
+                latex="Bounds of 𝑂 (𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞.",
+                typst="Bounds of 𝑂(𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞.",
+                cause=AcceptedTypstBehavior("Typst math operators render with the math font instead of LaTeX's text-roman operator font"),
+            ),
+            ExpectedFontDiff(
+                latex="Products 𝑎𝑏 and tensor indices 𝑥𝑖 𝑗 with 2𝑛 terms.",
+                typst="Products 𝑎𝑏 and tensor indices 𝑥𝑖𝑗 with 2𝑛 terms.",
+                cause=AcceptedTypstBehavior("inline math script glyphs render 0.5pt larger than LaTeX"),
+            ),
+            ExpectedFontDiff(
+                latex="On 𝑛2 bounds for 𝑎 ⊕ 𝑏 with 𝑥 2𝑛 ≤ 𝑦.",
+                typst="On 𝑛2 bounds for 𝑎 ⊕ 𝑏 with 𝑥 2𝑛 ≤ 𝑦.",
+                cause=AcceptedTypstBehavior("inline math fraction/script glyphs render 0.5pt larger than LaTeX"),
             ),
         ),
         note="BST reference-field math rendering, including operators, scripts, blackboard, and overrides.",
@@ -842,11 +852,6 @@ TESTS: dict[str, Test] = {
                       "Documentation, USA",
                 cause=ExtractionArtifact("author-note marker extraction"),
             ),
-            ExpectedTextDiff(
-                latex="Publication date: July 2018. Trovato et al.",
-                typst="Publication date: June 2018. Trovato et al.",
-                cause=TypstBug("conference month extraction"),
-            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
@@ -1084,15 +1089,6 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=3, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         expected_link_diff=_ENGAGE_LINK_DIFF,
         text_equal="bag",
-        expected_font_diffs=(
-            ExpectedFontDiff(
-                latex="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
-                      "https://doi.org/XXXXXXX.XXXXXXX",
-                typst="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
-                      "https://doi.org/XXXXXXX.XXXXXXX",
-                cause=TypstBug("Engage DOI/ISBN sidebar font family"),
-            ),
-        ),
         expected_order_diffs=(
             ExpectedOrderDiff(
                 latex="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "

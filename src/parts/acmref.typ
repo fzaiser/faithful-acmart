@@ -43,7 +43,7 @@
 // a value carried through the emitter: rendered content + whether its raw text
 // ends in .?! (drives the .bst add.period$ / block separators)
 #let V(text, c: none) = (c: render(if c == none { text } else { c }), p: ends-punct(text))
-#let it = emph
+#let it(x) = text(style: "italic", x)
 
 // ---- output state machine -------------------------------------------------
 // state: "before" | "mid" | "block"   (sentence collapses to block)
