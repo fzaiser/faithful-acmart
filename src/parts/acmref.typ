@@ -33,6 +33,13 @@
   let t = s.trim()
   t != "" and t.last() in (".", "!", "?")
 }
+#let blx-ends-punct(s) = {
+  let t = s.trim()
+  while t != "" and t.last() in (")", "]", "}", "\"", "\u{201D}", "'", "\u{2019}") {
+    t = t.slice(0, -1).trim()
+  }
+  t != "" and t.last() in (".", "!", "?")
+}
 // a value carried through the emitter: rendered content + whether its raw text
 // ends in .?! (drives the .bst add.period$ / block separators)
 #let V(text, c: none) = (c: render(if c == none { text } else { c }), p: ends-punct(text))
@@ -661,7 +668,7 @@
   "4": "Apr.", "04": "Apr.", apr: "Apr.", april: "Apr.",
   "5": "May", "05": "May", may: "May",
   "6": "Jun.", "06": "Jun.", jun: "Jun.", june: "Jun.",
-  "7": "Jul.", "07": "Jul.", jul: "Jul.", july: "Jul.",
+  "7": "July", "07": "July", jul: "July", july: "July",
   "8": "Aug.", "08": "Aug.", aug: "Aug.", august: "Aug.",
   "9": "Sept.", "09": "Sept.", sep: "Sept.", sept: "Sept.", september: "Sept.",
   "10": "Oct.", oct: "Oct.", october: "Oct.",
@@ -700,6 +707,10 @@
   let p = blx-date-parts(e)
   if p.month != none and p.year != none { (c: "(" + blx-printdate(e) + ")", p: false) } else { none }
 }
+#let blx-date-parens(e) = {
+  let p = blx-date-parts(e)
+  if p.year != none { (c: "(" + blx-printdate(e, month-ok: p.month != none) + ")", p: false) } else { none }
+}
 #let blx-eprint-date(e) = {
   if not has(e, "eprint") { return blx-date-if-month(e) }
   let p = blx-date-parts(e)
@@ -717,7 +728,7 @@
   if raw == none { return none }
   let shown = if style == "numeric" and sentence { blx-sentence-case(raw) } else { raw }
   let c = render(shown)
-  let p = ends-punct(shown)
+  let p = blx-ends-punct(shown)
   if quoted {
     let inner = c + if p { [] } else { [.] }
     (c: "\u{201C}" + inner + "\u{201D}", p: true)
@@ -729,12 +740,12 @@
   let raw = blx-title-raw(e)
   if raw == none { return none }
   let shown = if style == "numeric" and sentence { blx-sentence-case(raw) } else { raw }
-  (c: it(render(shown)), p: ends-punct(shown))
+  (c: it(render(shown)), p: blx-ends-punct(shown))
 }
 #let blx-book-title(e) = {
   let raw = blx-title-raw(e)
   if raw == none { return none }
-  (c: it(render(raw)), p: ends-punct(raw))
+  (c: it(render(raw)), p: blx-ends-punct(raw))
 }
 #let blx-booktitle(e, with-in: false, style: "numeric") = {
   if not has(e, "booktitle") { return none }
@@ -742,7 +753,7 @@
   if has(e, "booksubtitle") { c += ". " + render(fld(e, "booksubtitle")) }
   if has(e, "series") { c += " (" + render(fld(e, "series")) + ")" }
   if has(e, "number") { c += " " + render(fld(e, "number")) }
-  if articleno-of(e) != none { c += ", Article " + articleno-of(e) }
+  if articleno-of(e) != none { c += " Article " + articleno-of(e) }
   let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
   (c: pre + c, p: false)
 }
@@ -784,7 +795,12 @@
   if has(e, "location") { parts.push(render(fld(e, "location"))) }
   else if has(e, "address") { parts.push(render(fld(e, "address"))) }
   if has(e, "month") { parts.push("(" + blx-printdate(e) + ")") }
-  if parts.len() == 0 { none } else { (c: parts.join(", "), p: false) }
+  let raw = ()
+  if has(e, "publisher") { raw.push(fld(e, "publisher")) }
+  if has(e, "location") { raw.push(fld(e, "location")) }
+  else if has(e, "address") { raw.push(fld(e, "address")) }
+  if has(e, "month") { raw.push("(" + blx-printdate(e) + ")") }
+  if parts.len() == 0 { none } else { (c: parts.join(", "), p: blx-ends-punct(raw.join(", "))) }
 }
 #let blx-publisher-pages(e) = {
   let pub = blx-publisher-location-date(e)
@@ -819,12 +835,22 @@
   if has(e, "series") { parts.push(render(fld(e, "series"))) }
   if has(e, "volume") { parts.push(fld(e, "volume")) }
   if has(e, "number") { parts.push(fld(e, "number")) }
-  if articleno-of(e) != none { parts.push("Article " + articleno-of(e)) }
+  if has(e, "articleno") { parts.push("Article " + fld(e, "articleno").replace("~", " ")) }
   let d = blx-date-if-month(e)
   if d != none { parts.push(d.c) }
+  if has(e, "eid") { parts.push(fld(e, "eid")) }
   let pg = blx-pages(e)
   if pg != none { parts.push(pg.c) }
   (c: parts.join(", "), p: false)
+}
+#let blx-periodical-journal(e) = {
+  if not has(e, "journal") { return none }
+  let c = it(render(fld(e, "journal")))
+  if has(e, "volume") { c += " " + fld(e, "volume") }
+  if has(e, "number") { c += ", " + fld(e, "number") }
+  let d = blx-date-if-month(e)
+  if d != none { c += " " + d.c }
+  (c: c, p: false)
 }
 #let blx-note(e) = if has(e, "note") { V(fld(e, "note")) } else { none }
 #let blx-url-urldate(e) = {
@@ -893,9 +919,10 @@
 #let blx-inproceedings(e, style: "numeric", suffix: "", quoted: false) = {
   let title-led = style == "author-year" and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
   blx-blocks(
-    if title-led { none } else { blx-lead(e, style: style, suffix: suffix) },
+    if title-led { none } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) },
     blx-title(e, style: style, quoted: quoted),
     blx-booktitle(e, with-in: true, style: style),
+    blx-editor-block(e, style: style),
     blx-volume(e),
     blx-list-field(e, "organization"),
     blx-publisher-pages(e),
@@ -948,7 +975,9 @@
 )
 #let blx-online(e, style: "numeric", suffix: "") = {
   let who = blx-person-label(e, key-ok: false)
-  let lead = if who == none { none } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) }
+  let lead = if who == none {
+    if style == "numeric" { blx-date(e, suffix: suffix) } else { none }
+  } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) }
   blx-blocks(
     lead,
     if style == "author-year" { blx-title-emph(e, style: style, sentence: false) }
@@ -963,6 +992,12 @@
     blx-url-urldate(e),
   )
 }
+#let blx-presentation(e, style: "numeric", suffix: "") = blx-blocks(
+  blx-lead(e, style: style, suffix: suffix, key-ok: false),
+  blx-title(e, style: style, quoted: false, sentence: style == "numeric"),
+  blx-date-parens(e),
+  ..blx-tail(e),
+)
 #let blx-institution-location(e) = {
   let inst = blx-list-field(e, "school", "institution")
   let loc = blx-list-field(e, "location", "address")
@@ -972,13 +1007,13 @@
 }
 #let blx-report(e, style: "numeric", suffix: "", thesis: false) = {
   let ty = if thesis {
-    if has(e, "type") { blx-field(e, "type") } else if e.entry-type == "phdthesis" { (c: "Ph.D. Dissertation", p: false) } else { (c: "Master's thesis", p: false) }
+    if has(e, "type") { blx-field(e, "type") } else if e.entry-type == "phdthesis" { (c: "Ph.D. Dissertation", p: false) } else { (c: "Master\u{2019}s thesis", p: false) }
   } else if has(e, "type") and has(e, "number") { (c: render(fld(e, "type")) + " " + render(fld(e, "number")), p: false) }
   else if has(e, "type") { blx-field(e, "type") }
   else { none }
   blx-blocks(
     blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false),
-    blx-title(e, style: style, quoted: style == "author-year", sentence: style == "numeric"),
+    blx-title(e, style: style, quoted: thesis and style == "author-year", sentence: false),
     ty,
     blx-field(e, "version"),
     blx-institution-location(e),
@@ -1222,11 +1257,13 @@
     blx-blocks(
       blx-lead(e, style: style, suffix: year-suffix),
       blx-title(e, style: style, quoted: false, sentence: style == "numeric"),
+      blx-date-parens(e),
       blx-note(e),
       ..blx-tail(e),
     )
   }
-  else if t == "inproceedings" or t == "conference" or t == "presentation" { blx-inproceedings(e, style: style, suffix: year-suffix, quoted: quoted) }
+  else if t == "inproceedings" or t == "conference" { blx-inproceedings(e, style: style, suffix: year-suffix, quoted: quoted) }
+  else if t == "presentation" { blx-presentation(e, style: style, suffix: year-suffix) }
   else if t == "incollection" { blx-incollection(e, style: style, suffix: year-suffix, quoted: quoted) }
   else if t == "inbook" { blx-inbook(e, style: style, suffix: year-suffix, quoted: quoted) }
   else if t == "book" or t == "proceedings" or t == "collection" { blx-book-like(e, style: style, suffix: year-suffix) }
@@ -1236,7 +1273,15 @@
   }
   else if t == "mastersthesis" or t == "phdthesis" or t == "thesis" { blx-report(e, style: style, suffix: year-suffix, thesis: true) }
   else if t == "techreport" or t == "report" { blx-report(e, style: style, suffix: year-suffix) }
-  else if t == "periodical" { blx-article-like(e, style: style, suffix: year-suffix, quoted: false) }
+  else if t == "periodical" {
+    blx-blocks(
+      blx-lead(e, style: style, suffix: year-suffix),
+      blx-title(e, style: style, quoted: false, sentence: false),
+      blx-periodical-journal(e),
+      blx-note(e),
+      ..blx-tail(e),
+    )
+  }
   else { blx-blocks(blx-lead(e, style: style, suffix: year-suffix), blx-title(e, style: style, sentence: style == "numeric"), ..blx-tail(e)) }
 }
 
@@ -1255,6 +1300,16 @@
   if names == "" and has(e, "key") { names = lower(purify(fld(e, "key"))) }
   let y = if has(e, "year") { fld(e, "year") } else { "" }
   names + "   " + y + "   " + lower(purify(fld(e, "title", d: "")))
+}
+
+#let blx-sort-key(e) = {
+  let ppl = e.names.at("author", default: e.names.at("editor", default: ()))
+  let names = ppl.map(n => (n.von + " " + n.last + " " + n.first).trim()).join(" ")
+  if names == none { names = "" }
+  names = lower(purify(names))
+  if names == "" and has(e, "key") { names = lower(purify(fld(e, "key"))) }
+  let y = if has(e, "year") { fld(e, "year") } else { "" }
+  names + "   " + lower(purify(fld(e, "title", d: ""))) + "   " + y
 }
 
 #let cited-state = state("acmref-cited", ())
@@ -1313,7 +1368,7 @@
 #let resolve-biblatex(db, cited) = {
   let db2 = blx-biber-datamodel(db)
   let listed = cited.filter(k => k in db2)
-  (db: db2, order: listed.sorted(key: k => sort-key(db2.at(k))))
+  (db: db2, order: listed.sorted(key: k => blx-sort-key(db2.at(k))))
 }
 
 // resolved (db, order) for the current cited set

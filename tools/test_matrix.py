@@ -663,11 +663,12 @@ TESTS: dict[str, Test] = {
     "sample-acmsmall-biblatex": Test(
         kind="twin", pages=11, metrics=False,
         text_equal=False,
-        text_reason="BibLaTeX word bag still differs on open driver gaps and "
-                    "extraction artifacts: software SWHID/URL wrapping, month/date "
-                    "strings, and full-sample line-break glue",
-        char_diff="remaining BibLaTeX driver/extraction deltas in software identifiers, "
-                  "dates, editor strings, URL/SWHID wrapping, and punctuation",
+        text_reason="TODO: full-sample word bag still differs on extraction "
+                    "artifacts: proceedings-template/horizontally-is line-break glue "
+                    "plus wrapped URL/SWHID/software identifiers",
+        char_diff="TODO: remove after PDF extraction normalization handles the "
+                  "remaining punctuation/case deltas from wrapped URL/SWHID/software "
+                  "identifiers in the full sample",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="wide-table paragraph, math chunks, and long BibLaTeX software "
                    "identifier spans reorder in the flat extraction",
@@ -677,6 +678,21 @@ TESTS: dict[str, Test] = {
                    "2020]. Software Module: [Karavelas 2020]. Code fragment: "
                    "[Di Cosmo and Danelutto 2020]."),
             Assertion(engine="both", text="[SW exc.] Roberto Di Cosmo and Marco Danelutto"),
+            Assertion(engine="both", text="R. Baggett, M. Simecek, C. Chambellan, "
+                      "K. Tsui, and M. Fraune. 2025. Fluidity in the Phased Framework "
+                      "of Technology Acceptance"),
+            Assertion(engine="both", text="Mobile Telepresence Robots. (2025)."),
+            Assertion(engine="both", text="Jacques Cohen, (Ed.). Nov. 1996. "
+                      "Special issue: Digital Libraries. Commun. ACM 39, 11 "
+                      "(Nov. 1996)."),
+            Assertion(engine="both", text="David Harel. 1979. First-Order Dynamic "
+                      "Logic. Lecture Notes in Computer Science. Vol. 68."),
+            Assertion(engine="both", text="David Harel. 1978. LOGICS of Programs: "
+                      "AXIOMATICS and DESCRIPTIVE POWER. MIT Research Lab Technical "
+                      "Report TR-200."),
+            Assertion(engine="both", text="Newton Lee. Jan. 2005. \"Interview with "
+                      "Bill Kinder: January 13, 2005.\" Comput. Entertain., 3, 1, "
+                      "(Jan. 2005), 4."),
         ),
         note="upstream acmsmall-biblatex sample: acmsmall with BibLaTeX acmauthoryear "
              "style (author-year), including biblatex-software artifact cites "
@@ -686,11 +702,12 @@ TESTS: dict[str, Test] = {
     "sample-sigconf-biblatex": Test(
         kind="twin", pages=7, _page_parity=False, metrics=False,
         text_equal=False,
-        text_reason="BibLaTeX numeric sample still differs on open driver gaps plus "
-                    "software SWHID/URL wrapping and full two-column line-break "
-                    "extraction",
-        char_diff="remaining BibLaTeX driver/extraction deltas in software identifiers, "
-                  "dates, editor strings, URL/SWHID wrapping, and punctuation",
+        text_reason="TODO: full-sample word bag still differs on extraction/page-flow "
+                    "artifacts: 7-vs-6 page headers plus wrapped URL/SWHID/software "
+                    "identifiers",
+        char_diff="TODO: remove after the numeric BibLaTeX sample fits LaTeX's page "
+                  "count and extraction normalization handles the remaining wrapped "
+                  "URL/SWHID/software punctuation",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         order_diff="two-column table/math chunks and long BibLaTeX software identifier "
                    "spans reorder in the flat stream",
@@ -698,18 +715,22 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Software project: [41, 12]. Software Version: "
                    "[17]. Software Module: [25]. Code fragment: [13]."),
             Assertion(engine="both", text="[SW Rel.] Ben Greenman and Matthias Felleisen"),
+            Assertion(engine="both", text="2004. Ieee tcsc executive committee. In "
+                      "Proceedings of the IEEE International Conference on Web Services"),
+            Assertion(engine="both", text="3, 1, (Jan. 2005), 4. doi: "
+                      "10.1145/1057270.1057278."),
+            Assertion(engine="both", text="2017. Institutional members of the TEX users "
+                      "group. Retrieved May 27, 2017"),
         ),
         note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
              "(numeric), including biblatex-software artifact cites from software.bib. "
              "BibLaTeX-specific regular reference formatting is tracked by "
              "biblatex-test; the table* caveat follows sample-sigconf. Page parity is "
-             "still disabled because the remaining BibLaTeX/software reference reflow "
-             "pushes Typst to 7 pages while LaTeX fits in 6.",
+             "a TODO: the numeric BibLaTeX/software reference block still reflows to "
+             "7 Typst pages while LaTeX fits in 6.",
     ),
     "sample-acmcp": Test(
         kind="twin", pages=1, metrics=False, text_equal="bag",
-        char_diff="exact word bag and chunk order pass; pdftotext extracts one extra "
-                  "semicolon in the Typst contact-info sidebar after John Smith",
         font_diff=_FULL_SAMPLE_FONT_DIFF,
         note="upstream acmcp sample: single-column JDS format, rotated article-type "
              "banner, cover infobox with code/data links and author contributions. "
