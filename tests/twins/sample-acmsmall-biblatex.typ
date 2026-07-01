@@ -2,7 +2,7 @@
 // docstrip option `all,acmsmall,biblatex`). The acmsmall journal format with the
 // BibLaTeX acmauthoryear style (author-year citations). Bibliographic entries from
 // software.bib that use biblatex-software entry types (@software/@softwaremodule/
-// @codefragment) cannot be rendered by the BST backend and are omitted.
+// @codefragment) are not fully ported and are omitted.
 // Diffed against out/latex/acmsmall-biblatex.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body

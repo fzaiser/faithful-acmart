@@ -368,21 +368,12 @@ TESTS: dict[str, Test] = {
     ),
     "biblatex-test": Test(
         kind="twin", pages=1,
-        char_diff="isolates the BibLaTeX acmnumeric-vs-Typst bibliography gap: "
-                  "BibLaTeX/biber uses different title casing, journal names, DOI "
-                  "punctuation, and online retrieval fields than both the CSL and "
-                  "bst renderers.",
-        font_diff="same BibLaTeX formatting gap: the reference entries reflow across "
-                  "different words, so the per-letter font bag is not meaningful.",
-        order_diff="intentional BibLaTeX-vs-Typst bibliography formatting comparison; "
-                   "reference chunks reflow and do not share stable ordering.",
         text_assertions=(
             Assertion(engine="latex", text="Communications of the ACM"),
             Assertion(engine="typst", text="References"),
         ),
         note="small BibLaTeX acmnumeric isolator so the full sample-sigconf-biblatex "
-             "reference-format difference can be inspected without the full upstream "
-             "sample body.",
+             "reference-format path is checked without the full upstream sample body.",
     ),
     "bib-all": Test(
         kind="twin", pages=1,
@@ -585,16 +576,15 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=11, **_SAMPLE_COMMON,
         note="upstream acmsmall-biblatex sample: acmsmall with BibLaTeX acmauthoryear "
              "style (author-year). Software artifact cites from software.bib "
-             "(@software/@softwaremodule/@codefragment) are omitted — these biblatex-"
-             "software entry types have no equivalent in the bst backend.",
+             "(@software/@softwaremodule/@codefragment) are still omitted because "
+             "biblatex-software is not fully ported.",
     ),
     "sample-sigconf-biblatex": Test(
         kind="twin", pages=6, **_SAMPLE_COMMON,
         note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
-             "(numeric). The Typst port still uses the bst/CSL bibliography machinery, "
-             "so BibLaTeX-specific reference formatting and software artifact entries "
-             "are tracked separately by biblatex-test. The table* caveat follows "
-             "sample-sigconf.",
+             "(numeric). BibLaTeX-specific regular reference formatting is tracked by "
+             "biblatex-test; biblatex-software artifact entries remain omitted. The "
+             "table* caveat follows sample-sigconf.",
     ),
     "sample-acmcp": Test(
         kind="twin", pages=1, **_SAMPLE_COMMON,

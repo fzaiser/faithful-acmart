@@ -30,8 +30,9 @@
 // the built-in "bst" field renderer, exported so a custom `tex-render` can wrap it
 #import "parts/tex.typ": tex-to-content as default-tex-render
 
-// "bst" bibliography backend (pure-Typst ACM-Reference-Format port). Use these in
-// place of `@key` / `#bibliography(...)` when `bibliography-backend: "bst"`.
+// ACM bibliography backends (pure-Typst ACM-Reference-Format and ACM BibLaTeX
+// ports). Use these in place of `@key` / `#bibliography(...)` when routing
+// through an ACM backend.
 // acm-cite = \citep (numeric "[N]" or author-year "[Author Year]"); acm-citet =
 // \citet ("Author [Year]"); acm-citeyear / acm-citeauthor = the bare parts.
 #let acm-cite = bbl-cite
@@ -43,7 +44,13 @@
   if cfg == none {
     bbl-bibliography(path, title: title)
   } else {
-    bbl-bibliography(path, title: title, size: cfg.size.footnotesize, leading: comp(cfg, sz: "footnotesize"))
+    bbl-bibliography(
+      path,
+      title: title,
+      size: cfg.size.footnotesize,
+      leading: comp(cfg, sz: "footnotesize"),
+      format: if cfg.bib-backend == "biblatex" { "biblatex" } else { "bst" },
+    )
   }
 }
 
@@ -128,11 +135,10 @@
   print-folios: auto,
   // Bibliography engine. "csl" (default) uses Typst's native bibliography() with
   // the vendored ACM CSL — idiomatic, but bounded by hayagriva's BibTeX->CSL data
-  // mapping. "bst" uses the pure-Typst port of ACM-Reference-Format.bst (no extra
-  // dependencies), reached via the acm-cite / acm-bibliography functions; it
-  // reproduces the .bst's reference text exactly. See DESIGN.md.
+  // mapping. "bst" uses the pure-Typst port of ACM-Reference-Format.bst, and
+  // "biblatex" uses the pure-Typst ACM BibLaTeX acmnumeric/acmauthoryear port.
   bibliography-backend: "csl",
-  // Citation style for the "bst" backend, mirroring acmart's \citestyle:
+  // Citation style for ACM bibliography backends, mirroring acmart's \citestyle:
   // "numeric" (default, "[N]") or "author-year" ("[Author Year]" + a/b/c years).
   cite-style: "numeric",
   // Override how the "bst" backend renders the RAW TeX of a reference field to
@@ -257,8 +263,8 @@
     proof: lang.proof,
     table: lang.table,
   ), lang: lang.code, bib-backend: bibliography-backend)
-  assert(bibliography-backend in ("csl", "bst"),
-    message: "acmart: `bibliography-backend` must be \"csl\" or \"bst\".")
+  assert(bibliography-backend in ("csl", "bst", "biblatex"),
+    message: "acmart: `bibliography-backend` must be \"csl\", \"bst\", or \"biblatex\".")
   assert(cite-style in ("numeric", "author-year"),
     message: "acmart: `cite-style` must be \"numeric\" or \"author-year\".")
   cite-style-state.update(cite-style)
@@ -582,24 +588,25 @@
     colorize(it.dest, { show "-": "\u{2011}"; it })
   }
 
-  // "bst" backend: route bare `@key` / `#cite` through the bst engine (acm-cite),
+  // ACM bibliography backends: route bare `@key` / `#cite` through the ACM engine
+  // (acm-cite),
   // the way alexandria/pergamon hook native citations. A `ref` whose target resolves
   // to no document label (`it.element == none`) is a citation; figures/headings/
   // equations (a real element) pass through unchanged. `acm-cite` & friends still
   // work too. The gate is INSIDE the closure (not an `if` block) so the rule reaches
   // the body below; for the "csl" backend both rules are the identity, leaving
   // Typst's native `@key` / `#cite` untouched.
-  show ref: it => if bibliography-backend == "bst" and it.element == none {
+  show ref: it => if bibliography-backend != "csl" and it.element == none {
     bbl-cite(str(it.target))
   } else { it }
-  show cite: it => if bibliography-backend == "bst" { bbl-cite(str(it.key)) } else { it }
+  show cite: it => if bibliography-backend != "csl" { bbl-cite(str(it.key)) } else { it }
   // …and the reference list: a native `#bibliography(...)` is redirected to the bst
   // renderer too, so the whole flow can be idiomatic Typst (`@key` + `#bibliography`)
   // rather than `acm-cite`/`acm-bibliography`. `it.sources` is the path list; the
   // title falls back to acmart's "References". (Caveat: Typst still validates the
   // source through hayagriva when constructing the element, so a file hayagriva can't
   // parse errors before this rule — use `acm-bibliography` to bypass that entirely.)
-  show bibliography: it => if bibliography-backend == "bst" {
+  show bibliography: it => if bibliography-backend != "csl" {
     acm-bibliography(it.sources, title: if it.title == auto { [References] } else { it.title })
   } else { it }
 

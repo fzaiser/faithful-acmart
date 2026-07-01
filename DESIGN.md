@@ -184,7 +184,7 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 > titles, so always validate against the bundled class — the LaTeX build is wired
 > to generate it from [`acmart/`](acmart/) (see `tools/test.py`'s `ensure_class`).
 
-**Bibliography — two backends (`bibliography-backend`):**
+**Bibliography — three backends (`bibliography-backend`):**
 - **`"csl"` (default)** — idiomatic Typst: native `bibliography()` with a vendored
   fork of the upstream ACM CSL at [`src/styles/acm-reference-format.csl`](src/styles/acm-reference-format.csl),
   edited to track the bundled `.bst` (DOI prints `doi:<id>`, abbreviated months,
@@ -220,6 +220,15 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   not von; the von part may include leading uppercase tokens (`De la`); and a bare
   `\ss` doesn't split its token (`Stra\ss e` → Last). Verified field-by-field
   against the real bibtex binary (oracle cases pinned in `tests/unit/bibtex.typ`).
+- **`"biblatex"` — ACM BibLaTeX, no extra dependencies.** A sibling renderer in
+  [`parts/acmref.typ`](src/parts/acmref.typ) ports the visible reference formatting
+  of ACM's `acmnumeric.bbx` and the `acmauthoryear.bbx` deltas while reusing the
+  same `.bib` reader, sort/cite state, native `@key` / `#bibliography` routing, and
+  `cite-style: "numeric" | "author-year"` switch as the `.bst` backend. This covers
+  BibLaTeX's sentence-cased numeric titles, preserved/quoted author-year titles,
+  full journal names, `doi: <id>` punctuation, `lastaccessed` retrieval dates,
+  BibLaTeX `In:`/booktitle italics, and journal italics. The `biblatex-test` twin
+  gates the acmnumeric isolator against biber with no char/font/order exemption.
 
   **Implemented (each validated against real bibtex):**
   - **Author-year citation mode** — `cite-style: "author-year"` (acmart's
@@ -244,7 +253,7 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
     (`output.url`'s `distinctURL empty.or.zero not`).
   - **Native `@key` / `#cite` / `#bibliography` routing.** Document-level
     `show ref:`/`show cite:`/`show bibliography:` rules (in `lib.typ`, gated to
-    `bibliography-backend: "bst"`) intercept citations *and* the reference list and
+    `bibliography-backend != "csl"`) intercept citations *and* the reference list and
     render them through the engine — the same show-rule hook `alexandria` /
     `pergamon` use. A `ref` whose target resolves to no document label
     (`it.element == none`) is a citation; real elements (figures/headings/equations)
@@ -428,11 +437,11 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 - Math fidelity untuned (Libertinus Math ≈ newtxmath, best-effort).
 - **`biblatex-software` artifact entry types** (`@software`, `@softwaremodule`,
   `@softwareversion`, `@codefragment` from the `biblatex-software` CTAN package)
-  have no equivalent in our CSL or BST backends. The `sample-acmsmall-biblatex`
+  are still not a full port of `software.bbx`. The `sample-acmsmall-biblatex`
   and `sample-sigconf-biblatex` upstream-ref ports therefore omit the
   Software-project/version/module/fragment cite block from the Citations section,
-  noting it as a known gap; the rest of the bibliography (all `sample-base.bib`
-  entries) reproduces correctly.
+  noting it as a known gap; regular `sample-base.bib` entries can use the
+  `"biblatex"` backend.
 - **Engine-variant and accessibility-tagged samples** (three of the 18 bundled
   acmart samples) are not ported as upstream-ref tests: `sigconf-lualatex` is
   docstrip-identical to `sigconf` (same flags, just a different engine note in the

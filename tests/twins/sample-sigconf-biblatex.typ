@@ -2,7 +2,7 @@
 // docstrip option `all,proceedings,sigconf,biblatex`). The sigconf proceedings
 // format with the BibLaTeX acmnumeric style (numbered citations, default). Software
 // artifact cites from software.bib (@software/@softwaremodule/@codefragment entry
-// types) cannot be rendered by the CSL backend and are omitted.
+// types) are not fully ported and are omitted.
 // Diffed against out/latex/sigconf-biblatex.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
