@@ -49,8 +49,13 @@ missed.
   char bag on *every* twin — and the char bag is deliberately minimal (NFKC + drop
   dashes + fold quote/star + drop whitespace; numbers/dashes delegated to the word
   bag, folios to the fixtures). Whatever difference survives a gate is real: fix
-  it, or document it with a one-line `char_diff` / `text_reason` exemption — don't
-  expand the normalization. When asked *why* a normalization step is needed,
+  it, or document it with validated `expected_text_diffs` fragments whose cause
+  is `ExtractionArtifact("...")` or `TypstTranslation("...")` — don't expand the
+  normalization. Font and order exemptions likewise live in validated
+  `expected_font_diffs` / `expected_order_diffs` entries. Link mismatches live in
+  `expected_link_diff`; the link gate always runs and fails if the field does not
+  match reality.
+  When asked *why* a normalization step is needed,
   verify the mechanism (ablate it; read both `pdftotext` dumps) before answering —
   in this codebase the plausible explanation was wrong more than once.
 - **Keep it idiomatic.** When touching code, apply the simplification checklist in

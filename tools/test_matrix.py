@@ -20,7 +20,7 @@ The Tier 1 goldens are captured with `TYPST_VERSION` + the bundled fonts at
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # The engine the Tier 1 goldens were captured with. Bumping Typst means
 # regenerating the golden hashes (`tools/test.py accept`).
@@ -61,6 +61,68 @@ class Assertion:
 
 
 @dataclass(frozen=True)
+class ExtractionArtifact:
+    """A tolerated mismatch caused by PDF extraction or layout-stream asymmetry."""
+
+    reason: str
+
+
+@dataclass(frozen=True)
+class TypstTranslation:
+    """A tolerated mismatch caused by an unfaithful Typst translation."""
+
+    reason: str
+
+
+DiffCause = ExtractionArtifact | TypstTranslation
+DIFF_CAUSE_TYPES = (ExtractionArtifact, TypstTranslation)
+
+
+@dataclass(frozen=True)
+class ExpectedTextDiff:
+    """A documented, validated text fragment pair for an intentional mismatch.
+
+    These are for twins whose whole-document word or char bags cannot be exact:
+    ``latex`` and ``typst`` are coherent snippets from the extracted PDF text.
+    ``cause`` carries both the category and the local, human-readable reason.
+    """
+
+    latex: str
+    typst: str
+    cause: DiffCause
+    page: int | None = None
+
+
+@dataclass(frozen=True)
+class ExpectedFontDiff:
+    """A documented, validated fragment pair anchoring a font-gate exemption.
+
+    The snippets identify the content whose rendered font/size/shape differs.
+    They may normalize to the same text, because font differences often affect
+    the same glyphs rather than the extracted characters.
+    """
+
+    latex: str
+    typst: str
+    cause: DiffCause
+    page: int | None = None
+
+
+@dataclass(frozen=True)
+class ExpectedOrderDiff:
+    """A documented, validated fragment pair anchoring an order-gate exemption.
+
+    The snippets should show the LaTeX flat extraction order and the Typst
+    extracted/logical order that the harness intentionally tolerates.
+    """
+
+    latex: str
+    typst: str
+    cause: DiffCause
+    page: int | None = None
+
+
+@dataclass(frozen=True)
 class Test:
     """One test stem and how the gates treat it.
 
@@ -70,36 +132,34 @@ class Test:
     median baseline pitch is meaningful and gated. ``page1_only`` gates absolute
     vertical positions on page 1 only (multi-page docs drift downward via
     acmsmall's \\flushbottom, which Typst can't replicate). ``text_equal`` /
-    ``text_reason`` / ``text_assertions`` drive Tier 1.5. ``note`` is
-    documentation only.
+    ``expected_text_diffs`` / ``text_assertions`` drive Tier 1.5. ``note`` is
+    documentation only. Expected diff entries explain their cause with either
+    ``ExtractionArtifact("...")`` or ``TypstTranslation("...")``.
 
     ``text_equal`` selects the Tier 1.5 whole-document text gate:
-    ``True`` exact normalized-sequence equality (strictest; single-column docs
-    whose lines extract in the same order); ``"bag"`` exact word-MULTISET equality
-    — order-independent, for twins whose blocks reorder under extraction (two
-    -column flow, footnotes, the acmcp cover infobox), but still catches any single
-    word that goes missing or appears; ``False`` not gated (give ``text_reason``);
-    ``None`` unset.
+    ``True`` exact normalized-sequence equality; ``"bag"`` exact word multiset
+    equality for extraction-order noise; ``False`` exempt with
+    ``expected_text_diffs``; ``None`` unset.
 
     Independently of ``text_equal``, EVERY twin is also gated by an exact char
-    -multiset check (``char_bag``) — a stricter tripwire that keeps punctuation and
-    so catches a stray comma/period the word bag's edge-strip drops. Set
-    ``char_diff`` to a one-line reason to exempt a twin whose char bags cannot
-    match (a known content difference, or a pdftotext extraction artifact).
+    multiset check (``char_bag``). If char bags differ, ``expected_text_diffs``
+    are required and serve as the exemption evidence.
 
     EVERY twin is ALSO gated by the Tier 1.8 per-letter FONT check (``font_bag``,
     via PyMuPDF): each alphabetic character must render in the same family (serif/
-    sans/mono), weight, italic, size, and colour as LaTeX. Set ``font_diff`` to a
-    one-line reason to exempt a twin whose fonts cannot match (a known content
-    difference, or a math-fidelity gap).
+    sans/mono), weight, italic, size, and colour as LaTeX. ``expected_font_diffs``
+    exempt known font/content/math gaps and anchor them to PDF fragments.
 
     EVERY twin is ALSO gated by the Tier 1.9 per-chunk reading-ORDER check
     (``pdf_chunks``, via pikepdf): the tagged Typst PDF's logical chunks (title,
     each author line, contact-info, headings, bib entries) must appear in the flat
     LaTeX stream in the same intra-chunk order — catching an element emitted out of
-    order (an affiliation/email swap, a reordered citation field) that the order
-    -independent word/char bags cannot see. Set ``order_diff`` to a one-line reason
-    to exempt a twin whose chunk order cannot be checked (an extraction asymmetry).
+    order (an affiliation/email swap, a reordered citation field) that the
+    order-independent word/char bags cannot see. ``expected_order_diffs`` exempt
+    known extraction-order asymmetries and anchor them to PDF fragments.
+
+    EVERY twin's hyperlink set is compared against LaTeX. ``expected_link_diff``
+    must be empty when links match, and nonempty when a known mismatch remains.
     """
 
     kind: str
@@ -111,12 +171,11 @@ class Test:
     page1_only: bool = False
     uniform_pitch: bool = False
     text_equal: bool | str | None = None
-    text_reason: str | None = None
+    expected_text_diffs: tuple[ExpectedTextDiff, ...] = ()
     text_assertions: tuple[Assertion, ...] = ()
-    char_diff: str = ""
-    font_diff: str = ""  # exempt a twin from the Tier 1.8 per-letter font/size/colour gate
-    order_diff: str = ""  # exempt a twin from the Tier 1.9 per-chunk reading-order gate
-    link_check: bool = False  # compare hyperlink (/URI) sets LaTeX vs Typst
+    expected_font_diffs: tuple[ExpectedFontDiff, ...] = ()
+    expected_order_diffs: tuple[ExpectedOrderDiff, ...] = ()
+    expected_link_diff: str = ""  # nonempty reason for an expected hyperlink-set mismatch
     note: str = ""
 
     @property
@@ -145,9 +204,27 @@ def reference_for(name: str, t: Test) -> str:
 # Full bundled samples are broad integration fixtures. Focused twins above gate
 # the exact geometry, fonts, order, and bibliography details; these samples keep
 # only the gates that are meaningful for their current extraction profile.
-_FULL_SAMPLE_FONT_DIFF = (
-    "full sample mixes math, verbatim, references, and sidebars that reflow "
-    "differently; focused twins gate body fonts"
+_FULL_SAMPLE_FONT_EVIDENCE = (
+    ExpectedFontDiff(
+        latex="A formula that appears in the running text",
+        typst="A formula that appears in the running text",
+        cause=TypstTranslation(
+            "Full samples include math/reference/sidebar font cases covered by focused twins."
+        ),
+    ),
+)
+
+_AUTHOR_LINK_DIFF = (
+    "LaTeX adds implicit author email/ORCID PDF annotations; Typst currently "
+    "renders those fields as text without matching hidden links."
+)
+_BIBLATEX_LINK_DIFF = (
+    _AUTHOR_LINK_DIFF
+    + " BibLaTeX DOI/arXiv wrapper annotations also differ from Typst's targets."
+)
+_ENGAGE_LINK_DIFF = (
+    "LaTeX adds implicit Engage author email PDF annotations; Typst currently "
+    "renders those fields as text without matching hidden links."
 )
 
 # --- The test matrix -------------------------------------------------------
@@ -186,15 +263,18 @@ TESTS: dict[str, Test] = {
     ),
     "title-test": Test(
         kind="twin", pages=1,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="frontmatter in isolation: title block, author fields, abstract, CCS, keywords",
     ),
     "manuscript-test": Test(
         kind="twin", pages=1,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=manuscript: single-column draft geometry (letterpaper, 9pt default) "
              "with the generic sans-bold section fonts shared with acmsmall.",
     ),
     "manuscript-pages-test": Test(
         kind="twin", pages=2, page1_only=True, text_equal="bag",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="Manuscript submitted to ACM"),
@@ -204,11 +284,13 @@ TESTS: dict[str, Test] = {
     ),
     "acmlarge-test": Test(
         kind="twin", pages=1,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=acmlarge: large single-column journal geometry (10pt) with the "
              "\\sffamily\\large (regular-weight) section headings (acmart.dtx:8424).",
     ),
     "acmlarge-pages-test": Test(
         kind="twin", pages=2, page1_only=True, text_equal="bag",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="111:2"),
@@ -219,12 +301,14 @@ TESTS: dict[str, Test] = {
     ),
     "acmtog-test": Test(
         kind="twin", pages=1, page1_only=True,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=acmtog: two-column JOURNAL. Spanning left @i title + author list, "
              "contact-info footnote + ACM bibstrip + journal footer, 9pt parindent, "
              "sans-large sections.",
     ),
     "acmtog-pages-test": Test(
         kind="twin", pages=2, page1_only=True, text_equal="bag",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="111:2"),
@@ -236,6 +320,7 @@ TESTS: dict[str, Test] = {
     ),
     "sigconf-test": Test(
         kind="twin", pages=1, page1_only=True, text_equal="bag",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", text="Abstract"),
             Assertion(engine="both", text="Keywords"),
@@ -244,13 +329,11 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", kind="absent", text="Additional Key Words and Phrases"),
             Assertion(engine="typst", kind="absent", text="Journal of the ACM"),
         ),
-        note="format=sigconf: two-column proceedings. Spanning centered title + author "
-             "grid, first-column copyright block, serif-bold Large sections. Two columns "
-             "break differently across engines (higher pixel mismatch expected); "
-             "page1_only gates absolute positions on the title page only.",
+        note="format=sigconf: two-column proceedings title page; text is word-bag gated.",
     ),
     "sigconf-pages-test": Test(
         kind="twin", pages=2, page1_only=True, text_equal="bag",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2,
@@ -261,30 +344,29 @@ TESTS: dict[str, Test] = {
     ),
     "sigconf-authors-test": Test(
         kind="twin", pages=1, page1_only=True,
-        note="Conference author grid with a PARTIAL last row (5 groups at 3-per-row => "
-             "3 + 2). Guards make-authors-grid's per-row centering: the final row of 2 "
-             "is centered, not left-aligned (validated against LaTeX).",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
+        note="Conference author grid with a centered partial final row.",
     ),
     "sigplan-test": Test(
         kind="twin", pages=1, metrics=False,
-        note="format=sigplan: sigconf variant — serif-bold Huge title (no sans), 10pt, "
-             "1in/0.75in margins, serif-bold sections, sans URLs. Tier 2 top-position is "
-             "report-only: the Huge serif title pins its cap-top to the margin, but "
-             "topmost-ink overshoots LaTeX's baseline placement by ~5pt of glyph bbox.",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
+        note="format=sigplan: 10pt proceedings variant; metrics are report-only for title bbox drift.",
     ),
     "acmengage-test": Test(
         kind="twin", pages=1, metrics=False,
-        note="format=acmengage: sigconf variant (10pt, booktitle copyright line). Tier 2 "
-             "top-position is report-only (same reason as sigplan): the 10pt Huge title "
-             "pins its cap-top to the margin but topmost-ink overshoots by ~5pt. Left "
-             "edge matches.",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
+        note="format=acmengage: 10pt sigconf variant with Engage copyright metadata.",
     ),
     "acmcp-test": Test(
         kind="twin", pages=1, metrics=False, text_equal=False,
-        text_reason="the cover-infobox code/data link now shows the full URL (matching "
-                    "\\url), so the exact char bag gates cleanly. The URL is wider than the "
-                    "5pc box: Typst wraps it (example.com / data) where LaTeX overflows the "
-                    "box on one line, so only the word bag would split that one token.",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="Code and data links: https://example.com/data Background",
+                typst="Code and data links: https://example.com/ data Keywords: datasets",
+                cause=ExtractionArtifact("cover-infobox URL extraction"),
+            ),
+        ),
         text_assertions=(
             Assertion(engine="both", text="Research Article"),
             Assertion(engine="both", text="Keywords: datasets"),
@@ -298,22 +380,12 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", kind="absent",
                       text="Additional Key Words and Phrases"),
         ),
-        note="format=acmcp: ACM cover page (best-effort). Single-column, unnumbered "
-             "sections, ACM reference format off; the JDS cover frame + infobox ARE "
-             "reproduced (only the infobox's vertical anchoring is approximated). Tier 2 "
-             "is report-only: the page's first ink is the cover frame/logo, not the text "
-             "block.",
+        note="format=acmcp: JDS cover page, infobox, unnumbered sections, and author contributions.",
     ),
     "sigchi-a-test": Test(
         kind="twin", pages=2, page1_only=True, metrics=False, text_equal="bag",
-        note="format=sigchi-a: landscape SIGCHI extended abstracts. The @mktitle@iv head "
-             "(5pc-leftskip title under a 2pt rule), the @mkauthors@iv author grid (bold "
-             "mixed-case name + email + affiliation, 2 per row, left-aligned), the one-sided "
-             "running head (shorttitle + dated conference), and the 'Legacy document' "
-             "watermark (breaking before 'ACM venue') now all match LaTeX — char AND word "
-             "bags are exact. Remaining approximation: margin-note footnotes (\\marginpar) "
-             "are omitted, so cross-engine geometry is report-only (metrics off); the twin "
-             "gates page-count parity and the exact text bags.",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
+        note="format=sigchi-a: landscape extended abstract; text bags and page parity are gated.",
     ),
     "fontsize-8-test": Test(
         kind="twin", pages=1, uniform_pitch=True, text_equal=True,
@@ -334,19 +406,35 @@ TESTS: dict[str, Test] = {
     ),
     "bib-test": Test(
         kind="twin", pages=1, uniform_pitch=True,
-        char_diff="vendored ACM CSL now matches the .bst on doi:/month/genre/conf-date; "
-                  "residual gaps are hayagriva BibTeX->CSL mapping limits (dropped "
-                  "lastaccessed date, @periodical journal name, thesis school+advisor and "
-                  "\"Ph. D.\" vs \"Doctoral dissertation\" wording, conference address)",
-        font_diff="same CSL-vs-bst content differences (above): the reference list reflows, "
-                  "so per-letter font counts differ on the diverging words (all serif, same "
-                  "sizes — not a font bug)",
-        note="bibliography. src/styles/acm-reference-format.csl is forked to track the "
-             "bundled ACM-Reference-Format.bst (doi: prefix, abbreviated months, report "
-             "genre label, thesis note, conference-location parens). The remaining "
-             "divergences are data hayagriva never populates from the .bib, so the list "
-             "reflows slightly and line count is reported, not gated. Margins/pitch are "
-             "held to the same bar.",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="bibliography style [1] [4] [3] [7] [6] [2] [8] [5]. References",
+                typst="bibliography style [1-8]. References",
+                cause=TypstTranslation("cite list compaction"),
+            ),
+            ExpectedTextDiff(
+                latex="version 11. Retrieved February 28, 2008 from "
+                      "http://math.tntech.edu/rafal/cliff11/index.html",
+                typst="version 11. Retrieved from "
+                      "http://math.tntech.edu/rafal/cliff11/index.html",
+                cause=TypstTranslation("dropped last-accessed date"),
+            ),
+            ExpectedTextDiff(
+                latex="Ph. D. Dissertation. Stanford University, Stanford, CA, USA. "
+                      "Advisor(s) Yao, Andrew C.",
+                typst="Doctoral dissertation. Stanford, CA, USA. AAT 8506171.",
+                cause=TypstTranslation("thesis type and school mapping"),
+            ),
+        ),
+        expected_font_diffs=(
+            ExpectedFontDiff(
+                latex="Ph. D. Dissertation. Stanford University, Stanford, CA, USA. "
+                      "Advisor(s) Yao, Andrew C.",
+                typst="Doctoral dissertation. Stanford, CA, USA. AAT 8506171.",
+                cause=TypstTranslation("CSL/BST reference-content font fallout"),
+            ),
+        ),
+        note="CSL bibliography parity fixture; remaining Hayagriva mapping gaps are documented diffs.",
     ),
     "biblatex-test": Test(
         kind="twin", pages=1,
@@ -371,10 +459,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Institutional members of the TEX Users Group. "
                       "Retrieved May 27, 2017"),
         ),
-        note="Focused ACM BibLaTeX acmauthoryear edge cases from the full upstream "
-             "sample: inbook/incollection drivers, series/volume/editor order, "
-             "video/howpublished month handling, authorless online entries, and ISBN "
-             "output for multivolume books.",
+        note="BibLaTeX author-year edge cases: book chapters, videos, authorless online entries, ISBNs.",
     ),
     "biblatex-driver-test": Test(
         kind="twin", pages=1,
@@ -387,36 +472,15 @@ TESTS: dict[str, Test] = {
                       "Ed. by Eve Editor and Oscar Organizer"),
             Assertion(engine="both", text="isbn: 978-1-23456-789-7"),
         ),
-        note="Focused acmauthoryear driver-order regression from the actual ACM "
-             "BibLaTeX stack: acmauthoryear.bbx plus inherited standard.bbx "
-             "macros for book, inbook, and incollection with series/number, "
-             "edition, volume, editor, note, chapter/pages, and ISBN fields.",
+        note="BibLaTeX driver order for book, inbook, and incollection fields.",
     ),
     "bib-all": Test(
         kind="twin", pages=1,
-        note="Every ACM-Reference-Format entry type via the `bst` bibliography backend "
-             "(acmart.with(bibliography-backend=\"bst\") + acm-cite/acm-bibliography). A "
-             "pure-Typst port of ACM-Reference-Format.bst (src/parts/{bibtex,acmref}.typ) "
-             "that reproduces the .bst's reference text exactly — char bag gated with NO "
-             "exemption (contrast bib-test's CSL gaps). One representative of each handler: "
-             "article, periodical, book, inbook, incollection, inproceedings, mastersthesis, "
-             "phdthesis, techreport, online, misc, manual, presentation, underreview, "
-             "preprint, software, dataset, proceedings, booklet. Reads sample-base.bib plus "
-             "the crafted tests/twins/bib-all-extra.bib (clean proceedings/booklet/manual). "
-             "Pitch reported, not gated (heading + hanging-indent grid mix leadings). "
-             "link_check gates the DOI/URL/arXiv hyperlink set against bibtex+hyperref.",
-        link_check=True,
+        note="BST backend sweep over ACM-Reference-Format entry types; text and links are gated.",
     ),
     "bib-edge": Test(
         kind="twin", pages=1,
-        note="Field/path edge cases of the bst backend that bib-all's type sweep doesn't "
-             "hit, each source-audited against ACM-Reference-Format.bst: strip.doi host "
-             "prefix, reduce.pages.to.page.count, format.bookpages, book \"pages\" label, "
-             "issue, howpublished in article/inproceedings, format.key fallback, journal "
-             "MACRO + canon.abbrev, @string/# concatenation, von-name parsing, unpublished, "
-             "and TeX accent/special-letter decoding (\\\"o->ö, \\H{o}->ő, \\ss->ß) via the "
-             "single-pass lexer in bibtex.typ. Char bag gated, no exemption; pitch reported.",
-        link_check=True,
+        note="BST backend edge cases: DOI/pages/key fallback, macros, strings, names, accents.",
         # Word-level guards for things the whitespace-free char bag can't see.
         text_assertions=(
             Assertion(engine="both", text="Tech Press, Ltd."),       # concat keeps the space
@@ -435,16 +499,7 @@ TESTS: dict[str, Test] = {
     ),
     "crossref": Test(
         kind="twin", pages=1,
-        note="BibTeX crossref handling reproduced by the bst backend (this is BibTeX "
-             "engine behaviour, not the .bst): field inheritance from the crossref'd "
-             "parent + the min_crossrefs=2 listing threshold. xparent is crossref'd "
-             "twice -> listed, so its children render the .bst's \"See [N]\" "
-             "(format.incoll.inproc.crossref); xlonely is crossref'd once -> not listed, "
-             "so xsolo inherits its booktitle/series/editor/publisher/address and renders "
-             "in full. Also covers the organization->key label fallback for "
-             "proceedings/manual (prockey) and the per-entry distinctURL field (durl: "
-             "url printed alongside the doi). Char bag gated, no exemption.",
-        link_check=True,
+        note="BibTeX crossref inheritance, listing threshold, key fallback, and distinct URL fields.",
         text_assertions=(
             Assertion(engine="both", text="See ["),                  # crossref "See [N]"
             Assertion(engine="both", text="Workshop on Small Things"),  # inherited booktitle (excluded parent)
@@ -453,12 +508,7 @@ TESTS: dict[str, Test] = {
     ),
     "authoryear": Test(
         kind="twin", pages=1,
-        note="bst backend in author-year citation mode (\\citestyle{acmauthoryear} / "
-             "cite-style=\"author-year\"): short \"Author et al. Year\" labels "
-             "(format.lab.names), the \\natexlab a/b year disambiguation on the two "
-             "colliding 2020 articles, and a reference list with NO leading numbers. "
-             "\\citep -> \"[Label Year]\" (with natbib year compression \"2020a,b\"); "
-             "\\citet -> \"Label [Year]\". Char bag gated, no exemption.",
+        note="BST backend author-year labels, year disambiguation, citations, and unnumbered references.",
         text_assertions=(
             Assertion(engine="both", text="2020a"),                  # \natexlab suffix
             Assertion(engine="both", text="Jones et al."),           # >2-author short label (\citet)
@@ -466,60 +516,53 @@ TESTS: dict[str, Test] = {
     ),
     "mathfields": Test(
         kind="twin", pages=1,
-        font_diff="residual math-rendering gap (variables now match — both slant via the "
-                  "math-italic codepoints): \\log renders in LaTeX's serif text font but "
-                  "Typst's math font, and math subscripts use a slightly different "
-                  "scriptstyle size (6 vs 5.5pt); not a body-text font bug",
-        note="inline math ($...$) in reference fields via the bst backend, rendered as "
-             "REAL Typst math (tex.typ tokenizer -> math evaluator -> eval): greek "
-             "letters, ^/_ grouping, relations/operators (\\leq, \\log), \\frac, "
-             "\\oplus, and \\mathbb. Real Typst math extracts to the same char bag as "
-             "LaTeX's math-italic output (𝜆, scripts as plain digits, ℝ->R under NFKC). "
-             "Also exercises the `tex-render` override (composed with default-tex-render) "
-             "for custom commands (\\widget, \\RR). Char bag gated, no exemption.",
+        expected_font_diffs=(
+            ExpectedFontDiff(
+                latex="Bounds of 𝑂 (𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞",
+                typst="Bounds of 𝑂(𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞",
+                cause=TypstTranslation("math operator font and scriptstyle size"),
+            ),
+        ),
+        note="BST reference-field math rendering, including operators, scripts, blackboard, and overrides.",
         text_assertions=(
             Assertion(engine="both", text="-calculus"),              # $\lambda$-calculus
         ),
     ),
     "keycite": Test(
         kind="twin", pages=1,
-        note="native `@key` citation routing for the bst backend: acmart installs a "
-             "`show ref:` rule (lib.typ, gated to bibliography-backend=\"bst\") that "
-             "intercepts bare `@Cohen07` refs whose target is no document label "
-             "(it.element == none) and renders them via the bst engine — the same "
-             "show-rule hook alexandria/pergamon use. The LaTeX twin uses \\cite. "
-             "Char bag gated, no exemption.",
-        link_check=True,
+        note="Native `@key` citations routed through the BST backend.",
     ),
     "notes-test": Test(
         kind="twin", pages=1,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "
              "The title block and footnote stack mix leadings, so pitch is reported, not gated.",
     ),
     "options-test": Test(
         kind="twin", pages=2, page1_only=True,
-        note="toggles nonacm / printccs=false / printfolios=false plus the single-column "
-             "no-ops balance=false / natbib=false. Two pages so page 2 shows suppressed "
-             "folios in the running head. Mixed leadings, so pitch is reported, not gated.",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
+        note="option toggles for nonacm, printccs, printfolios, balance, and natbib.",
     ),
     "authorversion-test": Test(
         kind="twin", pages=1,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="author-version copyright block (suppressed permission text + \"author's "
              "version ... Version of Record\" notice). Mixed leadings, so pitch is reported.",
     ),
     "language-test": Test(
         kind="twin", pages=1,
-        note="multilingual paper (acmart `language` option): French main language with "
-             "English translated title/abstract/keywords. Verifies localized fixed strings "
-             "(keywordsname/acksname/proofname) and French hyphenation.",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
+        note="French main language plus English translated title, abstract, and keywords.",
     ),
     "language-de-test": Test(
         kind="twin", pages=1,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="German `language=german`: keywordsname/acksname/proofname + tablename "
              "(\"Tabelle\") localized, figure label still \"Fig.\"",
     ),
     "language-es-test": Test(
         kind="twin", pages=1,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="Spanish `language=spanish`: keywordsname/acksname/proofname + tablename "
              "(\"Cuadro\") localized, figure label still \"Fig.\"",
     ),
@@ -530,164 +573,374 @@ TESTS: dict[str, Test] = {
     # _sample-common.typ; only the preamble (format + options) differs.
     "sample-acmsmall": Test(
         kind="twin", pages=11, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="word bag still differs on Poppler extraction artifacts: "
-                    "proceedings-template/horizontally-is line-break glue and "
-                    "wrapped numeric URL/DOI chunks",
-        char_diff="same extraction artifacts leave only quote punctuation and one "
-                  "wrapped URL/DOI digit after review-line cleanup",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="nonzero chunks are the wide-table paragraph and math formula "
-                   "fragments in the full multi-page sample",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                      "Documentation, USA",
+                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                      "Documentation, USA",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="centered horizontally- is produced by the equation environment",
+                typst="centered horizontally -is produced by the equation environment",
+                cause=ExtractionArtifact("display-equation hyphen extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="An unnumbered display equation is produced by the displaymath "
+                      "environment. Again, in either environment",
+                typst="An unnumbered display equation is produced by the displaymath "
+                      "environment. J. ACM, Vol. 37, No. 4, Article 111. Publication "
+                      "date: August 2018. 111:6 Trovato et al. Again, in either environment",
+                cause=ExtractionArtifact("display-equation footer interleave"),
+            ),
+        ),
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
         kind="twin", pages=11, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="review line numbers are layout; after stripping standalone "
-                    "line-number lines, six numeric extraction tokens still leak from "
-                    "the review/reference stream",
-        char_diff="review-line numeric leakage plus quote/comma/semicolon extraction "
-                  "punctuation remain",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="remaining order deltas are inline/display math chunks and one "
-                   "reference span in the review-layout flat stream",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                      "Documentation, USA",
+                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                      "Documentation, USA",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="https://doi.org/XXXXXXX.XXXXXXX Introduction ACM's consolidated "
+                      "article template",
+                typst="https://doi.org/XXXXXXX.XXXXXXX ACM's consolidated article template",
+                cause=ExtractionArtifact("review-stream heading extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="An unnumbered display equation is produced by the displaymath "
+                      "environment. Again, in either environment",
+                typst="An unnumbered display equation is produced by the displaymath "
+                      "environment. Display Equations Again, in either environment",
+                cause=ExtractionArtifact("review-line display-equation interleave"),
+            ),
+        ),
         note="upstream manuscript sample (manuscript,screen,review + proceedings "
              "metadata). Single-column review style with margin line numbers.",
     ),
     "sample-acmlarge": Test(
         kind="twin", pages=11, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="word bag differs on wrapped DOI/URL number chunks in the full "
-                    "reference-heavy sample",
-        char_diff="quote punctuation and one wrapped DOI digit remain after shared "
-                  "tokenization",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="nonzero chunks are the wide-table paragraph and math formula "
-                   "fragments in the full multi-page sample",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                      "Documentation, USA",
+                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                      "Documentation, USA",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="doi:10.1007/3540-09237-4 [19] Lars Hörmander",
+                typst="doi:10.1007/3-540-09237-4 [19] Lars Hörmander",
+                cause=ExtractionArtifact("wrapped DOI extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="An unnumbered display equation is produced by the displaymath "
+                      "environment. Again, in either environment",
+                typst="An unnumbered display equation is produced by the displaymath "
+                      "environment. Table 2. Some Typical Commands",
+                cause=ExtractionArtifact("display-equation table interleave"),
+            ),
+        ),
         note="upstream acmlarge sample (wide single-column journal, POMACS).",
     ),
     "sample-sigconf": Test(
         kind="twin", pages=6, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="word bag differs on one wrapped DOI component digit in the "
-                    "two-column sample (raw PDFs both contain woot07-S422)",
-        char_diff="quote/comma/semicolon punctuation plus that wrapped DOI digit "
-                  "remain different",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="two-column float/table/math chunks are tagged in source order but "
-                   "interleaved differently in LaTeX's flat text stream",
-        note="upstream sigconf sample: two-column proceedings, spanning title, "
-             "centred author grid, teaser figure. The table* twin uses Typst's "
-             "parent-scoped floating figure: it spans both columns and preserves "
-             "source order, but Typst does not implement LaTeX's deferred top "
-             "double-float queue.",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="Name of the Title Is Hope Ben Trovato* G.K.M. Tobin✉* "
+                      "trovato@corporation.com",
+                typst="Name of the Title Is Hope Ben Trovato* ✉ G.K.M. Tobin * "
+                      "trovato@corporation.com",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="doi:10.945/woot07-S422 http://video.google.com/videoplay?"
+                      "docid= [28] Barack Obama",
+                typst="doi:10.945/woot07-S422 http://video.google.com/videoplay?"
+                      "docid= Barack Obama",
+                cause=ExtractionArtifact("wrapped video URL extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Comments "
+                      "Author For tables",
+                typst="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Your figures "
+                      "should contain a caption",
+                cause=ExtractionArtifact("figure/table stream interleave"),
+            ),
+        ),
+        note="upstream sigconf sample: two-column proceedings with author grid and teaser figure.",
     ),
     "sample-sigplan": Test(
         kind="twin", pages=7, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="word bag differs on sigplan-specific abstract line wrapping, "
-                    "letter-spaced LATEX-logo extraction, and wrapped numeric tokens",
-        char_diff="sigplan abstract/logo extraction leaves quote punctuation and a "
-                  "few wrapped numeric tokens different",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="sigplan abstract spans, table text, and math chunks reorder under "
-                   "two-column extraction",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="Name of the Title Is Hope Ben Trovato* G.K.M. Tobin✉* "
+                      "trovato@corporation.com",
+                typst="Name of the Title Is Hope Ben Trovato* ✉ G.K.M. Tobin * "
+                      "trovato@corporation.com",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="A clear and well-documented LAT X document is presented as E "
+                      "an article",
+                typst="A clear and well-documented LATEX document is pre sented as "
+                      "an article",
+                cause=ExtractionArtifact("LaTeX logo extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="If your figure contains third-party material, you must clearly "
+                      "identify it as such, as shown in the example below. Math Equations",
+                typst="If your figure contains third-party material, you must clearly "
+                      "identify it as such, as shown in the example below. Your figures "
+                      "should contain a caption",
+                cause=ExtractionArtifact("figure/math stream interleave"),
+            ),
+        ),
         note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
     ),
     "sample-acmsmall-submission": Test(
         kind="twin", pages=10, metrics=False,
         text_equal=False,
-        text_reason="anonymous-review line numbers are layout, but word bag still "
-                    "differs on proceedings-template/horizontally-is extraction glue",
-        char_diff="after line-number cleanup, only quote punctuation and wrapped "
-                  "numeric extraction artifacts remain",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="review-layout formula chunks and a reference span still reorder in "
-                   "the flat extraction stream",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="https://doi.org/XXXXXXX.XXXXXXX Introduction ACM's consolidated "
+                      "article template",
+                typst="https://doi.org/XXXXXXX.XXXXXXX ACM's consolidated article template",
+                cause=ExtractionArtifact("anonymous-review heading extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="centered horizontally- is produced by the equation environment",
+                typst="centered horizontally -is produced by the equation environment",
+                cause=ExtractionArtifact("display-equation hyphen extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="Figure captions are placed below the figure. J. ACM, Vol. 37, "
+                      "No. 4, Article 111. Publication date: August 2018",
+                typst="Figure captions are placed below the figure. Every figure should "
+                      "also have a figure description",
+                cause=ExtractionArtifact("review-line figure-caption interleave"),
+            ),
+        ),
         note="upstream acmsmall double-anonymous review sample "
              "(screen,anonymous,review): anonymized author strip + line numbers.",
     ),
     "sample-acmsmall-conf": Test(
         kind="twin", pages=11, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="conference metadata now matches; remaining word-bag deltas are "
-                    "proceedings-template/horizontally-is extraction glue and wrapped "
-                    "numeric URL/DOI chunks",
-        char_diff="same extraction artifacts leave only quote punctuation and wrapped "
-                  "numeric URL/DOI chunks",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="remaining order deltas are math chunks and one reference span in "
-                   "the full multi-page sample",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                      "Documentation, USA",
+                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                      "Documentation, USA",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="Publication date: July 2018. Trovato et al.",
+                typst="Publication date: June 2018. Trovato et al.",
+                cause=TypstTranslation("conference month extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="Now, we’ll enter an unnumbered equation: ∞ ∑︁ 𝑥 +1 𝑖=0 "
+                      "and follow it with another numbered equation: ∫ 𝜋 +2",
+                typst="Now, we’ll enter an unnumbered equation: ∞ ∑𝑥 + 1 𝑖=0 "
+                      "and follow it with another numbered equation: ∞ 𝜋+2 ∑",
+                cause=ExtractionArtifact("display-math token-order extraction"),
+            ),
+        ),
         note="upstream acmsmall-for-a-conference sample (acmsmall journal format "
              "with conference metadata replacing the journal metadata).",
     ),
     "sample-acmtog": Test(
         kind="twin", pages=6, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="word bag differs on table-label extraction and wrapped numeric "
-                    "URL/DOI tokens",
-        char_diff="table-label/URL extraction leaves quote punctuation and a few "
-                  "wrapped digits different",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="TOG table cells and math chunks still reorder in the flat extraction",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                      "Documentation, USA",
+                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                      "Documentation, USA",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such",
+                typst="If your figure contains third- Table 2. Some Typical Commands",
+                cause=ExtractionArtifact("table/figure stream interleave"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Math Equations",
+                typst="If your figure contains third- Table 2. Some Typical Commands",
+                cause=ExtractionArtifact("table/figure stream interleave"),
+            ),
+        ),
         note="upstream acmtog sample (two-column TOG journal). Uses the author-year "
              "citation style (\\citestyle{acmauthoryear}) via the bst backend.",
     ),
     "sample-acmtog-conf": Test(
         kind="twin", pages=6, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="conference metadata now matches; remaining word-bag deltas are "
-                    "wrapped numeric URL/DOI chunks in the two-column stream",
-        char_diff="wrapped URL/DOI digits plus quote/comma/period extraction "
-                  "punctuation remain",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="wide-table paragraph and formula chunks still reorder in the flat "
-                   "two-column stream",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                      "Documentation, USA",
+                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                      "Documentation, USA",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Comments "
+                      "Author For tables",
+                typst="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Your figures "
+                      "should contain a caption",
+                cause=ExtractionArtifact("figure/teaser stream interleave"),
+            ),
+        ),
         note="upstream acmtog-for-a-conference sample (acmtog two-column with "
              "conference metadata + teaser; author-year citations via the bst backend).",
     ),
     "sample-sigconf-i13n": Test(
         kind="twin", pages=7, metrics=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="word bag differs on one wrapped DOI component digit in the "
-                    "translated two-column sample",
-        char_diff="quote/comma/semicolon punctuation plus that wrapped DOI digit "
-                  "remain different after normalization",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="translated abstract spans, table text, and math chunks reorder "
-                   "under two-column extraction",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="El nombre del título es esperanza Ben Trovato* G.K.M. Tobin✉* "
+                      "trovato@corporation.com",
+                typst="El nombre del título es esperanza Ben Trovato* ✉ G.K.M. "
+                      "Tobin * trovato@corporation.com",
+                cause=ExtractionArtifact("translated-title author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="doi:10.1007/3-540-651934_29 [13] Ian Editor",
+                typst="doi:10.1007/3-540-65193-4_29 [13] Ian Editor",
+                cause=ExtractionArtifact("wrapped DOI extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. The “Teaser "
+                      "Figure”",
+                typst="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Your figures "
+                      "should contain a caption",
+                cause=ExtractionArtifact("translated sample figure/teaser interleave"),
+            ),
+        ),
         note="upstream sigconf internationalization sample: \\translatedtitle + "
              "translatedabstract in French/German/Spanish (English main), each "
              "abstract headed by its babel \\abstractname.",
     ),
     "sample-sigconf-authordraft": Test(
         kind="twin", pages=6, metrics=False, golden=False,
+        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
-        text_reason="authordraft embeds the compile timestamp in the margin and still "
-                    "has two-column line-break extraction artifacts",
-        char_diff="timestamp digits are intentionally non-deterministic; remaining "
-                  "differences are quote punctuation and wrapped DOI chunks",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="draft watermark, timestamp margin text, and table/math chunks "
-                   "reorder in the flat two-column stream",
-        note="upstream sigconf authordraft sample: draft watermark + line numbers "
-             "+ inner-edge timestamp. The timestamp embeds the compile date, so "
-             "output is non-deterministic — compile-only (no golden), like draft-test. "
-             "The table* caveat follows sample-sigconf.",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="Name of the Title Is Hope Ben Trovato* Lars Thørväld Valerie "
+                      "Béranger G.K.M. Tobin✉*",
+                typst="Name of the Title Is Hope Ben Trovato* ✉ G.K.M. Tobin * "
+                      "trovato@corporation.com",
+                cause=ExtractionArtifact("authordraft author-stream extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Un pu Figure 2",
+                typst="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Your figures "
+                      "should contain a caption",
+                cause=ExtractionArtifact("authordraft line-number figure interleave"),
+            ),
+        ),
+        note="upstream sigconf authordraft sample: draft watermark, line numbers, timestamp.",
     ),
     "sample-acmsmall-biblatex": Test(
         kind="twin", pages=11, metrics=False,
+        expected_link_diff=_BIBLATEX_LINK_DIFF,
         text_equal=False,
-        text_reason="TODO: full-sample word bag still differs on extraction "
-                    "artifacts: proceedings-template/horizontally-is line-break glue "
-                    "plus wrapped URL/SWHID/software identifiers",
-        char_diff="TODO: remove after PDF extraction normalization handles the "
-                  "remaining punctuation/case deltas from wrapped URL/SWHID/software "
-                  "identifiers in the full sample",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="wide-table paragraph, math chunks, and long BibLaTeX software "
-                   "identifier spans reorder in the flat extraction",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                      "Documentation, USA",
+                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                      "Documentation, USA",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="world wide web resource [Ablamowicz and Fauser 2007; "
+                      "Poker-Edge.Com 2006; Thornburg 2001]",
+                typst="world wide web resource [Ablamowicz and Fauser 2007; "
+                      "PokerEdge.Com 2006; Thornburg 2001]",
+                cause=ExtractionArtifact("software URL punctuation extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="An unnumbered display equation is produced by the displaymath "
+                      "environment. Again, in either environment",
+                typst="An unnumbered display equation is produced by the displaymath "
+                      "environment. J. ACM, Vol. 37, No. 4, Article 111. Publication "
+                      "date: August 2018. 111:6 Trovato et al. Again, in either environment",
+                cause=ExtractionArtifact("display-equation footer interleave"),
+            ),
+        ),
         text_assertions=(
             Assertion(engine="both", text="Software project: [Delebecque et al. 1994; "
                    "The CGAL Project 1996]. Software Version: [Greenman and Felleisen "
@@ -710,23 +963,40 @@ TESTS: dict[str, Test] = {
                       "Bill Kinder: January 13, 2005.\" Comput. Entertain., 3, 1, "
                       "(Jan. 2005), 4."),
         ),
-        note="upstream acmsmall-biblatex sample: acmsmall with BibLaTeX acmauthoryear "
-             "style (author-year), including biblatex-software artifact cites "
-             "from software.bib (@software/@softwareversion/@softwaremodule/"
-             "@codefragment).",
+        note="upstream acmsmall-biblatex sample with author-year software artifact cites.",
     ),
     "sample-sigconf-biblatex": Test(
         kind="twin", pages=7, _page_parity=False, metrics=False,
+        expected_link_diff=_BIBLATEX_LINK_DIFF,
         text_equal=False,
-        text_reason="TODO: full-sample word bag still differs on extraction/page-flow "
-                    "artifacts: 7-vs-6 page headers plus wrapped URL/SWHID/software "
-                    "identifiers",
-        char_diff="TODO: remove after the numeric BibLaTeX sample fits LaTeX's page "
-                  "count and extraction normalization handles the remaining wrapped "
-                  "URL/SWHID/software punctuation",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="two-column table/math chunks and long BibLaTeX software identifier "
-                   "spans reorder in the flat stream",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="Name of the Title Is Hope Ben Trovato* G.K.M. Tobin✉* "
+                      "trovato@corporation.com",
+                typst="Name of the Title Is Hope Ben Trovato* ✉ G.K.M. Tobin * "
+                      "trovato@corporation.com",
+                cause=ExtractionArtifact("author-note marker extraction"),
+            ),
+            ExpectedTextDiff(
+                latex="David Harel. 1978. LOGICS of Programs: AXIOMATICS and "
+                      "DESCRIPTIVE POWER.",
+                typst="David Harel. 1978. Logics of programs: axiomatics and "
+                      "descriptive power.",
+                cause=TypstTranslation("BibLaTeX title-case extraction"),
+            ),
+        ),
+        expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. 12.1 The "
+                      "“Teaser Figure”",
+                typst="If your figure contains thirdparty material, you must clearly "
+                      "identify it as such, as shown in the example below. Your figures "
+                      "should contain a caption",
+                cause=ExtractionArtifact("BibLaTeX figure/teaser stream interleave"),
+            ),
+        ),
         text_assertions=(
             Assertion(engine="both", text="Software project: [41, 12]. Software Version: "
                    "[17]. Software Module: [25]. Code fragment: [13]."),
@@ -738,39 +1008,56 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="2017. Institutional members of the TEX users "
                       "group. Retrieved May 27, 2017"),
         ),
-        note="upstream sigconf-biblatex sample: sigconf with BibLaTeX acmnumeric style "
-             "(numeric), including biblatex-software artifact cites from software.bib. "
-             "BibLaTeX-specific regular reference formatting is tracked by "
-             "biblatex-test; the table* caveat follows sample-sigconf. Page parity is "
-             "a TODO: the numeric BibLaTeX/software reference block still reflows to "
-             "7 Typst pages while LaTeX fits in 6.",
+        note="upstream sigconf-biblatex sample with numeric software artifact cites; page parity is open.",
     ),
     "sample-acmcp": Test(
         kind="twin", pages=1, metrics=False, text_equal="bag",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        note="upstream acmcp sample: single-column JDS format, rotated article-type "
-             "banner, cover infobox with code/data links and author contributions. "
-             "No abstract, CCS, keywords, or bibliography in this variant.",
+        expected_link_diff=_AUTHOR_LINK_DIFF,
+        expected_font_diffs=(
+            ExpectedFontDiff(
+                latex="Authors’ Contact Information: Ben Trovato",
+                typst="Authors' Contact Information: Ben Trovato",
+                cause=TypstTranslation("ACMCP contact-sidebar font size"),
+            ),
+        ),
+        note="upstream acmcp sample: JDS banner, cover infobox, and author contributions.",
     ),
     "sample-acmengage": Test(
         kind="twin", pages=3, metrics=False,
+        expected_link_diff=_ENGAGE_LINK_DIFF,
         text_equal="bag",
-        char_diff="word bag is exact; residual char-bag delta is punctuation-only "
-                  "(one LaTeX comma vs Typst square brackets in extracted prose)",
-        font_diff=_FULL_SAMPLE_FONT_DIFF,
-        order_diff="Engage metadata sidebar, section prose, CS Concepts heading, and "
-                   "one URL chunk still reorder in the flat extraction",
-        note="upstream acmengage sample: two-column ACM EngageCSEdu course-material "
-             "format, Synopsis abstract, CC license. Engage metadata "
-             "(\\setengagemetadata) is printed before the Synopsis heading.",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="document / world wide web resource [1, 9], a video [6]",
+                typst="document / world wide web resource [9] [1], a video [6]",
+                cause=TypstTranslation("citation punctuation extraction"),
+            ),
+        ),
+        expected_font_diffs=(
+            ExpectedFontDiff(
+                latex="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
+                      "https://doi.org/XXXXXXX.XXXXXXX",
+                typst="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
+                      "https://doi.org/XXXXXXX.XXXXXXX",
+                cause=TypstTranslation("Engage DOI/ISBN sidebar font family"),
+            ),
+        ),
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
+                      "https://doi.org/XXXXXXX.XXXXXXX Author Three",
+                typst="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
+                      "https://doi.org/XXXXXXX.XXXXXXX be based on at least one "
+                      "evidenced-based teaching",
+                cause=ExtractionArtifact("Engage metadata/sidebar stream interleave"),
+            ),
+        ),
+        note="upstream acmengage sample: EngageCSEdu layout, synopsis, metadata, and CC license.",
     ),
     # Smoke-only docs (no LaTeX twin).
     "siggraph-test": Test(
         kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
-        note="obsolete public option `siggraph` aliases to sigconf (matching the bundled "
-             "LaTeX class). Typst-only alias compile check: it must compile warning-free "
-             "down the sigconf path. The rendered proceedings layout is covered by "
-             "sigconf-test, so no twin/golden/metrics here.",
+        note="obsolete `siggraph` option aliases to sigconf; compile-only smoke.",
     ),
     "sigchi-test": Test(
         kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
@@ -779,21 +1066,15 @@ TESTS: dict[str, Test] = {
     ),
     "draft-test": Test(
         kind="smoke", pages=1, _page_parity=False, metrics=False, golden=False,
-        note="author-draft / timestamp mode. The footer embeds the compile date "
-             "(datetime.today), so output is non-deterministic — compile-only (Tier 0): "
-             "no golden hash, no geometry gate, no LaTeX twin.",
+        note="author-draft timestamp mode; non-deterministic compile-only smoke.",
     ),
     "urlbreak-test": Test(
         kind="smoke", pages=1, _page_parity=False, metrics=False,
-        note="`urlbreakonhyphens: false`. Not a twin — LaTeX and Typst pick different URL "
-             "break points, so only the Typst output is pinned (golden) to prove the long "
-             "hyphenated URL no longer breaks at its hyphens. Deterministic, so golden-hashed.",
+        note="`urlbreakonhyphens: false` smoke with golden-pinned Typst URL breaking.",
     ),
     "feature-test": Test(
         kind="smoke", pages=1, _page_parity=False, metrics=False,
-        note="no LaTeX twin: badges/teaser use synthetic shapes. Compiled (warning-free) "
-             "and golden-hashed only, to guard the title-note/subtitle-note/teaser/badges "
-             "paths that notes-test (text-only) and the sample don't all exercise together.",
+        note="Typst-only smoke for badges, teaser, title notes, and subtitle notes.",
     ),
 }
 

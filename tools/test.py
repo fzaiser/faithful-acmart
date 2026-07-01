@@ -485,6 +485,72 @@ def _assertion_targets(name: str, t: Test, a: M.Assertion) -> list[tuple[str, Pa
     raise ValueError(f"unknown text assertion engine {a.engine!r}")
 
 
+def _check_expected_pdf_diffs(
+    name: str,
+    t: Test,
+    diffs: tuple,
+    kind: str,
+    lraw: str,
+    traw: str,
+    *,
+    require_text_difference: bool,
+) -> list[str]:
+    failures: list[str] = []
+    for i, d in enumerate(diffs, 1):
+        cause = getattr(d, "cause", None)
+        explanation = getattr(cause, "reason", "").strip() or f"expected {kind} diff {i}"
+        lneedle, tneedle = normalize(d.latex), normalize(d.typst)
+        scope = f" page {d.page}" if d.page is not None else ""
+        if not isinstance(cause, M.DIFF_CAUSE_TYPES):
+            failures.append(
+                f"{name}: {explanation} has invalid {kind} diff cause {cause!r}")
+        if not lneedle:
+            failures.append(f"{name}: {explanation} has an empty LaTeX {kind} fragment")
+        if not tneedle:
+            failures.append(f"{name}: {explanation} has an empty Typst {kind} fragment")
+        if require_text_difference and lneedle and tneedle and lneedle == tneedle:
+            failures.append(f"{name}: {explanation} {kind} fragments normalize identically")
+        if not lneedle or not tneedle:
+            continue
+
+        lhaystack = (
+            normalize(pdf_text(latex_pdf(name, t), page=d.page))
+            if d.page is not None else normalize(lraw)
+        )
+        thaystack = (
+            normalize(pdf_text(typst_pdf(name), page=d.page))
+            if d.page is not None else normalize(traw)
+        )
+        if lneedle not in lhaystack:
+            failures.append(
+                f"{name}: LaTeX{scope} missing expected {kind} diff {i} ({explanation}): {lneedle!r}")
+        if tneedle not in thaystack:
+            failures.append(
+                f"{name}: Typst{scope} missing expected {kind} diff {i} ({explanation}): {tneedle!r}")
+    return failures
+
+
+def _check_expected_text_diffs(name: str, t: Test, lraw: str, traw: str) -> list[str]:
+    return _check_expected_pdf_diffs(
+        name, t, t.expected_text_diffs, "text", lraw, traw,
+        require_text_difference=True,
+    )
+
+
+def _check_expected_font_diffs(name: str, t: Test, lraw: str, traw: str) -> list[str]:
+    return _check_expected_pdf_diffs(
+        name, t, t.expected_font_diffs, "font", lraw, traw,
+        require_text_difference=False,
+    )
+
+
+def _check_expected_order_diffs(name: str, t: Test, lraw: str, traw: str) -> list[str]:
+    return _check_expected_pdf_diffs(
+        name, t, t.expected_order_diffs, "order", lraw, traw,
+        require_text_difference=True,
+    )
+
+
 def gate_text(report: bool = False) -> list[str]:
     """Tier 1.5 — extracted-text semantic gate."""
     failures: list[str] = []
@@ -514,29 +580,34 @@ def gate_text(report: bool = False) -> list[str]:
             elif report:
                 print(f"bag   {name}: word-bag exact (order-independent)")
         elif t.text_equal is False:
-            if not t.text_reason:
-                local.append(f"{name}: text_equal=false requires text_reason")
+            if not t.expected_text_diffs:
+                local.append(f"{name}: text_equal=false requires expected_text_diffs")
             elif report:
-                print(f"skip  {name}: {t.text_reason}")
+                print(f"skip  {name}: text equality exempt by expected_text_diffs")
         elif report:
             print(f"skip  {name}: text equality not configured")
 
         # Universal char-bag tripwire on top of the above: every twin's content
         # must match as an exact character multiset (order-, line-break-, number-
-        # and scheme-independent), unless it carries a documented char_diff
-        # exemption — a known content difference or a pdftotext extraction artifact.
-        if t.char_diff:
-            if report:
-                print(f"skip  {name}: char bag exempt ({t.char_diff})")
-        else:
-            ca, cb = char_bag(lraw), char_bag(traw)
-            cm, ce = ca - cb, cb - ca
-            if cm or ce:
+        # and scheme-independent), unless it carries expected_text_diffs evidence
+        # for a known content difference or a pdftotext extraction artifact.
+        ca, cb = char_bag(lraw), char_bag(traw)
+        cm, ce = ca - cb, cb - ca
+        if cm or ce:
+            if t.expected_text_diffs:
+                if report:
+                    print(f"skip  {name}: char bag exempt by expected_text_diffs")
+            else:
                 local.append(
                     f"{name}: char bags differ (read both pdftotext dumps to locate)\n"
                     f"    only in LaTeX: {dict(cm)}\n    only in Typst: {dict(ce)}")
-            elif report:
+        else:
+            if report:
                 print(f"char  {name}: exact")
+
+        local.extend(_check_expected_text_diffs(name, t, lraw, traw))
+        if report and t.expected_text_diffs:
+            print(f"diff  {name}: {len(t.expected_text_diffs)} expected text/char diff(s) documented")
 
         for i, a in enumerate(t.text_assertions, 1):
             needle = normalize(a.text)
@@ -553,8 +624,7 @@ def gate_text(report: bool = False) -> list[str]:
                 elif a.kind not in ("contains", "absent"):
                     local.append(f"{name}: unknown text assertion kind {a.kind!r}")
 
-        if not local and not report and (
-                t.text_equal is not None or t.text_assertions or not t.char_diff):
+        if not local and not report:
             print(f"ok   {name}")
         failures.extend(local)
     return failures
@@ -704,12 +774,14 @@ def cmd_build(args) -> int:
 
 
 def gate_links(report: bool = False) -> list[str]:
-    """Tier 1.7 — hyperlink (/URI) set must match LaTeX+hyperref, for twins that
-    set link_check (e.g. the bst-backend bib-all, whose DOI/URL/arXiv links are a
-    fidelity goal pdftotext can't see)."""
+    """Tier 1.7 — hyperlink (/URI) sets must match LaTeX+hyperref by default.
+
+    The URI sets are always compared. ``expected_link_diff`` must be empty when
+    they match, and nonempty when a known mismatch is present.
+    """
     failures: list[str] = []
     for name, t in TESTS.items():
-        if not getattr(t, "link_check", False) or t.kind != "twin":
+        if t.kind != "twin":
             continue
         lref, tpdf = latex_pdf(name, t), typst_pdf(name)
         if not lref.exists() or not tpdf.exists():
@@ -718,9 +790,15 @@ def gate_links(report: bool = False) -> list[str]:
         lu, tu = extract_uris(lref), extract_uris(tpdf)
         miss, extra = lu - tu, tu - lu
         if miss or extra:
-            failures.append(
-                f"{name}: hyperlink sets differ\n"
-                f"    only in LaTeX: {sorted(miss)}\n    only in Typst: {sorted(extra)}")
+            if t.expected_link_diff:
+                if report:
+                    print(f"diff  {name}: expected hyperlink diff ({t.expected_link_diff})")
+            else:
+                failures.append(
+                    f"{name}: hyperlink sets differ\n"
+                    f"    only in LaTeX: {sorted(miss)}\n    only in Typst: {sorted(extra)}")
+        elif t.expected_link_diff:
+            failures.append(f"{name}: expected_link_diff is set, but hyperlink sets match")
         elif report:
             print(f"ok   {name}: {len(tu)} hyperlinks match")
     return failures
@@ -783,7 +861,7 @@ def font_bag(pdf: Path) -> Counter:
 def gate_fonts(report: bool = False) -> list[str]:
     """Tier 1.8 — per-letter font gate. Every alphabetic character must match LaTeX
     in family/weight/italic/size/colour. Needs PyMuPDF (skips with a note if absent);
-    twins with a documented ``font_diff`` (content differences, math gaps) are exempt."""
+    twins with ``expected_font_diffs`` evidence are exempt."""
     try:
         import fitz  # noqa: F401
     except ImportError:
@@ -797,9 +875,11 @@ def gate_fonts(report: bool = False) -> list[str]:
         if not lref.exists() or not tpdf.exists():
             failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
             continue
-        if t.font_diff:
+        if t.expected_font_diffs:
+            failures.extend(_check_expected_font_diffs(
+                name, t, pdf_text(lref), pdf_text(tpdf)))
             if report:
-                print(f"skip  {name}: font exempt ({t.font_diff})")
+                print(f"skip  {name}: font exempt by {len(t.expected_font_diffs)} expected font diff(s)")
             continue
         miss, extra = (lb := font_bag(lref)) - (tb := font_bag(tpdf)), tb - lb
         if miss or extra:
@@ -824,7 +904,7 @@ def gate_order(report: bool = False) -> list[str]:
     tokens must appear in the flat LaTeX stream in the chunk's own order (other
     content may interpose — the check is sub-sequence/LCS based, so it is immune to
     reflow, page breaks and column flow). Needs pikepdf (skips with a note if
-    absent); twins with a documented ``order_diff`` are exempt."""
+    absent); twins with ``expected_order_diffs`` evidence are exempt."""
     try:
         import pikepdf  # noqa: F401
     except ImportError:
@@ -839,9 +919,11 @@ def gate_order(report: bool = False) -> list[str]:
         if not lref.exists() or not tpdf.exists():
             failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
             continue
-        if t.order_diff:
+        if t.expected_order_diffs:
+            failures.extend(_check_expected_order_diffs(
+                name, t, pdf_text(lref), pdf_text(tpdf)))
             if report:
-                print(f"skip  {name}: order exempt ({t.order_diff})")
+                print(f"skip  {name}: order exempt by {len(t.expected_order_diffs)} expected order diff(s)")
             continue
         stream = PC.latex_stream(lref)
         bad = [(role, toks, r) for role, toks in PC.typst_chunks(tpdf)
@@ -1195,6 +1277,14 @@ def cmd_list(_args) -> int:
             flags.append("text_bag")
         if t.text_assertions:
             flags.append(f"assert×{len(t.text_assertions)}")
+        if t.expected_text_diffs:
+            flags.append(f"textdiff×{len(t.expected_text_diffs)}")
+        if t.expected_font_diffs:
+            flags.append(f"fontdiff×{len(t.expected_font_diffs)}")
+        if t.expected_order_diffs:
+            flags.append(f"orderdiff×{len(t.expected_order_diffs)}")
+        if t.expected_link_diff:
+            flags.append("linkdiff")
         if not t.metrics:
             flags.append("no-metrics")
         if not t.golden:

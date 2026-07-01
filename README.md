@@ -224,16 +224,23 @@ gates without recompiling:
 - **Tier 1.5 (text)** — `pdftotext` extraction is normalized and compared exactly
   for stable twins (`text_equal`), or with targeted `contains`/`absent`
   assertions for noisy PDFs (two-column order, author grids, bibliography).
+  Twins that exempt sequence or char-bag equality must carry
+  validated `expected_text_diffs`: coherent LaTeX/Typst fragments that show the
+  tolerated extracted-text difference. Each diff carries an
+  `ExtractionArtifact("...")` or `TypstTranslation("...")` cause.
 - **Tier 1.6 (expected errors)** — invalid option cases must fail with the
   intended diagnostic.
-- **Tier 1.7 (hyperlinks)** — for twins that opt in, the `/URI` link set must match
-  LaTeX+hyperref (links are invisible to `pdftotext`).
+- **Tier 1.7 (hyperlinks)** — every twin's `/URI` link set is compared against
+  LaTeX+hyperref (links are invisible to `pdftotext`). A nonempty
+  `expected_link_diff` documents an expected mismatch; the gate fails if the
+  field is empty and links differ, or if the field is set and links match.
 - **Tier 1.8 (fonts)** — per-letter font check via **PyMuPDF**: every alphabetic
   character must render in the same family (serif/sans/mono), weight, italic, size,
   and colour as LaTeX. Catches what the text gates (characters only) can't — a wrong
   family (serif where acmart sets `\sffamily`), a too-small author block, a stray
   colour. Mono *size* is skipped (LaTeX's zi4 and the bundled Inconsolata scale
-  differently); a `font_diff` exempts known content/math gaps.
+  differently); `expected_font_diffs` exempt known content/math gaps and anchor
+  them to validated PDF fragments.
 - **Tier 1.9 (order)** — per-chunk reading-order check via **pikepdf**
   (`tools/pdf_chunks.py`): Typst writes a *tagged* PDF, so each logical chunk
   (title, an author line, the contact-info block, a heading, a bib entry) is read
@@ -241,9 +248,10 @@ gates without recompiling:
   alignment — to occur in that order in the *flat* (untagged) LaTeX `pdftotext`
   stream. Catches an element emitted out of order (an affiliation/email swap, a
   reordered citation field) that the order-independent word/char bags can't see;
-  the LCS sub-sequence match is immune to reflow, page breaks and column flow. An
-  `order_diff` exempts a twin whose chunk order can't be checked (an extraction
-  asymmetry). Run `tools/test.py order` for a per-twin report, or
+  the LCS sub-sequence match is immune to reflow, page breaks and column flow.
+  `expected_order_diffs` exempt known extraction-order asymmetries and anchor
+  them to validated PDF fragments. Run
+  `tools/test.py order` for a per-twin report, or
   `tools/pdf_chunks.py <stem>` to dump one document's chunks + per-chunk disorder.
 - **Tier 2 (metrics)** — cross-engine layout geometry (left/top margin, baseline
   pitch) gated against `test_matrix` tolerances; right margin & line count are
