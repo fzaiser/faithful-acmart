@@ -52,20 +52,25 @@ The port is packaged as the **`faithful-acmart`** template — manifest, `LICENS
 (MIT) + `template/LICENSE` (MIT-0), `thumbnail.png`, and the `@preview` template
 import are all committed, the harness is green, and the shipped bundle is verified
 self-sufficient (a fresh `typst init`-style project compiles against the bundle with
-only user `--font-path` fonts). Remaining before submitting:
+only user `--font-path` fonts).
 
-- **Confirm identity/repository.** `authors` in `typst.toml` is defaulted to the git
-  identity and `repository` is a commented placeholder (there is no git remote yet);
-  set both, and confirm the `LICENSE` / `template/LICENSE` copyright holder + year.
-- **Run `typst-package-check`.** The official linter — install and run it on the
-  assembled `packages/preview/faithful-acmart/0.1.0/` before the PR (the
-  cargo-from-source install was blocked in the dev environment, so it wasn't run
-  here). Manual equivalents already pass: valid manifest, required files present,
-  thumbnail dims/size within limits, and the standalone bundle compile above.
-- **Submit.** Fork `typst/packages` (sparse checkout; do not copy `.git` or use
-  submodules), copy the bundle to `packages/preview/faithful-acmart/0.1.0/`, and open
-  a PR (first-time author). Publication can take ~30 min after merge + CI.
-- **Optional:** `oxipng` the thumbnail (1.45 MiB now — already within the 3 MiB cap).
+- **Confirm identity/repository.** DONE. `authors` = `Fabian Zaiser
+  <fzaiser@mit.edu>`; `repository = "https://github.com/fzaiser/faithful-acmart"`;
+  `LICENSE`/`template/LICENSE` copyright holder + year confirmed (2026 Fabian Zaiser).
+- **Run `typst-package-check`.** DONE (installed from git: `cargo install --git
+  https://github.com/typst/package-check --locked`, needs rustc ≥1.85.1). Ran on the
+  assembled bundle: passes except the `manifest/package/repository/unreachable` error,
+  which is expected until the repo is pushed (the URL 404s), and four advisory
+  `readme/link/repository-url-permalink` warnings (README links to excluded files use
+  `/blob/main/`; pin to a `v0.1.0` tag/commit permalink to silence them — non-blocking).
+- **Optional:** `oxipng` the thumbnail. DONE — 1.45 MiB → 304 KiB (lossless, still
+  1688×2500).
+- **Submit.** NOT DONE (needs the user's GitHub account; `gh` isn't installed here and
+  there is no git remote). Steps: (1) create + push the GitHub repo
+  `fzaiser/faithful-acmart` (make `repository` reachable), ideally tag `v0.1.0`;
+  (2) fork `typst/packages` (sparse checkout; do not copy `.git` or use submodules);
+  (3) copy the bundle to `packages/preview/faithful-acmart/0.1.0/`; (4) open a PR
+  (first-time author). Publication can take ~30 min after merge + CI.
 - **Local dev note:** building the example (`tools/test.py example`) or running
   `typst init` needs the package linked into the Typst data dir —
   `ln -sfn "$PWD" "$HOME/Library/Application Support/typst/packages/preview/faithful-acmart/0.1.0"`
