@@ -5,7 +5,7 @@ entrypoint = "src/lib.typ"
 authors = ["Fabian Zaiser <fzaiser@mit.edu>"]
 license = "MIT AND MIT-0"
 description = "ACM-style papers for journals and conference proceedings."
-# repository = "https://github.com/<user>/faithful-acmart"  # add once the repo is pushed
+repository = "https://github.com/fzaiser/faithful-acmart"
 keywords = [
     "acmart",
     "ACM",

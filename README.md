@@ -129,7 +129,7 @@ Validated page-by-page against real LaTeX acmart:
 
 ### Known differences from LaTeX
 
-Engine limits, not spacing errors (see [DESIGN.md](DESIGN.md)):
+Engine limits, not spacing errors (see [DESIGN.md](https://github.com/fzaiser/faithful-acmart/blob/main/DESIGN.md)):
 
 - **Vertical fill (`\flushbottom`)**: Typst can't vertically justify or balance final
   two-column pages, so output is ragged-bottom (spacing is otherwise matched).
@@ -180,6 +180,6 @@ Typst data dir, e.g. on macOS:
 ln -sfn "$PWD" "$HOME/Library/Application Support/typst/packages/preview/faithful-acmart/0.1.0"
 ```
 
-See [DESIGN.md](DESIGN.md) for the architecture, the source-vs-output matching
-decisions, and the full validation-gate reference; [`acmart/`](acmart/) is the upstream
-LaTeX class being matched, and [`fonts/`](fonts/README.md) documents the bundled fonts.
+See [DESIGN.md](https://github.com/fzaiser/faithful-acmart/blob/main/DESIGN.md) for the architecture, the source-vs-output matching
+decisions, and the full validation-gate reference; [`acmart/`](https://github.com/fzaiser/faithful-acmart/tree/main/acmart) is the upstream
+LaTeX class being matched, and [`fonts/`](https://github.com/fzaiser/faithful-acmart/blob/main/fonts/README.md) documents the bundled fonts.
