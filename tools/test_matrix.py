@@ -220,8 +220,8 @@ _FULL_SAMPLE_FONT_EVIDENCE = (
 )
 
 _AUTHOR_LINK_DIFF = (
-    "LaTeX adds implicit author email/ORCID PDF annotations; Typst currently "
-    "renders those fields as text without matching hidden links."
+    "LaTeX adds implicit author email PDF annotations; Typst currently renders "
+    "author email fields as text without matching hidden links."
 )
 _BIBLATEX_LINK_DIFF = (
     _AUTHOR_LINK_DIFF

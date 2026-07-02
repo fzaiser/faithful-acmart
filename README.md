@@ -119,7 +119,7 @@ Most papers only need a subset of these:
 | `short-title`, `short-authors` | Running-head overrides |
 | `font-size` | One of `8pt`, `9pt`, `10pt`, `11pt`, `12pt`, or `auto` |
 
-Author dictionaries accept `name`, `email`, `note`, `corresponding`, and
+Author dictionaries accept `name`, `orcid`, `email`, `note`, `corresponding`, and
 `affiliation`. An affiliation is a dictionary with fields such as `institution`,
 `city`, `state`, and `country`; pass an array of affiliation dictionaries for multiple
 affiliations.

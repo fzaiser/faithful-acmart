@@ -187,6 +187,7 @@
   subtitle-note: none,
   // Authors: a list of dicts. Each honors:
   //   name          (required) — the author's name, uppercased in the title block.
+  //   orcid         — ORCID identifier or profile URL; links the visible author name.
   //   affiliation   — a dict (institution / city / state / country), or an array of
   //                   such dicts for multiple affiliations. All fields optional.
   //   email         — contact email.

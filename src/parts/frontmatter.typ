@@ -44,6 +44,7 @@
 // access (a.email, a.note, ...) instead of defensive `.at(..., default:)`.
 #let normalize-author(a) = (
   name: a.name,
+  orcid: a.at("orcid", default: none),
   affiliation: a.at("affiliation", default: none),
   email: a.at("email", default: none),
   note: a.at("note", default: none),
@@ -54,6 +55,15 @@
   // dicts keep insertion order, so the author dict's key order is the analog.
   contact-order: a.keys().filter(k => k == "email" or k == "affiliation"),
 )
+
+// \orcid wraps the author's visible name in a link to the ORCID profile. A bare
+// identifier is resolved against https://orcid.org/; an explicit URL is used as-is.
+#let orcid-url(orcid) = {
+  assert(type(orcid) == str, message: "faithful-acmart: author `orcid` must be a string, got " + repr(orcid))
+  if orcid.starts-with("http") { orcid } else { "https://orcid.org/" + orcid }
+}
+
+#let author-name(a, body) = if a.orcid == none { body } else { link(orcid-url(a.orcid), body) }
 
 // An author's `affiliation` may be a single dict or an array of dicts (a person
 // with several affiliations, like LaTeX's repeated \affiliation). Normalize to a
@@ -609,7 +619,7 @@
     #set par(justify: false, leading: comp(cfg, sz: af.size), spacing: 0pt)
     #for g in group-authors(mark-authors(meta, ni)) {
       // andify preserves the per-name content marks (superscript symbols).
-      let names = g.authors.map(a => { upper(a.name); render-marks(a._marks) })
+      let names = g.authors.map(a => { author-name(a, upper(a.name)); render-marks(a._marks) })
       // tagged-par so each author line is its own <P> chunk (author order can be
       // checked) rather than fusing into one frontmatter <Span>.
       block(spacing: comp(cfg, sz: af.size))[
@@ -661,7 +671,7 @@
   set align(align-x)
   set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
   set par(justify: false, first-line-indent: fli, leading: comp(cfg, sz: af.size), spacing: comp(cfg, sz: af.size))
-  group.authors.map(a => { a.name; render-marks(a._marks) }).join(linebreak())
+  group.authors.map(a => { author-name(a, a.name); render-marks(a._marks) }).join(linebreak())
   parbreak()
   set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
   set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
