@@ -204,8 +204,10 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   carries the `.bst`'s built-in journal MACRO table + `journal.canon.abbrev`
   (auto-extracted, so `journal = csur` → "Comput. Surveys" like bibtex). DOI / URL /
   arXiv-eprint / `\url`-in-note render as **real Typst hyperlinks** (acmart loads
-  hyperref); in-text *citations* on this backend are not yet anchored to the reference
-  list (a planned enhancement — the `"typst"` backend keeps native cite links). Reached via native `@key` (a `show ref:` rule routes it to the engine,
+  hyperref); in-text *citations* on this backend are anchored to the reference list too
+  — each entry carries an `entry-label(key)` and the cite numbers / author-year groups
+  `link` to it (ACMPurple in screen mode, matching acmart's `citecolor`; uncoloured in
+  print). Reached via native `@key` (a `show ref:` rule routes it to the engine,
   gated to this backend — see "Implemented" below) and the shadowed `cite` /
   `bibliography` functions (`#cite(<a>, <b>)` grouped, `#bibliography("/refs.bib")`),
   plus `cite-text` (`\citet`) / `cite-year` / `cite-author`. It reproduces

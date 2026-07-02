@@ -472,6 +472,18 @@ TESTS: dict[str, Test] = {
              "LaTeX; the faithful default \"bibtex\" backend is validated by keycite / crossref "
              "/ bib-all / sample-* twins.",
     ),
+    "bib-cite-links": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="References"),
+            # numbers must resolve (regression: the convergence edge left them "?")
+            Assertion(engine="typst", text="[1]"),
+            Assertion(engine="typst", text="[8]"),
+        ),
+        note="Regression for the `bibtex` cite-path convergence edge (many `@key`s incl. "
+             "dotted keys in one sentence used to crash with `read(none)`), and for the "
+             "in-text cite -> reference-list hyperlinks. Golden-pins the linked numbers.",
+    ),
     "biblatex-test": Test(
         kind="twin", pages=1,
         text_assertions=(

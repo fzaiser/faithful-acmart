@@ -79,23 +79,22 @@ only user `--font-path` fonts).
 
 ## Bibliography
 
-- **In-text citation hyperlinks on the `bibtex`/`biblatex` backends.** On the default
-  `"bibtex"` (and `"biblatex"`) backend, `@key` / `#cite` render `[N]` as plain text
-  that is *not* anchored to the reference list: the `show ref:` rule routes to
-  `bbl-cite` (a text bracket), and the rendered entries carry no link targets. LaTeX +
-  hyperref links them, and the `"typst"` backend keeps Typst's native cite links, so
-  this is a fidelity + usability gap. **Plan:** emit a `label`/`link` target per
-  reference entry in the bst/biblatex renderer (`parts/acmref-bst.typ` /
-  `acmref-biblatex.typ`) and have `bbl-cite` link to it. DOI/arXiv/URL links *inside*
-  entries already work.
+_(No open items — both resolved in `parts/acmref-cite.typ`.)_
 
-- **Latent `bibtex` cite-path convergence edge.** Certain multi-cite paragraphs make
-  `bib-path-state.final()` read `none` inside `prepared()` (`parts/acmref-cite.typ`) —
-  cite resolution reads the path on an introspection pass before the `#bibliography`
-  call registers it — so `read-merged(none)` → `read(none)` errors. Reproduces on the
-  old bib-test fixture (8 `@key`s incl. dotted keys like
-  `@Li:2008:PUC:1358628.1358946` in one sentence, `bib-backend: "bibtex"`). It does
-  **not** affect the template or any pinned-`bibtex` twin (keycite / crossref /
-  bib-all / sample-* all pass), and minimal single-/few-cite dotted-key cases compile;
-  bib-test was demoted to a typst-only CSL smoke, so nothing exercises it now. Best
-  fixed together with the cite-anchoring work above — both touch cite resolution.
+- **DONE — In-text citation hyperlinks on the `bibtex`/`biblatex` backends.** Each
+  reference entry now carries an `entry-label(key)` (`"acmref:<key>"`, attached in
+  markup), and the in-text cites `link` to it: numeric `[N]` numbers (ranges keep
+  per-endpoint targets), author-year groups, and the crossref "See [N]". In screen
+  mode these read ACMPurple, matching acmart's `citecolor` (acmart.dtx:3637); in print
+  mode they are uncoloured, like LaTeX+hyperref. The link gate compares only external
+  `/URI` targets and the golden gate is raster-based, so the internal goto links ride
+  on the goldens. (Pergamon takes the same label-per-entry + `link` approach but
+  `query()`s the entry to fetch its data at cite time; our port already holds the
+  resolved db from `prepared()`, so no query is needed.)
+
+- **DONE — Latent `bibtex` cite-path convergence edge.** `read-merged`/`prepared` now
+  treat a `none` bib path (a provisional introspection pass, before `#bibliography`
+  registers the path) as "not ready": cites render a `[?]` placeholder and Typst
+  re-runs the context once the path converges, instead of erroring on `read(none)`.
+  Regression: `tests/typst-only/bib-cite-links.typ` (8 `@key`s incl. dotted keys like
+  `@Li:2008:PUC:1358628.1358946` in one sentence, `bib-backend: "bibtex"`).

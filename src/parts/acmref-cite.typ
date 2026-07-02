@@ -20,6 +20,12 @@
 // the caller's location (Typst resolves it against where the args were constructed).
 // Extracted string/array paths have lost that origin, so they must be absolute.
 #let read-merged(paths) = {
+  // `none` means the `#bibliography` call has not registered its path yet: a cite
+  // can be laid out on an early introspection pass before `bib-path-state` sees the
+  // update (`.final()` still reports its `none` init). Return an empty db so the
+  // cite renders a provisional placeholder instead of erroring; Typst re-runs the
+  // context once the path converges. See `prepared` / the cite entry points.
+  if paths == none { return (:) }
   if type(paths) == arguments { return parse-bib(read(..paths)) }
   let ps = if type(paths) == array { paths } else { (paths,) }
   let db = (:)
@@ -71,9 +77,13 @@
   (db: db2, order: listed.sorted(key: k => blx-sort-key(db2.at(k))))
 }
 
-// resolved (db, order) for the current cited set
+// resolved (db, order) for the current cited set, or `none` if the bibliography
+// path is not registered yet (provisional introspection pass — see `read-merged`).
+// Callers must render a placeholder for `none` and let the context re-run.
 #let prepared() = {
-  let db = read-merged(bib-path-state.final())
+  let path = bib-path-state.final()
+  if path == none { return none }
+  let db = read-merged(path)
   let cited = cited-state.final()
   if bib-format-state.final() == "biblatex" { resolve-biblatex(db, cited) }
   else { resolve-crossref(db, cited) }
@@ -247,6 +257,14 @@
   if bib-format-state.final() == "biblatex" and blx-label-title-italic(db.at(k)) { it(label) } else { label }
 }
 
+// ---- cite -> reference-list hyperlinks -------------------------------------
+// Each reference entry carries `entry-label(key)`; cites `link` to it, matching
+// LaTeX+hyperref's in-text cite anchors (the golden gate is raster-based and the
+// link gate compares only external /URI targets, so these internal goto links are
+// invisible to both). The label is namespaced to avoid clashing with user labels.
+#let entry-label(key) = label("acmref:" + key)
+#let cite-num-link(num, key) = link(entry-label(key))[#num]
+
 // natbib author-year \citep/\citet: group consecutive same-label entries, then
 // group their years by base year so suffixes collapse ("2020a,b,c"); ", " between
 // distinct years, "; " between author groups. \citet puts years in brackets.
@@ -258,7 +276,7 @@
     let shown = cite-label-content(k, db, order)
     let yr = (base: year-value(db.at(k)).c, suf: extras.at(k, default: ""))
     if lgroups.len() > 0 and lgroups.at(-1).label == lbl { lgroups.at(-1).years.push(yr) }
-    else { lgroups.push((label: lbl, shown: shown, years: (yr,))) }
+    else { lgroups.push((label: lbl, shown: shown, years: (yr,), key: k)) }
   }
   let render-years(years) = {
     let ybits = ()
@@ -268,30 +286,39 @@
     }
     ybits.map(b => b.base + b.sufs.join(",")).join(", ")
   }
-  let parts = lgroups.map(g => if citet { g.shown + " [" + render-years(g.years) + "]" }
-    else { g.shown + " " + render-years(g.years) })
+  // link each author group to its first entry (hyperref anchors the whole citation)
+  let parts = lgroups.map(g => link(entry-label(g.key),
+    if citet { g.shown + " [" + render-years(g.years) + "]" }
+    else { g.shown + " " + render-years(g.years) }))
   if citet { parts.join("; ") } else { "[" + parts.join("; ") + "]" }
 }
 
-// collapse [1,2,3,5] -> "1–3, 5"
-#let collapse(nums) = {
-  let s = nums.sorted()
+// collapse [1,2,3,5] -> "1–3, 5", each number linked to its entry. `pairs` are
+// (num, key) so the range endpoints keep their own link targets.
+#let collapse-linked(pairs) = {
+  let s = pairs.sorted(key: p => p.num)
   let groups = ()
-  for n in s {
-    if groups.len() > 0 and n == groups.at(-1).at(-1) + 1 { groups.at(-1).push(n) }
-    else { groups.push((n,)) }
+  for p in s {
+    if groups.len() > 0 and p.num == groups.at(-1).at(-1).num + 1 { groups.at(-1).push(p) }
+    else { groups.push((p,)) }
   }
-  groups.map(g => if g.len() >= 3 { str(g.first()) + "\u{2013}" + str(g.last()) }
-    else { g.map(str).join(", ") }).join(", ")
+  groups.map(g => if g.len() >= 3 {
+    [#cite-num-link(g.first().num, g.first().key)\u{2013}#cite-num-link(g.last().num, g.last().key)]
+  } else {
+    g.map(p => cite-num-link(p.num, p.key)).join(", ")
+  }).join(", ")
 }
 
 // numeric \cite: each cited key -> its reference-list number; the .bst collapses
 // ranges while BibLaTeX lists them in command order. Every key is known here
 // (ensure-known ran first, so `position` never returns none).
 #let numeric-cite(ks, order) = {
-  let nums = ks.map(k => order.position(x => x == k) + 1)
-  if bib-format-state.final() == "biblatex" { [[#nums.map(str).join(", ")]] }
-  else { [[#collapse(nums)]] }
+  let pairs = ks.map(k => (num: order.position(x => x == k) + 1, key: k))
+  if bib-format-state.final() == "biblatex" {
+    [[#pairs.map(p => cite-num-link(p.num, p.key)).join(", ")]]
+  } else {
+    [[#collapse-linked(pairs)]]
+  }
 }
 
 // An undefined citation key is a hard error, matching Typst's native `cite`/`@key`
@@ -307,56 +334,60 @@
   cur
 })
 
+// Run `body(p)` in a cite context. `prepared()` is `none` on a provisional
+// introspection pass (the `#bibliography` path isn't registered yet); render a
+// "[?]" placeholder and let Typst re-run the context once the path converges —
+// erroring here would abort before convergence (see `read-merged`/`prepared`).
+#let with-prepared(ks, body) = context {
+  let p = prepared()
+  if p == none { [?] } else {
+    ensure-known(ks, p.db)
+    body(p)
+  }
+}
+
 // numeric: .bst collapses ranges, BibLaTeX preserves command order; author-year:
 // \citep "[Label Year]"
 #let bbl-cite(..keys) = {
   let ks = keys.pos()
   register-cites(ks)
-  context {
-    let p = prepared()
-    ensure-known(ks, p.db)
+  with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
       cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order))
     } else {
       numeric-cite(ks, p.order)
     }
-  }
+  })
 }
 
 // \citet "Label [Year]" (author-year); falls back to numeric brackets otherwise
 #let bbl-citet(..keys) = {
   let ks = keys.pos()
   register-cites(ks)
-  context {
-    let p = prepared()
-    ensure-known(ks, p.db)
+  with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
       cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order), citet: true)
     } else {
       numeric-cite(ks, p.order)
     }
-  }
+  })
 }
 
 // \citeyear: just the year(s) with suffix; \citeauthor: just the label
 #let bbl-citeyear(..keys) = {
   let ks = keys.pos()
   register-cites(ks)
-  context {
-    let p = prepared()
-    ensure-known(ks, p.db)
+  with-prepared(ks, p => {
     let extras = extra-labels(p.db, p.order)
     cite-order(ks, p.order).map(k => year-value(p.db.at(k)).c + extras.at(k, default: "")).join(", ")
-  }
+  })
 }
 #let bbl-citeauthor(..keys) = {
   let ks = keys.pos()
   register-cites(ks)
-  context {
-    let p = prepared()
-    ensure-known(ks, p.db)
-    cite-order(ks, p.order).map(k => cite-label-content(k, p.db, p.order)).join("; ")
-  }
+  with-prepared(ks, p => {
+    cite-order(ks, p.order).map(k => link(entry-label(k), cite-label-content(k, p.db, p.order))).join("; ")
+  })
 }
 
 #let bbl-bibliography(path, title: [References], size: 8pt, leading: auto, format: "bst") = {
@@ -379,19 +410,22 @@
       let xref-cite = none
       let xr = e.fields.at("crossref", default: none)
       if xr != none and xr in num-of {
-        xref-cite = if ay { cite-ay((xr,), db, order, extras, citet: true) } else { [[#num-of.at(xr)]] }
+        xref-cite = if ay { cite-ay((xr,), db, order, extras, citet: true) } else { [[#cite-num-link(num-of.at(xr), xr)]] }
       }
       let body = if format == "biblatex" {
         blx-handle(e, style: cite-style-state.get(), year-suffix: extras.at(key, default: ""))
       } else {
         handle(e, xref-cite: xref-cite, year-suffix: extras.at(key, default: ""))
       }
-      if ay {
+      let entry = if ay {
         // author-year list: no numbers, hanging indent (acmart \bibhang)
         block(par(hanging-indent: 1.8em, body))
       } else {
         grid(columns: (2.4em, 1fr), gutter: 0pt, [[#(i + 1)]], body)
       }
+      // in-text cites `link` here (see `entry-label`); the label must be attached
+      // in markup (a bare label in a code block can't join with content)
+      [#entry#entry-label(key)]
     }
   }
 }
