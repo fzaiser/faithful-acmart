@@ -32,6 +32,7 @@ exclude = [
     "/CLAUDE.md",
     "/CONTRIBUTING.md",
     "/DESIGN.md",
+    "/PUBLISHING.md",
     "/TODO.md",
     "/src/README.md",
     "/src/assets/acm-jdslogo.png",
