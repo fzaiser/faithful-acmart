@@ -252,8 +252,6 @@
 // distinct years, "; " between author groups. \citet puts years in brackets.
 #let cite-ay(keys, db, order, extras, citet: false) = {
   let ks = cite-order(keys, order)
-  // undefined/uncited keys stay visible per-key as "?" (LaTeX's marker)
-  let missing = keys.filter(k => order.position(x => x == k) == none).len()
   let lgroups = ()
   for k in ks {
     let lbl = cite-label(k, db, order)
@@ -272,7 +270,6 @@
   }
   let parts = lgroups.map(g => if citet { g.shown + " [" + render-years(g.years) + "]" }
     else { g.shown + " " + render-years(g.years) })
-  parts += ("?",) * missing
   if citet { parts.join("; ") } else { "[" + parts.join("; ") + "]" }
 }
 
@@ -288,19 +285,21 @@
     else { g.map(str).join(", ") }).join(", ")
 }
 
-// numeric \cite: known keys -> their reference-list numbers (the .bst collapses
-// ranges; biblatex lists them in command order). Each undefined/uncited key stays
-// visible as "?" (LaTeX's undefined-citation marker) rather than silently vanishing.
+// numeric \cite: each cited key -> its reference-list number; the .bst collapses
+// ranges while BibLaTeX lists them in command order. Every key is known here
+// (ensure-known ran first, so `position` never returns none).
 #let numeric-cite(ks, order) = {
-  let nums = ()
-  let missing = 0
+  let nums = ks.map(k => order.position(x => x == k) + 1)
+  if bib-format-state.final() == "biblatex" { [[#nums.map(str).join(", ")]] }
+  else { [[#collapse(nums)]] }
+}
+
+// An undefined citation key is a hard error, matching Typst's native `cite`/`@key`
+// ("key `x` does not exist in the bibliography") rather than LaTeX's silent "[?]".
+#let ensure-known(ks, db) = {
   for k in ks {
-    let pos = order.position(x => x == k)
-    if pos == none { missing += 1 } else { nums.push(pos + 1) }
+    assert(k in db, message: "acmart: key `" + k + "` does not exist in the bibliography")
   }
-  let known = if bib-format-state.final() == "biblatex" { nums.map(str).join(", ") } else { collapse(nums) }
-  let parts = (if nums.len() > 0 { (known,) } else { () }) + ("?",) * missing
-  [[#parts.join(", ")]]
 }
 
 #let register-cites(ks) = cited-state.update(cur => {
@@ -315,6 +314,7 @@
   register-cites(ks)
   context {
     let p = prepared()
+    ensure-known(ks, p.db)
     if cite-style-state.get() == "author-year" {
       cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order))
     } else {
@@ -329,6 +329,7 @@
   register-cites(ks)
   context {
     let p = prepared()
+    ensure-known(ks, p.db)
     if cite-style-state.get() == "author-year" {
       cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order), citet: true)
     } else {
@@ -343,10 +344,9 @@
   register-cites(ks)
   context {
     let p = prepared()
+    ensure-known(ks, p.db)
     let extras = extra-labels(p.db, p.order)
-    let known = cite-order(ks, p.order).map(k => year-value(p.db.at(k)).c + extras.at(k, default: ""))
-    let missing = ("?",) * ks.filter(k => p.order.position(x => x == k) == none).len()
-    (known + missing).join(", ")
+    cite-order(ks, p.order).map(k => year-value(p.db.at(k)).c + extras.at(k, default: "")).join(", ")
   }
 }
 #let bbl-citeauthor(..keys) = {
@@ -354,9 +354,8 @@
   register-cites(ks)
   context {
     let p = prepared()
-    let labels = cite-order(ks, p.order).map(k => cite-label-content(k, p.db, p.order))
-    labels += ("?",) * ks.filter(k => p.order.position(x => x == k) == none).len()
-    labels.join("; ")
+    ensure-known(ks, p.db)
+    cite-order(ks, p.order).map(k => cite-label-content(k, p.db, p.order)).join("; ")
   }
 }
 

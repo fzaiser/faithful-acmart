@@ -110,39 +110,49 @@
 // shadow above.
 // `title` is an explicit named parameter so it is peeled off automatically — `..args`
 // then holds only the path(s), which is what the engine backends thread to `read`.
-#let bibliography(title: auto, ..args) = context {
-  let cfg = cfg-state.get()
-  let backend = if cfg == none { "typst" } else { cfg.bib-backend }
-  if backend == "typst" {
-    // Forward the `arguments` value verbatim: it remembers where it was constructed,
-    // so a RELATIVE path resolves against the user's file, not this package. `title`
-    // is re-attached only when set, so `auto` still defers to body.typ's `set
-    // bibliography(title: [References])`. Passes single/array paths + full/style too.
-    if title == auto { std.bibliography(..args) } else { std.bibliography(..args, title: title) }
-  } else {
-    // The bibtex/biblatex engines read the .bib with our own parser, deep inside the
-    // package and *lazily* (during cite resolution, from `state`). Typst carries a
-    // path's origin only through a value that is never indexed into: an `arguments`
-    // value threaded whole to `read(..args)` keeps the caller's location; the moment
-    // we extract a string (`.pos().first()`, iterating an array) the origin is lost
-    // and a relative path would resolve against the package.
-    //   • one positional path -> thread `args` (title already peeled); RELATIVE OK.
-    //   • several files / an array -> must index, so require ABSOLUTE.
-    let title = if title == auto { [References] } else { title }
-    if args.pos().len() == 1 and args.named().len() == 0 and type(args.pos().first()) == str {
-      _acm-bibliography(args, title: title)
+#let bibliography(title: auto, ..args) = {
+  // Like Typst's built-in `bibliography`, the path is a SINGLE argument — a string
+  // or an array of paths; several files go in one array, not as separate positional
+  // args (Typst rejects those with "unexpected argument"). Checked eagerly, outside
+  // the context below, so this clear error wins over a cite's lazy read of the
+  // not-yet-registered path.
+  assert(args.pos().len() == 1,
+    message: "acmart: `bibliography` takes a single path or an array of paths, like "
+      + "Typst's built-in — for several files pass an array: "
+      + "bibliography((\"/a.bib\", \"/b.bib\")). Got " + repr(args.pos().len())
+      + " positional argument(s).")
+  context {
+    let cfg = cfg-state.get()
+    let backend = if cfg == none { "typst" } else { cfg.bib-backend }
+    if backend == "typst" {
+      // Forward the `arguments` value verbatim: it remembers where it was constructed,
+      // so a RELATIVE path resolves against the user's file, not this package. `title`
+      // is re-attached only when set, so `auto` still defers to body.typ's `set
+      // bibliography(title: [References])`. Passes single/array paths + full/style too.
+      if title == auto { std.bibliography(..args) } else { std.bibliography(..args, title: title) }
     } else {
-      // Several files (multiple positional paths and/or a path array): each must be
-      // indexed out of `args`, which loses its origin, so all must be absolute. Flatten
-      // positionals+arrays into one list so no path is silently dropped.
-      let paths = args.pos().map(p => if type(p) == array { p } else { (p,) }).flatten()
-      for p in paths {
-        assert(type(p) != str or p.starts-with("/"),
-          message: "acmart: with bib-backend " + repr(backend) + ", a bibliography of "
-            + "multiple files must use project-absolute paths (start with \"/\"); a "
-            + "single file may be relative. Got " + repr(p) + ".")
+      // The bibtex/biblatex engines read the .bib with our own parser, deep inside the
+      // package and *lazily* (during cite resolution, from `state`). Typst carries a
+      // path's origin only through a value that is never indexed into: an `arguments`
+      // value threaded whole to `read(..args)` keeps the caller's location; the moment
+      // we extract a string (`.pos().first()`, iterating an array) the origin is lost
+      // and a relative path would resolve against the package.
+      //   • one positional STRING -> thread `args` (title already peeled); RELATIVE OK.
+      //   • one positional ARRAY of paths (Typst's native multi-file form) -> must
+      //     index, so every entry must be project-absolute.
+      let title = if title == auto { [References] } else { title }
+      let path = args.pos().first()
+      if type(path) == str {
+        _acm-bibliography(args, title: title)
+      } else {
+        for p in path {
+          assert(type(p) != str or p.starts-with("/"),
+            message: "acmart: with bib-backend " + repr(backend) + ", a bibliography of "
+              + "multiple files must use project-absolute paths (start with \"/\"); a "
+              + "single file may be relative. Got " + repr(p) + ".")
+        }
+        _acm-bibliography(path, title: title)
       }
-      _acm-bibliography(paths, title: title)
     }
   }
 }

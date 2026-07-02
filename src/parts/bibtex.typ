@@ -263,7 +263,11 @@
     while i < cp.len() and cp.at(i) == "," { i = skip-ws-comment(cp, i + 1) }
   }
   let names = (:)
-  for role in ("author", "editor", "bookauthor") {
+  // Parse every name-list role in the ACM data model. `translator` is not yet
+  // rendered by our backends, but the upstream ACM BibLaTeX drivers do print it
+  // (acmnumeric/acmauthoryear.bbx `translator+others`), so keep it in the parsed
+  // data model rather than dropping it on the floor.
+  for role in ("author", "editor", "bookauthor", "translator") {
     if role in fields { names.insert(role, parse-names(fields.at(role))) }
   }
   (key: key, entry: (entry-type: etype, fields: fields, names: names))
