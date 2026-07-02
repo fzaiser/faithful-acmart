@@ -6,7 +6,7 @@
 // Geometry probed from the bundled class (`tools/test.py probe`); values in TeX points.
 #import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
 
-#let acmlarge(font-size: "10pt") = make-format(
+#let acmlarge(font-size: 10pt) = make-format(
   name: "acmlarge",
   ladder: size-ladder(font-size, format: "acmlarge"),
   paper: (width: 8.5in, height: 11in),

@@ -7,7 +7,7 @@
 // by conf-info-line's booktitle branch). Geometry probed from the class.
 #import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
 
-#let acmengage(font-size: "10pt") = make-format(
+#let acmengage(font-size: 10pt) = make-format(
   name: "acmengage",
   kind: "proceedings",
   ladder: size-ladder(font-size, format: "acmengage"),

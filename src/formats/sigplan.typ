@@ -7,7 +7,7 @@
 // acmart.dtx:8435), and URLs are set in sans (\urlstyle{sf}, acmart.dtx:3623).
 #import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
 
-#let sigplan(font-size: "10pt") = make-format(
+#let sigplan(font-size: 10pt) = make-format(
   name: "sigplan",
   kind: "proceedings",
   ladder: size-ladder(font-size, format: "sigplan"),

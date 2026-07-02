@@ -16,7 +16,7 @@
 //   paper 6.75in x 10in ; textwidth 395.8225 ; textheight 574
 //   inner/outer 46 ; top(to head) 58 ; head 13 ; headsep 14 -> body top 85
 //   footskip 24 ; parindent 10 ; parskip 0
-#let acmsmall(font-size: "10pt") = make-format(
+#let acmsmall(font-size: 10pt) = make-format(
   name: "acmsmall",
   ladder: size-ladder(font-size, format: "acmsmall"),
   paper: (width: 6.75in, height: 10in),

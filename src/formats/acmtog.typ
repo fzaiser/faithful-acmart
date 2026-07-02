@@ -9,7 +9,7 @@
 // Geometry probed from the bundled class.
 #import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
 
-#let acmtog(font-size: "9pt") = make-format(
+#let acmtog(font-size: 9pt) = make-format(
   name: "acmtog",
   ladder: size-ladder(font-size, format: "acmtog"),
   paper: (width: 8.5in, height: 11in),

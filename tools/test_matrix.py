@@ -1141,7 +1141,8 @@ ERROR_CASES: dict[str, tuple] = {
     "bad-copyright": ('copyright: "definitely-not-a-mode",', "unsupported copyright mode"),
     "bad-cc-type": ('copyright: "cc", cc-type: "by-mystery",', "unsupported Creative Commons type"),
     "bad-cc-version": ('copyright: "cc", cc-version: "2.5",', "unsupported Creative Commons version"),
-    "bad-font-size": ('font-size: "13pt",', "font-size"),
+    "bad-font-size": ("font-size: 13pt,", "must be a length, one of"),
+    "bad-font-size-type": ('font-size: "10pt",', "must be a length"),
     "bad-language": ('language: "klingon",', "unsupported language"),
     "draft-option": ("draft: true,", "option `draft` has no effect"),
     # the "bst" backend errors on an unsupported TeX command rather than passing

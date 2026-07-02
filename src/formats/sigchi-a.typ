@@ -13,7 +13,7 @@
 // margin (acmart.dtx:3533 \marginpar).
 #import "_base.typ": tp, size-ladder, make-format
 
-#let sigchia(font-size: "10pt") = make-format(
+#let sigchia(font-size: 10pt) = make-format(
   name: "sigchi-a",
   kind: "proceedings",
   ladder: size-ladder(font-size, format: "sigchi-a"),

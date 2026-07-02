@@ -36,17 +36,18 @@
 // 8..12 range).
 #let size-ladder(
   font-size,
-  allowed: ("8pt", "9pt", "10pt", "11pt", "12pt"),
+  allowed: (8pt, 9pt, 10pt, 11pt, 12pt),
   format: "",
   baseline-stretch: 1,
 ) = {
   assert(
-    font-size in allowed,
-    message: "acmart: option `font-size` must be one of " + allowed.join("/")
+    type(font-size) == length and font-size in allowed,
+    message: "acmart: option `font-size` must be a length, one of "
+      + allowed.map(repr).join("/")
       + (if format != "" { " for the " + format + " format" } else { "" })
       + " (got " + repr(font-size) + ").",
   )
-  let base = int(font-size.slice(0, -2)) // "10pt" -> 10
+  let base = int(calc.round(font-size / 1pt)) // 10pt -> 10
   // 0-based index of `normalsize` in the master ladder (10pt -> index 5 = 10/12).
   let ni = base - 5
   let pick(arr, step) = arr.at(calc.clamp(ni + _step-offset.at(step), 0, _ladder-size.len() - 1))

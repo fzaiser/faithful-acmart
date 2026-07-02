@@ -13,7 +13,7 @@
 // top, not zref against the frame bottom). See DESIGN.md "Known limitations".
 #import "_base.typ": tp, size-ladder, make-format
 
-#let acmcp(font-size: "9pt") = make-format(
+#let acmcp(font-size: 9pt) = make-format(
   name: "acmcp",
   kind: "cover",
   ladder: size-ladder(font-size, format: "acmcp"),

@@ -8,7 +8,7 @@
 // document, which is a 1.25 \baselinestretch over amsart's 9/11pt size table.
 #import "_base.typ": tp, size-ladder, make-format
 
-#let manuscript(font-size: "9pt") = make-format(
+#let manuscript(font-size: 9pt) = make-format(
   name: "manuscript",
   ladder: size-ladder(font-size, format: "manuscript", baseline-stretch: 1.25),
   paper: (width: 8.5in, height: 11in),

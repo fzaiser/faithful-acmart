@@ -7,7 +7,7 @@
 // (serif bold, acmart.dtx:8430). Geometry probed from the bundled class.
 #import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
 
-#let sigconf(font-size: "9pt") = make-format(
+#let sigconf(font-size: 9pt) = make-format(
   name: "sigconf",
   kind: "proceedings",
   ladder: size-ladder(font-size, format: "sigconf"),
