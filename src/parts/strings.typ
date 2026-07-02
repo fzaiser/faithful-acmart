@@ -59,7 +59,7 @@
 // their own \keywordsname in the secondary language; acmart.dtx:5338-5341).
 #let lang-record(name) = {
   assert(name in _langs,
-    message: "acmart: unsupported language " + repr(name) + "; supported: "
+    message: "faithful-acmart: unsupported language " + repr(name) + "; supported: "
       + repr(supported-languages))
   _langs.at(name)
 }
@@ -73,7 +73,7 @@
   if language == none {
     return (..default-strings, main: none)
   }
-  assert(type(language) == str, message: "acmart: `language` must be a single "
+  assert(type(language) == str, message: "faithful-acmart: `language` must be a single "
     + "language name; secondary languages go in `translations`.")
   (..lang-record(language), main: language)
 }

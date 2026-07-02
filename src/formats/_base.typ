@@ -42,7 +42,7 @@
 ) = {
   assert(
     type(font-size) == length and font-size in allowed,
-    message: "acmart: option `font-size` must be a length, one of "
+    message: "faithful-acmart: option `font-size` must be a length, one of "
       + allowed.map(repr).join("/")
       + (if format != "" { " for the " + format + " format" } else { "" })
       + " (got " + repr(font-size) + ").",

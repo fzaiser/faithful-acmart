@@ -319,7 +319,7 @@
 // ("key `x` does not exist in the bibliography") rather than LaTeX's silent "[?]".
 #let ensure-known(ks, db) = {
   for k in ks {
-    assert(k in db, message: "acmart: key `" + k + "` does not exist in the bibliography")
+    assert(k in db, message: "faithful-acmart: key `" + k + "` does not exist in the bibliography")
   }
 }
 
@@ -340,11 +340,11 @@
 #let with-prepared(ks, body) = context {
   let p = prepared()
   assert(p != none, message:
-    "acmart: cited a key but no acmart bibliography is registered to resolve it. On "
-    + "the `bibtex`/`biblatex` backends, `@key` / `#cite` resolve through acmart's own "
-    + "`#bibliography` (not Typst's built-in). Make sure you (1) import the template "
-    + "with `*` (`#import \"...\": *`, not just `acmart`) so `bibliography` shadows the "
-    + "built-in, and (2) call `#bibliography(\"refs.bib\")`.")
+    "faithful-acmart: cited a key but no bibliography is registered to resolve it. On "
+    + "the `bibtex`/`biblatex` backends, `@key` / `#cite` resolve through "
+    + "faithful-acmart's `#bibliography` (not Typst's built-in). Make sure you (1) import "
+    + "the template with `*` (`#import \"...\": *`, not just `acmart`) so `bibliography` "
+    + "shadows the built-in, and (2) call `#bibliography(\"refs.bib\")`.")
   ensure-known(ks, p.db)
   body(p)
 }

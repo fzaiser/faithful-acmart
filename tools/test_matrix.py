@@ -1155,7 +1155,7 @@ ERROR_CASES: dict[str, tuple] = {
     # cryptic `read(none)` deep in the .bib reader — see `with-prepared`.
     "cite-without-bibliography": (
         'bib-backend: "bibtex",',
-        "no acmart bibliography is registered",
+        "faithful-acmart: cited a key but no bibliography is registered",
         "= Body\nA citation @Cohen07 with no bibliography.",
     ),
 }

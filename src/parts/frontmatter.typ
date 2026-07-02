@@ -230,7 +230,7 @@
   let title-mark = none
   let subtitle-mark = none
   let symbol-at(i) = {
-    assert(i < fnsymbols.len(), message: "acmart: too many top-matter notes for the available footnote symbols")
+    assert(i < fnsymbols.len(), message: "faithful-acmart: too many top-matter notes for the available footnote symbols")
     fnsymbols.at(i)
   }
 
@@ -481,7 +481,7 @@
 // the box BOTTOM against the frame bottom — top-alignment is the approximation.
 #let make-acmcp-infobox(cfg, meta) = {
   assert(meta.acmcp-logo != none, message:
-    "acmart: the `acmcp` cover format needs a journal logo — pass `acmcp-logo: image(\"...\")` "
+    "faithful-acmart: the `acmcp` cover format needs a journal logo — pass `acmcp-logo: image(\"...\")` "
     + "(the ACM journal logo is ACM's trademark and is not bundled with this package).")
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
   // LaTeX zref-pushes the box down so its bottom approaches the frame bottom; we

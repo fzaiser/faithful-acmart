@@ -7,6 +7,7 @@
 // For Creative Commons (copyright: "cc") the permission text is the CC license
 // statement; set cc-type / cc-version on acmart() to choose the licence.
 
+
 // Canned permission paragraphs by mode (\@copyrightpermission).
 #let _permission = (
   "none": none,
@@ -61,12 +62,12 @@
 // badge at height=5ex (~2.15x x-height); the SVGs live in src/assets/cc/.
 #let cc-statement(cc-type, cc-version) = {
   assert(cc-type in _cc-names,
-    message: "acmart: unsupported Creative Commons type " + repr(cc-type)
+    message: "faithful-acmart: unsupported Creative Commons type " + repr(cc-type)
       + "; supported: " + repr(_cc-names.keys()))
   // CC0 is version 1.0 and ignores cc-version (its URL/name are fixed below); only
   // the graduated licences take 3.0/4.0.
   assert(cc-type == "zero" or cc-version in ("3.0", "4.0"),
-    message: "acmart: unsupported Creative Commons version " + repr(cc-version)
+    message: "faithful-acmart: unsupported Creative Commons version " + repr(cc-version)
       + "; supported: (\"3.0\", \"4.0\")")
   let url = if cc-type == "zero" {
     "https://creativecommons.org/publicdomain/zero/1.0"
@@ -85,7 +86,7 @@
 // The full permission paragraph for a mode (CC computed from type/version).
 #let permission-text(mode, cc-type: "by", cc-version: "4.0") = {
   assert(mode in _permission or mode == "cc",
-    message: "acmart: unsupported copyright mode " + repr(mode)
+    message: "faithful-acmart: unsupported copyright mode " + repr(mode)
       + "; supported: " + repr(_permission.keys() + ("cc",)))
   if mode == "cc" { cc-statement(cc-type, cc-version) }
   else { _permission.at(mode) }
@@ -93,7 +94,7 @@
 
 #let copyright-owner(mode) = {
   assert(mode in _owner,
-    message: "acmart: unsupported copyright mode " + repr(mode)
+    message: "faithful-acmart: unsupported copyright mode " + repr(mode)
       + "; supported: " + repr(_owner.keys()))
   _owner.at(mode)
 }

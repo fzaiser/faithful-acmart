@@ -5,7 +5,7 @@
 // helpers (which route citations and the reference list through the active
 // `bib-backend`) are in scope — a selective import gets Typst's built-in `cite` /
 // `bibliography`, which only behave correctly on the default "typst" backend:
-//   #import "@preview/acmart:0.0.1": *
+//   #import "@preview/faithful-acmart:0.1.0": *
 //   #show: acmart.with(format: "acmsmall", title: [...], ...)
 //
 // All public acmart formats are accepted (see _formats below): the single-column
@@ -117,7 +117,7 @@
   // the context below, so this clear error wins over a cite's lazy read of the
   // not-yet-registered path.
   assert(args.pos().len() == 1,
-    message: "acmart: `bibliography` takes a single path or an array of paths, like "
+    message: "faithful-acmart: `bibliography` takes a single path or an array of paths, like "
       + "Typst's built-in — for several files pass an array: "
       + "bibliography((\"/a.bib\", \"/b.bib\")). Got " + repr(args.pos().len())
       + " positional argument(s).")
@@ -147,7 +147,7 @@
       } else {
         for p in path {
           assert(type(p) != str or p.starts-with("/"),
-            message: "acmart: with bib-backend " + repr(backend) + ", a bibliography of "
+            message: "faithful-acmart: with bib-backend " + repr(backend) + ", a bibliography of "
               + "multiple files must use project-absolute paths (start with \"/\"); a "
               + "single file may be relative. Got " + repr(p) + ".")
         }
@@ -327,7 +327,7 @@
 ) = {
   assert(
     format in _formats,
-    message: "unknown/unimplemented acmart format: " + format,
+    message: "faithful-acmart: unknown format: " + format,
   )
   // The format entry is a builder; the base font size (8pt..12pt) parameterizes
   // the typography (it validates font-size and computes the size/baselineskip
@@ -352,7 +352,7 @@
   // its non-default value is meant to be visible, and here it can't be.
   assert(
     draft == false,
-    message: "acmart: option `draft` has no effect in this Typst port, so it is "
+    message: "faithful-acmart: option `draft` has no effect in this Typst port, so it is "
       + "rejected rather than silently ignored. In acmart `draft` only marks "
       + "overfull lines with a rule (acmart.dtx:2865); Typst has no equivalent "
       + "and instead reports overflow as compiler warnings. Remove `draft` to "
@@ -376,7 +376,7 @@
 
   if cfg.name == "acmcp" {
     assert(article-type in _acmcp-article-types,
-      message: "acmart: Article Type must be Research, Review, Discussion, Invited, or Position")
+      message: "faithful-acmart: Article Type must be Research, Review, Discussion, Invited, or Position")
   }
 
   // Resolve the language: main lang code (hyphenation) + translated fixed
@@ -391,11 +391,11 @@
     table: lang.table,
   ), lang: lang.code, bib-backend: bib-backend)
   assert(bib-backend in ("typst", "bibtex", "biblatex"),
-    message: "acmart: `bib-backend` must be \"typst\", \"bibtex\", or \"biblatex\".")
+    message: "faithful-acmart: `bib-backend` must be \"typst\", \"bibtex\", or \"biblatex\".")
   assert(cite-style in ("numeric", "author-year"),
-    message: "acmart: `cite-style` must be \"numeric\" or \"author-year\".")
+    message: "faithful-acmart: `cite-style` must be \"numeric\" or \"author-year\".")
   assert(type(acm-month) == int and acm-month >= 1 and acm-month <= 12,
-    message: "acmart: `acm-month` must be an integer 1..12; got " + repr(acm-month) + ".")
+    message: "faithful-acmart: `acm-month` must be an integer 1..12; got " + repr(acm-month) + ".")
   cite-style-state.update(cite-style)
   // Always (re)publish the field renderer so a custom `tex-render` from an earlier
   // acmart scope can't leak into a later one that leaves it at `auto`.
@@ -412,10 +412,10 @@
   let _fields = ("title", "subtitle", "keywords", "abstract")
   for (l, entry) in translations {
     let _ = lang-record(l) // validate the language name
-    assert(l != main-lang, message: "acmart: `translations` includes the main "
+    assert(l != main-lang, message: "faithful-acmart: `translations` includes the main "
       + "language " + repr(l) + "; it is for OTHER languages (main is `language`).")
     for k in entry.keys() {
-      assert(k in _fields, message: "acmart: `translations." + l + "` has unknown "
+      assert(k in _fields, message: "faithful-acmart: `translations." + l + "` has unknown "
         + "field " + repr(k) + "; expected any of " + repr(_fields) + ".")
     }
   }
