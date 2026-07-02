@@ -337,11 +337,12 @@ taller-than-`\topskip` title line.
   user-supplied `acmcp-logo` — ACM's trademark JDS logo isn't bundled, so
   `src/assets/acm-jdslogo.png` is twin-only — over the optional `code-data-link`/
   `keywords`/`contributions`/contact info) are reproduced; the title alone narrows 6pc
-  (acmart.dtx:6988). Approximation: the infobox's vertical position — acmart's two-pass
-  `zref` (acmart.dtx:6733) butts its bottom against the frame bottom; without cross-run
-  feedback we nudge it ~3 baselineskips from the body top (see TODO.md). The code/data
-  URL wraps where LaTeX overflows (one word-bag token splits). Normal contact/copyright
-  footnotes and keyword top matter are suppressed, as in LaTeX.
+  (acmart.dtx:6988). The infobox and tinted body are a two-cell grid: the body cell
+  stays top-aligned, while the infobox cell is bottom-aligned so its bottom lands on
+  the frame bottom, matching acmart's two-pass `zref` adjustment (acmart.dtx:6733)
+  without a magic vertical offset. The code/data URL wraps where LaTeX overflows
+  (one word-bag token splits). Normal contact/copyright footnotes and keyword top
+  matter are suppressed, as in LaTeX.
 - **Conference Huge title** sits ~4–5pt off from LaTeX (glyph-bbox overshoot): we pin the
   cap-top to the top margin (the faithful `\topskip` model), whereas LaTeX places the
   baseline. Imperceptible; the sigplan twin marks its Tier-2 top check report-only.

@@ -784,25 +784,26 @@
       // 6.5pc on the right (acmart.dtx:5902) to clear the top-right cover infobox.
       // ONLY the body is tinted — title/authors/abstract above stay on white. The
       // infobox (JDS logo + code/data, keywords, contributions, contact info;
-      // \set@ACM@acmcpbox, acmart.dtx:6724) is right-aligned at the text margin and
-      // top-aligned with the body (LaTeX zref-anchors it against the frame bottom; we
-      // approximate with the body top). The wrapping full-width block gives the
-      // place(top+right) infobox the full text-width right edge while the tint stays
-      // narrow.
+      // \set@ACM@acmcpbox, acmart.dtx:6724) is bottom-aligned in the right column,
+      // matching LaTeX's zref feedback that butts the infobox bottom against the
+      // frame bottom. acmcp is a single-page cover format, so keeping the framed
+      // body in one grid cell is acceptable.
       let article = _acmcp-article-types.at(article-type)
       let tint = article.color.lighten(90%)
       let fbox = 3 * tp // \fboxsep
       let body-reduction = 6.5 * 12 * tp // \advance\hsize -6.5pc (acmart.dtx:5902)
-      block(width: 100%, breakable: true, spacing: 0pt, {
-        make-acmcp-infobox(cfg, meta)
-        pad(left: -fbox, block(
-          fill: tint,
-          inset: fbox,
-          width: 100% - body-reduction + 2 * fbox,
-          breakable: true,
-          body,
-        ))
-      })
+      let framed-body = pad(left: -fbox, block(
+        fill: tint,
+        inset: fbox,
+        width: 100% + 2 * fbox,
+        body,
+      ))
+      block(width: 100%, breakable: false, spacing: 0pt, grid(
+        columns: (1fr, body-reduction),
+        column-gutter: 0pt,
+        grid.cell(align: top + left)[#framed-body],
+        grid.cell(align: bottom + right)[#make-acmcp-infobox(cfg, meta)],
+      ))
     } else {
       body
     }

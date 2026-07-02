@@ -8,9 +8,8 @@
 // the right (\@ACM@color@frame, acmart.dtx:5899) — ONLY the body, not the
 // title/authors/abstract; the right-margin infobox (JDS logo over code/data links,
 // keywords, contributions, contact info — acmart.dtx:6724) is right-aligned and
-// top-aligned with the body; the rotated article-type label sits at the page's left
-// edge. The one remaining approximation is the infobox's vertical anchoring (body
-// top, not zref against the frame bottom). See DESIGN.md "Known limitations".
+// bottom-aligned to the body frame; the rotated article-type label sits at the
+// page's left edge.
 #import "_base.typ": tp, size-ladder, make-format
 
 #let acmcp(font-size: 9pt) = make-format(

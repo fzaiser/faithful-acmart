@@ -486,18 +486,14 @@
 // right text margin (\fancyhead[R]\makebox[\z@][r], acmart.dtx:8129) — the JDS logo
 // over optional code/data links, keywords, contributions and author contact
 // information, in scriptsize. The acmcp title is narrowed by 6pc so it clears the
-// box. Called inside a full-width block at the body's vertical start, so place(top +
-// right) anchors it to the right margin level with the body top; LaTeX zref-anchors
-// the box BOTTOM against the frame bottom — top-alignment is the approximation.
+// box. The caller bottom-aligns this box in the cover grid's right column, matching
+// LaTeX's two-pass zref adjustment that drives the infobox bottom to the frame bottom.
 #let make-acmcp-infobox(cfg, meta) = {
   assert(meta.acmcp-logo != none, message:
     "faithful-acmart: the `acmcp` cover format needs a journal logo — pass `acmcp-logo: image(\"...\")` "
     + "(the ACM journal logo is ACM's trademark and is not bundled with this package).")
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
-  // LaTeX zref-pushes the box down so its bottom approaches the frame bottom; we
-  // can't run that two-pass measurement, so nudge it down by ~3 baselineskips from
-  // the body top — a fixed approximation that lands near LaTeX for a short cover.
-  place(top + right, dy: 3 * cfg.baselineskip, box(width: 60pt /* 5pc */)[
+  box(width: 60pt /* 5pc */)[
     #set align(left) // the \parindent\z@ vbox is left-aligned, not centred
     // User-supplied logo (see `acmcp-logo`); default it to the box width so a bare
     // `image("logo.png")` fills the column, as the bundled JDS logo used to.
@@ -513,7 +509,7 @@
       let label = if contacts.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
       [#label #acmcp-contact-lines(meta.authors).]
     }
-  ])
+  ]
 }
 
 // --- Shared title-head pieces (used by both the journal and the conference head;

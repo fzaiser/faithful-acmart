@@ -4,22 +4,6 @@ Outstanding work items that aren't tracked in the test matrix or DESIGN.md's
 "Known limitations" (those are accepted approximations; these are things we'd
 actually like to do).
 
-## Formats
-
-- **acmcp infobox vertical anchoring.** LaTeX runs a two-pass `zref-savepos`
-  fixed-point (acmart.dtx:6733): it records the cover infobox's bottom and the
-  tinted frame's bottom into the `.aux`, then on the next run inserts a `\vspace`
-  that drives the box bottom onto the frame bottom (it converges in one correction
-  because the adjustment is *added* to the prior vspace). Typst has no cross-run
-  page-position feedback, so we approximate with a fixed `dy` (~3 baselineskips)
-  from the body top — close for a short cover, but it doesn't track the body length.
-  - **Idea:** put the body and the infobox in a 2-cell `grid` with the infobox cell
-    `bottom`-aligned. The row height is the taller of the two, so the infobox bottom
-    lands on the body bottom when the body is taller, and the body sits at the top
-    when the infobox is taller — matching LaTeX's two regimes without a magic
-    number. Cost: the whole body goes in a grid cell (acmcp is single-page by
-    design, so the lost cross-page breakability is acceptable). Worth trying.
-
 ## Tooling
 
 - **Proper vector overlay via `pikepdf` (`tools/test.py overlay`).** The current

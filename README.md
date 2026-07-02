@@ -191,7 +191,6 @@ Some differences come from Typst and LaTeX being different layout engines:
   two-column page.
 - Line and page breaks can differ from LaTeX on dense pages.
 - `sigchi-a` does not move footnotes into the margin.
-- `acmcp` approximates the vertical position of the cover infobox.
 - The `"typst"` bibliography backend is convenient, but less faithful than the
   default `"bibtex"` backend.
 - PDF accessibility tags are emitted only with Typst 0.14+; visual output works from
