@@ -263,7 +263,7 @@
     while i < cp.len() and cp.at(i) == "," { i = skip-ws-comment(cp, i + 1) }
   }
   let names = (:)
-  for role in ("author", "editor", "bookauthor", "translator") {
+  for role in ("author", "editor", "bookauthor") {
     if role in fields { names.insert(role, parse-names(fields.at(role))) }
   }
   (key: key, entry: (entry-type: etype, fields: fields, names: names))

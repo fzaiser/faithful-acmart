@@ -48,7 +48,9 @@
   code: "en",
   keywords: "Additional Key Words and Phrases",
   keywords_proceedings: "Keywords",
-  acks: "Acknowledgments", proof: "Proof", table: "Table",
+  // `abstract` mirrors the _langs schema (only read for translated abstracts, which
+  // monolingual docs never have) so the two string schemas stay symmetric.
+  acks: "Acknowledgments", proof: "Proof", table: "Table", abstract: "Abstract",
 )
 
 #let supported-languages = _langs.keys()

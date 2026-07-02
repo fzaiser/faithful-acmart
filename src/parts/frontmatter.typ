@@ -23,7 +23,7 @@
 // Assembled as content (not a joined string) so the year int renders directly.
 #let pub-date(meta) = [#month-names.at(meta.acm-month - 1) #meta.acm-year]
 
-#let has-isbn(meta) = meta.isbn != none and str(meta.isbn) != ""
+#let has-isbn(meta) = meta.isbn != none and meta.isbn != ""
 
 // Match LaTeX \@textsuperscript marks. Typst's super() scales its body further;
 // the Dingbats-style envelope needs less inner scaling than text glyph marks.
@@ -283,7 +283,7 @@
 }
 
 #let acmcp-contact-lines(authors) = {
-  let contacts = authors.map(contact-line).filter(x => x != none)
+  let contacts = authors.map(contact-line)
   if contacts.len() <= 1 { return contacts.join("") }
   let out = []
   for (i, c) in contacts.enumerate() {
@@ -489,7 +489,7 @@
     #if meta.code-data-link != none { v(big, weak: true); [Code and data links:\ #meta.code-data-link] }
     #if meta.keywords != none { v(big, weak: true); [Keywords: #kw-join(meta.keywords)] }
     #if meta.contributions != none { v(big, weak: true); meta.contributions }
-    #let contacts = meta.authors.map(contact-line).filter(x => x != none)
+    #let contacts = meta.authors.map(contact-line)
     #if contacts.len() > 0 {
       v(big, weak: true)
       let label = if contacts.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }

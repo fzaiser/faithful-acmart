@@ -132,8 +132,8 @@
     margin: margin,
     // acmart's paper-top -> head-top distance (\topmargin) is captured in each
     // format's `margin.top` comment; Typst positions the running head via head.sep,
-    // so only height/sep are stored here.
-    head: (height: 13 * tp, sep: 14 * tp),
+    // so only the head-baseline separation is stored here.
+    head: (sep: 14 * tp),
     foot: (skip: foot-skip),
     // typography (scales with the base font size)
     font-size: l.font-size,
@@ -151,9 +151,8 @@
     parskip: 0pt,
     list-labelsep: 4 * tp,
     list-leftmargin: 24.5 * tp,
-    list-leftmargin-ii: 8.5 * tp,
     runin-sep: 3.5 * tp,
-    badge-width: 3 * 12 * tp, badge-skip: 1 * tp,
+    badge-width: 3 * 12 * tp,
     heading-numbering: numbering-for-depth(secnumdepth),
     secnumdepth: secnumdepth,
     // format-specific layout flags (the acmart \ifcase\ACM@format@nr switch)

@@ -32,7 +32,7 @@
 // Run-in heading: heading text flows inline, the following paragraph continues
 // on the same line. Returning inline content from the show rule achieves this;
 // a weak v() supplies the vertical space before without breaking the run-in.
-#let run-in-heading(it, cfg, before: 0pt, indent: 0pt, f: (:), num: none, dot: true) = {
+#let run-in-heading(it, cfg, f, before: 0pt, indent: 0pt, num: none, dot: true) = {
   v(before, weak: true)
   // Cancel the automatic first-line indent down to the desired `indent`. This
   // also absorbs the paragraph-start shim emitted after ACM block environments
@@ -70,18 +70,18 @@
     ]
   } else if lvl == 3 {
     // subsubsection: before .5bl, run-in
-    run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: 0pt,
-      f: sec-font(cfg, "subsubsection"), num: num)
+    run-in-heading(it, cfg, sec-font(cfg, "subsubsection"),
+      before: tex-skip(cfg, 0.5 * bls), indent: 0pt, num: num)
   } else if lvl == 4 {
     // paragraph: indented, run-in, before .5bl, unnumbered (secnumdepth 3)
-    run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: cfg.parindent,
-      f: sec-font(cfg, "paragraph"), num: none)
+    run-in-heading(it, cfg, sec-font(cfg, "paragraph"),
+      before: tex-skip(cfg, 0.5 * bls), indent: cfg.parindent, num: none)
   } else {
     // subparagraph: acmart does not override the base \subparagraph in the
     // generic/journal formats; the upstream sample shows an unstyled run-in title
     // with no added dot and no paragraph indent.
-    run-in-heading(it, cfg, before: tex-skip(cfg, 0.5 * bls), indent: 0pt,
-      f: (font: cfg.fonts.body, weight: "regular", style: "normal", size: cfg.size.normalsize),
-      num: none, dot: false)
+    run-in-heading(it, cfg,
+      (font: cfg.fonts.body, weight: "regular", style: "normal", size: cfg.size.normalsize),
+      before: tex-skip(cfg, 0.5 * bls), indent: 0pt, num: none, dot: false)
   }
 }

@@ -132,14 +132,17 @@
     if args.pos().len() == 1 and args.named().len() == 0 and type(args.pos().first()) == str {
       _acm-bibliography(args, title: title)
     } else {
-      let path = args.pos().first()
-      for p in (if type(path) == array { path } else { (path,) }) {
+      // Several files (multiple positional paths and/or a path array): each must be
+      // indexed out of `args`, which loses its origin, so all must be absolute. Flatten
+      // positionals+arrays into one list so no path is silently dropped.
+      let paths = args.pos().map(p => if type(p) == array { p } else { (p,) }).flatten()
+      for p in paths {
         assert(type(p) != str or p.starts-with("/"),
           message: "acmart: with bib-backend " + repr(backend) + ", a bibliography of "
             + "multiple files must use project-absolute paths (start with \"/\"); a "
             + "single file may be relative. Got " + repr(p) + ".")
       }
-      _acm-bibliography(path, title: title)
+      _acm-bibliography(paths, title: title)
     }
   }
 }
@@ -283,7 +286,7 @@
   pbalance: false,
   natbib: true,
   authors-per-row: 0,
-  article-type: none,
+  article-type: "Research",
   acmthm: true,
   // Implemented: whether long URLs may break after a literal hyphen (acmart
   // \do@url@hyp, acmart.dtx:3631). Typst's line-breaker already breaks URLs at
@@ -352,7 +355,6 @@
   } else { print-folios }
   let print-folios = print-folios or review
 
-  let article-type = if article-type == none { "Research" } else { article-type }
   if cfg.name == "acmcp" {
     assert(article-type in _acmcp-article-types,
       message: "acmart: Article Type must be Research, Review, Discussion, Invited, or Position")
@@ -373,8 +375,12 @@
     message: "acmart: `bib-backend` must be \"typst\", \"bibtex\", or \"biblatex\".")
   assert(cite-style in ("numeric", "author-year"),
     message: "acmart: `cite-style` must be \"numeric\" or \"author-year\".")
+  assert(type(acm-month) == int and acm-month >= 1 and acm-month <= 12,
+    message: "acmart: `acm-month` must be an integer 1..12; got " + repr(acm-month) + ".")
   cite-style-state.update(cite-style)
-  if tex-render != auto { tex-render-state.update(_ => tex-render) }
+  // Always (re)publish the field renderer so a custom `tex-render` from an earlier
+  // acmart scope can't leak into a later one that leaves it at `auto`.
+  tex-render-state.update(_ => if tex-render == auto { default-tex-render } else { tex-render })
 
   // `translations` carries the secondary-language top matter, grouped by language:
   //   translations: (french: (title: [...], abstract: [...], keywords: (...)))
@@ -492,9 +498,7 @@
   }
   let footer-row(l: none, c: none, r: none) = grid(
     columns: (1fr, auto, 1fr),
-    align(left, if l != none { l }),
-    align(center, if c != none { c }),
-    align(right, if r != none { r }),
+    align(left, l), align(center, c), align(right, r),
   )
   // Running footer. The ACM journal bibstrip sits on the OUTER edge (acmart
   // fancyfoot[RO,LE]): right on odd pages, left on even; nonacm suppresses it

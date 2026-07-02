@@ -3,7 +3,7 @@
 #import "tex.typ": purify
 #import "bibtex.typ": parse-names
 #import "scan.typ": match-brace, split-list-and
-#import "acmref-common.typ": render, ends-punct, blx-ends-punct, V, it, fld, has, articleno-of, join-names, dashify
+#import "acmref-common.typ": render, blx-ends-punct, V, it, fld, has, articleno-of, join-names, dashify
 
 // ---- BibLaTeX ACM driver port ---------------------------------------------
 // Source files mirrored here:
@@ -127,18 +127,11 @@
   if has(e, "subtitle") { raw += ". " + fld(e, "subtitle") }
   raw
 }
-#let blx-title(e, style: "numeric", quoted: false, sentence: true) = {
+#let blx-title(e, style: "numeric", sentence: true) = {
   let raw = blx-title-raw(e)
   if raw == none { return none }
   let shown = if style == "numeric" and sentence { blx-sentence-case(raw) } else { raw }
-  let c = render(shown)
-  let p = blx-ends-punct(shown)
-  if quoted {
-    let inner = c + if p { [] } else { [.] }
-    (c: "\u{201C}" + inner + "\u{201D}", p: true)
-  } else {
-    (c: c, p: p)
-  }
+  (c: render(shown), p: blx-ends-punct(shown))
 }
 #let blx-booktitle(e, with-in: false, style: "numeric") = {
   if not has(e, "booktitle") { return none }
@@ -157,7 +150,7 @@
   let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
   (c: pre + c, p: false)
 }
-#let blx-title-format(e, style: "numeric", default: "plain") = {
+#let blx-title-format(e, style: "numeric") = {
   let t = e.entry-type
   if style == "author-year" {
     // acmauthoryear.bbx inherits biblatex's standard title formats: article,
@@ -174,7 +167,7 @@
     if t in ("book", "collection", "inbook", "manual", "thesis", "mastersthesis",
              "phdthesis", "proceedings") {
       "emph"
-    } else { default }
+    } else { "plain" }
   }
 }
 #let blx-numeric-preserve-titlecase-types = (
@@ -342,7 +335,10 @@
 } else { none }
 #let blx-tail(e, url-always: false) = {
   let items = ()
-  let distinct-url = has(e, "distincturl") or has(e, "distinctURL")
+  // print url when no doi, OR when the per-entry `distinctURL` field is set and not
+  // "0" (matches the .bst's `distinctURL empty.or.zero not`; field keys are lowercased
+  // at parse time, so only "distincturl" can occur).
+  let distinct-url = has(e, "distincturl") and fld(e, "distincturl") != "0"
   if url-always or (not has(e, "doi")) or distinct-url {
     let u = blx-url-urldate(e)
     if u != none { items.push(u) }
@@ -720,7 +716,7 @@
   else if t == "underreview" {
     blx-blocks(
       blx-lead(e, style: style, suffix: year-suffix),
-      blx-title(e, style: style, quoted: false, sentence: style == "numeric"),
+      blx-title(e, style: style, sentence: style == "numeric"),
       blx-date-parens(e),
       blx-note(e),
       ..blx-tail(e),

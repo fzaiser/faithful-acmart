@@ -63,7 +63,9 @@
   assert(cc-type in _cc-names,
     message: "acmart: unsupported Creative Commons type " + repr(cc-type)
       + "; supported: " + repr(_cc-names.keys()))
-  assert(cc-version in ("3.0", "4.0"),
+  // CC0 is version 1.0 and ignores cc-version (its URL/name are fixed below); only
+  // the graduated licences take 3.0/4.0.
+  assert(cc-type == "zero" or cc-version in ("3.0", "4.0"),
     message: "acmart: unsupported Creative Commons version " + repr(cc-version)
       + "; supported: (\"3.0\", \"4.0\")")
   let url = if cc-type == "zero" {

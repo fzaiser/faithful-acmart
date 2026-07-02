@@ -109,10 +109,7 @@
     if it.block {
       block(above: tex-skip(cfg, cfg.smallskip), below: tex-skip(cfg, cfg.smallskip))[
         #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: 0pt)
-        #for (i, l) in it.lines.enumerate() {
-          if i > 0 { linebreak() }
-          l.body
-        }
+        #it.lines.map(l => l.body).join(linebreak())
       ]
     } else {
       it.lines.first().body

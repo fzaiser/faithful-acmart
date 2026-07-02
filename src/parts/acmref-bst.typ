@@ -17,7 +17,6 @@
   if state == "before" { "first" }
   else if state == "mid" {
     if variant == "dotspace" { "dotspace" }
-    else if variant == "remove" { "space" }
     else if variant == "removenospace" { "none" }
     else { "comma" }
   } else { "block" }
