@@ -452,9 +452,10 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   **frame** (`@ACM@Article@color!10!white`, default ACMBlue — acmart.dtx:5899)
   scoped to the **body only** (the title/authors/abstract stay on white) and
   narrowed 6.5pc on the right (acmart.dtx:5902), and the right-margin cover
-  **infobox** — the bundled JDS logo (`src/assets/acm-jdslogo.png`, from acmart's
-  `acm-jdslogo.png`) over the optional `code-data-link` / `keywords` /
-  `contributions` / author contact information — are reproduced; the title alone is
+  **infobox** — the user-supplied journal logo (`acmcp-logo`; ACM's trademark JDS
+  logo is not bundled, so `src/assets/acm-jdslogo.png` is kept for the acmcp twin
+  only) over the optional `code-data-link` / `keywords` / `contributions` / author
+  contact information — are reproduced; the title alone is
   narrowed by 6pc to clear the box (acmart.dtx:6988). The one approximation is the
   infobox's vertical position: acmart uses a two-pass `zref` measurement
   (acmart.dtx:6733) to butt its bottom against the frame bottom on short documents;

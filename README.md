@@ -96,8 +96,8 @@ Set the output style with `format`:
 | `siggraph`, `sigchi` | Aliases of `sigconf`, matching `acmart` |
 | `sigplan` | SIGPLAN proceedings |
 | `sigchi-a` | Legacy landscape SIGCHI extended abstract |
-| `acmengage` | ACM EngageCSEdu proceedings |
-| `acmcp` | ACM Computing Proceedings cover format |
+| `acmengage` | ACM EngageCSEdu format |
+| `acmcp` | ACM cover-page format (used by the Journal of Data Science) |
 
 ## Common options
 
@@ -119,7 +119,7 @@ Most papers only need a subset of these:
 | `short-title`, `short-authors` | Running-head overrides |
 | `font-size` | One of `8pt`, `9pt`, `10pt`, `11pt`, `12pt`, or `auto` |
 
-Author dictionaries accept `name`, `email`, `orcid`, `note`, `corresponding`, and
+Author dictionaries accept `name`, `email`, `note`, `corresponding`, and
 `affiliation`. An affiliation is a dictionary with fields such as `institution`,
 `city`, `state`, and `country`; pass an array of affiliation dictionaries for multiple
 affiliations.
@@ -185,8 +185,10 @@ section. It is suppressed automatically in anonymous mode.
 
 Some differences come from Typst and LaTeX being different layout engines:
 
-- Typst cannot reproduce LaTeX's `\flushbottom` vertical fill or final two-column
-  balancing, so pages are ragged-bottom.
+- Typst has no vertical justification, so pages are ragged-bottom: it can't
+  reproduce LaTeX's bottom-of-page fill (`\flushbottom` in the two-column formats,
+  stretchable bottom glue in the single-column ones) or balance the final
+  two-column page.
 - Line and page breaks can differ from LaTeX on dense pages.
 - `sigchi-a` does not move footnotes into the margin.
 - `acmcp` approximates the vertical position of the cover infobox.

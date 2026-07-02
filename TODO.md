@@ -20,6 +20,18 @@ actually like to do).
     number. Cost: the whole body goes in a grid cell (acmcp is single-page by
     design, so the lost cross-page breakability is acceptable). Worth trying.
 
+## Top matter
+
+- **Author ORCIDs (`\orcid`).** LaTeX acmart supports `\orcid{0000-...}` per author
+  and typesets the author's name as a hyperlink to `https://orcid.org/<id>`
+  (acmart.dtx:552-609, 5170-5306); ACM strongly encourages including them. Our port
+  drops the field: `normalize-author` (`src/parts/frontmatter.typ:45`) whitelists only
+  `name`/`affiliation`/`email`/`note`/`corresponding`, so an `orcid` key is silently
+  ignored. **Plan:** carry `orcid` through `normalize-author`, and in the author-block
+  renderer wrap the name in a `link("https://orcid.org/" + orcid)` (coloured in screen
+  mode like other links). Note some formats don't typeset ORCIDs (acmart.dtx:570) —
+  match that per-format. Until then, keep it out of the README's author-field list.
+
 ## Tooling
 
 - **Proper vector overlay via `pikepdf` (`tools/test.py overlay`).** The current
