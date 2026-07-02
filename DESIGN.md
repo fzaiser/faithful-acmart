@@ -187,8 +187,9 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 **Bibliography — three backends (`bib-backend`):**
 - **`"typst"` — idiomatic, an approximation.** Native `bibliography()` with Typst's
   built-in ACM CSL style (`association-for-computing-machinery`). Native `@key`
-  citations work and — unlike the engine backends — keep Typst's in-text citation
-  hyperlinks. It is *not* faithful: it is bounded both by the built-in style's own
+  citations work and keep Typst's built-in in-text citation hyperlinks (the engine
+  backends anchor their cites too, via an explicit label per entry — see below).
+  It is *not* faithful: it is bounded both by the built-in style's own
   choices (full month names, `https://doi.org/<id>` DOIs, `Doctoral dissertation`
   wording, no report genre label) and by hayagriva's BibTeX→CSL *data-mapping* limits
   (dropped `lastaccessed` dates, `@periodical` journal names, thesis `school`/advisor,

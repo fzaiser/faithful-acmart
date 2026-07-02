@@ -106,12 +106,11 @@ unnumbered "Acknowledgments" section (suppressed under `anonymous`).
 
 - **`"bibtex"` (default)** — a pure-Typst port of `ACM-Reference-Format.bst`, matching
   LaTeX acmart's own default (natbib + BibTeX). Reproduces the bibtex reference text
-  exactly across every entry type. *Current limitation:* in-text citations are not yet
-  hyperlinked to the reference list (links within reference entries — DOI/arXiv/URL —
-  do work).
+  exactly across every entry type, with in-text citations hyperlinked to the reference
+  list (and DOI/arXiv/URL links within entries).
 - **`"typst"`** — Typst's native `bibliography()` with its built-in ACM CSL style.
-  Idiomatic, and in-text citations link to the reference list, but it is an
-  **approximation**: it is bounded by hayagriva's BibTeX→CSL data mapping.
+  Idiomatic, but an **approximation**: it is bounded by hayagriva's BibTeX→CSL data
+  mapping.
 - **`"biblatex"`** — a pure-Typst ACM BibLaTeX renderer (`acmnumeric` / `acmauthoryear`,
   including `biblatex-software` artifacts).
 
