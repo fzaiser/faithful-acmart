@@ -123,32 +123,24 @@
   let t = tex-to-string(fld(e, "title"))
   if quoted { "\u{201C}" + t + "\u{201D}" } else { t }
 }
-// calc.basic.label's type dispatch: which field supplies the .bst citation label
-#let bst-lab-label(e) = {
-  let t = e.entry-type
-  let au = if has(e, "author") { format-lab-names(e.names.author) }
-  let ed = if has(e, "editor") { format-lab-names(e.names.editor) }
-  let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
-  let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
-  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
-  if t in ("book", "inbook", "article") { pick((au, ed, key)) }
-  else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key)) }
-  else if t in manual-like { pick((au, ed, org, key)) }
-  else { pick((au, key)) }
-}
+// Entry types the .bst / biblatex treat as "manual-like" for label + title dispatch.
+#let manual-like-types = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
 
-#let bst-lab-disambiguation-label(e) = {
+// calc.basic.label's type dispatch: which field supplies the .bst citation label.
+// `full: true` is the disambiguation label (all names spelled out via format-lab-names-full).
+#let bst-lab-label(e, full: false) = {
   let t = e.entry-type
-  let au = if has(e, "author") { format-lab-names-full(e.names.author) }
-  let ed = if has(e, "editor") { format-lab-names-full(e.names.editor) }
+  let names-fn = if full { format-lab-names-full } else { format-lab-names }
+  let au = if has(e, "author") { names-fn(e.names.author) }
+  let ed = if has(e, "editor") { names-fn(e.names.editor) }
   let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
   let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
-  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
   if t in ("book", "inbook", "article") { pick((au, ed, key)) }
   else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key)) }
-  else if t in manual-like { pick((au, ed, org, key)) }
+  else if t in manual-like-types { pick((au, ed, org, key)) }
   else { pick((au, key)) }
 }
+#let bst-lab-disambiguation-label(e) = bst-lab-label(e, full: true)
 
 #let blx-lab-label(e, full: false) = {
   let t = e.entry-type
@@ -157,30 +149,21 @@
   let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
   let title = label-title(e, quoted: t in ("article", "inproceedings", "conference", "presentation", "incollection"))
   let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
-  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
   if t in ("book", "inbook", "article") { pick((au, ed, title, key)) }
   else if t in ("proceedings", "periodical", "collection") { pick((ed, org, title, key)) }
-  else if t in manual-like { pick((au, ed, org, title, key)) }
   else { pick((au, ed, org, title, key)) }
 }
 
 #let blx-label-people(e) = {
-  let t = e.entry-type
-  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
-  if t in ("book", "inbook", "article") {
-    if has(e, "author") { e.names.author } else if has(e, "editor") { e.names.editor } else { none }
-  } else if t in ("proceedings", "periodical", "collection") {
+  if e.entry-type in ("proceedings", "periodical", "collection") {
     if has(e, "editor") { e.names.editor } else { none }
-  } else if t in manual-like {
-    if has(e, "author") { e.names.author } else if has(e, "editor") { e.names.editor } else { none }
   } else {
     if has(e, "author") { e.names.author } else if has(e, "editor") { e.names.editor } else { none }
   }
 }
 
 #let blx-label-title-italic(e) = {
-  let manual-like = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
-  e.entry-type in manual-like and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
+  e.entry-type in manual-like-types and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
 }
 
 #let name-prefix-len(left, right) = {

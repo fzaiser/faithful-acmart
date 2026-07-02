@@ -630,6 +630,36 @@
 // the journal list); fonts are cfg.author-font / cfg.affil-font. Each row is
 // centered independently (acmart \centering per row), so a partial final row is
 // centered under the full rows rather than left-aligned.
+// Chunk a flat list into rows of at most `n` (acmart lays author boxes N per row).
+#let chunk-rows(items, n) = {
+  let rows = ()
+  let i = 0
+  while i < items.len() {
+    rows.push(items.slice(i, calc.min(i + n, items.len())))
+    i += n
+  }
+  rows
+}
+
+// One author box shared by the conference (@mkauthors@iii) and sigchi-a
+// (@mkauthors@iv) grids: STACKED names in author-font (acmart adds every name with
+// `\par##1`, NOT andified like the journal list), a blank line, then the contact
+// lines in affil-font. `contact-fn(group)` yields the ordered contact lines;
+// sigchi-a left-aligns (else centered). `fli` is the name paragraph's first-line
+// indent (0pt for sigchi-a; the conference box keeps the ambient body indent).
+#let author-grid-box(cfg, group, contact-fn, align-x: center, fli: 0pt) = {
+  let af = cfg.author-font
+  let aff = cfg.affil-font
+  set align(align-x)
+  set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
+  set par(justify: false, first-line-indent: fli, leading: comp(cfg, sz: af.size), spacing: comp(cfg, sz: af.size))
+  group.authors.map(a => { a.name; render-marks(a._marks) }).join(linebreak())
+  parbreak()
+  set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
+  set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
+  contact-fn(group).join(linebreak())
+}
+
 #let make-authors-grid(cfg, groups, authors-per-row: 0) = {
   if groups.len() == 0 { return [] }
   let sep = 12pt // \author@bx@sep = 1pc
@@ -639,27 +669,14 @@
     if g <= 3 { g } else if g == 4 { 2 } else { 3 }
   }
   let bw = (tw - sep) / n - sep
-  let af = cfg.author-font
-  let aff = cfg.affil-font
-  let author-box(group) = {
-    set align(center)
-    set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
-    set par(justify: false, leading: comp(cfg, sz: af.size), spacing: comp(cfg, sz: af.size))
-    // Co-authors sharing a box are STACKED, each on its own line — acmart's
-    // conference grid adds every name with `\par##1` (acmart.dtx:7470-7474), NOT
-    // andified like the journal author list (\andify, @mkauthors@i). A single
-    // -author box (every conference twin) renders just the name either way.
-    group.authors.map(a => { a.name; render-marks(a._marks) }).join(linebreak())
-    parbreak()
-    set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
-    set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
-    // Contact lines in acmart's command order: \email/\affiliation append to
-    // \@currentaffiliation as issued (acmart.dtx). Replay each author's email and
-    // affiliation in its own declared order (a.contact-order), so an author who
-    // wrote \affiliation before \email (sample Lars/Charles/John/Julius) prints
-    // institution-then-email, while one who wrote \email first prints email-then
-    // -institution. The shared group affiliation is emitted once, at the position
-    // its holder declared it (only that author carries it in contact-order).
+  // Contact lines in acmart's command order: \email/\affiliation append to
+  // \@currentaffiliation as issued (acmart.dtx). Replay each author's email and
+  // affiliation in its own declared order (a.contact-order), so an author who
+  // wrote \affiliation before \email (sample Lars/Charles/John/Julius) prints
+  // institution-then-email, while one who wrote \email first prints email-then
+  // -institution. The shared group affiliation is emitted once, at the position
+  // its holder declared it (only that author carries it in contact-order).
+  let contact-fn(group) = {
     let lines = ()
     for a in group.authors {
       for field in a.contact-order {
@@ -667,21 +684,16 @@
         else if field == "affiliation" { lines += affil-conf-lines(group.affiliation) }
       }
     }
-    lines.join(linebreak())
+    lines
   }
-  // Chunk the boxes into rows of N and center each row on its own (acmart centers
-  // every row), so a short final row sits centered rather than left-aligned. Rows
-  // are separated by \lineskip (1pc).
-  let rows = ()
-  let i = 0
-  while i < groups.len() {
-    rows.push(groups.slice(i, calc.min(i + n, groups.len())))
-    i += n
-  }
-  stack(dir: ttb, spacing: 12pt, ..rows.map(row => align(center, grid(
+  // Center each row on its own (acmart centers every row), so a short final row
+  // sits centered rather than left-aligned. Rows are \lineskip (1pc) apart. The
+  // conference box keeps the ambient body first-line indent (\parindent).
+  let fli = (amount: cfg.parindent, all: false)
+  stack(dir: ttb, spacing: 12pt, ..chunk-rows(groups, n).map(row => align(center, grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,
-    ..row.map(author-box),
+    ..row.map(g => author-grid-box(cfg, g, contact-fn, fli: fli)),
   ))))
 }
 
@@ -719,32 +731,15 @@
   let tw = cfg.paper.width - cfg.margin.left - cfg.margin.right
   let n = if authors-per-row > 0 { authors-per-row } else if groups.len() <= 1 { 1 } else { 2 }
   let bw = (tw - sep) / n - sep
-  let af = cfg.author-font
-  let aff = cfg.affil-font
-  let author-box(group) = {
-    set align(left)
-    set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
-    set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: af.size), spacing: comp(cfg, sz: af.size))
-    // grouped author names stack one per line (\def\and{\par} inside the box).
-    group.authors.map(a => { a.name; render-marks(a._marks) }).join(linebreak())
-    parbreak()
-    set text(font: cfg.fonts.at(aff.family), weight: aff.weight, size: cfg.size.at(aff.size))
-    set par(leading: comp(cfg, sz: aff.size), spacing: comp(cfg, sz: aff.size))
-    let emails = group.authors.map(a => a.email).filter(e => e != none)
-    (emails + affil-conf-lines(group.affiliation)).join(linebreak())
-  }
-  // Boxes flow left-aligned and wrap after N; rows are \lineskip (1pc) apart.
-  let rows = ()
-  let i = 0
-  while i < groups.len() {
-    rows.push(groups.slice(i, calc.min(i + n, groups.len())))
-    i += n
-  }
-  stack(dir: ttb, spacing: 12pt, ..rows.map(row => grid(
+  // grouped emails then affiliation lines (source order, \email before \affiliation)
+  let contact-fn(group) = group.authors.map(a => a.email).filter(e => e != none) + affil-conf-lines(group.affiliation)
+  // Boxes flow left-aligned (sigchiamode skips \centering) and wrap after N; rows
+  // are \lineskip (1pc) apart. The box first line is unindented (\parindent 0).
+  stack(dir: ttb, spacing: 12pt, ..chunk-rows(groups, n).map(row => grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,
     align: top + left,
-    ..row.map(author-box),
+    ..row.map(g => author-grid-box(cfg, g, contact-fn, align-x: left)),
   )))
 }
 

@@ -25,6 +25,19 @@
   if h.len() > 0 { h.first() } else { none }
 }
 
+// Shared theorem/proof frame: a .5bl-above/below block, first line unindented but
+// offset by \parindent, then the run-in "<head>. " followed by the body.
+#let thm-block(cfg, head, body) = block(
+  above: tex-skip(cfg, 0.5 * cfg.baselineskip),
+  below: tex-skip(cfg, 0.5 * cfg.baselineskip),
+  width: 100%,
+)[
+  #set par(first-line-indent: 0pt)
+  #h(cfg.parindent)
+  #head.#h(0.5em)
+  #body
+]
+
 #let _theorem-env(default-name, head-style, body-style) = (
   // `title` overrides the displayed environment name; it defaults to the env's
   // own name (default-name is captured from the enclosing scope).
@@ -32,7 +45,6 @@
     thm-counter.step()
     context {
       let cfg = cfg-state.get()
-      let bls = cfg.baselineskip
       let sec = _section-number()
       let n = thm-counter.get().first()
       let number = if sec != none { [#sec.#n] } else { [#n] }
@@ -45,12 +57,7 @@
       // amsthm sets the env in a trivlist whose \topsep is the style's "space
       // above/below" (.5bl); the baseline pitch is \baselineskip + \topsep, so
       // tex-skip() converts it to the block gap (cf. \@startsection headings).
-      block(above: tex-skip(cfg, 0.5 * bls), below: tex-skip(cfg, 0.5 * bls), width: 100%)[
-        #set par(first-line-indent: 0pt)
-        #h(cfg.parindent)
-        #head.#h(0.5em)
-        #if body-style == "italic" { emph(body) } else { body }
-      ]
+      thm-block(cfg, head, if body-style == "italic" { emph(body) } else { body })
     }
   }
 )
@@ -86,12 +93,6 @@
     let cfg = cfg-state.get()
     let name = if name != none { name } else { cfg.strings.proof }
     // proof uses \topsep 6pt (= .5bl); same conversion as theorems.
-    block(above: tex-skip(cfg, 0.5 * cfg.baselineskip), below: tex-skip(cfg, 0.5 * cfg.baselineskip), width: 100%)[
-      #set par(first-line-indent: 0pt)
-      #h(cfg.parindent)
-      #smallcaps(name).#h(0.5em)
-      #body
-      #h(1fr)#sym.square.stroked
-    ]
+    thm-block(cfg, smallcaps(name), [#body #h(1fr)#sym.square.stroked])
   }
 }

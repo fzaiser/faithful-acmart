@@ -381,8 +381,10 @@
   }
   if style == "numeric" { blx-date(e, suffix: suffix) } else { none }
 }
+// a rendered value carries visible text (drives block/swids filtering)
+#let blx-nonempty(v) = v != none and v.c != none and v.c != [] and v.c != ""
 #let blx-blocks(..vals) = {
-  let pieces = vals.pos().filter(v => v != none and v.c != none and v.c != [] and v.c != "")
+  let pieces = vals.pos().filter(blx-nonempty)
   let out = []
   for (i, v) in pieces.enumerate() {
     if i > 0 { out += " " }
@@ -617,12 +619,10 @@
   let c = []
   if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
   c += render(fld(e, "title", d: ""))
-  let has-version = has(e, "version")
-  let has-editor = has(e, "editor")
   c += blx-sw-version(e)
   c += blx-sw-editor(e)
   let date = blx-printdate(e)
-  if has-version or has-editor { c += ", " + date } else { c += " " + date }
+  if has(e, "version") or has(e, "editor") { c += ", " + date } else { c += " " + date }
   (c: c, p: false)
 }
 
@@ -636,12 +636,10 @@
   if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
   if has(e, "subtitle") { c += blx-sw-subtitle(e) + " part of " }
   c += render(fld(e, "title", d: ""))
-  let has-version = has(e, "version")
-  let has-editor = has(e, "editor")
   c += blx-sw-version(e)
   c += blx-sw-editor(e)
   let date = blx-printdate(e)
-  if has-version or has-editor { c += ", " + date } else { c += " " + date }
+  if has(e, "version") or has(e, "editor") { c += ", " + date } else { c += " " + date }
   (c: c, p: false)
 }
 
@@ -651,12 +649,10 @@
   if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
   if has(e, "subtitle") { c += blx-sw-subtitle(e) + " from " }
   c += render(fld(e, "title", d: ""))
-  let has-version = has(e, "version")
-  let has-editor = has(e, "editor")
   c += blx-sw-version(e)
   c += blx-sw-editor(e)
   let date = blx-printdate(e)
-  if has-version or has-editor { c += ", " + date } else { c += " " + date }
+  if has(e, "version") or has(e, "editor") { c += ", " + date } else { c += " " + date }
   (c: c, p: false)
 }
 
@@ -687,7 +683,7 @@
     blx-sw-url(e),
     blx-sw-repository(e),
     blx-sw-swhid(e),
-  ).filter(v => v != none and v.c != none and v.c != [] and v.c != "")
+  ).filter(blx-nonempty)
   if pieces.len() == 0 { return none }
   let c = []
   for (i, v) in pieces.enumerate() {

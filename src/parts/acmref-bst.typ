@@ -66,19 +66,21 @@
   if not ends-punct(s) { s = s + "." }
   V(s)
 }
+// " (Ed.)" / " (Eds.)" per editor count (the .bst appends "." after it in some spots)
+#let eds-suffix(people) = if people.len() > 1 { " (Eds.)" } else { " (Ed.)" }
 #let format-editors(e) = {     // label position: trailing " (Ed.)."/" (Eds.)."
   if not has(e, "editor") { return none }
-  let s = join-names(e.names.editor) + (if e.names.editor.len() > 1 { " (Eds.)." } else { " (Ed.)." })
-  V(s)
+  V(join-names(e.names.editor) + eds-suffix(e.names.editor) + ".")
 }
 #let format-editors-fml(e) = { // inline after booktitle: no trailing period
   if not has(e, "editor") { return none }
-  V(join-names(e.names.editor) + (if e.names.editor.len() > 1 { " (Eds.)" } else { " (Ed.)" }))
+  V(join-names(e.names.editor) + eds-suffix(e.names.editor))
 }
 
 // ---- titles ---------------------------------------------------------------
-#let format-articletitle(e) = if has(e, "title") { V(fld(e, "title")) } else { none }
 #let format-title(e) = if has(e, "title") { V(fld(e, "title")) } else { none }
+// The .bst's format.title and format.articletitle apply the same transform.
+#let format-articletitle = format-title
 #let format-title-emph(e) = if has(e, "title") {
   (c: it(render(fld(e, "title"))), p: ends-punct(fld(e, "title")))
 } else { none }
@@ -220,7 +222,7 @@
   if bt == none { return none }
   let c = [In ] + bt.c + format-city(e)
   if has(e, "editor") {
-    c = c + ", " + join-names(e.names.editor) + (if e.names.editor.len() > 1 { " (Eds.)" } else { " (Ed.)" })
+    c = c + ", " + join-names(e.names.editor) + eds-suffix(e.names.editor)
   }
   (c: c, p: false)
 }
