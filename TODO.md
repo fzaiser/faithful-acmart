@@ -92,9 +92,16 @@ _(No open items — both resolved in `parts/acmref-cite.typ`.)_
   `query()`s the entry to fetch its data at cite time; our port already holds the
   resolved db from `prepared()`, so no query is needed.)
 
-- **DONE — Latent `bibtex` cite-path convergence edge.** `read-merged`/`prepared` now
-  treat a `none` bib path (a provisional introspection pass, before `#bibliography`
-  registers the path) as "not ready": cites render a `[?]` placeholder and Typst
-  re-runs the context once the path converges, instead of erroring on `read(none)`.
-  Regression: `tests/typst-only/bib-cite-links.typ` (8 `@key`s incl. dotted keys like
-  `@Li:2008:PUC:1358628.1358946` in one sentence, `bib-backend: "bibtex"`).
+- **DONE — cryptic `read(none)` crash when no acmart bibliography is registered.**
+  Root cause: on the `bibtex`/`biblatex` backends `@key`/`#cite` resolve through
+  acmart's `#bibliography`; if that never ran (the built-in `#bibliography` was used
+  because the user imported only `acmart`, or `#bibliography` is missing entirely),
+  `bib-path-state.final()` stays `none` and the old code called `read(none)` — an
+  "expected string, found none" deep in the .bib reader. `bib-path-state.final()` is
+  reliable (Typst pre-collects the state update, so it is never transiently `none`
+  when the acmart bibliography IS in scope — verified: no twin ever reads `none`), so
+  `none` unambiguously means "misconfigured". `with-prepared` now `assert`s with an
+  actionable message (import with `*`; call `#bibliography`), consistent with the
+  existing hard-error on an undefined key (`ensure-known`). Expected-error test:
+  `cite-without-bibliography`; the linked-cite happy path is covered by
+  `tests/typst-only/bib-cite-links.typ` (8 `@key`s incl. dotted keys in one sentence).

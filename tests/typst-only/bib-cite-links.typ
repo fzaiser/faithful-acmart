@@ -1,9 +1,8 @@
 #import "/src/lib.typ": *
-// Regression for the `bibtex` cite-path convergence edge (crash: `read(none)` when
-// a cite laid out on an early introspection pass read `bib-path-state.final()` as
-// its `none` init before `#bibliography` registered the path). Many `@key`s incl.
-// dotted keys in one sentence is the shape that used to trip it. Also exercises the
-// in-text cite -> reference-list hyperlinks (numbers `link` to the entry labels).
+// Happy path for the in-text cite -> reference-list hyperlinks: numbers `link` to the
+// entry labels (see `parts/acmref-cite.typ`). Many `@key`s incl. dotted keys in one
+// sentence also guards the resolve path against a `read(none)` regression (the error
+// case — citing with no acmart bibliography — is `cite-without-bibliography`).
 #show: acmart.with(format: "acmsmall", bib-backend: "bibtex")
 
 = Introduction

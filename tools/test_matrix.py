@@ -1150,6 +1150,14 @@ ERROR_CASES: dict[str, tuple] = {
         "must use project-absolute",
         '#bibliography(("a.bib", "b.bib"))',
     ),
+    # Citing on the bibtex/biblatex backend with no acmart `#bibliography` registered
+    # (here: the `#bibliography` call is simply missing) is an actionable error, not a
+    # cryptic `read(none)` deep in the .bib reader — see `with-prepared`.
+    "cite-without-bibliography": (
+        'bib-backend: "bibtex",',
+        "no acmart bibliography is registered",
+        "= Body\nA citation @Cohen07 with no bibliography.",
+    ),
 }
 
 

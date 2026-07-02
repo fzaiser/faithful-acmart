@@ -20,12 +20,6 @@
 // the caller's location (Typst resolves it against where the args were constructed).
 // Extracted string/array paths have lost that origin, so they must be absolute.
 #let read-merged(paths) = {
-  // `none` means the `#bibliography` call has not registered its path yet: a cite
-  // can be laid out on an early introspection pass before `bib-path-state` sees the
-  // update (`.final()` still reports its `none` init). Return an empty db so the
-  // cite renders a provisional placeholder instead of erroring; Typst re-runs the
-  // context once the path converges. See `prepared` / the cite entry points.
-  if paths == none { return (:) }
   if type(paths) == arguments { return parse-bib(read(..paths)) }
   let ps = if type(paths) == array { paths } else { (paths,) }
   let db = (:)
@@ -77,9 +71,9 @@
   (db: db2, order: listed.sorted(key: k => blx-sort-key(db2.at(k))))
 }
 
-// resolved (db, order) for the current cited set, or `none` if the bibliography
-// path is not registered yet (provisional introspection pass — see `read-merged`).
-// Callers must render a placeholder for `none` and let the context re-run.
+// resolved (db, order) for the current cited set, or `none` if no acmart
+// `#bibliography` ever registered a path (`bib-path-state` still `none`). Callers
+// turn that into an actionable error — see `with-prepared`.
 #let prepared() = {
   let path = bib-path-state.final()
   if path == none { return none }
@@ -334,16 +328,25 @@
   cur
 })
 
-// Run `body(p)` in a cite context. `prepared()` is `none` on a provisional
-// introspection pass (the `#bibliography` path isn't registered yet); render a
-// "[?]" placeholder and let Typst re-run the context once the path converges —
-// erroring here would abort before convergence (see `read-merged`/`prepared`).
+// Run `body(p)` in a cite context. `prepared()` is `none` only when no acmart
+// `#bibliography` ever registered a path (`bib-path-state` still holds its `none`
+// init) — a real misconfiguration, since on the bibtex/biblatex backends `@key` /
+// `#cite` resolve against acmart's own `bibliography`. (When the acmart bibliography
+// IS in scope, Typst pre-collects its state update, so `.final()` reliably returns
+// the path on every layout pass — verified: none of the twins ever hit this branch.
+// So erroring here is safe; it does not abort a valid document mid-convergence.)
+// The old code called `read()` on the `none` path instead, crashing with a cryptic
+// "expected string, found none" deep in the .bib reader.
 #let with-prepared(ks, body) = context {
   let p = prepared()
-  if p == none { [?] } else {
-    ensure-known(ks, p.db)
-    body(p)
-  }
+  assert(p != none, message:
+    "acmart: cited a key but no acmart bibliography is registered to resolve it. On "
+    + "the `bibtex`/`biblatex` backends, `@key` / `#cite` resolve through acmart's own "
+    + "`#bibliography` (not Typst's built-in). Make sure you (1) import the template "
+    + "with `*` (`#import \"...\": *`, not just `acmart`) so `bibliography` shadows the "
+    + "built-in, and (2) call `#bibliography(\"refs.bib\")`.")
+  ensure-known(ks, p.db)
+  body(p)
 }
 
 // numeric: .bst collapses ranges, BibLaTeX preserves command order; author-year:
