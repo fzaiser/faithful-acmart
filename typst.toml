@@ -1,7 +1,42 @@
 [package]
-name = "acmart"
-version = "0.0.1"
+name = "faithful-acmart"
+version = "0.1.0"
 entrypoint = "src/lib.typ"
-authors = ["typst-acmart contributors"]
-license = "MIT"
-description = "Typst port of the LaTeX acmart class — renders idiomatic Typst as close as possible to acmart."
+authors = ["Fabian Zaiser <fzaiser@mit.edu>"]
+license = "MIT AND MIT-0"
+description = "ACM-style papers for journals and conference proceedings."
+# repository = "https://github.com/<user>/faithful-acmart"  # add once the repo is pushed
+keywords = [
+    "acmart",
+    "ACM",
+    "Association for Computing Machinery",
+    "LaTeX",
+    "sigconf",
+    "acmsmall",
+]
+categories = ["paper"]
+disciplines = ["computer-science"]
+# Minimum compiler: `std` and `set par.line(...)` were both introduced in Typst 0.12.0.
+# (PDF accessibility tags are emitted only on 0.14+; visual output is correct from 0.12.)
+compiler = "0.12.0"
+# Files kept in the development repo but omitted from the published Universe bundle:
+# the LaTeX sources / validation harness / bundled dev fonts, contributor docs, and the
+# ACM JDS logo (ACM's trademark — the acmcp format takes a user-supplied `acmcp-logo:`).
+exclude = [
+    "/acmart",
+    "/fonts",
+    "/tests",
+    "/tools",
+    "/tmp",
+    "/.gitignore",
+    "/CLAUDE.md",
+    "/DESIGN.md",
+    "/TODO.md",
+    "/src/README.md",
+    "/src/assets/acm-jdslogo.png",
+]
+
+[template]
+path = "template"
+entrypoint = "main.typ"
+thumbnail = "thumbnail.png"
