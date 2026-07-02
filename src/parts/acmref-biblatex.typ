@@ -325,13 +325,20 @@
   (c: c, p: false)
 }
 #let blx-eprint(e) = if has(e, "eprint") {
+  let ep = fld(e, "eprint")
   let prefix = fld(e, "archiveprefix", d: if has(e, "eprinttype") { fld(e, "eprinttype") } else { "arXiv" })
   let cls = if has(e, "primaryclass") { " [" + fld(e, "primaryclass") + "]" } else if has(e, "eprintclass") { " [" + fld(e, "eprintclass") + "]" } else { "" }
-  (c: prefix + ": " + fld(e, "eprint") + cls, p: false)
+  // acmart links arXiv eprints to arxiv.org/abs (\showeprint, acmart.dtx:8913);
+  // non-arXiv prefixes stay plain text.
+  let num = if lower(prefix) == "arxiv" { link("https://arxiv.org/abs/" + ep)[#ep] } else { ep }
+  (c: prefix + ": " + num + cls, p: false)
 } else { none }
 #let blx-doi(e) = if has(e, "doi") {
   let d = fld(e, "doi")
-  (c: link(if d.starts-with("http") { d } else { "https://doi.org/" + d })[doi: #d], p: false)
+  // BibLaTeX's \printfield{doi} prepends the https://doi.org/ resolver unconditionally
+  // (even when the field is already a full URL, which double-wraps it) — mirror that
+  // so the link targets match LaTeX. The bst backend strips the prefix instead.
+  (c: link("https://doi.org/" + d)[doi: #d], p: false)
 } else { none }
 #let blx-tail(e, url-always: false) = {
   let items = ()

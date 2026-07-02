@@ -713,7 +713,10 @@
   let acm-dark-blue = cmyk(100%, 58%, 0%, 21%)
   let colorize = (dest, body) => {
     // \urlstyle{sf} (sigplan/sigchi-a, acmart.dtx:3623): URL links set in sans.
-    let body = if cfg.urlstyle-sans and type(dest) == str { text(font: cfg.fonts.sans, body) } else { body }
+    // \urlstyle only restyles \url; \href display text (the mailto author emails)
+    // keeps the ambient font, so exclude mailto: targets from the sans switch.
+    let is-url = type(dest) == str and not dest.starts-with("mailto:")
+    let body = if cfg.urlstyle-sans and is-url { text(font: cfg.fonts.sans, body) } else { body }
     if screen {
       text(fill: if type(dest) == str { acm-dark-blue } else { acm-purple }, body)
     } else { body }

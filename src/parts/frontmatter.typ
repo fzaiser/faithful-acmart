@@ -65,6 +65,11 @@
 
 #let author-name(a, body) = if a.orcid == none { body } else { link(orcid-url(a.orcid), body) }
 
+// acmart renders \email{addr} as \href{mailto:addr}{addr}: the address is both the
+// visible text and the mailto target (acmart.dtx:7478/7551/7608). Wrap the address
+// so the contact lines carry the same hidden mailto annotations LaTeX emits.
+#let email-link(email) = link("mailto:" + email)[#email]
+
 // An author's `affiliation` may be a single dict or an array of dicts (a person
 // with several affiliations, like LaTeX's repeated \affiliation). Normalize to a
 // list of dicts; none -> empty list.
@@ -289,7 +294,7 @@
       let affs = affil-strings(a.affiliation, ("institution", "city", "state", "country"))
       if affs.len() > 0 { parts.push(affs.join(" and ")) }
     } else if a.email != none {
-      parts.push(a.email)
+      parts.push(email-link(a.email))
     }
   }
   parts.join(", ")
@@ -694,7 +699,7 @@
     let lines = ()
     for a in group.authors {
       for field in a.contact-order {
-        if field == "email" and a.email != none { lines.push(a.email) }
+        if field == "email" and a.email != none { lines.push(email-link(a.email)) }
         else if field == "affiliation" { lines += affil-conf-lines(group.affiliation) }
       }
     }
@@ -746,7 +751,7 @@
   let n = if authors-per-row > 0 { authors-per-row } else if groups.len() <= 1 { 1 } else { 2 }
   let bw = (tw - sep) / n - sep
   // grouped emails then affiliation lines (source order, \email before \affiliation)
-  let contact-fn(group) = group.authors.map(a => a.email).filter(e => e != none) + affil-conf-lines(group.affiliation)
+  let contact-fn(group) = group.authors.map(a => a.email).filter(e => e != none).map(email-link) + affil-conf-lines(group.affiliation)
   // Boxes flow left-aligned (sigchiamode skips \centering) and wrap after N; rows
   // are \lineskip (1pc) apart. The box first line is unindented (\parindent 0).
   stack(dir: ttb, spacing: 12pt, ..chunk-rows(groups, n).map(row => grid(

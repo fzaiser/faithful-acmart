@@ -219,18 +219,6 @@ _FULL_SAMPLE_FONT_EVIDENCE = (
     ),
 )
 
-_AUTHOR_LINK_DIFF = (
-    "LaTeX adds implicit author email PDF annotations; Typst currently renders "
-    "author email fields as text without matching hidden links."
-)
-_BIBLATEX_LINK_DIFF = (
-    _AUTHOR_LINK_DIFF
-    + " BibLaTeX DOI/arXiv wrapper annotations also differ from Typst's targets."
-)
-_ENGAGE_LINK_DIFF = (
-    "LaTeX adds implicit Engage author email PDF annotations; Typst currently "
-    "renders those fields as text without matching hidden links."
-)
 _TITLE_METRICS_DIFF = (
     "Title-heavy format geometry has known bbox drift; focused geometry twins own "
     "the exact body metrics."
@@ -310,19 +298,16 @@ TESTS: dict[str, Test] = {
     ),
     "title-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="frontmatter in isolation: title block, author fields, abstract, CCS, keywords",
     ),
     "manuscript-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=manuscript: single-column draft geometry (letterpaper, 9pt default) "
              "with the generic sans-bold section fonts shared with acmsmall.",
     ),
     "manuscript-pages-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         text_equal="bag",
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="Manuscript submitted to ACM"),
@@ -332,14 +317,12 @@ TESTS: dict[str, Test] = {
     ),
     "acmlarge-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=acmlarge: large single-column journal geometry (10pt) with the "
              "\\sffamily\\large (regular-weight) section headings (acmart.dtx:8424).",
     ),
     "acmlarge-pages-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         text_equal="bag",
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="111:2"),
@@ -350,7 +333,6 @@ TESTS: dict[str, Test] = {
     ),
     "acmtog-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=acmtog: two-column JOURNAL. Spanning left @i title + author list, "
              "contact-info footnote + ACM bibstrip + journal footer, 9pt parindent, "
              "sans-large sections.",
@@ -358,7 +340,6 @@ TESTS: dict[str, Test] = {
     "acmtog-pages-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         text_equal="bag",
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="111:2"),
@@ -370,7 +351,6 @@ TESTS: dict[str, Test] = {
     ),
     "sigconf-test": Test(
         kind="twin", pages=1, text_equal="bag",
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", text="Abstract"),
             Assertion(engine="both", text="Keywords"),
@@ -384,7 +364,6 @@ TESTS: dict[str, Test] = {
     "sigconf-pages-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         text_equal="bag",
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2,
@@ -395,22 +374,18 @@ TESTS: dict[str, Test] = {
     ),
     "sigconf-authors-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="Conference author grid with a centered partial final row.",
     ),
     "sigplan-test": Test(
         kind="twin", pages=1, expected_metrics_diff=_TITLE_METRICS_DIFF,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=sigplan: 10pt proceedings variant; metrics are report-only for title bbox drift.",
     ),
     "acmengage-test": Test(
         kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=acmengage: 10pt sigconf variant with Engage copyright metadata.",
     ),
     "acmcp-test": Test(
         kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF, text_equal=False,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         expected_text_diffs=(
             ExpectedTextDiff(
                 latex="Code and data links: https://example.com/data Background",
@@ -436,7 +411,6 @@ TESTS: dict[str, Test] = {
     "sigchi-a-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         expected_metrics_diff=_LANDSCAPE_METRICS_DIFF, text_equal="bag",
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="format=sigchi-a: landscape extended abstract; text bags and page parity are gated.",
     ),
     "fontsize-8-test": Test(
@@ -602,35 +576,29 @@ TESTS: dict[str, Test] = {
     ),
     "notes-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "
              "The title block and footnote stack mix leadings, so pitch is reported, not gated.",
     ),
     "options-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="option toggles for nonacm, printccs, printfolios, balance, and natbib.",
     ),
     "authorversion-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="author-version copyright block (suppressed permission text + \"author's "
              "version ... Version of Record\" notice). Mixed leadings, so pitch is reported.",
     ),
     "language-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="French main language plus English translated title, abstract, and keywords.",
     ),
     "language-de-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="German `language=german`: keywordsname/acksname/proofname + tablename "
              "(\"Tabelle\") localized, figure label still \"Fig.\"",
     ),
     "language-es-test": Test(
         kind="twin", pages=1,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="Spanish `language=spanish`: keywordsname/acksname/proofname + tablename "
              "(\"Cuadro\") localized, figure label still \"Fig.\"",
     ),
@@ -641,7 +609,6 @@ TESTS: dict[str, Test] = {
     # _sample-common.typ; only the preamble (format + options) differs.
     "sample-acmsmall": Test(
         kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -672,7 +639,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-manuscript": Test(
         kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -704,7 +670,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmlarge": Test(
         kind="twin", pages=11,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -734,7 +699,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-sigconf": Test(
         kind="twin", pages=6,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -768,7 +732,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-sigplan": Test(
         kind="twin", pages=7, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -830,7 +793,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmsmall-conf": Test(
         kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -856,7 +818,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmtog": Test(
         kind="twin", pages=6, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -887,7 +848,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmtog-conf": Test(
         kind="twin", pages=6,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -915,7 +875,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-sigconf-i13n": Test(
         kind="twin", pages=7, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -950,7 +909,6 @@ TESTS: dict[str, Test] = {
     "sample-sigconf-authordraft": Test(
         kind="twin", pages=6, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         golden_exempt=_AUTHORDRAFT_GOLDEN_EXEMPT,
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -976,7 +934,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmsmall-biblatex": Test(
         kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
-        expected_link_diff=_BIBLATEX_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -1031,7 +988,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-sigconf-biblatex": Test(
         kind="twin", pages=7, expected_page_count_diff=_SIGCONF_BIBLATEX_PAGE_DIFF,
-        expected_link_diff=_BIBLATEX_LINK_DIFF,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -1070,12 +1026,10 @@ TESTS: dict[str, Test] = {
     "sample-acmcp": Test(
         kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
         text_equal="bag",
-        expected_link_diff=_AUTHOR_LINK_DIFF,
         note="upstream acmcp sample: JDS banner, cover infobox, and author contributions.",
     ),
     "sample-acmengage": Test(
         kind="twin", pages=3, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
-        expected_link_diff=_ENGAGE_LINK_DIFF,
         text_equal="bag",
         expected_order_diffs=(
             ExpectedOrderDiff(
