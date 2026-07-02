@@ -4,7 +4,7 @@ version = "0.1.0"
 entrypoint = "src/lib.typ"
 authors = ["Fabian Zaiser <fzaiser@mit.edu>"]
 license = "MIT AND MIT-0"
-description = "ACM-style papers for journals and conference proceedings."
+description = "Every ACM paper format, matching LaTeX acmart."
 repository = "https://github.com/fzaiser/faithful-acmart"
 keywords = [
     "acmart",

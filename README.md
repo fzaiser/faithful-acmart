@@ -1,12 +1,12 @@
 # faithful-acmart
 
-`faithful-acmart` is a [Typst](https://typst.app) package for writing ACM-style
-papers. It ports the public LaTeX `acmart` formats while keeping the document source
-idiomatic Typst.
+`faithful-acmart` is a [Typst](https://typst.app) port of the LaTeX **acmart**
+document class. It covers **every** public acmart format and is **tested against the
+real LaTeX class**, matching its fonts, page geometry, spacing, and top matter *as
+closely as Typst allows* — while your source stays idiomatic Typst.
 
-Use it when you want ACM-looking output from Typst: matching fonts, page geometry,
-top matter, captions, theorem environments, copyright blocks, and ACM bibliography
-styles as closely as Typst allows.
+It also covers the rest of an ACM paper: captions, theorem environments, copyright
+blocks, and the ACM bibliography styles.
 
 ## Getting started
 
