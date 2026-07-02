@@ -212,6 +212,12 @@ Creative Commons badges in `src/assets/cc/` are Creative Commons trademarks, not
 part of the MIT license; see [`src/assets/cc/README.md`](src/assets/cc/README.md).
 The ACM journal logo is not bundled; provide it yourself for `acmcp`.
 
+## AI assistance
+
+This package was developed with the help of AI coding assistants (Claude Code and
+OpenAI Codex) under close human review. What keeps it faithful is not just that review but
+also the test suite: every format is diffed against real LaTeX acmart output.
+
 ## Contributing
 
 Development setup, validation, and repository internals are documented in
