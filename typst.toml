@@ -30,6 +30,7 @@ exclude = [
     "/tmp",
     "/.gitignore",
     "/CLAUDE.md",
+    "/CONTRIBUTING.md",
     "/DESIGN.md",
     "/TODO.md",
     "/src/README.md",

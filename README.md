@@ -15,6 +15,9 @@ All public acmart formats are accepted: `manuscript`, `acmsmall`, `acmlarge`,
 typst init @preview/faithful-acmart:0.1.0
 ```
 
+> **Before you compile:** the required fonts are not bundled with the package —
+> see [Fonts](#fonts-required). Without them the output will not match acmart.
+
 or import the package into an existing document:
 
 ```typst
@@ -43,11 +46,11 @@ Write normal Typst. Cite with @key, add figures, theorems, and a bibliography.
 #bibliography("refs.bib")
 ```
 
-Import with the wildcard (`*`): besides `acmart` and the theorem environments it
-brings in the **shadowed `cite` and `bibliography`** and the textual-citation helpers
-(`cite-text` / `cite-year` / `cite-author`), which route `#cite` / `#bibliography`
-through the active bibliography backend and must be in scope. A complete example is in
-[`template/main.typ`](template/main.typ).
+Use the wildcard import (`*`): along with `acmart` and the theorem environments, it
+provides the versions of `cite` and `bibliography` — plus the textual-citation helpers
+`cite-text` / `cite-year` / `cite-author` — that route `#cite` and `#bibliography`
+through the selected `bib-backend`. They need to be in scope, so `*` is the recommended
+import. A complete example is in [`template/main.typ`](template/main.typ).
 
 ## Fonts (required)
 
@@ -65,7 +68,8 @@ are:
 
 Libertinus is available from the [Libertinus project](https://github.com/alerque/libertinus/releases)
 (OFL); the `Inconsolatazi4` OpenType files ship with TeX Live's `inconsolata` package.
-Both font families are also kept, unmodified, in this repository's `fonts/` directory
+Both families are also mirrored, unmodified, in the
+[project repository's `fonts/` directory](https://github.com/fzaiser/faithful-acmart/tree/main/fonts)
 (SIL Open Font License). Without them, the sans-serif headings/titles, math, and
 monospace fall back to substitute fonts and the output will not match acmart.
 
@@ -159,27 +163,9 @@ Engine limits, not spacing errors (see [DESIGN.md](https://github.com/fzaiser/fa
 - Typst **0.12+** (0.14+ to emit PDF accessibility tags).
 - The fonts listed under [Fonts](#fonts-required).
 
-## Development
+## Contributing & internals
 
-The port is validated by rendering both the real LaTeX acmart output and the Typst
-output and diffing them page-by-page. The harness is one Python program,
-`tools/test.py`, driven by `tools/test_matrix.py`; build through `tools/tc` (a `typst`
-wrapper that points at the bundled `fonts/`).
-
-```sh
-python3 -m venv tools/venv && tools/venv/bin/pip install pillow numpy fonttools pymupdf pikepdf
-tools/venv/bin/python tools/test.py build   # LaTeX refs + Typst PDFs + example
-tools/venv/bin/python tools/test.py check   # all regression gates
-tools/venv/bin/python tools/test.py accept  # bless golden hashes after an intended change
-```
-
-Building the example or running `typst init` locally needs the package linked into the
-Typst data dir, e.g. on macOS:
-
-```sh
-ln -sfn "$PWD" "$HOME/Library/Application Support/typst/packages/preview/faithful-acmart/0.1.0"
-```
-
-See [DESIGN.md](https://github.com/fzaiser/faithful-acmart/blob/main/DESIGN.md) for the architecture, the source-vs-output matching
-decisions, and the full validation-gate reference; [`acmart/`](https://github.com/fzaiser/faithful-acmart/tree/main/acmart) is the upstream
-LaTeX class being matched, and [`fonts/`](https://github.com/fzaiser/faithful-acmart/blob/main/fonts/README.md) documents the bundled fonts.
+The port is validated by diffing the Typst output against real LaTeX acmart
+page-by-page. See [CONTRIBUTING.md](https://github.com/fzaiser/faithful-acmart/blob/main/CONTRIBUTING.md)
+for the build/validation harness and [DESIGN.md](https://github.com/fzaiser/faithful-acmart/blob/main/DESIGN.md)
+for the architecture and the source-vs-output matching decisions.
