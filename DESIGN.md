@@ -185,17 +185,18 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
 > to generate it from [`acmart/`](acmart/) (see `tools/test.py`'s `ensure_class`).
 
 **Bibliography — three backends (`bib-backend`):**
-- **`"typst"` (default)** — idiomatic Typst: native `bibliography()` with a vendored
-  fork of the upstream ACM CSL at [`src/styles/acm-reference-format.csl`](src/styles/acm-reference-format.csl),
-  edited to track the bundled `.bst` (DOI prints `doi:<id>`, abbreviated months,
-  report genre label, thesis trailing note, conference-location parens — see the
-  file's header). Native `@key` citations work. The residual divergences are
-  hayagriva BibTeX→CSL *data-mapping* limits, not style choices, so they're
-  unreachable from the CSL: dropped `lastaccessed` access dates, `@periodical`
-  journal names, thesis `school`/advisor, conference `address`, the `genre` wording
-  (`Doctoral dissertation` vs the .bst's `Ph. D. Dissertation`), and full-URL `doi`
-  fields the .bst's `strip.doi` would trim.
-- **`"bibtex"` — exact, no extra dependencies.** A pure-Typst port of
+- **`"typst"` — idiomatic, an approximation.** Native `bibliography()` with Typst's
+  built-in ACM CSL style (`association-for-computing-machinery`). Native `@key`
+  citations work and — unlike the engine backends — keep Typst's in-text citation
+  hyperlinks. It is *not* faithful: it is bounded both by the built-in style's own
+  choices (full month names, `https://doi.org/<id>` DOIs, `Doctoral dissertation`
+  wording, no report genre label) and by hayagriva's BibTeX→CSL *data-mapping* limits
+  (dropped `lastaccessed` dates, `@periodical` journal names, thesis `school`/advisor,
+  conference `address`). For `.bst`-exact output use the default `"bibtex"` backend.
+  (A vendored CSL fork used to narrow the style-choice gap but was retired — see `git`
+  history — so the package ships pure-MIT and the `"typst"` backend is a plain,
+  standard CSL.)
+- **`"bibtex"` (default) — exact, no extra dependencies.** A pure-Typst port of
   `ACM-Reference-Format.bst`: [`parts/bibtex.typ`](src/parts/bibtex.typ) parses the
   `.bib` (via `read()`), [`parts/acmref.typ`](src/parts/acmref.typ) reimplements the
   `.bst`'s output state machine + `format.*` helpers + every entry-type handler +
@@ -203,7 +204,8 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
   carries the `.bst`'s built-in journal MACRO table + `journal.canon.abbrev`
   (auto-extracted, so `journal = csur` → "Comput. Surveys" like bibtex). DOI / URL /
   arXiv-eprint / `\url`-in-note render as **real Typst hyperlinks** (acmart loads
-  hyperref). Reached via native `@key` (a `show ref:` rule routes it to the engine,
+  hyperref); in-text *citations* on this backend are not yet anchored to the reference
+  list (a planned enhancement — the `"typst"` backend keeps native cite links). Reached via native `@key` (a `show ref:` rule routes it to the engine,
   gated to this backend — see "Implemented" below) and the shadowed `cite` /
   `bibliography` functions (`#cite(<a>, <b>)` grouped, `#bibliography("/refs.bib")`),
   plus `cite-text` (`\citet`) / `cite-year` / `cite-author`. It reproduces
@@ -288,7 +290,7 @@ the first-baseline placement of the (taller-than-`\topskip`) title line.
       threaded case vs the extracted string/array case.)
 
     For the `"typst"` backend the `show ref:` rule is the identity and both shadows
-    delegate to the native `std.cite` / `std.bibliography` (the vendored CSL
+    delegate to the native `std.cite` / `std.bibliography` (the built-in ACM CSL
     `set bibliography(style: …)` in `body.typ` then styles the list), so native syntax
     keeps Typst's built-in behaviour. `bibliography` forwards the caller's `arguments`
     value verbatim (`std.bibliography(..args)`), so relative paths work there too (and
@@ -495,7 +497,7 @@ version (see the section-title note above).
 
 ## Validation
 
-See the [README](README.md#development--validation). The harness is one Python
+See the [README](README.md#development). The harness is one Python
 program, `tools/test.py`, driven by the matrix in `tools/test_matrix.py`. The
 main loop is `tools/test.py check`: it builds the LaTeX references, compiles every
 Typst test once, then runs the gates (warning/page-count smoke checks, Typst
@@ -503,6 +505,14 @@ raster goldens, extracted-text equality/semantic assertions, expected compile
 errors, and cross-engine layout metrics). `tools/test.py validate` separately
 builds copyright and option variants and reports page-1 mismatch percentages.
 Fonts come from the bundled OTFs via `tools/tc` (see the README "Fonts" section).
+
+Building the example (`tools/test.py example`) or running `typst init
+@preview/faithful-acmart:0.1.0` locally needs the package linked into the Typst data
+dir — the matched twins import `/src/lib.typ` directly, so `check` does not:
+
+```sh
+ln -sfn "$PWD" "$HOME/Library/Application Support/typst/packages/preview/faithful-acmart/0.1.0"
+```
 
 To audit the *numbers* in `src/formats/acmsmall.typ` against the class itself, run
 **`tools/test.py probe`**: it compiles [`tools/probe.tex`](tools/probe.tex)
