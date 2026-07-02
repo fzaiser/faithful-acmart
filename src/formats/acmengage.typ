@@ -9,6 +9,7 @@
 
 #let acmengage(font-size: "10pt") = make-format(
   name: "acmengage",
+  kind: "proceedings",
   ladder: size-ladder(font-size, format: "acmengage"),
   paper: (width: 8.5in, height: 11in),
   margin: (inside: 54 * tp, outside: 54 * tp, top: 84 * tp, bottom: 88.97 * tp), // head top 57

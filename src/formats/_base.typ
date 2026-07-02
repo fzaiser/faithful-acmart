@@ -96,6 +96,11 @@
 // (acmart.dtx:3090/3754); only the named arguments below actually differ.
 #let make-format(
   name: none,
+  // Coarse layout family for the running-head/footer + folio-default dispatch in
+  // lib.typ (so those don't hard-code format-name lists): "journal" (manuscript /
+  // acmsmall / acmlarge / acmtog), "proceedings" (sigconf / sigplan / acmengage /
+  // sigchi-a), or "cover" (acmcp). Per-format head layouts still read `name`.
+  kind: "journal",
   ladder: none,            // result of size-ladder()
   paper: none,
   margin: none,            // dict: top/bottom + inside/outside (or left/right)
@@ -126,6 +131,7 @@
   let l = ladder
   (
     name: name,
+    kind: kind,
     columns: columns,
     columnsep: columnsep,
     paper: paper,

@@ -351,7 +351,7 @@
   // \settopmatter{printfolios} defaults true for manuscript/journal/acmcp and
   // false for proceedings; review mode forces it on (acmart.dtx:5822-5828/2683).
   let print-folios = if print-folios == auto {
-    cfg.name in ("manuscript", "acmsmall", "acmlarge", "acmtog", "acmcp")
+    cfg.kind != "proceedings"
   } else { print-folios }
   let print-folios = print-folios or review
 
@@ -534,7 +534,7 @@
       footer-row(r: bib)
     } else if cfg.name == "manuscript" and here().page() == 1 {
       if odd { footer-row(l: bib, r: folio) } else { footer-row(l: folio, r: bib) }
-    } else if cfg.name in ("sigconf", "sigplan", "acmengage", "sigchi-a") {
+    } else if cfg.kind == "proceedings" {
       footer-row(c: folio)
     } else if bib != none {
       if odd { align(right, bib) } else { align(left, bib) }
@@ -579,7 +579,7 @@
     } else if cfg.name in ("acmlarge", "acmtog") {
       if odd { align(right, [#st • #ap]) }
       else { align(left, [#ap • #sa]) }
-    } else if cfg.name in ("sigconf", "sigplan", "acmengage", "sigchi-a") {
+    } else if cfg.kind == "proceedings" {
       let conf = conference-line
       // sigchi-a is one-sided (landscape, fixed wide left margin): every page uses
       // the ODD proceedings head — shorttitle (left) + conference (right); the

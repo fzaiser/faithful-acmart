@@ -15,6 +15,7 @@
 
 #let acmcp(font-size: "9pt") = make-format(
   name: "acmcp",
+  kind: "cover",
   ladder: size-ladder(font-size, format: "acmcp"),
   paper: (width: 6.75in, height: 10in),
   margin: (inside: 46 * tp, outside: 46 * tp, top: 85 * tp, bottom: 66.7 * tp), // head top 58

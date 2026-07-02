@@ -9,6 +9,7 @@
 
 #let sigconf(font-size: "9pt") = make-format(
   name: "sigconf",
+  kind: "proceedings",
   ladder: size-ladder(font-size, format: "sigconf"),
   paper: (width: 8.5in, height: 11in),
   margin: (

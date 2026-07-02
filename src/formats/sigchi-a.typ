@@ -15,6 +15,7 @@
 
 #let sigchia(font-size: "10pt") = make-format(
   name: "sigchi-a",
+  kind: "proceedings",
   ladder: size-ladder(font-size, format: "sigchi-a"),
   paper: (width: 11in, height: 8.5in),
   // one-sided with a wide left margin (marginpar 170pt sits inside the 314pt

@@ -9,6 +9,7 @@
 
 #let sigplan(font-size: "10pt") = make-format(
   name: "sigplan",
+  kind: "proceedings",
   ladder: size-ladder(font-size, format: "sigplan"),
   paper: (width: 8.5in, height: 11in),
   margin: (inside: 54.2025 * tp, outside: 54.2025 * tp, top: 72.27 * tp, bottom: 76.7 * tp), // head top 45.27
