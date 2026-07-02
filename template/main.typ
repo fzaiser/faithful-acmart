@@ -1,11 +1,9 @@
-// Example acmsmall (ACM journal) paper using the typst-acmart template.
+// Example acmsmall (ACM journal) paper using the faithful-acmart template.
 //
-// When the package is published you would write:
-//   #import "@preview/acmart:0.0.1": *
-// The wildcard brings in `acmart`, the theorem environments, the citation helpers
-// (cite-text/cite-year/cite-author), and the `cite`/`bibliography` shadows that
-// route through the active `bib-backend`. In this repo we import the library directly:
-#import "/src/lib.typ": *
+// The wildcard import brings in `acmart`, the theorem environments, the citation
+// helpers (cite-text/cite-year/cite-author), and the `cite`/`bibliography` shadows
+// that route through the active `bib-backend`.
+#import "@preview/faithful-acmart:0.1.0": *
 
 #show: acmart.with(
   format: "acmsmall",
