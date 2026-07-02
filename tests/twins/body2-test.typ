@@ -38,3 +38,10 @@ Text before a figure to establish context for the caption comparison below.
 
 + First enumerated item.
 + Second enumerated item.
+
+// \appendix: acmart letters the sections (A, A.1, ...); a theorem here must track
+// \thesection and number "A.1", not "1.1" (regression for the appendix fix).
+#counter(heading).update(0)
+#set heading(numbering: "A.1")
+= Supplementary material
+#theorem[A theorem inside the appendix should be numbered A.1, tracking the lettered section rather than an arabic one.]

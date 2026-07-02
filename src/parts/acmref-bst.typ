@@ -176,7 +176,8 @@
     else if art != none { (c: pre, p: false) } else { none }
   } else {
     let d = if has(e, "day") { fld(e, "day") + " " } else { "" }
-    (c: pre + sp + "(" + render(fld(e, "month")) + " " + d + fld(e, "year") + ")", p: false)
+    let y = if has(e, "year") { fld(e, "year") } else { "[n.d.]" }
+    (c: pre + sp + "(" + render(fld(e, "month")) + " " + d + y + ")", p: false)
   }
 }
 // "N pages" when articleno present (numpages, or reduced from pages)

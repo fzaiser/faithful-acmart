@@ -57,6 +57,9 @@
 #let von-last(n) = (n.von, n.last).filter(p => p != "").join(" ")
 // ---- year piece -----------------------------------------------------------
 #let year-value(e) = {
-  let y = if has(e, "year") { fld(e, "year") } else if has(e, "date") { fld(e, "date").slice(0, 4) } else { "[n.d.]" }
+  // `date` may be shorter than a full YYYY (malformed input); guard the slice
+  // as blx-date-parts does rather than letting .slice(0, 4) panic.
+  let date = fld(e, "date", d: "")
+  let y = if has(e, "year") { fld(e, "year") } else if date.len() >= 4 { date.slice(0, 4) } else { "[n.d.]" }
   (c: y, p: false)
 }

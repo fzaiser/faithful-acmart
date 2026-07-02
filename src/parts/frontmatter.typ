@@ -130,8 +130,11 @@
   let areas = ()
   let by-area = (:)
   for entry in ccs {
-    let (sig, area, ..rest) = entry
-    let spec = if rest.len() > 0 { rest.at(0) } else { none }
+    assert(type(entry) == array and entry.len() >= 2,
+      message: "each ccs-concepts entry must be a (significance, area, specific?) tuple, got " + repr(entry))
+    let sig = entry.at(0)
+    let area = entry.at(1)
+    let spec = entry.at(2, default: none)
     if area not in by-area {
       by-area.insert(area, ())
       areas.push(area)
@@ -918,7 +921,9 @@
   if type(received) != array { return received }
   let parts = ()
   for (i, item) in received.enumerate() {
-    let (stage, date) = if type(item) == array { (item.at(0), item.at(1)) } else { (none, item) }
+    let (stage, date) = if type(item) == array and item.len() >= 2 { (item.at(0), item.at(1)) }
+      else if type(item) == array { (none, item.at(0, default: none)) }  // 1-elem array: treat as bare date
+      else { (none, item) }
     let s = if stage == none or stage == "" {
       if i == 0 { "Received" } else { "revised" }
     } else { stage }

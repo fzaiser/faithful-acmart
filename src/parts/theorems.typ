@@ -20,9 +20,18 @@
 
 #let thm-counter = counter("acm-thm")
 
+// Mirror LaTeX's \thesection: the first-level section counter formatted with
+// whatever heading numbering is currently active. Reading the pattern from the
+// nearest preceding heading (rather than using the bare integer) makes theorems
+// in an appendix print "A.5", not "1.5", tracking `set heading(numbering: "A.1")`.
+// Must be called inside a `context`. Returns `none` when there is no numbered
+// section yet (theorem before any heading, or unnumbered sections).
 #let _section-number() = {
   let h = counter(heading).get()
-  if h.len() > 0 { h.first() } else { none }
+  if h.len() == 0 { return none }
+  let prev = query(selector(heading).before(here()))
+  if prev.len() == 0 or prev.last().numbering == none { return none }
+  numbering(prev.last().numbering, h.first())
 }
 
 // Shared theorem/proof frame: a .5bl-above/below block, first line unindented but
