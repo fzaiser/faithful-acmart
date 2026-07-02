@@ -45,3 +45,52 @@ actually like to do).
   form XObjects in an `ExtGState` Multiply group with constant alpha. This
   removes both limitations and the gs `ps2write` round-trip. See the
   `_gs_recolor` docstring in `tools/test.py` for the current coverage gap.
+
+## Publishing to Typst Universe
+
+The port is packaged as the **`faithful-acmart`** template — manifest, `LICENSE`
+(MIT) + `template/LICENSE` (MIT-0), `thumbnail.png`, and the `@preview` template
+import are all committed, the harness is green, and the shipped bundle is verified
+self-sufficient (a fresh `typst init`-style project compiles against the bundle with
+only user `--font-path` fonts). Remaining before submitting:
+
+- **Confirm identity/repository.** `authors` in `typst.toml` is defaulted to the git
+  identity and `repository` is a commented placeholder (there is no git remote yet);
+  set both, and confirm the `LICENSE` / `template/LICENSE` copyright holder + year.
+- **Run `typst-package-check`.** The official linter — install and run it on the
+  assembled `packages/preview/faithful-acmart/0.1.0/` before the PR (the
+  cargo-from-source install was blocked in the dev environment, so it wasn't run
+  here). Manual equivalents already pass: valid manifest, required files present,
+  thumbnail dims/size within limits, and the standalone bundle compile above.
+- **Submit.** Fork `typst/packages` (sparse checkout; do not copy `.git` or use
+  submodules), copy the bundle to `packages/preview/faithful-acmart/0.1.0/`, and open
+  a PR (first-time author). Publication can take ~30 min after merge + CI.
+- **Optional:** `oxipng` the thumbnail (1.45 MiB now — already within the 3 MiB cap).
+- **Local dev note:** building the example (`tools/test.py example`) or running
+  `typst init` needs the package linked into the Typst data dir —
+  `ln -sfn "$PWD" "$HOME/Library/Application Support/typst/packages/preview/faithful-acmart/0.1.0"`
+  (documented in DESIGN.md). `tools/test.py check` does not need it (the twins import
+  `/src/lib.typ`).
+
+## Bibliography
+
+- **In-text citation hyperlinks on the `bibtex`/`biblatex` backends.** On the default
+  `"bibtex"` (and `"biblatex"`) backend, `@key` / `#cite` render `[N]` as plain text
+  that is *not* anchored to the reference list: the `show ref:` rule routes to
+  `bbl-cite` (a text bracket), and the rendered entries carry no link targets. LaTeX +
+  hyperref links them, and the `"typst"` backend keeps Typst's native cite links, so
+  this is a fidelity + usability gap. **Plan:** emit a `label`/`link` target per
+  reference entry in the bst/biblatex renderer (`parts/acmref-bst.typ` /
+  `acmref-biblatex.typ`) and have `bbl-cite` link to it. DOI/arXiv/URL links *inside*
+  entries already work.
+
+- **Latent `bibtex` cite-path convergence edge.** Certain multi-cite paragraphs make
+  `bib-path-state.final()` read `none` inside `prepared()` (`parts/acmref-cite.typ`) —
+  cite resolution reads the path on an introspection pass before the `#bibliography`
+  call registers it — so `read-merged(none)` → `read(none)` errors. Reproduces on the
+  old bib-test fixture (8 `@key`s incl. dotted keys like
+  `@Li:2008:PUC:1358628.1358946` in one sentence, `bib-backend: "bibtex"`). It does
+  **not** affect the template or any pinned-`bibtex` twin (keycite / crossref /
+  bib-all / sample-* all pass), and minimal single-/few-cite dotted-key cases compile;
+  bib-test was demoted to a typst-only CSL smoke, so nothing exercises it now. Best
+  fixed together with the cite-anchoring work above — both touch cite resolution.
