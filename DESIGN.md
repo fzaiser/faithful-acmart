@@ -500,14 +500,14 @@ version (see the section-title note above).
 
 ## Validation
 
-See the [README](README.md#development). The harness is one Python
+See [CONTRIBUTING.md](CONTRIBUTING.md#validation-model). The harness is one Python
 program, `tools/test.py`, driven by the matrix in `tools/test_matrix.py`. The
 main loop is `tools/test.py check`: it builds the LaTeX references, compiles every
 Typst test once, then runs the gates (warning/page-count smoke checks, Typst
 raster goldens, extracted-text equality/semantic assertions, expected compile
 errors, and cross-engine layout metrics). `tools/test.py validate` separately
 builds copyright and option variants and reports page-1 mismatch percentages.
-Fonts come from the bundled OTFs via `tools/tc` (see the README "Fonts" section).
+Fonts come from the bundled development OTFs via `tools/tc`.
 
 Building the example (`tools/test.py example`) or running `typst init
 @preview/faithful-acmart:0.1.0` locally needs the package linked into the Typst data

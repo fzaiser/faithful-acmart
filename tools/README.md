@@ -13,5 +13,5 @@ The build & validation harness:
 - [`probe.tex`](probe.tex) — the LaTeX layout probe used by `test.py probe`.
 - `venv/` — Python venv (Pillow, numpy, fonttools).
 
-See the **Development & validation** section of the [root README](../README.md)
-for setup, commands, output directories, and the gate descriptions.
+See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for setup, commands, output
+directories, and the gate descriptions.

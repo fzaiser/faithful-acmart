@@ -12,5 +12,5 @@ Test documents, organized by kind:
 Which directory a test lives in is derived from its `kind` in the matrix
 (`Test.subdir`): `twin` → `twins/`, everything else → `typst-only/`. The matrix
 and every gate live in [`../tools/test_matrix.py`](../tools/test_matrix.py) and
-[`../tools/test.py`](../tools/test.py); see the **Development & validation**
-section of the [root README](../README.md) for how to build, check, and diff.
+[`../tools/test.py`](../tools/test.py); see
+[`../CONTRIBUTING.md`](../CONTRIBUTING.md) for how to build, check, and diff.
