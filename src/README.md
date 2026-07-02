@@ -26,8 +26,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/acmref-biblatex.typ` | ACM BibLaTeX `acmnumeric`/`acmauthoryear` plus `biblatex-software` visible reference formatting and software data-model inheritance |
 | `parts/acmref-cite.typ` | cite registration, BibTeX crossref resolution, BibLaTeX data-model preparation, numeric and author-year labels, and bibliography output |
 | `parts/bib-data.typ` | the `.bst`'s built-in journal MACRO table + `journal.canon.abbrev` map (auto-extracted from `ACM-Reference-Format.bst`), used by the `bibtex` backend |
-| `assets/` | bundled image assets, addressed root-absolute (`/src/assets/…`): `acm-jdslogo.png` (acmcp cover) and `cc/` (Creative Commons licence badges) |
-| `styles/` | `acm-reference-format.csl` — vendored fork of the upstream ACM CSL, edited to track the bundled `ACM-Reference-Format.bst` (see the file header for the deltas) |
+| `assets/` | bundled image assets, addressed root-absolute (`/src/assets/…`): `cc/` (Creative Commons licence badges). The acmcp cover logo is supplied by the user via `acmcp-logo:` (ACM's trademark, not bundled); `acm-jdslogo.png` remains for the acmcp twin only |
 
 ## Format-as-data
 

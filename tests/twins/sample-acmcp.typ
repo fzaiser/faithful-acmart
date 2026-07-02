@@ -7,6 +7,9 @@
 
 #show: acmart.with(
   format: "acmcp",
+  // The JDS logo ships with the LaTeX acmart class but is ACM's trademark, so the
+  // package no longer bundles it; the twin points at the repo's dev copy.
+  acmcp-logo: image("/src/assets/acm-jdslogo.png"),
   title: "The Name of the Title Is Hope",
   short-authors: "Trovato et al.",
   journal: "JDS",

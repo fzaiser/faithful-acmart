@@ -257,10 +257,6 @@ _FONT_SIZE_PITCH_METRICS = (
     "Fixture isolates base font-size changes while keeping a single baseline grid, "
     "so pitch is gated."
 )
-_BIB_PITCH_METRICS = (
-    "Bibliography fixture keeps the reference list on a stable baseline grid, so "
-    "pitch is gated."
-)
 _SIGCONF_BIBLATEX_PAGE_DIFF = (
     "Typst currently reflows the numeric BibLaTeX/software reference block to "
     "seven pages while LaTeX fits six."
@@ -465,36 +461,16 @@ TESTS: dict[str, Test] = {
         note="Base font-size option `12pt`.",
     ),
     "bib-test": Test(
-        kind="twin", pages=1, metrics_uniform_pitch=_BIB_PITCH_METRICS,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="bibliography style [1] [4] [3] [7] [6] [2] [8] [5]. References",
-                typst="bibliography style [1-8]. References",
-                cause=AcceptedTypstBehavior("native CSL citation range compaction"),
-            ),
-            ExpectedTextDiff(
-                latex="version 11. Retrieved February 28, 2008 from "
-                      "http://math.tntech.edu/rafal/cliff11/index.html",
-                typst="version 11. Retrieved from "
-                      "http://math.tntech.edu/rafal/cliff11/index.html",
-                cause=AcceptedTypstBehavior("Hayagriva/CSL last-accessed mapping"),
-            ),
-            ExpectedTextDiff(
-                latex="Ph. D. Dissertation. Stanford University, Stanford, CA, USA. "
-                      "Advisor(s) Yao, Andrew C.",
-                typst="Doctoral dissertation. Stanford, CA, USA. AAT 8506171.",
-                cause=AcceptedTypstBehavior("Hayagriva/CSL thesis field mapping"),
-            ),
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="References"),
+            Assertion(engine="typst", text="Ablamowicz"),
         ),
-        expected_font_diffs=(
-            ExpectedFontDiff(
-                latex="Ph. D. Dissertation. Stanford University, Stanford, CA, USA. "
-                      "Advisor(s) Yao, Andrew C.",
-                typst="Doctoral dissertation. Stanford, CA, USA. AAT 8506171.",
-                cause=AcceptedTypstBehavior("Hayagriva/CSL reference-content fallout"),
-            ),
-        ),
-        note="Native CSL bibliography fixture; acceptable Hayagriva/CSL mapping gaps are documented diffs.",
+        note="Typst-only smoke for the opt-in \"typst\" (native CSL) bibliography backend: "
+             "confirms it compiles and renders a reference list via Typst's built-in ACM CSL "
+             "style. Not a faithfulness twin — \"typst\" is a documented approximation of "
+             "LaTeX; the faithful default \"bibtex\" backend is validated by keycite / crossref "
+             "/ bib-all / sample-* twins.",
     ),
     "biblatex-test": Test(
         kind="twin", pages=1,

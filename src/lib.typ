@@ -230,9 +230,15 @@
   booktitle: none,
   isbn: "978-x-xxxx-xxxx-x/YYYY/MM",
   // acmcp cover-page infobox content (acmart \acmCodeLink / \acmContributions,
-  // acmart.dtx:5914/5929). Both optional; shown in the top-right JDS-logo box.
+  // acmart.dtx:5914/5929). Both optional; shown in the top-right logo box.
   code-data-link: none,
   contributions: none,
+  // Logo at the top of the acmcp cover infobox, as content (e.g.
+  // `acmcp-logo: image("jds-logo.png")`). REQUIRED by the acmcp format and by that
+  // format only — the ACM journal logo is ACM's trademark, so it is not bundled;
+  // supply your own. Taken as content, not a path string, because template file
+  // paths resolve relative to the caller, not this package (see Typst's package docs).
+  acmcp-logo: none,
   // acmengage front-matter metadata rows: an ordered list of (label, value) pairs,
   // each rendered as a bold label followed by its value (\@engagemetadata).
   engage-metadata: (),
@@ -249,13 +255,16 @@
   print-folios: auto,
   // Bibliography engine, selecting which renderer the `bibliography` shadow and the
   // `@key`/`#cite` show rules route through:
-  //   "typst"    (default) — native Typst bibliography() with the vendored ACM CSL.
-  //              Idiomatic, but bounded by hayagriva's BibTeX->CSL data mapping.
-  //   "bibtex"   — pure-Typst port of ACM-Reference-Format.bst (what LaTeX gets from
-  //              \bibliographystyle{ACM-Reference-Format}); reads .bib with our own
-  //              parser, bypassing hayagriva.
+  //   "bibtex"   (default) — pure-Typst port of ACM-Reference-Format.bst, matching
+  //              LaTeX acmart's OWN default (natbib + \bibliographystyle{ACM-Reference-
+  //              Format}); reads .bib with our own parser, bypassing hayagriva.
+  //   "typst"    — native Typst bibliography() with Typst's built-in ACM CSL. Idiomatic
+  //              (keeps native @key cross-reference links), but an APPROXIMATION bounded
+  //              by hayagriva's BibTeX->CSL data mapping (see DESIGN.md for the gaps).
   //   "biblatex" — pure-Typst port of the ACM BibLaTeX acmnumeric/acmauthoryear styles.
-  bib-backend: "typst",
+  // On "bibtex"/"biblatex", in-text citations are not yet hyperlinked to the reference
+  // list (planned); DOI/arXiv/URL links within reference entries still work.
+  bib-backend: "bibtex",
   // Citation style for ACM bibliography backends, mirroring acmart's \citestyle:
   // "numeric" (default, "[N]") or "author-year" ("[Author Year]" + a/b/c years).
   cite-style: "numeric",
@@ -463,6 +472,7 @@
     isbn: isbn,
     code-data-link: code-data-link,
     contributions: contributions,
+    acmcp-logo: acmcp-logo,
     engage-metadata: engage-metadata,
     article-type: article-type,
     bibstrip: cfg.bibstrip,

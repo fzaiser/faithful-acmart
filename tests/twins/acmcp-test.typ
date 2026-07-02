@@ -4,6 +4,8 @@
 
 #show: acmart.with(
   format: "acmcp",
+  // The ACM JDS logo is ACM's trademark and no longer bundled; point at the repo's dev copy.
+  acmcp-logo: image("/src/assets/acm-jdslogo.png"),
   title: "An acmcp Cover Sample",
   journal: "JACM",
   acm-volume: 37, acm-number: 4, acm-article: 111, acm-year: 2018, acm-month: 8,

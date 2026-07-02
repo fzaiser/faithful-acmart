@@ -480,13 +480,18 @@
 // right) anchors it to the right margin level with the body top; LaTeX zref-anchors
 // the box BOTTOM against the frame bottom — top-alignment is the approximation.
 #let make-acmcp-infobox(cfg, meta) = {
+  assert(meta.acmcp-logo != none, message:
+    "acmart: the `acmcp` cover format needs a journal logo — pass `acmcp-logo: image(\"...\")` "
+    + "(the ACM journal logo is ACM's trademark and is not bundled with this package).")
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
   // LaTeX zref-pushes the box down so its bottom approaches the frame bottom; we
   // can't run that two-pass measurement, so nudge it down by ~3 baselineskips from
   // the body top — a fixed approximation that lands near LaTeX for a short cover.
   place(top + right, dy: 3 * cfg.baselineskip, box(width: 60pt /* 5pc */)[
     #set align(left) // the \parindent\z@ vbox is left-aligned, not centred
-    #image("../assets/acm-jdslogo.png", width: 100%)
+    // User-supplied logo (see `acmcp-logo`); default it to the box width so a bare
+    // `image("logo.png")` fills the column, as the bundled JDS logo used to.
+    #{ set image(width: 100%); meta.acmcp-logo }
     #set text(size: cfg.size.scriptsize)
     #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: "scriptsize"))
     #if meta.code-data-link != none { v(big, weak: true); [Code and data links:\ #meta.code-data-link] }
