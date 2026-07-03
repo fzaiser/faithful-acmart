@@ -588,6 +588,32 @@ TESTS: dict[str, Test] = {
         note="author-version copyright block (suppressed permission text + \"author's "
              "version ... Version of Record\" notice). Mixed leadings, so pitch is reported.",
     ),
+    "authorversion-conf-test": Test(
+        kind="twin", pages=1, text_equal="bag",
+        expected_metrics_diff=_TITLE_METRICS_DIFF,
+        text_assertions=(
+            Assertion(engine="both", text="Conference'17, Washington, DC, USA"),
+            Assertion(engine="both",
+                      text="Version of Record was published in Proceedings of ACM "
+                           "Conference (Conference'17)"),
+            Assertion(engine="typst", kind="absent", text="ACM ISBN"),
+        ),
+        note="author-version on a CONFERENCE format: the italic conference-info line "
+             "still prints and the Version-of-Record notice names the booktitle "
+             "(acmart.dtx:6615/6638). Two-column extraction order, so word-bag.",
+    ),
+    "anonymous-test": Test(
+        kind="twin", pages=1,
+        text_assertions=(
+            Assertion(engine="both", text="ANONYMOUS AUTHOR(S)"),
+            Assertion(engine="both", text="SUBMISSION ID: 123-A56-BU3"),
+            Assertion(engine="typst", kind="absent", text="Trovato"),
+            Assertion(engine="typst", kind="absent", text="Contact Information"),
+        ),
+        note="double-anonymous journal submission: anonymized author strip with the "
+             "uppercased \"SUBMISSION ID:\" second line (acmart.dtx:5190-5193), "
+             "suppressed contact footnote, anonymized ACM reference block.",
+    ),
     "language-test": Test(
         kind="twin", pages=1,
         note="French main language plus English translated title, abstract, and keywords.",

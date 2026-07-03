@@ -412,31 +412,20 @@
         rule(100%)
         block(spacing: lead, ptext)
       }
-    } else if meta.author-version {
-      // author-version: drop the permission text (acmart.dtx:6612) and replace
-      // the ACM bibstrip with the author's-version notice, naming the full
-      // (emphasized) journal and the DOI (acmart.dtx:6634-6647). Unlike the short
-      // bibstrip lines below, this is a running paragraph, so it stays justified
-      // (inherited from the footnote stack) rather than ragged.
-      rule(100%)
-      block(spacing: lead, {
-        if meta.author-draft { draft-stamp(cfg) }
-        set text(fill: if meta.author-draft { luma(90%) } else { black })
-        let owner = copyright-owner(mode)
-        if owner != none { [© #meta.copyright-year #owner] } else { [#meta.copyright-year.] }
-        linebreak()
-        [This is the author's version of the work. It is posted here for your personal use. Not for redistribution. The definitive Version of Record was published in #emph(j.name)#{
-          if meta.doi != none [, #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi].]
-          else [.]
-        }]
-      })
     } else {
+      // One block mirroring acmart.dtx:6604-6659: author-version drops only the
+      // permission text (dtx:6612); the italic conference-info line and the ©
+      // line print either way; then ONE closing notice — manuscript wins over
+      // author-version, which wins over the ACM bibstrip (dtx:6631-6656).
       rule(100%)
       block(spacing: lead, {
         if meta.author-draft { draft-stamp(cfg) }
         set text(fill: if meta.author-draft { luma(90%) } else { black })
-        if ptext != none { ptext; parbreak() }
-        set par(justify: false)
+        if not meta.author-version and ptext != none { ptext; parbreak() }
+        // No ragged override: LaTeX sets this block as ordinary justified
+        // footnote paragraphs whose short lines end in \\ (a line before an
+        // explicit break is not justified in either engine), so a line long
+        // enough to wrap justifies — e.g. the author's-version notice.
         // Conference info line, between the permission text and the © line
         // (acmart.dtx:6615-6622): italic "<conf short>, <conf venue>", or for the
         // engage/booktitle path "<booktitle>, <year>.". Journal/tog skip it.
@@ -455,10 +444,18 @@
         } else {
           [#meta.copyright-year. ]
         }
-        // Final line: manuscript notice / journal bibstrip / conference ISBN+DOI
-        // (acmart.dtx:6631-6656).
+        // Final line: manuscript notice / author's-version notice / journal
+        // bibstrip / conference ISBN+DOI (acmart.dtx:6631-6656).
         if cfg.name == "manuscript" {
           [Manuscript submitted to ACM]
+        } else if meta.author-version {
+          // The "Version of Record" notice names the emphasized journal for a
+          // journal bibstrip, else the booktitle (acmart.dtx:6638-6644).
+          let venue = if meta.bibstrip and meta.conference == none { j.name } else { meta.booktitle }
+          [This is the author's version of the work. It is posted here for your personal use. Not for redistribution. The definitive Version of Record was published in #emph(venue)#{
+            if meta.doi != none [, #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi].]
+            else [.]
+          }]
         } else if meta.bibstrip and meta.conference == none {
           // ACM <issn>/<year>/<month>-ART<article> then DOI (acmart.dtx:6651).
           // \@acmArticle defaults to empty, so ART may have no number. str() on the
@@ -609,11 +606,13 @@
   v(tex-skip(cfg, cfg.bigskip + cfg.medskip, sz: af.size), weak: true)
 
   // --- Authors (grouped structurally per acmart; see group-authors) ---
-  // Anonymous review: replace the whole author strip with "Anonymous Author(s)".
+  // Anonymous review: replace the whole author strip with "Anonymous Author(s)"
+  // plus, when a submission id is set, a "\\Submission Id: <id>" second line
+  // (acmart.dtx:5190-5193); the journal strip's \MakeUppercase covers both lines.
   if meta.anonymous {
     block(spacing: 0pt)[
       #set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
-      #tagged-par[#upper[Anonymous Author(s)]]
+      #tagged-par[#upper[Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]]]
     ]
   } else {
   block(spacing: 0pt)[
@@ -728,7 +727,7 @@
   if meta.anonymous {
     block(spacing: 0pt)[
       #set text(font: cfg.fonts.at(cfg.author-font.family), size: cfg.size.at(cfg.author-font.size))
-      Anonymous Author(s)
+      Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]
     ]
   } else {
     make-authors-grid(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
@@ -781,7 +780,7 @@
   if meta.anonymous {
     block(spacing: 0pt)[
       #set text(font: cfg.fonts.at(cfg.author-font.family), weight: cfg.author-font.weight, size: cfg.size.at(cfg.author-font.size))
-      Anonymous Author(s)
+      Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]
     ]
   } else {
     sigchi-authors(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)

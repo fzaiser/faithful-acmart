@@ -20,8 +20,10 @@
   paper: (width: 11in, height: 8.5in),
   // one-sided with a wide left margin (marginpar 170pt sits inside the 314pt
   // left margin via \reversemarginpar).
-  margin: (left: 314 * tp, right: 72 * tp, top: 99 * tp, bottom: 84 * tp), // head top 58
-  foot-skip: 24 * tp,
+  margin: (left: 314 * tp, right: 72 * tp, top: 99 * tp, bottom: 84 * tp),
+  // sigchi-a's geometry sets no foot= key (acmart.dtx:3807), so \footskip keeps
+  // the class default 12pt (probed) — unlike the foot=2pc journal formats.
+  foot-skip: 12 * tp,
   sans-default: true,
   urlstyle-sans: true,
   secnumdepth: 0,

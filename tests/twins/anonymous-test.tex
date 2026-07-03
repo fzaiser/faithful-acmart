@@ -1,0 +1,42 @@
+%% anonymous-test — double-anonymous journal submission with a submission id
+%% (twin of the .typ). The author strip must read "ANONYMOUS AUTHOR(S)" with a
+%% second "SUBMISSION ID: <id>" line (acmart.dtx:5190-5193, uppercased by the
+%% journal strip's \MakeUppercase), and the contact-info footnote is suppressed.
+\documentclass[acmsmall,anonymous]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmMonth{8}
+\acmSubmissionID{123-A56-BU3}
+
+\begin{document}
+
+\title{An Anonymous Submission}
+
+\author{Ben Trovato}
+\email{trovato@corporation.com}
+\affiliation{%
+  \institution{Institute for Clarity in Documentation}
+  \city{Dublin}
+  \country{USA}}
+
+\begin{abstract}
+  A short journal document compiled in anonymous mode, exercising the anonymized
+  author strip with its submission-id line.
+\end{abstract}
+
+\keywords{datasets, anonymity}
+
+\maketitle
+
+\section{Introduction}
+This document checks the anonymized author strip, the suppressed contact-info
+footnote, and the anonymized ACM reference block.
+
+\end{document}

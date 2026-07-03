@@ -1,0 +1,35 @@
+// authorversion-conf-test — author's-version mode on a CONFERENCE format.
+// Matched twin: authorversion-conf-test.tex. Unlike the journal case
+// (authorversion-test), the page-1 block must keep the italic conference-info
+// line (acmart.dtx:6615-6622 is not guarded by \if@ACM@authorversion) and the
+// "Version of Record" notice must name the booktitle, not a journal
+// (acmart.dtx:6638-6644).
+#import "/src/lib.typ": acmart
+
+#show: acmart.with(
+  format: "sigconf",
+  title: "The Author's Version of a Conference Paper",
+  conference: (short: "Conference'17", venue: "Washington, DC, USA"),
+  booktitle: "Proceedings of ACM Conference (Conference'17)",
+  isbn: "978-1-4503-XXXX-X/2018/06",
+  doi: "XXXXXXX.XXXXXXX",
+  acm-year: 2018, acm-month: 6,
+  copyright: "acmlicensed", copyright-year: 2018,
+  short-authors: "Trovato",
+  author-version: true,
+  authors: (
+    (name: "Ben Trovato", email: "trovato@corporation.com",
+     affiliation: (institution: "Institute for Clarity in Documentation",
+                   city: "Dublin", country: "USA")),
+  ),
+  abstract: [
+    A short proceedings document compiled in author-version mode, exercising the
+    conference variant of the alternative page-one copyright block.
+  ],
+)
+
+= Introduction
+This document checks that the author-version copyright block keeps the italic conference line and names the booktitle in the Version of Record notice. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore dolemus, fieri tamen permagna accessio potest, si aliquod aeternum et infinitum impendere malum nobis opinemur. Quod idem licet transferre in voluptatem, ut postea variari voluptas distinguique possit, augeri amplificarique non possit. At etiam Athenis, ut e patre audiebam facete et urbane Stoicos irridente, statua est in quo a nobis philosophia defensa et.
+
+= Method
+A second top-level section. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore dolemus, fieri tamen permagna accessio potest, si aliquod aeternum et infinitum impendere malum nobis opinemur. Quod idem licet transferre in voluptatem, ut postea variari voluptas distinguique possit, augeri amplificarique non possit. At etiam Athenis, ut e patre audiebam facete et urbane Stoicos irridente, statua est in quo a nobis philosophia defensa et collaudata est, cum id, quod maxime placeat, facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet, ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum.

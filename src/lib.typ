@@ -488,6 +488,7 @@
     author-version: author-version,
     author-draft: author-draft,
     anonymous: anonymous,
+    submission-id: submission-id,
   )
 
   let article-page(p) = {
@@ -508,7 +509,9 @@
   let manuscript-footer = if not nonacm [Manuscript submitted to ACM]
   let conference-line = {
     if cfg.name == "acmengage" {
-      [EngageCSEdu.#if doi != none { text(font: cfg.fonts.body)[ https:\/\/doi.org\/#doi] }]
+      // \@formatdoi is \url{...} (acmart.dtx:6204), so the head DOI is a live
+      // link, styled upright roman by acmengage's \urlstyle{rm}.
+      [EngageCSEdu.#if doi != none { text(font: cfg.fonts.body)[ #link("https://doi.org/" + doi)[https:\/\/doi.org\/#doi]] }]
     } else if conference != none {
       let short = conference.at("short", default: conference.at("name", default: none))
       let date = conference.at("date", default: none)
@@ -536,7 +539,9 @@
         [#j.name, Volume #acm-volume, Issue #acm-number#if acm-article != none [, Article #acm-article] (#pub-date(meta))#if doi != none { linebreak(); link("https://doi.org/" + doi)[https:\/\/doi.org\/#doi] }]
       }
     } else if cfg.name == "acmtog" and conference != none {
-      conference-line
+      // acmtog's conference footer ends with a period (acmart.dtx:8064:
+      // "...\acmConference@venue.}"), unlike the running-head conference line.
+      [#conference-line.]
     } else if cfg.name in ("acmsmall", "acmlarge", "acmtog") {
       journal-footer
     } else if cfg.name == "manuscript" {
@@ -554,6 +559,9 @@
     } else if cfg.name == "acmcp" {
       footer-row(r: bib)
     } else if cfg.name == "manuscript" and here().page() == 1 {
+      // manuscript's first-page folio is \small (acmart.dtx:8200), one step up
+      // from the footnotesize slug next to it.
+      let folio = if folio != none { text(size: cfg.size.small, folio) }
       if odd { footer-row(l: bib, r: folio) } else { footer-row(l: folio, r: bib) }
     } else if cfg.kind == "proceedings" {
       footer-row(c: folio)
@@ -598,8 +606,10 @@
       if odd { grid(columns: (1fr, auto), align(left, st), align(right, ap)) }
       else { grid(columns: (auto, 1fr), align(left, ap), align(right, sa)) }
     } else if cfg.name in ("acmlarge", "acmtog") {
-      if odd { align(right, [#st • #ap]) }
-      else { align(left, [#ap • #sa]) }
+      // \shorttitle\quad\textbullet\quad\@acmArticlePage (acmart.dtx:8042-8056):
+      // a full 1em quad on each side of the bullet, not a word space.
+      if odd { align(right, [#st#h(1em)•#h(1em)#ap]) }
+      else { align(left, [#ap#h(1em)•#h(1em)#sa]) }
     } else if cfg.kind == "proceedings" {
       let conf = conference-line
       // sigchi-a is one-sided (landscape, fixed wide left margin): every page uses

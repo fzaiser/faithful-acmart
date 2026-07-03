@@ -1,6 +1,7 @@
 // acmengage format — two-column ACM EngageCSEdu course materials.
 //
-// A sigconf variant: two columns, 9pt, centered conference title + author grid.
+// A sigconf variant: two columns, 10pt (acmart.dtx:3084), centered conference
+// title + author grid.
 // Same author/section fonts as sigconf (\@authorfont \LARGE serif; \@secfont
 // \bfseries\Large, acmart.dtx:7231/8450). Slightly taller bottom margin (probed).
 // The engage copyright line uses the booktitle rather than a conference (handled
