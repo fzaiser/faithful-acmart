@@ -21,11 +21,23 @@ All files are redistributed under the **LaTeX Project Public License (LPPL)
 Source: TeX Live 2024 (`kpsewhich <file>`). To refresh, re-copy from a current
 TeX distribution and update the versions above.
 
+## Also in the repo (generated, for audit convenience)
+
+- **[`../acmart.cls`](../acmart.cls)** — the flattened class LaTeX actually loads,
+  generated from [`../acmart.dtx`](../acmart.dtx) via [`../acmart.ins`](../acmart.ins)
+  (docstrip): the standard **non-tagged** build, byte-identical to what the test
+  harness compiles against (`tests/out/latex/acmart.cls`). It is a build product,
+  committed only so a reviewer can read the executed code with the documentation
+  prose and the tagged/non-tagged conditionals already resolved — the `.dtx`
+  remains the source of record (rationale + the `acmart.dtx:NNNN` anchors used
+  throughout this repo). Regenerate with:
+
+  ```sh
+  cd acmart && pdflatex -interaction=nonstopmode acmart.ins   # writes acmart.cls
+  ```
+
 ## Not vendored (intentionally)
 
-- **`acmart.cls`** — generated from [`../acmart.dtx`](../acmart.dtx) via
-  [`../acmart.ins`](../acmart.ins) (docstrip); the test harness builds it into
-  `tests/out/latex/acmart.cls`. It is a build product, not a source.
 - **`amsmath` / `amsthm` / `biblatex` core** — acmart's theorem styles
   (`acmplain`/`acmdefinition`) and the ACM `.bbx`/`.cbx` deltas are defined in
   acmart's own sources (already vendored); only the small, specific pieces above
