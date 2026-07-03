@@ -6,8 +6,11 @@
 // left-justifies longer ones. Enumerate labels are parenthesized: (1), (2), ...
 
 #import "spacing.typ": comp, tex-skip
+#import "../formats/_base.typ": tp
 
-#let apply-body(cfg, body) = {
+// The rules below need measure() for the amsart list-label geometry, so the
+// whole body scope is one context block.
+#let apply-body(cfg, body) = context {
   // Figure/table supplements and caption separator. Journals use "Fig.";
   // proceedings keep caption's default "Figure" name. The table name follows the
   // main language, as in acmart's babel caption hooks.
@@ -54,14 +57,23 @@
   // between figure body and caption. (Floats sit on \lineskip, not \baselineskip,
   // so unlike text blocks they take no line-box compensation.)
   let env-block(it, above: 0pt, below: 0pt) = {
-    block(above: above, below: below, it)
-    // LaTeX environments such as figure/table/list end with normal paragraph
-    // indentation enabled. Typst's global `all: false` only knows "after any
-    // block", so reintroduce the paragraph start after ACM block environments.
+    block(above: above, below: 0pt, it)
+    // LaTeX environments such as list/quote end with normal paragraph
+    // indentation enabled. The h() shim forms an invisible zero-height
+    // paragraph after the block, which makes the NEXT paragraph take the
+    // native first-line-indent ("follows a paragraph"). The shim also owns
+    // the whole below-gap as its par `spacing`: measured, a block's `below`
+    // and the follower's own above-spacing ADD across the shim (so a nonzero
+    // `below` here double-counts), while the shim's spacing collapses by max
+    // against whatever follows — exactly LaTeX's \addvspace semantics for
+    // consecutive \topsep-carrying environments.
     // If the next item is a heading, this does not visibly indent it: display
     // headings are blocks, and run-in headings cancel/adjust the ambient indent
     // in parts/headings.typ.
-    h(cfg.parindent)
+    {
+      set par(spacing: below)
+      h(cfg.parindent)
+    }
   }
   show figure: it => {
     set block(above: cfg.intextsep, below: cfg.intextsep)
@@ -93,26 +105,85 @@
   // Geometry (acmart.dtx:4426): body at \leftmargin (≈24.5pt, level 1), label
   // hanging left with \labelsep=4pt, items one baselineskip apart (tight). Typst
   // has no fixed hanging-label box (\llap), so we land the body at \leftmargin via
-  // `indent` + marker width + `body-indent`(=\labelsep): for the wide "(1)" the
-  // marker hangs at ~\parindent; for the narrow bullet we widen `indent` so its
-  // body still reaches \leftmargin (= leftmargin - labelsep - bullet width). See DESIGN.
-  // Vertical spacing: amsart sets level-1 \topsep = \listisep = \smallskipamount
-  // (acmart.dtx:4446-4451) with \itemsep = \parsep = 0, i.e. items sit one
-  // \baselineskip apart (the global par leading) and the whole list is offset
-  // from the surrounding text by a \smallskip. tex-skip() converts that topsep
-  // to the block gap; tight items inherit the baseline-grid leading.
+  // --- List geometry (amsart, PROBED from the live class) -------------------
+  //
+  // amsart derives the list margins from RENDERED label widths at
+  // \begin{document} (deps/amsart.cls \AtBeginDocument): \labelsep = 5pt;
+  // \leftmargini = width of the level-1 enum label at counter value 13 +
+  // \labelsep + \normalparindent; \leftmarginii..iv = that level's label width
+  // at 13 + \labelsep; \leftmarginv/vi = 10pt. Labels are \llap'd: right-
+  // aligned ending \labelsep before the body, overhanging leftward when wide.
+  // NOTE: acmart.dtx:4425 also registers a 4pt-\labelsep/24.5pt AtBeginDocument
+  // block, but in the live class amsart's values win — probed labelsep 5pt,
+  // leftmargini 30.26pt, leftmarginii 18.86pt, iii 23.99pt, iv 19.35pt at the
+  // acmsmall 10pt base (counter-13 label widths in Libertine). Trust the probe,
+  // not the dtx (the measured twin pages agree with the probe).
+  //
+  // Typst's enum/list reserve the widest marker instead of llap'ing, so every
+  // marker is drawn as a zero-width box with the label overhanging left, and
+  // the body pinned at indent + body-indent = the level's \leftmargin.
+  //
+  // Vertical spacing: level-1 \topsep = \listisep = \smallskipamount with
+  // \itemsep = \parsep = 0 (items sit one \baselineskip apart); level-2+
+  // \topsep = 0, so nested lists add NO gap and only the outermost list
+  // carries the \listisep block gap + the post-environment paragraph indent.
+  let enum-pats = if cfg.name == "sigplan" { ("1.", "a.", "i.", "A.") } else { ("(1)", "(a)", "(i)", "(A)") }
+  let list-marks = ([$bullet$], text(weight: "bold")[–], [∗], [·])
+  let llap(c) = context { h(-measure(c).width); c }
+  let labelsep = 5 * tp
+  // \leftmargin per (1-based) level; measured like \settowidth at counter 13.
+  let label-w(k) = measure(numbering(enum-pats.at(k), 13)).width
+  let leftmargin = (
+    label-w(0) + labelsep + cfg.parindent,
+    label-w(1) + labelsep,
+    label-w(2) + labelsep,
+    label-w(3) + labelsep,
+    10 * tp, 10 * tp,
+  )
+  let list-depth = counter("acm-list-depth")
   let list-gap = tex-skip(cfg, cfg.smallskip)
-  let list-block(it) = env-block(it, above: list-gap, below: list-gap)
+  let list-block(it) = {
+    list-depth.update(n => n + 1)
+    context {
+      let d = list-depth.get().first()
+      let inner = {
+        // Children of THIS list are at depth d+1: their level's leftmargin and
+        // llap'd label, pattern/symbol picked by depth (clamped like LaTeX,
+        // whose \@itemdepth/\@enumdepth error out past 4 — we saturate).
+        let li = calc.min(d, leftmargin.len() - 1)
+        let pi = calc.min(d, 3)
+        set enum(indent: leftmargin.at(li) - labelsep,
+          numbering: (..ns) => llap(numbering(enum-pats.at(pi), ..ns)))
+        set list(indent: leftmargin.at(li) - labelsep, marker: llap(list-marks.at(pi)))
+        it
+      }
+      if d == 1 { env-block(inner, above: list-gap, below: list-gap) } else { inner }
+    }
+    list-depth.update(n => n - 1)
+  }
   show enum: it => list-block(it)
   show list: it => list-block(it)
   // amsart labels are (1)/(a)/(i)/(A); sigplan redefines them to 1./a./i./A.
   // (acmart.dtx:4402-4406).
-  set enum(numbering: if cfg.name == "sigplan" { "1.a.i.A." } else { "(1)(a)(i)(A)" },
-    indent: cfg.parindent, body-indent: cfg.list-labelsep,
+  set enum(numbering: (..ns) => llap(numbering(enum-pats.at(0), ..ns)),
+    indent: leftmargin.at(0) - labelsep, body-indent: labelsep,
     spacing: comp(cfg))
-  set list(marker: ([$bullet$], text(weight: "bold")[–], [∗], [·]),
-    indent: cfg.list-leftmargin - 2 * cfg.list-labelsep, body-indent: cfg.list-labelsep,
+  set list(marker: llap(list-marks.at(0)),
+    indent: leftmargin.at(0) - labelsep, body-indent: labelsep,
     spacing: comp(cfg))
+
+  // quote (amsart, deps/amsart.cls:900-905): a label-less list — leftmargin =
+  // \leftmargini, rightmargin = leftmargin, \topsep = \listisep, no paragraph
+  // indent. (Typst's quote maps to LaTeX's `quote`; the 3pc-margin `quotation`
+  // variant with indented paragraphs is not modelled.)
+  show quote.where(block: true): it => env-block(
+    above: list-gap, below: list-gap,
+    block(width: 100%, inset: (left: leftmargin.at(0), right: leftmargin.at(0)), {
+      set par(first-line-indent: 0pt)
+      it.body
+      if it.attribution != none { linebreak(); align(end, [— #it.attribution]) }
+    }),
+  )
 
   // Monospace (Inconsolata/zi4) for inline and block code. Typst's raw default
   // is smaller than LaTeX \texttt/verbatim; force it back to the surrounding

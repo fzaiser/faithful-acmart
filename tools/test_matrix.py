@@ -656,16 +656,6 @@ TESTS: dict[str, Test] = {
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
-        expected_order_diffs=(
-            ExpectedOrderDiff(
-                latex="An unnumbered display equation is produced by the displaymath "
-                      "environment. Again, in either environment",
-                typst="An unnumbered display equation is produced by the displaymath "
-                      "environment. J. ACM, Vol. 37, No. 4, Article 111. Publication "
-                      "date: August 2018. 111:6 Trovato et al. Again, in either environment",
-                cause=ExtractionArtifact("display-equation footer interleave"),
-            ),
-        ),
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
@@ -858,22 +848,8 @@ TESTS: dict[str, Test] = {
                       "Documentation, USA",
                 cause=ExtractionArtifact("author-note marker extraction"),
             ),
-            ExpectedTextDiff(
-                latex="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such",
-                typst="If your figure contains third- Table 2. Some Typical Commands",
-                cause=ExtractionArtifact("table/figure stream interleave"),
-            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
-        expected_order_diffs=(
-            ExpectedOrderDiff(
-                latex="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Math Equations",
-                typst="If your figure contains third- Table 2. Some Typical Commands",
-                cause=ExtractionArtifact("table/figure stream interleave"),
-            ),
-        ),
         note="upstream acmtog sample (two-column TOG journal). Uses the author-year "
              "citation style (\\citestyle{acmauthoryear}) via the bst backend.",
     ),
@@ -983,16 +959,6 @@ TESTS: dict[str, Test] = {
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
-        expected_order_diffs=(
-            ExpectedOrderDiff(
-                latex="An unnumbered display equation is produced by the displaymath "
-                      "environment. Again, in either environment",
-                typst="An unnumbered display equation is produced by the displaymath "
-                      "environment. J. ACM, Vol. 37, No. 4, Article 111. Publication "
-                      "date: August 2018. 111:6 Trovato et al. Again, in either environment",
-                cause=ExtractionArtifact("display-equation footer interleave"),
-            ),
-        ),
         text_assertions=(
             Assertion(engine="both", text="Software project: [Delebecque et al. 1994; "
                    "The CGAL Project 1996]. Software Version: [Greenman and Felleisen "

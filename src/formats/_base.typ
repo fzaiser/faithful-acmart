@@ -166,8 +166,9 @@
     footins-skip: 7 * tp,
     parindent: parindent,
     parskip: 0pt,
-    list-labelsep: 4 * tp,
-    list-leftmargin: 24.5 * tp,
+    // List geometry lives in parts/body.typ: amsart derives it from rendered
+    // label widths at begin-document (probed), so it cannot be a static dict
+    // entry here.
     runin-sep: 3.5 * tp,
     badge-width: 3 * 12 * tp,
     heading-numbering: numbering-for-depth(secnumdepth),

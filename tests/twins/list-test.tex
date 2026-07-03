@@ -26,4 +26,34 @@ compared.
 
 The paragraph after the enumerated list should also be indented.
 
+\begin{itemize}
+\item A top-level bullet introducing a nested list.
+  \begin{itemize}
+  \item A nested dash item at the 8.5pt second-level indent.
+  \item A second nested item that is long enough to wrap onto another line to
+    check the nested hanging indent.
+    \begin{itemize}
+    \item A third-level star item.
+    \end{itemize}
+  \end{itemize}
+\item A second top-level bullet directly after the nested block.
+\end{itemize}
+
+\begin{enumerate}
+\item A numbered item with a nested enumerate.
+  \begin{enumerate}
+  \item The nested label hangs left of the nested body.
+  \item A second nested numbered item.
+  \end{enumerate}
+\item A second top-level numbered item.
+\end{enumerate}
+
+\begin{quote}
+A quoted paragraph set off from the text by the list margins on both sides,
+long enough to wrap onto a second line so both edges can be compared, with no
+first-line indent.
+\end{quote}
+
+The paragraph after the quotation should resume the normal paragraph indent.
+
 \end{document}
