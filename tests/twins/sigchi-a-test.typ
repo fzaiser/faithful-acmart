@@ -1,6 +1,6 @@
 // sigchi-a-test — landscape SIGCHI extended-abstract format (best-effort).
 // Sans default, wide left margin, 2pt-rule title, unnumbered sections. Golden-smoke.
-#import "/src/lib.typ": acmart
+#import "/src/lib.typ": acmart, sidebar, marginfigure
 
 #show: acmart.with(
   format: "sigchi-a",
@@ -40,8 +40,15 @@ This document exercises the sigconf format's two-column body, the spanning title
 == Background
 A subsection to check the level-2 heading. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore dolemus, fieri tamen permagna accessio potest, si aliquod aeternum et infinitum impendere malum nobis opinemur. Quod idem licet transferre in voluptatem, ut postea variari voluptas distinguique possit, augeri amplificarique non possit. At.
 
+#sidebar[
+  A sidebar note set small in the margin column, anchored at this point of the
+  text, wrapping over a few short lines.
+]
 === A subsubsection
 A run-in subsubsection heading. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore dolemus, fieri tamen permagna accessio potest, si aliquod aeternum et infinitum impendere.
+#marginfigure[
+  #figure(rect(width: 3cm, height: 1cm, fill: black), caption: [A margin figure caption.])
+]
 
 = Method
 A second top-level section. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore dolemus, fieri tamen permagna accessio potest, si aliquod aeternum et infinitum impendere malum nobis opinemur. Quod idem licet transferre in voluptatem, ut postea variari voluptas distinguique possit, augeri amplificarique non possit. At etiam Athenis, ut e patre audiebam facete et urbane Stoicos irridente, statua est in quo a nobis philosophia defensa et collaudata est, cum id, quod maxime placeat, facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet, ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum.

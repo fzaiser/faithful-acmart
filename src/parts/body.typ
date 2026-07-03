@@ -7,6 +7,7 @@
 
 #import "spacing.typ": comp, tex-skip
 #import "../formats/_base.typ": tp
+#import "theorems.typ": cfg-state
 
 // True while the title head renders a teaser figure: the figure show rule
 // below must not add its \intextsep float spacing or the paragraph-indent shim
@@ -111,11 +112,6 @@
     below: tex-skip(cfg, cfg.medskip),
   )
 
-  // amsart list labels (inherited by acmsmall; amsart.cls:870-884):
-  //   enumerate: (1) / (a) / (i) / (A)   itemize: • / bold – / ∗ / ·
-  // Geometry (acmart.dtx:4426): body at \leftmargin (≈24.5pt, level 1), label
-  // hanging left with \labelsep=4pt, items one baselineskip apart (tight). Typst
-  // has no fixed hanging-label box (\llap), so we land the body at \leftmargin via
   // --- List geometry (amsart, PROBED from the live class) -------------------
   //
   // amsart derives the list margins from RENDERED label widths at
@@ -232,4 +228,61 @@
   show footnote.entry: set par(leading: comp(cfg, sz: "footnotesize"))
 
   body
+}
+
+// --- sigchi-a margin notes (acmart.dtx:4266-4341) --------------------------
+//
+// sidebar / marginfigure / margintable set their body in a \marginpar: a
+// \small box of \marginparwidth in the wide left margin (\reversemarginpar
+// puts it there), \marginparsep left of the text edge, top-aligned with the
+// invocation point. marginfigure/margintable centre their content; captions
+// come from the user's own figure() (kind: image/table, or kind: "sidebar"
+// with supplement [Sidebar] for a captioned sidebar). The in-topmatter flag
+// suppresses the body float spacing + indent shim inside the note, like the
+// teaser path.
+#let _marginpar(body, centering: false) = context {
+  let cfg = cfg-state.get()
+  let mp = cfg.marginpar
+  assert(mp != none, message: "faithful-acmart: sidebar/marginfigure/margintable need a margin-note column (format: \"sigchi-a\")")
+  // horizontal alignment only: the note's TOP stays at the invocation point in
+  // the flow (a `top` alignment would pin it to the container top instead).
+  // dy is MATCHED TO OUTPUT: \marginpar aligns the note's first baseline with
+  // the line it attaches to; measured on sigchi-a-test p2 the Typst place
+  // anchor sits 14.65tp below LaTeX's note baseline (281.3bp in both after
+  // this shift).
+  place(left, dx: -(mp.width + mp.sep), dy: -14.65 * tp, box(width: mp.width, {
+    set text(size: cfg.size.small)
+    set par(leading: comp(cfg, sz: "small"), spacing: comp(cfg, sz: "small"), justify: false, first-line-indent: 0pt)
+    // Re-render figures bare — body + \abovecaptionskip + caption (table
+    // captions on top) — replacing the figure element entirely so the global
+    // float show rule (\intextsep + indent shim) never fires inside the note.
+    show figure: it => block(width: 100%, spacing: 0pt, {
+      if it.kind == table and it.caption != none { it.caption; v(cfg.abovecaptionskip) }
+      it.body
+      if it.kind != table and it.caption != none { v(cfg.abovecaptionskip); it.caption }
+    })
+    if centering { align(center, body) } else { body }
+  }))
+}
+
+#let sidebar(body) = _marginpar(body)
+#let marginfigure(body) = _marginpar(body, centering: true)
+#let margintable(body) = _marginpar(body, centering: true)
+
+// \fulltextwidth (acmart.dtx:4337): sigchi-a's figure*/table* span the text
+// PLUS the margin column (textwidth + marginparsep + marginparwidth),
+// extending leftward. Wrap a figure to give it that width. (LaTeX's figure*
+// additionally floats to the page top; place the wrapper where the figure
+// should sit.)
+#let fulltextwidth(body) = context {
+  let cfg = cfg-state.get()
+  let mp = cfg.marginpar
+  assert(mp != none, message: "faithful-acmart: fulltextwidth needs a margin-note column (format: \"sigchi-a\")")
+  let off = mp.width + mp.sep
+  in-topmatter.update(true)
+  pad(left: -off, block(width: 100% + off, {
+    set figure(placement: none)
+    body
+  }))
+  in-topmatter.update(false)
 }

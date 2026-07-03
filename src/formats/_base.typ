@@ -123,6 +123,10 @@
   // acmart.dtx:8115; 0 elsewhere — acmcp's 46pt label offset is drawn as a
   // page-background element instead).
   head-offset: 0pt,
+  // \marginparwidth/\marginparsep for the formats with a usable margin-note
+  // column (sigchi-a: 170pt/72pt in the 314pt left margin, \reversemarginpar,
+  // acmart.dtx:3810-3815). none = sidebar/marginfigure/margintable unavailable.
+  marginpar: none,
   columns: 1,
   // \columnsep — the LaTeX default 10pt for the single-column formats (only
   // user-authored columns() see it there); two-column formats pass 2pc,
@@ -171,6 +175,7 @@
     // format's `margin.top` comment; Typst positions the running head via head.sep,
     // so only the head-baseline separation is stored here.
     head: (sep: 14 * tp, offset: head-offset),
+    marginpar: marginpar,
     foot: (skip: foot-skip),
     // typography (scales with the base font size)
     font-size: l.font-size,
