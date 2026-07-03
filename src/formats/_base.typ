@@ -128,6 +128,16 @@
   // (\advance\hsize by -6pc, acmart.dtx:6988); 0 for every other format.
   title-width-reduction: 0pt,
   sec-fonts: generic-sec-fonts,
+  // amsthm styles (acmart.dtx:8525-8761). `plain-head`/`def-head` are the
+  // acmplain/acmdefinition head fonts, `indent` the head indent (auto =
+  // \parindent), `note-inherits-head` whether the "(note)" keeps the head font
+  // (\thm@notefont is empty by default), `proof-head`/`proof-indent` the
+  // \@proofnamefont/\@proofindent pair. sigplan overrides every field
+  // (acmart.dtx:8566-8570, 8639-8643, 8740-8742).
+  thm: (
+    plain-head: "smallcaps", def-head: "italic", indent: auto,
+    note-inherits-head: true, proof-head: "smallcaps", proof-indent: auto,
+  ),
 ) = {
   let l = ladder
   (
@@ -173,6 +183,7 @@
     urlstyle-sans: urlstyle-sans,
     title-width-reduction: title-width-reduction,
     sec-fonts: sec-fonts,
+    thm: thm,
     fonts: (
       serif: "Libertinus Serif",
       sans: "Libertinus Sans",

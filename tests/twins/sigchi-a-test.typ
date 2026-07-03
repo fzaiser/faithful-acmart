@@ -45,3 +45,9 @@ A run-in subsubsection heading. Lorem ipsum dolor sit amet, consectetur adipisci
 
 = Method
 A second top-level section. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore dolemus, fieri tamen permagna accessio potest, si aliquod aeternum et infinitum impendere malum nobis opinemur. Quod idem licet transferre in voluptatem, ut postea variari voluptas distinguique possit, augeri amplificarique non possit. At etiam Athenis, ut e patre audiebam facete et urbane Stoicos irridente, statua est in quo a nobis philosophia defensa et collaudata est, cum id, quod maxime placeat, facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet, ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum.
+
+#figure(
+  placement: none,
+  rect(width: 6cm, height: 1.5cm, fill: black),
+  caption: [A sigchi-a caption, set bold at the small size, long enough that it wraps onto a second line for the typography comparison.],
+)

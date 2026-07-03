@@ -377,8 +377,12 @@ TESTS: dict[str, Test] = {
         note="Conference author grid with a centered partial final row.",
     ),
     "sigplan-test": Test(
-        kind="twin", pages=1, expected_metrics_diff=_TITLE_METRICS_DIFF,
-        note="format=sigplan: 10pt proceedings variant; metrics are report-only for title bbox drift.",
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        expected_metrics_diff=_TITLE_METRICS_DIFF, text_equal="bag",
+        note="format=sigplan: 10pt proceedings variant + the sigplan style overrides "
+             "(1./a. enum labels, bold zero-indent theorem heads with upright notes, "
+             "italic noindent proof, bold-label captions). Metrics are report-only for "
+             "title bbox drift; two-column flow reorders, so text is word-bag gated.",
     ),
     "acmengage-test": Test(
         kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
@@ -409,9 +413,10 @@ TESTS: dict[str, Test] = {
         note="format=acmcp: JDS cover page, infobox, unnumbered sections, and author contributions.",
     ),
     "sigchi-a-test": Test(
-        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        kind="twin", pages=3, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         expected_metrics_diff=_LANDSCAPE_METRICS_DIFF, text_equal="bag",
-        note="format=sigchi-a: landscape extended abstract; text bags and page parity are gated.",
+        note="format=sigchi-a: landscape extended abstract with a bold-small captioned "
+             "figure; text bags and page parity are gated.",
     ),
     "fontsize-8-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,

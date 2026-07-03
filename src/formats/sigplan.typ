@@ -35,4 +35,11 @@
     subsubsection: (family: "serif", weight: "bold", style: "normal", size: "normalsize"),
     paragraph:     (family: "serif", weight: "bold", style: "italic", size: "normalsize"),
   ),
+  // sigplan swaps both amsthm styles to bold heads at zero indent with
+  // \normalfont notes (acmart.dtx:8566-8570/8639-8643), and the proof label to
+  // italic \noindent (acmart.dtx:8740-8742).
+  thm: (
+    plain-head: "bold", def-head: "bold", indent: 0pt,
+    note-inherits-head: false, proof-head: "italic", proof-indent: 0pt,
+  ),
 )

@@ -89,6 +89,36 @@ adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam
 aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore dolemus,
 fieri tamen permagna accessio potest, si aliquod aeternum et infinitum impendere.
 
+\section{Structures}
+The sigplan style overrides several defaults: enumerate labels are
+\emph{1.}/\emph{a.}, theorem heads are bold at zero indent with upright notes,
+proofs carry an italic unindented label, and captions bold only their label.
+
+\begin{enumerate}
+\item First enumerated item, labeled ``1.''\ rather than ``(1)''.
+\item Second enumerated item for the label comparison.
+\end{enumerate}
+
+\begin{theorem}[Fermat]
+A theorem with a note: the head is bold, the note stays upright, and the body is
+italic.
+\end{theorem}
+
+\begin{definition}
+A definition keeps a bold head and an upright body in sigplan.
+\end{definition}
+
+\begin{proof}
+A proof label is italic and unindented in sigplan, ending with a QED square.
+\end{proof}
+
+\begin{figure}[h]
+\centering
+\rule{4cm}{1cm}
+\caption{A sigplan caption whose label is bold while this caption text stays
+regular, long enough to wrap onto a second line.}
+\end{figure}
+
 \section{Method}
 A second top-level section. Lorem ipsum dolor sit amet, consectetur adipiscing
 elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat

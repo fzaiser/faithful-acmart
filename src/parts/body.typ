@@ -20,21 +20,32 @@
   set figure(placement: auto)
   set figure.caption(separator: if cfg.bibstrip or cfg.name == "sigplan" { [. ] } else { [: ] })
 
-  // Caption typography + singlelinecheck (center if one line, else left-justify)
+  // Caption typography + singlelinecheck (center if one line, else left-justify).
+  // The label ("Figure 1.") and text can carry different weights (sigplan:
+  // labelfont={bf}, textfont={normalfont}, acmart.dtx:4211-4213), so the caption
+  // is assembled from its fields rather than rendered wholesale.
   show figure.caption: it => context {
     let cap-font = if cfg.bibstrip { cfg.fonts.sans } else { cfg.fonts.body }
     let cap-weight = if cfg.bibstrip or cfg.name == "sigplan" { "regular" } else { "bold" }
-    let cap-size = if cfg.bibstrip { cfg.size.small } else { cfg.size.normalsize }
-    let cap-step = if cfg.bibstrip { "small" } else { "normalsize" }
-    set text(font: cap-font, weight: cap-weight, size: cap-size)
+    // sigchi-a captions are {bf, small} (acmart.dtx:4220-4223), one size step
+    // below the other proceedings formats' bold normalsize.
+    let cap-step = if cfg.bibstrip or cfg.name == "sigchi-a" { "small" } else { "normalsize" }
+    let label-weight = if cfg.name == "sigplan" { "bold" } else { cap-weight }
+    set text(font: cap-font, weight: cap-weight, size: cfg.size.at(cap-step))
     set par(leading: comp(cfg, sz: cap-step))
+    let cap = {
+      if it.numbering != none {
+        text(weight: label-weight)[#it.supplement #it.counter.display(it.numbering)#it.separator]
+      }
+      it.body
+    }
     layout(size => {
-      let w = measure(it).width
+      let w = measure(cap).width
       if w <= size.width {
-        align(center, it)
+        align(center, cap)
       } else {
         set par(justify: true)
-        align(left, it)
+        align(left, cap)
       }
     })
   }
@@ -94,7 +105,10 @@
   let list-block(it) = env-block(it, above: list-gap, below: list-gap)
   show enum: it => list-block(it)
   show list: it => list-block(it)
-  set enum(numbering: "(1)(a)(i)(A)", indent: cfg.parindent, body-indent: cfg.list-labelsep,
+  // amsart labels are (1)/(a)/(i)/(A); sigplan redefines them to 1./a./i./A.
+  // (acmart.dtx:4402-4406).
+  set enum(numbering: if cfg.name == "sigplan" { "1.a.i.A." } else { "(1)(a)(i)(A)" },
+    indent: cfg.parindent, body-indent: cfg.list-labelsep,
     spacing: comp(cfg))
   set list(marker: ([$bullet$], text(weight: "bold")[–], [∗], [·]),
     indent: cfg.list-leftmargin - 2 * cfg.list-labelsep, body-indent: cfg.list-labelsep,
