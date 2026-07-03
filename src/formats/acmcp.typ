@@ -10,14 +10,16 @@
 // keywords, contributions, contact info — acmart.dtx:6724) is right-aligned and
 // bottom-aligned to the body frame; the rotated article-type label sits at the
 // page's left edge.
-#import "_base.typ": tp, size-ladder, make-format
+#import "_base.typ": tp, size-ladder, make-format, bottom-margin
 
 #let acmcp(font-size: 9pt) = make-format(
   name: "acmcp",
   kind: "cover",
   ladder: size-ladder(font-size, format: "acmcp"),
   paper: (width: 6.75in, height: 10in),
-  margin: (inside: 46 * tp, outside: 46 * tp, top: 85 * tp, bottom: 66.7 * tp), // head top 58
+  margin: (inside: 46 * tp, outside: 46 * tp, top: 85 * tp,
+    // heightrounded \textheight per base size (probed; 571 at the 9pt default)
+    bottom: bottom-margin(font-size, 722.7, 85, ("8": 570, "9": 571, "10": 574, "11": 569, "12": 570))), // head top 58
   foot-skip: 24 * tp,
   secnumdepth: -1,         // no section numbers (acmart.dtx:8501)
   title-width-reduction: 6 * 12 * tp, // narrow the title by 6pc to clear the infobox

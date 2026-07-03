@@ -66,6 +66,9 @@
     bls: bls,
     font-size: size.normalsize,
     baselineskip: bls.normalsize,
+    // the normalsize baselineskip WITHOUT \baselinestretch — the review ruler
+    // steps by this even under manuscript's \onehalfspacing (measured).
+    baselineskip-unstretched: bls.normalsize / baseline-stretch,
     bigskip: bigskip,
     medskip: bigskip / 2,
     smallskip: bigskip / 4,
@@ -85,6 +88,15 @@
   // family switch) — serif for journals, sans under sans-default (sigchi-a).
   paragraph:     (family: "body", weight: "regular", style: "italic", size: "normalsize"),
 )
+
+// geometry's `heightrounded` rounds \textheight down to \topskip + n·\baselineskip
+// of the CHOSEN base size, so the bottom margin depends on the font-size option.
+// Each format passes its per-size \textheight table (TeX points), probed from the
+// bundled class (\the\textheight for every format × 8pt..12pt).
+#let bottom-margin(font-size, paper-h, top, th-by-size) = {
+  let key = str(int(calc.round(font-size / 1pt)))
+  (paper-h - top - th-by-size.at(key)) * tp
+}
 
 // A heading numbering pattern for a given secnumdepth (acmart.dtx:8419). secnum
 // depth 3 numbers through subsubsection; deeper paragraphs stay unnumbered (the
@@ -112,7 +124,10 @@
   // page-background element instead).
   head-offset: 0pt,
   columns: 1,
-  columnsep: 0pt,
+  // \columnsep — the LaTeX default 10pt for the single-column formats (only
+  // user-authored columns() see it there); two-column formats pass 2pc,
+  // sigchi-a 20pt (acmart.dtx:3811).
+  columnsep: 10 * tp,
   parindent: 10 * tp,
   title-style: "journal-left", // \@mktitle@i / @iii / @iv
   // \@titlefont / \@subtitlefont per format (acmart.dtx:6911/6946). family is a
@@ -160,6 +175,7 @@
     // typography (scales with the base font size)
     font-size: l.font-size,
     baselineskip: l.baselineskip,
+    baselineskip-unstretched: l.at("baselineskip-unstretched"),
     size: l.size,
     bls: l.bls,
     smallskip: l.smallskip, medskip: l.medskip, bigskip: l.bigskip,

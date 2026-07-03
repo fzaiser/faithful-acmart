@@ -6,14 +6,17 @@
 // \bfseries\Large, acmart.dtx:7231/8450). Slightly taller bottom margin (probed).
 // The engage copyright line uses the booktitle rather than a conference (handled
 // by conf-info-line's booktitle branch). Geometry probed from the class.
-#import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
+#import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let acmengage(font-size: 10pt) = make-format(
   name: "acmengage",
   kind: "proceedings",
   ladder: size-ladder(font-size, format: "acmengage"),
   paper: (width: 8.5in, height: 11in),
-  margin: (inside: 54 * tp, outside: 54 * tp, top: 84 * tp, bottom: 88.97 * tp), // head top 57
+  margin: (inside: 54 * tp, outside: 54 * tp, top: 84 * tp,
+    // heightrounded \textheight per base size (probed, same table as sigconf;
+    // 622 at the 10pt default)
+    bottom: bottom-margin(font-size, 794.97, 84, ("8": 630, "9": 626, "10": 622, "11": 621, "12": 626))), // head top 57
   foot-skip: 12 * tp,
   columns: 2,
   columnsep: 24 * tp,

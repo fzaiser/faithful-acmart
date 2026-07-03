@@ -702,6 +702,39 @@
       lbl)
   }
 
+  // `review`: acmart stamps a fixed red \scriptsize RULER in the margins — one
+  // number per UNSTRETCHED normalsize \baselineskip covering \textheight
+  // (\ACM@mk@linecount, acmart.dtx:7853-7928: ceil(th/bls)+1 numbers per box,
+  // measured 52/58 per page on manuscript/sigconf), numbered continuously
+  // across pages. Two-column formats and sigchi-a build a SECOND, continuing
+  // box on the right (\ACM@linecountR). The numbers are slots, not text lines:
+  // they advance across headings, floats, and whitespace. Measured anchors:
+  // first baseline at margin.top + 8.43tp; x = left margin − 26pt / right
+  // margin edge + 20pt (\put(-26,-22)/(20,-22) from the head corners).
+  let review-ruler = if review { context {
+    let th = cfg.paper.height - cfg.margin.top - cfg.margin.bottom
+    let bls = cfg.at("baselineskip-unstretched")
+    let n = calc.ceil(th / bls) + 1
+    let two-sided-ruler = cfg.columns == 2 or cfg.name == "sigchi-a"
+    let pg = here().page() - 1
+    let start = pg * (if two-sided-ruler { 2 * n } else { n }) + 1
+    // this page's physical left/right margins (inside/outside alternate)
+    let odd = calc.odd(here().page())
+    let ml = cfg.margin.at("left", default: if odd { cfg.margin.at("inside", default: 0pt) } else { cfg.margin.at("outside", default: 0pt) })
+    let mr = cfg.margin.at("right", default: if odd { cfg.margin.at("outside", default: 0pt) } else { cfg.margin.at("inside", default: 0pt) })
+    let ruler(first) = text(fill: rgb(255, 0, 0), size: cfg.size.scriptsize,
+      top-edge: 1em, bottom-edge: 0pt,
+      {
+        set par(leading: bls - cfg.size.scriptsize, justify: false)
+        range(first, first + n).map(str).join(linebreak())
+      })
+    let dy = cfg.margin.top + 8.43 * tp - cfg.size.scriptsize
+    place(top + left, dx: ml - 26 * tp, dy: dy, ruler(start))
+    if two-sided-ruler {
+      place(top + left, dx: cfg.paper.width - mr + 20 * tp, dy: dy, ruler(start + n))
+    }
+  } }
+
   set page(
     width: cfg.paper.width,
     height: cfg.paper.height,
@@ -722,6 +755,7 @@
     footer: footer-content,
     background: {
       acmcp-label
+      if review-ruler != none { review-ruler }
       if watermark != none { align(center + horizon, watermark) }
     },
   )
@@ -801,12 +835,6 @@
     bbl-cite(str(it.target))
   } else { it }
 
-  // `review`: number every line in the left margin (acmart uses \color{red}
-  // \scriptsize — 7pt at this base size; acmart.dtx:7862).
-  set par.line(numbering: if review {
-    // LaTeX \color{red} is pure red; Typst's `red` is a softer #ff4136.
-    n => text(fill: rgb(255, 0, 0), size: cfg.size.scriptsize)[#n]
-  } else { none })
 
   cfg-state.update(cfg) // publish config for theorem environments
   anon-state.update(anonymous) // publish anonymity for the acks environment

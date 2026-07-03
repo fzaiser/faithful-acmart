@@ -5,14 +5,16 @@
 // NO sans (serif bold, acmart.dtx:6926), the sections are serif bold
 // (\bfseries\Large section, \bfseries subsection, \bfseries\itshape paragraph;
 // acmart.dtx:8435), and URLs are set in sans (\urlstyle{sf}, acmart.dtx:3623).
-#import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
+#import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let sigplan(font-size: 10pt) = make-format(
   name: "sigplan",
   kind: "proceedings",
   ladder: size-ladder(font-size, format: "sigplan"),
   paper: (width: 8.5in, height: 11in),
-  margin: (inside: 54.2025 * tp, outside: 54.2025 * tp, top: 72.27 * tp, bottom: 76.7 * tp), // head top 45.27
+  margin: (inside: 54.2025 * tp, outside: 54.2025 * tp, top: 72.27 * tp,
+    // heightrounded \textheight per base size (probed; 646 at the 10pt default)
+    bottom: bottom-margin(font-size, 794.97, 72.27, ("8": 650, "9": 648, "10": 646, "11": 647, "12": 654))), // head top 45.27
   foot-skip: 12 * tp,
   columns: 2,
   columnsep: 24 * tp,

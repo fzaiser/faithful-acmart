@@ -7,13 +7,15 @@
 // is 9pt (acmart.dtx:3846). Larger title/author/section fonts than acmsmall:
 // \Huge\sffamily title, \LARGE\sffamily authors, \sffamily\large sections.
 // Geometry probed from the bundled class.
-#import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
+#import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let acmtog(font-size: 9pt) = make-format(
   name: "acmtog",
   ladder: size-ladder(font-size, format: "acmtog"),
   paper: (width: 8.5in, height: 11in),
-  margin: (inside: 52 * tp, outside: 52 * tp, top: 79 * tp, bottom: 100.97 * tp), // head top 52
+  margin: (inside: 52 * tp, outside: 52 * tp, top: 79 * tp,
+    // heightrounded \textheight per base size (probed; 615 at the 9pt default)
+    bottom: bottom-margin(font-size, 794.97, 79, ("8": 620, "9": 615, "10": 622, "11": 621, "12": 612))), // head top 52
   foot-skip: 24 * tp,
   columns: 2,
   columnsep: 24 * tp,

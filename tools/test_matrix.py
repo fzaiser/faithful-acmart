@@ -677,7 +677,7 @@ TESTS: dict[str, Test] = {
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
-        kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
+        kind="twin", pages=11,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -687,21 +687,13 @@ TESTS: dict[str, Test] = {
                       "Documentation, USA",
                 cause=ExtractionArtifact("author-note marker extraction"),
             ),
-            ExpectedTextDiff(
-                latex="https://doi.org/XXXXXXX.XXXXXXX Introduction ACM's consolidated "
-                      "article template",
-                typst="https://doi.org/XXXXXXX.XXXXXXX ACM's consolidated article template",
-                cause=ExtractionArtifact("review-stream heading extraction"),
-            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="An unnumbered display equation is produced by the displaymath "
-                      "environment. Again, in either environment",
-                typst="An unnumbered display equation is produced by the displaymath "
-                      "environment. Display Equations Again, in either environment",
-                cause=ExtractionArtifact("review-line display-equation interleave"),
+                latex="and follow it with another numbered equation: (1) n→∞ ∫ π +2 xi = f (2)",
+                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 f (2)",
+                cause=ExtractionArtifact("display-math token-order extraction"),
             ),
         ),
         note="upstream manuscript sample (manuscript,screen,review + proceedings "
@@ -802,7 +794,7 @@ TESTS: dict[str, Test] = {
         note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
     ),
     "sample-acmsmall-submission": Test(
-        kind="twin", pages=10, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
+        kind="twin", pages=10,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -935,7 +927,7 @@ TESTS: dict[str, Test] = {
              "abstract headed by its babel \\abstractname.",
     ),
     "sample-sigconf-authordraft": Test(
-        kind="twin", pages=6, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
+        kind="twin", pages=6,
         golden_exempt=_AUTHORDRAFT_GOLDEN_EXEMPT,
         text_equal=False,
         expected_text_diffs=(

@@ -27,6 +27,7 @@
   // running head extends over the margin-note column: \fancyheadoffset[L]
   // {\marginparsep+\marginparwidth} (acmart.dtx:8115) = 72pt + 170pt.
   head-offset: (72 + 170) * tp,
+  columnsep: 20 * tp, // acmart.dtx:3811 (user columns() only; the body is one column)
   sans-default: true,
   urlstyle-sans: true,
   secnumdepth: 0,

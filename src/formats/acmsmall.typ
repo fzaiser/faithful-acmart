@@ -3,7 +3,7 @@
 // All measurements are taken from the real acmart.cls (format=acmsmall) via a
 // layout probe (tools/probe.tex; run `tools/test.py probe`). The shared font-size ladder,
 // TeX->PS point conversion, and the dict constructor live in `_base.typ`.
-#import "_base.typ": tp, size-ladder, make-format
+#import "_base.typ": tp, size-ladder, make-format, bottom-margin
 
 // Build the acmsmall format dict for a given base font size (one of
 // "8pt".."12pt"; acmsmall's own default is 10pt — acmart.dtx:3068). Geometry,
@@ -24,7 +24,8 @@
     inside: 46 * tp,
     outside: 46 * tp,
     top: 85 * tp,                     // 58 (to head top) + 13 (head) + 14 (headsep)
-    bottom: (722.7 - 85 - 574) * tp,  // = 63.7tp; paperheight - bodytop - textheight
+    // heightrounded \textheight per base size (probed; 574 at the 10pt default)
+    bottom: bottom-margin(font-size, 722.7, 85, ("8": 570, "9": 571, "10": 574, "11": 569, "12": 570)),
   ),
   foot-skip: 24 * tp,
   // \@authorfont \large\sffamily ; \@affiliationfont \small\normalfont

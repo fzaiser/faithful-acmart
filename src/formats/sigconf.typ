@@ -5,7 +5,7 @@
 // grid (@mkauthors@iii), no journal bibstrip — the conference info + permission +
 // ISBN sit in a first-column copyright block. Section headings are \bfseries\Large
 // (serif bold, acmart.dtx:8430). Geometry probed from the bundled class.
-#import "_base.typ": tp, size-ladder, make-format, generic-sec-fonts
+#import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let sigconf(font-size: 9pt) = make-format(
   name: "sigconf",
@@ -16,7 +16,8 @@
     inside: 54 * tp,
     outside: 54 * tp,
     top: 84 * tp,          // geometry top=57 + 13 + 14
-    bottom: 84.97 * tp,
+    // heightrounded \textheight per base size (probed; 626 at the 9pt default)
+    bottom: bottom-margin(font-size, 794.97, 84, ("8": 630, "9": 626, "10": 622, "11": 621, "12": 626)),
   ),
   foot-skip: 12 * tp,
   columns: 2,
