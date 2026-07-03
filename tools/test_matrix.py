@@ -656,6 +656,13 @@ TESTS: dict[str, Test] = {
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="and follow it with another numbered equation: ∫ 𝜋 +2 ∞ ∑︁ 𝑥𝑖 = 𝑓 𝑖=0",
+                typst="and follow it with another numbered equation: ∞ 𝜋+2 ∑ 𝑥𝑖 = ∫ 𝑖=0 0 𝑓",
+                cause=ExtractionArtifact("display-math token-order extraction"),
+            ),
+        ),
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
@@ -850,6 +857,14 @@ TESTS: dict[str, Test] = {
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="Subsection This is a subsection. 9.1.1 • 111:3 how this equation",
+                typst="9.1 Subsection This is a subsection. 9.1.1 Subsubsection. "
+                      "This is a subsubsection.",
+                cause=ExtractionArtifact("run-in heading / running-head interleave"),
+            ),
+        ),
         note="upstream acmtog sample (two-column TOG journal). Uses the author-year "
              "citation style (\\citestyle{acmauthoryear}) via the bst backend.",
     ),
