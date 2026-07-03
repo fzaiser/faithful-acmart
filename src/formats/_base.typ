@@ -106,6 +106,11 @@
   paper: none,
   margin: none,            // dict: top/bottom + inside/outside (or left/right)
   foot-skip: 24 * tp,      // \footskip
+  // \fancyheadoffset[L]: how far the running head extends LEFT into the margin
+  // (sigchi-a: \marginparsep + \marginparwidth over its margin-note column,
+  // acmart.dtx:8115; 0 elsewhere — acmcp's 46pt label offset is drawn as a
+  // page-background element instead).
+  head-offset: 0pt,
   columns: 1,
   columnsep: 0pt,
   parindent: 10 * tp,
@@ -150,7 +155,7 @@
     // acmart's paper-top -> head-top distance (\topmargin) is captured in each
     // format's `margin.top` comment; Typst positions the running head via head.sep,
     // so only the head-baseline separation is stored here.
-    head: (sep: 14 * tp),
+    head: (sep: 14 * tp, offset: head-offset),
     foot: (skip: foot-skip),
     // typography (scales with the base font size)
     font-size: l.font-size,

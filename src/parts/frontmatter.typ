@@ -957,7 +957,10 @@
     // \@mkbibcitation does `\par\medskip\small ...`; next block is 9pt
     v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
     context {
-      let total = counter(page).final().first()
+      // \ref{TotPages} here is the SHEET count (the totpages counter, physical
+      // pages), independent of \startPage's page-counter seed.
+      let start = if meta.start-page == none { 1 } else { meta.start-page }
+      let total = counter(page).final().first() - (start - 1)
       fm-block(cfg, [
         #strong[ACM Reference Format:]\
         #{ if meta.anonymous [Anonymous Author(s)] else { andify(meta.authors.map(a => a.name)) } }. #meta.acm-year. #meta.title#{

@@ -418,6 +418,17 @@ TESTS: dict[str, Test] = {
         note="format=sigchi-a: landscape extended abstract with a bold-small captioned "
              "figure; text bags and page parity are gated.",
     ),
+    "startpage-test": Test(
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        text_equal="bag",
+        text_assertions=(
+            Assertion(engine="both", page=2, text="111:8"),
+            Assertion(engine="both", page=2, text="Lovelace and Hopper"),
+        ),
+        note="\\startPage seeds the page counter: folios, running-head parity, and "
+             "the journal footer follow the counter (acmart.dtx:6822-6825). Body "
+             "reorders, so text is word-bag gated.",
+    ),
     "fontsize-8-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
         text_equal=True,

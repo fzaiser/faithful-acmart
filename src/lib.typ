@@ -292,6 +292,7 @@
   timestamp: false,
   author-draft: false,    // authordraft = timestamp + review + draft watermark/overlay
   submission-id: none,    // \acmSubmissionID — shown in the timestamp + anon. header
+  start-page: none,       // \startPage — seeds the page counter (folios, timestamp range)
   // No effect outside their relevant formats — accepted for API parity (so
   // the names aren't forgotten) but inert here, exactly as in real acmart:
   //   balance/pbalance — column balancing, a two-column-only feature
@@ -489,6 +490,7 @@
     author-draft: author-draft,
     anonymous: anonymous,
     submission-id: submission-id,
+    start-page: start-page,
   )
 
   let article-page(p) = {
@@ -532,7 +534,13 @@
   // can't read the wall clock, so we print the compile date and omit the time.
   let footer-content = context {
     set text(font: cfg.fonts.body, size: cfg.size.footnotesize)
-    let odd = calc.odd(here().page())
+    set par(leading: comp(cfg, sz: "footnotesize")) // multi-line footers on the footnotesize grid
+    // Folio values and odd/even parity follow the page COUNTER (seeded by
+    // \startPage), not the physical sheet index; the first-page dispatch is
+    // physical (the title page carries firstpagestyle wherever it starts).
+    let pageno = counter(page).get().first()
+    let odd = calc.odd(pageno)
+    let first-page = here().page() == 1
     let bib = if cfg.name == "acmcp" {
       let j = lookup-journal(journal)
       if j.short != none {
@@ -547,18 +555,39 @@
     } else if cfg.name == "manuscript" {
       manuscript-footer
     }
-    let folio = if print-folios { [#here().page()] }
+    let folio = if print-folios { [#pageno] }
     if timestamp {
       let total = counter(page).final().first()
       let date = datetime.today().display("[year]-[month]-[day]")
       // \@startPage defaults to 1 (acmart.dtx:6823).
-      let ts = [#if submission-id != none { [Submission ID: #submission-id. ] }#date. Page #here().page() of 1--#total.]
-      // inner edge [LO,RE]: odd -> left, even -> right (bibstrip takes the other side)
-      if odd { grid(columns: (1fr, 1fr), align(left, ts), align(right, bib)) }
-      else { grid(columns: (1fr, 1fr), align(left, bib), align(right, ts)) }
+      let start = if start-page == none { 1 } else { start-page }
+      let ts = [#if submission-id != none { [Submission ID: #submission-id. ] }#date. Page #pageno of #{start}--#{total}.]
+      // manuscript page 1 appends the ACM slug to the stamp and keeps its outer
+      // \small folio (acmart.dtx:8240-8244); on later pages the plain stamp
+      // replaces the inner slug (acmart.dtx:8118). Proceedings keep their
+      // centered folio next to the inner stamp (acmart.dtx:8233/8238).
+      if cfg.name == "manuscript" {
+        let ts = if first-page and not nonacm [#ts#h(1em)Manuscript submitted to ACM] else { ts }
+        let folio = if first-page and folio != none { text(size: cfg.size.small, folio) }
+        if odd { footer-row(l: ts, r: folio) } else { footer-row(l: folio, r: ts) }
+      } else if cfg.kind == "proceedings" {
+        if odd { footer-row(l: ts, c: folio) } else { footer-row(c: folio, r: ts) }
+      } else if odd {
+        // journal [LO] stamp, [RO] bibstrip
+        grid(columns: (1fr, 1fr), align(left, ts), align(right, bib))
+      } else {
+        grid(columns: (1fr, 1fr), align(left, bib), align(right, ts))
+      }
     } else if cfg.name == "acmcp" {
+      // the only format with a foot rule: \footrulewidth = 0.1pt (acmart.dtx:
+      // 8121/8249), \footruleskip (.3\normalbaselineskip) above the footer
+      // text INK — measured 8.35tp above the first baseline in LaTeX. place()
+      // keeps the rule out of the footer box so the descent math (single-line
+      // baseline + multi-line centering) is unaffected.
+      place(top + left, dy: -(8.35 * tp - cfg.size.footnotesize) - 0.1 * tp,
+        line(length: 100%, stroke: 0.1 * tp))
       footer-row(r: bib)
-    } else if cfg.name == "manuscript" and here().page() == 1 {
+    } else if cfg.name == "manuscript" and first-page {
       // manuscript's first-page folio is \small (acmart.dtx:8200), one step up
       // from the footnotesize slug next to it.
       let folio = if folio != none { text(size: cfg.size.small, folio) }
@@ -585,13 +614,14 @@
     if authors.len() == 0 { none } else { andify(authors.map(a => a.name)) }
   } else { short-authors }
   let header-content = context {
-    let p = here().page()
-    // Page 1 has no running head, but may carry artifact-evaluation badges
-    // (acmart firstpagestyle: \@acmBadgeL left, \@acmBadgeR right).
-    if p <= 1 {
+    // Page 1 (the physical title page) has no running head, but may carry
+    // artifact-evaluation badges (firstpagestyle: \@acmBadgeL/R).
+    if here().page() <= 1 {
       if badges != none { return make-badges(cfg, badges) }
       return
     }
+    // Folio values and parity follow the page counter (\startPage-aware).
+    let p = counter(page).get().first()
     // Running head font: \@headfootfont = \sffamily\footnotesize for every format
     // EXCEPT manuscript, whose head carries no \@headfootfont and so prints in the
     // document default (serif) at normalsize (acmart.dtx:8024 vs 7979).
@@ -599,7 +629,7 @@
     set text(font: hf.first(), size: hf.last())
     let ap = article-page(p)
     let odd = calc.odd(p)
-    if cfg.name == "manuscript" {
+    let head = if cfg.name == "manuscript" {
       if odd { grid(columns: (1fr, auto), align(left, st), align(right, if print-folios { [#p] })) }
       else { grid(columns: (auto, 1fr), align(left, if print-folios { [#p] }), align(right, sa)) }
     } else if cfg.name == "acmsmall" {
@@ -624,6 +654,9 @@
     } else {
       none
     }
+    // \fancyheadoffset[L]: extend the head leftward into the margin column
+    // (sigchi-a, acmart.dtx:8115) — the shorttitle starts over the margin notes.
+    if cfg.head.offset != 0pt { pad(left: -cfg.head.offset, head) } else { head }
   }
 
   // Light-grey diagonal watermark (draftwatermark: 0.5in, gray 0.9). authordraft
@@ -674,7 +707,16 @@
     height: cfg.paper.height,
     margin: cfg.margin,
     columns: cfg.columns, // proceedings/acmtog set 2 (acmart.dtx:6849 \twocolumn)
-    header-ascent: cfg.head.sep + comp(cfg, sz: "footnotesize"),
+    // fancyhdr sets the head on a \strut whose depth (.3\baselineskip of the
+    // head font) hangs below the head baseline, so the baseline sits
+    // headsep + .3bls above the body top (measured: the old leading-based
+    // model left heads 1-1.4pt low). manuscript's head is normalsize serif.
+    header-ascent: cfg.head.sep + 0.3 * (if cfg.name == "manuscript" { cfg.bls.normalsize } else { cfg.bls.at("footnotesize") }),
+    // The footer's FIRST baseline sits \footskip below the body — verified
+    // exact for every format, including acmcp's two-line footer (journal line
+    // + DOI, acmart.dtx:8264), whose second line simply hangs one footnotesize
+    // baselineskip lower in both engines (measured 677.5/685.7 = body +
+    // \footskip + n·bls on acmcp-test).
     footer-descent: cfg.foot.skip - cfg.size.footnotesize,
     header: header-content,
     footer: footer-content,
@@ -768,6 +810,13 @@
 
   cfg-state.update(cfg) // publish config for theorem environments
   anon-state.update(anonymous) // publish anonymity for the acks environment
+  if start-page != none {
+    // \startPage seeds the page counter (acmart.dtx:6822-6825): folios, parity,
+    // and the timestamp range all follow it.
+    assert(type(start-page) == int and start-page >= 1,
+      message: "faithful-acmart: option `start-page` must be a positive integer, got " + repr(start-page))
+    counter(page).update(start-page)
+  }
 
   apply-body(cfg, {
     if meta.title != none {

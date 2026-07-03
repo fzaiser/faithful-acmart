@@ -24,6 +24,9 @@
   // sigchi-a's geometry sets no foot= key (acmart.dtx:3807), so \footskip keeps
   // the class default 12pt (probed) — unlike the foot=2pc journal formats.
   foot-skip: 12 * tp,
+  // running head extends over the margin-note column: \fancyheadoffset[L]
+  // {\marginparsep+\marginparwidth} (acmart.dtx:8115) = 72pt + 170pt.
+  head-offset: (72 + 170) * tp,
   sans-default: true,
   urlstyle-sans: true,
   secnumdepth: 0,
