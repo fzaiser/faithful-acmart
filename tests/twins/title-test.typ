@@ -20,11 +20,16 @@
      affiliation: (institution: "Institute for Clarity in Documentation",
                    city: "Dublin", state: "Ohio", country: "USA")),
     (name: "Lars Thørväld", corresponding: true, email: "larst@affiliation.org",
-     affiliation: (institution: "The Thørväld Group",
+     affiliation: (institution: "The Thørväld Group", department: "Theory Division",
                    city: "Hekla", country: "Iceland")),
+    // three affiliations: the title strip andifies them ("A, B, and C",
+    // \andify\@currentaffiliations) while the contact line joins with " and ".
     (name: "Valerie Béranger",
-     affiliation: (institution: "Inria Paris-Rocquencourt",
-                   city: "Rocquencourt", country: "France")),
+     affiliation: (
+       (institution: "Inria Paris-Rocquencourt", city: "Rocquencourt", country: "France"),
+       (institution: "Université de Paris", city: "Paris", country: "France"),
+       (institution: "CNRS", city: "Paris", country: "France"),
+     )),
   ),
   abstract: [
     A clear and well-documented document is presented as an article formatted for

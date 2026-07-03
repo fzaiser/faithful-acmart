@@ -658,8 +658,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="and follow it with another numbered equation: ∫ 𝜋 +2 ∞ ∑︁ 𝑥𝑖 = 𝑓 𝑖=0",
-                typst="and follow it with another numbered equation: ∞ 𝜋+2 ∑ 𝑥𝑖 = ∫ 𝑖=0 0 𝑓",
+                latex="and follow it with another numbered equation: ∫ π +2 ∞ ∑ xi = f i=0 (2)",
+                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 f (2)",
                 cause=ExtractionArtifact("display-math token-order extraction"),
             ),
         ),
@@ -906,11 +906,6 @@ TESTS: dict[str, Test] = {
                       "Tobin * trovato@corporation.com",
                 cause=ExtractionArtifact("translated-title author-note marker extraction"),
             ),
-            ExpectedTextDiff(
-                latex="doi:10.1007/3-540-651934_29 [13] Ian Editor",
-                typst="doi:10.1007/3-540-65193-4_29 [13] Ian Editor",
-                cause=ExtractionArtifact("wrapped DOI extraction"),
-            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
@@ -974,6 +969,13 @@ TESTS: dict[str, Test] = {
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
+        expected_order_diffs=(
+            ExpectedOrderDiff(
+                latex="and follow it with another numbered equation: ∫ π +2 ∞ ∑ xi = f i=0 (2)",
+                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 f (2)",
+                cause=ExtractionArtifact("display-math token-order extraction"),
+            ),
+        ),
         text_assertions=(
             Assertion(engine="both", text="Software project: [Delebecque et al. 1994; "
                    "The CGAL Project 1996]. Software Version: [Greenman and Felleisen "

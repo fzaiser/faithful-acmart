@@ -780,13 +780,17 @@
         // spans both columns; the abstract/CCS/keywords (\@mkabstract et seq.,
         // acmart.dtx:6665) follow it in the FIRST column. scope: "parent" escapes the
         // column to span the full text width; clearance is the box's trailing
-        // \par\bigskip before the columns start.
-        place(top, scope: "parent", float: true, clearance: tex-skip(cfg, cfg.bigskip),
+        // skip before the columns start — the author grid's \par\bigskip
+        // (acmart.dtx:7503), or \@mkteasers' closing \medskip when a teaser is
+        // the box's last element (acmart.dtx:7670).
+        place(top, scope: "parent", float: true,
+          clearance: tex-skip(cfg, if teaser != none { cfg.medskip } else { cfg.bigskip }),
           make-title-head(cfg, meta))
         make-title-body(cfg, meta) // flows in column 1, beneath the spanning box
       } else {
-        // acmcp narrows only the TITLE box by 6pc (\@mktitle@i, acmart.dtx:6988);
-        // authors/abstract stay full width. Other formats: nothing to narrow.
+        // acmcp narrows the TITLE box and the author lines by 6pc
+        // (\@mktitle@i / \@mkauthors@i, acmart.dtx:6988/7364); the abstract
+        // stays full width. Other formats: nothing to narrow.
         make-title(cfg, meta)
       }
     }

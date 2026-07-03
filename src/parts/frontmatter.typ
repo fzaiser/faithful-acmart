@@ -10,6 +10,7 @@
 #import "spacing.typ": comp, tex-skip
 #import "journals.typ": lookup-journal
 #import "strings.typ": lang-record
+#import "body.typ": in-topmatter
 
 #let fnsymbols = ("∗", "†", "‡", "§", "¶", "‖", "∗∗", "††", "‡‡")
 
@@ -90,10 +91,11 @@
 #let affil-strings(aff, keys) = affil-list(aff).map(a => join-fields(a, keys)).filter(v => v != none)
 
 // Title-block affiliation: institution, country (city/state go to contact info).
-// Multiple affiliations are joined with " and ", as LaTeX joins institutions.
+// Multiple affiliations are andified — \andify\@currentaffiliations
+// (acmart.dtx:7248): "A and B", "A, B, and C".
 #let affil-short(aff) = {
   let affs = affil-strings(aff, ("institution", "country"))
-  if affs.len() == 0 { none } else { affs.join(" and ") }
+  if affs.len() == 0 { none } else { andify(affs) }
 }
 
 // Conference/proceedings author-grid affiliation, as separate lines. acmart's
@@ -286,12 +288,15 @@
 // NOT grouped. Multiple affiliations per author are supported (an `affiliation`
 // array, like LaTeX's repeated \affiliation), joined by " and ".
 #let contact-line(a) = {
-  let parts = (a.name,)
+  // \@mkauthorsaddresses replays \typeset@authorN, so the name keeps its ORCID
+  // link (acmart.dtx:7620), like the title strip.
+  let parts = (author-name(a, a.name),)
   for field in a.contact-order {
     if field == "affiliation" {
-      // each affiliation as "institution, city, state, country"; several joined
-      // by " and " (LaTeX's institution separator).
-      let affs = affil-strings(a.affiliation, ("institution", "city", "state", "country"))
+      // each affiliation as "institution, department, city, state, country"
+      // (\department prints ", <dept>", acmart.dtx:7605); several affiliations
+      // joined by " and " (LaTeX's institution separator, acmart.dtx:7601-7602).
+      let affs = affil-strings(a.affiliation, ("institution", "department", "city", "state", "country"))
       if affs.len() > 0 { parts.push(affs.join(" and ")) }
     } else if a.email != none {
       parts.push(email-link(a.email))
@@ -541,16 +546,20 @@
   ]
 }
 
-// The subtitle block (\@subtitlefont = \normalsize\mdseries; its own block so it
-// gets normalsize leading, one normalsize baselineskip below the title via the
-// \par). \@translatedsubtitle each in the subtitle font (acmart.dtx:3391/6996).
+// The subtitle block. The subtitle paragraph's closing \par fires AFTER the
+// {\@subtitlefont ...} group (\@mktitle@i, acmart.dtx:6995-6998), so TeX spaces
+// its line(s) at the TITLE font's \baselineskip — measured 16.94bp on acmsmall
+// = bls(Large), not the normalsize 11.95. With the subtitle line box at 1em,
+// the gap above (and the intra-paragraph leading) is bls(title) − size(subtitle).
+// \@translatedsubtitle each in the subtitle font (acmart.dtx:3391/6996).
 // none when there is no subtitle.
 #let subtitle-block(cfg, meta, mark) = {
   if meta.subtitle == none { return }
   let sf = cfg.subtitle-font
-  block(spacing: tex-skip(cfg, 0pt))[
+  let lead = cfg.bls.at(cfg.title-font.size) - cfg.size.at(sf.size)
+  block(above: lead, below: tex-skip(cfg, 0pt))[
     #set text(font: cfg.fonts.at(sf.family), weight: sf.weight, size: cfg.size.at(sf.size))
-    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: sf.size), spacing: comp(cfg, sz: sf.size))
+    #set par(justify: false, first-line-indent: 0pt, leading: lead, spacing: lead)
     #tagged-par[#meta.subtitle#if mark != none { super(mark) }]
     #for (l, t) in meta.translated-subtitle {
       parbreak()
@@ -558,6 +567,16 @@
       text(lang: lang-record(l).code, t)
     }
   ]
+}
+
+// How much LOWER the subtitle fix puts the title box's last baseline compared
+// to the old normalsize pitch. LaTeX's interline glue below the tall title
+// parbox goes negative and collapses to \lineskip abutment, so the material
+// after the box hangs at the same place with or without the extra subtitle
+// drop (measured: author baselines match LaTeX either way) — the title heads
+// subtract this from their following gap.
+#let subtitle-extra(cfg, meta) = if meta.subtitle == none { 0pt } else {
+  (cfg.bls.at(cfg.title-font.size) - cfg.size.at(cfg.subtitle-font.size)) - tex-skip(cfg, 0pt)
 }
 
 // Render an author's note marks as superscripts.
@@ -575,15 +594,19 @@
   a2
 })
 
-// Teaser figure between the authors and the abstract (\@mkteasers, acmart.dtx:7663):
-// a full-text-width figure, \par\bigskip above. none when there is no teaser.
-#let teaser-block(cfg, meta) = {
-  if meta.teaser == none { return }
-  v(tex-skip(cfg, cfg.bigskip), weak: true)
+// The teaser figure box (\@mkteasers, acmart.dtx:7661-7671): appended INSIDE
+// \mktitle@bx as "\par\bigskip <figure> \par" with a closing \medskip. The
+// surrounding skips are emitted by the calling title head (they differ per
+// format because the author box's trailing skip differs, and TeX skips ADD).
+// The in-topmatter flag suppresses the body float spacing + indent shim that
+// the global figure show rule would add (parts/body.typ).
+#let teaser-figure(cfg, meta) = {
+  in-topmatter.update(true)
   block(width: 100%, spacing: 0pt)[
     #set figure(placement: none)
     #meta.teaser
   ]
+  in-topmatter.update(false)
 }
 
 // The journal @i spanning head (acmart.dtx:6986): left-aligned title/subtitle,
@@ -603,19 +626,22 @@
   let aff-f = cfg.affil-font
   // Title box ends with \par\bigskip; \@mkauthors@i prepends \par\medskip before
   // the author lines (at the author size). gap = \bigskip + \medskip.
-  v(tex-skip(cfg, cfg.bigskip + cfg.medskip, sz: af.size), weak: true)
+  v(tex-skip(cfg, cfg.bigskip + cfg.medskip, sz: af.size) - subtitle-extra(cfg, meta), weak: true)
 
+  // \@mkauthors@i narrows its lines like the title under acmcp (\advance\hsize
+  // by -6pc, acmart.dtx:7364) so long author lines also clear the cover infobox.
+  let author-width = if cfg.title-width-reduction != 0pt { 100% - cfg.title-width-reduction } else { auto }
   // --- Authors (grouped structurally per acmart; see group-authors) ---
   // Anonymous review: replace the whole author strip with "Anonymous Author(s)"
   // plus, when a submission id is set, a "\\Submission Id: <id>" second line
   // (acmart.dtx:5190-5193); the journal strip's \MakeUppercase covers both lines.
   if meta.anonymous {
-    block(spacing: 0pt)[
+    block(spacing: 0pt, width: author-width)[
       #set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
       #tagged-par[#upper[Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]]]
     ]
   } else {
-  block(spacing: 0pt)[
+  block(spacing: 0pt, width: author-width)[
     #set par(justify: false, leading: comp(cfg, sz: af.size), spacing: 0pt)
     #for g in group-authors(mark-authors(meta, ni)) {
       // andify preserves the per-name content marks (superscript symbols).
@@ -634,9 +660,14 @@
   ]
   } // end non-anonymous author block
 
-  // Teaser figure between authors and abstract; then the author box's trailing
-  // \par\medskip to the next block (abstract/CCS/..., at 9pt).
-  teaser-block(cfg, meta)
+  // \@mkauthors@i ends \par\medskip (acmart.dtx:7369-7371); a teaser appends
+  // "\par\bigskip <figure> \par ... \medskip" (acmart.dtx:7661-7671) and TeX
+  // skips ADD, so the figure sits medskip+bigskip under the authors and the
+  // abstract medskip under whichever came last.
+  if meta.teaser != none {
+    v(tex-skip(cfg, cfg.medskip + cfg.bigskip), weak: true)
+    teaser-figure(cfg, meta)
+  }
   v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
 }
 
@@ -723,7 +754,7 @@
   title-block(cfg, meta, ni.title-mark)
   subtitle-block(cfg, meta, ni.subtitle-mark)
   // title box \par\bigskip + @mkauthors@iii leading \par\medskip before the boxes
-  v(tex-skip(cfg, cfg.bigskip + cfg.medskip), weak: true)
+  v(tex-skip(cfg, cfg.bigskip + cfg.medskip) - subtitle-extra(cfg, meta), weak: true)
   if meta.anonymous {
     block(spacing: 0pt)[
       #set text(font: cfg.fonts.at(cfg.author-font.family), size: cfg.size.at(cfg.author-font.size))
@@ -732,9 +763,14 @@
   } else {
     make-authors-grid(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
   }
-  teaser-block(cfg, meta)
-  // closing \par\bigskip of \mktitle@bx (the float clearance adds the gap to body)
-  v(tex-skip(cfg, cfg.bigskip), weak: true)
+  // \@mkauthors@iii ends \par\bigskip (acmart.dtx:7503); a teaser appends
+  // "\par\bigskip <figure>" — TeX skips ADD, so the figure sits 2 bigskips
+  // under the grid. The box-trailing skip (\bigskip plain, the teaser's
+  // closing \medskip with one) is the two-column float clearance in lib.typ.
+  if meta.teaser != none {
+    v(tex-skip(cfg, 2 * cfg.bigskip), weak: true)
+    teaser-figure(cfg, meta)
+  }
 }
 
 // Dispatch the spanning head on the format's title style (acmart.dtx:6874).
@@ -764,19 +800,46 @@
 // sigchi-a @mktitle@iv (acmart.dtx:7039): hsize-wide box with \leftskip5pc and a
 // leading full-width 2pt rule (\leaders\hrule height 2pt\hfill), then the
 // ragged-right title; the author grid (\@mkauthors@iv) follows at leftskip 0.
-#let sigchi-title-head(cfg, meta) = {
+#let sigchi-title-head(cfg, meta) = context {
   let ni = collect-notes(meta)
+  let tf = cfg.title-font
+  // The rule title's geometry needs the title font's real cap height and
+  // descender (the title block anchors at cap height, and the material after
+  // the box hangs from the box BOTTOM = last baseline + descender).
+  let title-text(s) = text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), s)
+  let cap-h = measure(text(top-edge: "cap-height", bottom-edge: "baseline", title-text[X])).height
+  let last-size = if meta.subtitle != none { cfg.subtitle-font.size } else { tf.size }
+  let desc = measure(text(size: cfg.size.at(last-size), top-edge: "baseline", bottom-edge: "descender")[gjpqy]).height
   pad(left: 5 * 12pt, { // \leftskip5pc
-    // \leaders\hrule height 2pt\hfill\par then \@title: the title sits one title-font
-    // \baselineskip below the rule (rule height 2pt + a full Huge baseline step).
-    let tf = cfg.title-font
-    block(above: 0pt, below: comp(cfg, sz: tf.size) + cfg.size.at(tf.size) - 2pt,
-      line(length: 100%, stroke: 2pt))
+    // \leaders\hrule height 2pt\hfill\par then \@title: the rule line's baseline
+    // is its bottom (margin top + 2pt) and the title baseline sits one title
+    // \baselineskip below it (measured: rule bottom 100.6, title base 124.5 =
+    // + bls(Huge)); the title block's first ink is its cap top, so the gap is
+    // bls − cap-height. rect() rather than line() so the 2pt occupies layout
+    // height (a stroked line's box is zero-height, halving the ink onto the
+    // margin and losing the 2pt from the gap).
+    block(above: 0pt, below: cfg.bls.at(tf.size) - cap-h,
+      rect(width: 100%, height: 2pt, fill: black, stroke: none))
     title-block(cfg, meta, ni.title-mark)
     subtitle-block(cfg, meta, ni.subtitle-mark)
   })
-  // title box \par\bigskip, then the author grid
-  v(tex-skip(cfg, cfg.bigskip), weak: true)
+  // sigchiamode defers \@mkauthors until after \@printtopmatter (acmart.dtx:
+  // 6574/6576), so teasers — appended inside \mktitle@bx — come BEFORE the
+  // author grid: box-end \par\bigskip (dtx:7044) + teaser \par\bigskip fig
+  // ... \medskip, then \@printtopmatter's \par\bigskip (dtx:6859), then the
+  // authors. Without a teaser: title -> 2 bigskips -> authors. The \bigskips
+  // hang from the BOX BOTTOM (the tall last line collapses TeX's following
+  // interline glue to \lineskip abutment), so the last line's descender joins
+  // the gap; measured LaTeX title-base -> author-base = desc + 2\bigskip +
+  // \baselineskip = 34.7bp on sigchi-a-test.
+  let box-gap = desc + tex-skip(cfg, 2 * cfg.bigskip) - subtitle-extra(cfg, meta)
+  if meta.teaser != none {
+    v(box-gap, weak: true)
+    teaser-figure(cfg, meta)
+    v(tex-skip(cfg, cfg.medskip + cfg.bigskip), weak: true)
+  } else {
+    v(box-gap, weak: true)
+  }
   if meta.anonymous {
     block(spacing: 0pt)[
       #set text(font: cfg.fonts.at(cfg.author-font.family), weight: cfg.author-font.weight, size: cfg.size.at(cfg.author-font.size))
@@ -785,8 +848,7 @@
   } else {
     sigchi-authors(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
   }
-  teaser-block(cfg, meta)
-  // \@mkauthors@iv closing \par\bigskip before the abstract block
+  // \@mkauthors@iv closing \par\bigskip before the abstract block (dtx:7573)
   v(tex-skip(cfg, cfg.bigskip), weak: true)
 }
 

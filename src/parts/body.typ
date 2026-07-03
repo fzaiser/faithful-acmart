@@ -8,6 +8,12 @@
 #import "spacing.typ": comp, tex-skip
 #import "../formats/_base.typ": tp
 
+// True while the title head renders a teaser figure: the figure show rule
+// below must not add its \intextsep float spacing or the paragraph-indent shim
+// there — \@mkteasers places the figure with its own \bigskip/\medskip skips
+// (set by parts/frontmatter.typ's teaser-figure).
+#let in-topmatter = state("acm-in-topmatter", false)
+
 // The rules below need measure() for the amsart list-label geometry, so the
 // whole body scope is one context block.
 #let apply-body(cfg, body) = context {
@@ -75,10 +81,15 @@
       h(cfg.parindent)
     }
   }
-  show figure: it => {
-    set block(above: cfg.intextsep, below: cfg.intextsep)
-    it
-    h(cfg.parindent)
+  show figure: it => context {
+    if in-topmatter.get() {
+      // teaser figures carry \@mkteasers' own skips (frontmatter.typ)
+      it
+    } else {
+      set block(above: cfg.intextsep, below: cfg.intextsep)
+      it
+      h(cfg.parindent)
+    }
   }
   set figure(gap: cfg.abovecaptionskip)
 
