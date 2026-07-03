@@ -887,7 +887,9 @@
     counter(page).update(start-page)
   }
 
-  apply-body(cfg, {
+  // review/nonacm flip the class's list geometry to amsart's values (an
+  // upstream hook-ordering bug the port replicates; see parts/body.typ).
+  apply-body(cfg, amsart-lists: review or nonacm, {
     if meta.title != none {
       // Page-1 footnote stack (author notes / contact info / copyright). A
       // place(bottom, float) — full-width in one column, first-column-scoped in two

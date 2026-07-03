@@ -1,0 +1,63 @@
+%% list-plain-test — list geometry WITHOUT review/nonacm: acmart's own
+%% AtBeginDocument dimensions apply (labelsep 4pt, leftmargini 24.5pt,
+%% nested 8.5pt) — unlike list-test, whose nonacm option triggers the
+%% upstream hook-ordering bug that reverts them to amsart's values.
+\documentclass[acmsmall]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\begin{document}
+\thispagestyle{empty}
+
+\section{Lists}
+Text before the itemized list establishes the paragraph baseline and the
+no-indent paragraph after a section heading.
+
+\begin{itemize}
+\item First bullet item in an itemized list.
+\item Second bullet item, slightly longer so it may wrap around to a second line
+  for spacing checks.
+\item Third bullet item follows immediately with no itemsep glue.
+\end{itemize}
+
+The paragraph after the itemized list should resume the normal ACM paragraph
+indent. It is long enough to wrap so the left edge and the following line can be
+compared.
+
+\begin{enumerate}
+\item First enumerated item.
+\item Second enumerated item follows immediately with no itemsep glue.
+\end{enumerate}
+
+The paragraph after the enumerated list should also be indented.
+
+\begin{itemize}
+\item A top-level bullet introducing a nested list.
+  \begin{itemize}
+  \item A nested dash item at the 8.5pt second-level indent.
+  \item A second nested item that is long enough to wrap onto another line to
+    check the nested hanging indent.
+    \begin{itemize}
+    \item A third-level star item.
+    \end{itemize}
+  \end{itemize}
+\item A second top-level bullet directly after the nested block.
+\end{itemize}
+
+\begin{enumerate}
+\item A numbered item with a nested enumerate.
+  \begin{enumerate}
+  \item The nested label hangs left of the nested body.
+  \item A second nested numbered item.
+  \end{enumerate}
+\item A second top-level numbered item.
+\end{enumerate}
+
+\begin{quote}
+A quoted paragraph set off from the text by the list margins on both sides,
+long enough to wrap onto a second line so both edges can be compared, with no
+first-line indent.
+\end{quote}
+
+The paragraph after the quotation should resume the normal paragraph indent.
+
+\end{document}

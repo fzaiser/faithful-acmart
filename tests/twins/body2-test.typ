@@ -1,5 +1,5 @@
 #import "/src/lib.typ": acmart, theorem, lemma, definition, proof
-#show: acmart.with(format: "acmsmall")
+#show: acmart.with(format: "acmsmall", nonacm: true)
 
 = Elements
 Text before a figure to establish context for the caption comparison below.

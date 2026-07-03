@@ -284,8 +284,15 @@ TESTS: dict[str, Test] = {
     ),
     "list-test": Test(
         kind="twin", pages=1,
-        note="isolated itemize/enumerate geometry: bullet size, zero itemsep, "
-             "topsep, and paragraph indentation after lists.",
+        note="isolated itemize/enumerate/quote geometry under NONACM — the class's "
+             "option-time-hook bug reverts the list dimensions to amsart's "
+             "(labelsep 5pt, settowidth margins); list-plain-test covers the "
+             "plain-document side.",
+    ),
+    "list-plain-test": Test(
+        kind="twin", pages=1,
+        note="the same list fixture WITHOUT review/nonacm: acmart's own dimensions "
+             "apply (labelsep 4pt, leftmargini 24.5pt, nested 8.5pt).",
     ),
     "fn-test": Test(
         kind="twin", pages=1,

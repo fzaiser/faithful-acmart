@@ -1,5 +1,9 @@
+// list-plain-test — list geometry WITHOUT review/nonacm: acmart's own
+// dimensions apply (labelsep 4pt, leftmargini 24.5pt, nested 8.5pt); see
+// list-test for the review/nonacm (amsart-values) side of the class's
+// hook-ordering bug.
 #import "/src/lib.typ": acmart
-#show: acmart.with(format: "acmsmall", nonacm: true)
+#show: acmart.with(format: "acmsmall")
 
 = Lists
 Text before the itemized list establishes the paragraph baseline and the

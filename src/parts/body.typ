@@ -16,8 +16,10 @@
 #let in-topmatter = state("acm-in-topmatter", false)
 
 // The rules below need measure() for the amsart list-label geometry, so the
-// whole body scope is one context block.
-#let apply-body(cfg, body) = context {
+// whole body scope is one context block. `amsart-lists` selects the list
+// geometry model (see the list section): true under review/nonacm, where an
+// acmart hook-ordering bug lets amsart's begin-document values win.
+#let apply-body(cfg, body, amsart-lists: false) = context {
   // Figure/table supplements and caption separator. Journals use "Fig.";
   // proceedings keep caption's default "Figure" name. The table name follows the
   // main language, as in acmart's babel caption hooks.
@@ -112,41 +114,56 @@
     below: tex-skip(cfg, cfg.medskip),
   )
 
-  // --- List geometry (amsart, PROBED from the live class) -------------------
+  // --- List geometry (PROBED from the live class; OPTION-DEPENDENT!) --------
   //
-  // amsart derives the list margins from RENDERED label widths at
-  // \begin{document} (deps/amsart.cls \AtBeginDocument): \labelsep = 5pt;
-  // \leftmargini = width of the level-1 enum label at counter value 13 +
-  // \labelsep + \normalparindent; \leftmarginii..iv = that level's label width
-  // at 13 + \labelsep; \leftmarginv/vi = 10pt. Labels are \llap'd: right-
-  // aligned ending \labelsep before the body, overhanging leftward when wide.
-  // NOTE: acmart.dtx:4425 also registers a 4pt-\labelsep/24.5pt AtBeginDocument
-  // block, but in the live class amsart's values win — probed labelsep 5pt,
-  // leftmargini 30.26pt, leftmarginii 18.86pt, iii 23.99pt, iv 19.35pt at the
-  // acmsmall 10pt base (counter-13 label widths in Libertine). Trust the probe,
-  // not the dtx (the measured twin pages agree with the probe).
+  // acmart registers its list dimensions in an \AtBeginDocument block
+  // (acmart.dtx:4425): \labelsep 4pt, \leftmargini = \parindent + 2\labelsep +
+  // 6.5pt (24.5pt), \leftmarginii..vi = 8.5pt. amsart registers its own block
+  // (deps/amsart.cls:942): \labelsep 5pt and \settowidth-derived margins —
+  // \leftmargini = width of the level's enum label at counter 13 + \labelsep
+  // (+ \normalparindent at level 1), \leftmarginv/vi = 10pt.
   //
-  // Typst's enum/list reserve the widest marker instead of llap'ing, so every
-  // marker is drawn as a zero-width box with the label overhanging left, and
-  // the body pinned at indent + body-indent = the level's \leftmargin.
+  // WHICH block wins depends on the CLASS OPTIONS (an upstream acmart bug):
+  // `review` and `nonacm` run \AtBeginDocument inside their \DeclareOption
+  // code, BEFORE \LoadClass{amsart} — the LaTeX kernel merges each class's
+  // hook code into one labeled chunk ordered by first registration, so the
+  // whole acmart chunk (list block included) then executes before amsart's
+  // and amsart's \settowidth values overwrite it. Probed: plain/screen
+  // acmsmall gives labelsep 4pt / leftmargini 24.5pt; review or nonacm gives
+  // 5pt / 30.26pt (verified with \ShowHook{begindocument}: execution order
+  // "acmart, amsart, ..." under nonacm, the reverse without). The port
+  // replicates the class bug-for-bug via `amsart-lists`.
   //
-  // Vertical spacing: level-1 \topsep = \listisep = \smallskipamount with
-  // \itemsep = \parsep = 0 (items sit one \baselineskip apart); level-2+
-  // \topsep = 0, so nested lists add NO gap and only the outermost list
-  // carries the \listisep block gap + the post-environment paragraph indent.
+  // Labels are \llap'd in both models: right-aligned ending \labelsep before
+  // the body, overhanging leftward when wide. Typst's enum/list reserve the
+  // widest marker instead, so every marker is drawn as a zero-width box with
+  // the label overhanging left, and the body pinned at indent + body-indent =
+  // the level's \leftmargin.
+  //
+  // Vertical spacing (same in both models): level-1 \topsep = \listisep =
+  // \smallskipamount with \itemsep = \parsep = 0 (items sit one \baselineskip
+  // apart); level-2+ \topsep = 0, so nested lists add NO gap and only the
+  // outermost list carries the \listisep block gap + the post-environment
+  // paragraph indent.
   let enum-pats = if cfg.name == "sigplan" { ("1.", "a.", "i.", "A.") } else { ("(1)", "(a)", "(i)", "(A)") }
   let list-marks = ([$bullet$], text(weight: "bold")[–], [∗], [·])
   let llap(c) = context { h(-measure(c).width); c }
-  let labelsep = 5 * tp
-  // \leftmargin per (1-based) level; measured like \settowidth at counter 13.
+  let labelsep = if amsart-lists { 5 * tp } else { 4 * tp }
+  // \leftmargin per (1-based) level; the amsart model measures like \settowidth
+  // at counter 13.
   let label-w(k) = measure(numbering(enum-pats.at(k), 13)).width
-  let leftmargin = (
-    label-w(0) + labelsep + cfg.parindent,
-    label-w(1) + labelsep,
-    label-w(2) + labelsep,
-    label-w(3) + labelsep,
-    10 * tp, 10 * tp,
-  )
+  let leftmargin = if amsart-lists {
+    (
+      label-w(0) + labelsep + cfg.parindent,
+      label-w(1) + labelsep,
+      label-w(2) + labelsep,
+      label-w(3) + labelsep,
+      10 * tp, 10 * tp,
+    )
+  } else {
+    let nested = 0.5 * labelsep + 6.5 * tp // \leftmarginii..vi = 8.5pt
+    (cfg.parindent + 2 * labelsep + 6.5 * tp, nested, nested, nested, nested, nested)
+  }
   let list-depth = counter("acm-list-depth")
   let list-gap = tex-skip(cfg, cfg.smallskip)
   let list-block(it) = {
