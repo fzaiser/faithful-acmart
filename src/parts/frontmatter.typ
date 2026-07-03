@@ -11,6 +11,7 @@
 #import "journals.typ": lookup-journal
 #import "strings.typ": lang-record
 #import "body.typ": in-topmatter
+#import "../formats/_base.typ": tp
 
 #let fnsymbols = ("∗", "†", "‡", "§", "¶", "‖", "∗∗", "††", "‡‡")
 
@@ -521,7 +522,7 @@
     "faithful-acmart: the `acmcp` cover format needs a journal logo — pass `acmcp-logo: image(\"...\")` "
     + "(the ACM journal logo is ACM's trademark and is not bundled with this package).")
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
-  box(width: 60pt /* 5pc */)[
+  box(width: 60 * tp /* 5pc */)[
     #set align(left) // the \parindent\z@ vbox is left-aligned, not centred
     // User-supplied logo (see `acmcp-logo`); default it to the box width so a bare
     // `image("logo.png")` fills the column, as the bundled JDS logo used to.
@@ -732,7 +733,7 @@
 
 #let make-authors-grid(cfg, groups, authors-per-row: 0) = {
   if groups.len() == 0 { return [] }
-  let sep = 12pt // \author@bx@sep = 1pc
+  let sep = 12 * tp // \author@bx@sep = 1pc
   let tw = cfg.paper.width - cfg.margin.inside - cfg.margin.outside
   let n = if authors-per-row > 0 { authors-per-row } else {
     let g = groups.len()
@@ -802,7 +803,7 @@
 // conference grid (\@mkauthors@iii) the boxes are NOT centred (sigchiamode skips
 // \centering) and box width is (textwidth - sep)/N - sep with sep = \author@bx@sep.
 #let sigchi-authors(cfg, groups, authors-per-row: 0) = {
-  let sep = 12pt // \author@bx@sep = 1pc
+  let sep = 12 * tp // \author@bx@sep = 1pc
   let tw = cfg.paper.width - cfg.margin.left - cfg.margin.right
   let n = if authors-per-row > 0 { authors-per-row } else if groups.len() <= 1 { 1 } else { 2 }
   let bw = (tw - sep) / n - sep
@@ -831,7 +832,7 @@
   let cap-h = measure(text(top-edge: "cap-height", bottom-edge: "baseline", title-text[X])).height
   let last-size = if meta.subtitle != none { cfg.subtitle-font.size } else { tf.size }
   let desc = measure(text(size: cfg.size.at(last-size), top-edge: "baseline", bottom-edge: "descender")[gjpqy]).height
-  pad(left: 5 * 12pt, { // \leftskip5pc
+  pad(left: 5 * 12 * tp, { // \leftskip5pc
     // \leaders\hrule height 2pt\hfill\par then \@title: the rule line's baseline
     // is its bottom (margin top + 2pt) and the title baseline sits one title
     // \baselineskip below it (measured: rule bottom 100.6, title base 124.5 =

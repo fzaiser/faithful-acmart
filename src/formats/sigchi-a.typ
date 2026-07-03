@@ -7,10 +7,13 @@
 // sections are unnumbered (secnumdepth 0). Geometry probed from the class.
 //
 // The geometry, sans default, rule title (5pc leftskip), @iv author grid (bold
-// mixed-case name + email + affiliation, 2 per row), one-sided running head, and
-// the "Legacy document" watermark (drawn in lib.typ) are reproduced — text matches
-// LaTeX exactly. The remaining approximation: footnotes are NOT moved into the
-// margin (acmart.dtx:3533 \marginpar).
+// mixed-case name + email + affiliation, 2 per row), margin-column running head
+// (\fancyheadoffset), bold-small captions, the "Legacy document" watermark
+// (drawn in lib.typ), and the sidebar/marginfigure/margintable margin notes
+// (parts/body.typ) are reproduced. Remaining approximations: FOOTNOTES are not
+// moved into the margin (acmart.dtx:3533 \marginpar), and a margin note's
+// vertical anchor can sit ~1-2 lines off before a display heading (see
+// DESIGN.md "Known limitations").
 #import "_base.typ": tp, size-ladder, make-format
 
 #let sigchia(font-size: 10pt) = make-format(

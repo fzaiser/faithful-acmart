@@ -296,18 +296,23 @@ taller-than-`\topskip` title line.
   `\textsuperscript{\ding{41}}` (acmart.dtx:5430). What differs is *ordering* — we emit
   ✉-then-note in a fixed order, not source-declaration order (our model stores a boolean
   + note, with no declaration order).
-- **Contact-info field order is fixed** (affiliation, then email), not source order —
-  acmart's `\@mkauthorsaddresses` replays declared order; our author dict has none (the
-  upstream sample's Tobin, who declares email first, is the lone exception).
+- **Contact-info field order follows the author dict's key order** — acmart's
+  `\@mkauthorsaddresses` replays the declared `\email`/`\affiliation` order; Typst
+  dicts preserve insertion order, so writing `email:` before `affiliation:` (or vice
+  versa) reproduces the declaration order (guarded by the Tier 1.9 order gate).
 - **Author line grouping IS faithful**: `group-authors` (`frontmatter.typ`) implements
   `\@mkauthors@i` (acmart.dtx:7337) — authors accumulate onto a line and an
   `\affiliation` closes it for everyone accumulated so far; values are never compared.
   For a shared-affiliation line, give the affiliation to the *second* author and omit it
   on the first (the acmart idiom; see Trovato/Tobin in `sample-acmsmall.typ`).
-- **Lists**: body indents land at `\leftmargin` (24.5pt, level 1) for the common
-  single-level case, but Typst has no fixed hanging-label box (`\llap`), so nested or
-  width-varied markers drift with marker width. Markers, item spacing, level-1 indent
-  match.
+- **Lists match the LIVE class, not the dtx**: amsart's begin-document hook derives
+  the margins from rendered label widths (`\labelsep` 5pt, `\leftmargini` =
+  width("(13)") + labelsep + `\parindent` ≈ 30.26pt, nested levels from their own
+  labels at counter 13) and overrides acmart's 4pt/24.5pt block — probed and measured.
+  Labels are `\llap`'d in both engines: zero-width right-overhanging markers pin every
+  body at its level's `\leftmargin` exactly; level-2+ `\topsep` is 0. `quote` maps to
+  LaTeX's `quote` (both margins at `\leftmargini`); the 3pc `quotation` variant is not
+  modelled.
 - **`screen` link colours** are stored as CMYK (`ACMPurple`/`ACMDarkBlue`); Typst writes
   8-bit CMYK, so the on-screen RGB can differ by ~1/255 per channel — imperceptible, and
   not "fixed" to RGB (that would lose print-CMYK fidelity).
@@ -325,11 +330,17 @@ taller-than-`\topskip` title line.
   bottom-fill stretch is missing, showing as gradual drift on *full* pages
   (`tests/twins/full-test` p1), not partial/last pages. No clean Typst workaround.
 - **`sigchi-a`**: geometry, sans default, the `@mktitle@iv` title (5pc-leftskip ragged
-  under a 2pt rule, acmart.dtx:7039), the `@mkauthors@iv` grid (bold name + email +
-  affiliation, 2/row, acmart.dtx:7518), the one-sided running head, unnumbered sections,
-  and the "Legacy document" watermark all match LaTeX's extracted text (char + word
-  bags). Approximation: footnotes are **not** moved into the margin (`\marginpar`,
-  acmart.dtx:3533).
+  under a 2pt rule, one title-`\baselineskip` below its bottom, acmart.dtx:7039), the
+  `@mkauthors@iv` grid (bold name + email + affiliation, 2/row, acmart.dtx:7518), the
+  margin-column running head (`\fancyheadoffset`, x measured exact), unnumbered
+  sections, bold-small captions, and the "Legacy document" watermark match LaTeX.
+  `sidebar`/`marginfigure`/`margintable` set their body in the 170pt margin column
+  (`\marginpar`; a sidebar's first baseline is measured exact) and `fulltextwidth()`
+  spans text + margin. Approximations: footnotes are **not** moved into the margin
+  (`\marginpar` footnotes, acmart.dtx:3533); a margin note's vertical anchor can sit
+  ~1–2 lines off when invoked right before a display heading (Typst's `place()` anchors
+  at the following block); consecutive notes at the SAME anchor overlap instead of
+  stacking — anchor them at different paragraphs.
 - **`acmcp`**: geometry, unnumbered sections, the suppressed ACM reference format, the
   rotated article-type label at the left edge, the light-tinted cover **frame**
   (`@ACM@Article@color!10!white`, acmart.dtx:5899) scoped to the **body only** and
@@ -347,6 +358,16 @@ taller-than-`\topskip` title line.
   cap-top to the top margin (the faithful `\topskip` model), whereas LaTeX places the
   baseline. Imperceptible; the sigplan twin marks its Tier-2 top check report-only.
 - **Math fidelity untuned** (Libertinus Math ≈ newtxmath, best-effort).
+- **Continuation-page first baseline** sits 1em (the base font size) below the top
+  margin instead of LaTeX's fixed `\topskip` = 10pt: ~+1pt on the 9pt-base formats,
+  −1/−2pt at the 11/12pt options. Typst has no per-page margin control, and shifting
+  the page margin would displace the (correct) title pages and running heads.
+- **Wrapped numbered section titles** return to the left margin instead of hanging
+  after "N\quad" (`\@hangfrom`): a measured hanging indent broke the tagged-PDF
+  reading order (Tier 1.9), so the rare two-line numbered title keeps the simple form.
+- **`description`/terms geometry** is Typst's default (bold term, no colon — matching
+  `\descriptionlabel` by coincidence); acmart's `\@ACM@labelwidth` hanging layout is
+  not modelled.
 - **Full BibLaTeX sample drift**: `sample-sigconf-biblatex` (with the software artifact
   block) reflows to one extra Typst page (dense two-column bibliography); the bundled
   samples gate visual snapshots, not page parity, and `biblatex-test` is the exact text

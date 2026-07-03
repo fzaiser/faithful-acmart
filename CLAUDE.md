@@ -97,20 +97,27 @@ missed.
 
 All public formats are accepted, but with accepted approximations: two-column
 vertical fill (`\flushbottom`) and last-column balancing are unreplicable in
-Typst (ragged-bottom columns); `sigchi-a` omits margin-note footnotes
-(`\marginpar`) but otherwise matches LaTeX exactly (the `@mktitle@iv` rule title,
-the `@mkauthors@iv` author grid, the one-sided running head, the watermark);
-`acmcp`'s cover infobox is top-aligned with the body rather than `zref`-positioned
-against the frame bottom (the body tint and right-margin infobox layout otherwise
-match). Its keywords, contributions, code/data link, and author contact info are
-in the cover infobox, while normal contact/copyright footnotes are suppressed. Also outstanding:
-math-font fidelity. Top-matter commands `\titlenote`/`\subtitlenote`,
-`\received`, the `acks` environment, teaser figures, author badges, and the
-conference metadata (`conference`/`booktitle`/`isbn`) ARE modelled. See DESIGN.md "Deliberate
-approximations" / "Known limitations" for the full list.
-Author *line grouping* now follows acmart's exact structural rule (an
+Typst (ragged-bottom columns); `sigchi-a` models the rule title, author grid,
+margin-column running head, bold-small captions, watermark, AND the
+sidebar/marginfigure/margintable margin notes + `fulltextwidth()`, but does not
+move *footnotes* into the margin and a margin note's vertical anchor can sit
+~1-2 lines off before a display heading; `acmcp`'s cover infobox is top-aligned
+with the body rather than `zref`-positioned against the frame bottom (the body
+tint, foot rule, and right-margin infobox layout otherwise match). Its keywords,
+contributions, code/data link, and author contact info are in the cover infobox,
+while normal contact/copyright footnotes are suppressed. Also outstanding:
+math-font fidelity; continuation-page first baselines sit 1em (not
+`\topskip` = 10pt) below the top margin (~1pt on 9pt bases); wrapped numbered
+section titles don't hang (`\@hangfrom`); `quotation` (3pc) and `description`
+geometry. Modelled: `\titlenote`/`\subtitlenote`, `\thanks`,
+`\authorsaddresses`, `\received`, `acks`, `\anon`, `\grantsponsor`/`\grantnum`,
+`\editor`, `\part`, `\startPage`, teasers, badges, the review-mode margin
+ruler (fixed slots, both sides on two-column), per-size `heightrounded`
+geometry, and the conference metadata (`conference`/`booktitle`/`isbn`). See
+DESIGN.md "Deliberate approximations" / "Known limitations" for the full list.
+Author *line grouping* follows acmart's exact structural rule (an
 affiliation-less author andifies onto the next; affiliations are never compared —
-`group-authors`), and the contact-info *field order* now matches acmart's
+`group-authors`), and the contact-info *field order* matches acmart's
 source-declaration order (email/affiliation replayed in the author dict's key
 order, `contact-line`), guarded by the Tier 1.9 order gate.
 
