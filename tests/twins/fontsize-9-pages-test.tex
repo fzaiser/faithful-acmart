@@ -1,0 +1,40 @@
+%% fontsize-9-pages-test — multi-page layout at a non-default base size (twin of
+%% the .typ). At acmsmall+9pt geometry rounds \textheight to 571pt and the whole
+%% ladder rescales; page parity, folios, and the continuation head are compared.
+\documentclass[acmsmall,9pt]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmMonth{8}
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmDOI{XXXXXXX.XXXXXXX}
+
+\begin{document}
+
+\title[Nine Point]{A Nine-Point Continuation Sample}
+
+\author{Ada Lovelace}
+\email{ada@example.com}
+\affiliation{\institution{Analytical Engine Institute}\country{UK}}
+
+\begin{abstract}
+A short abstract for a nine-point continuation test.
+\end{abstract}
+
+\keywords{font size, heightrounded}
+
+\renewcommand{\shortauthors}{Lovelace}
+
+\maketitle
+
+\newcommand{\fillpara}{This continuation paragraph keeps the document flowing onto the next page so the nine-point page geometry can be compared between the LaTeX and Typst renderings. The text is deliberately plain and avoids figures, tables, lists, and citations.}
+\section{Continuation}
+\fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par
+\fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par
+\fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par \fillpara\par
+
+\end{document}

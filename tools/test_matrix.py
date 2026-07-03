@@ -429,6 +429,17 @@ TESTS: dict[str, Test] = {
              "the journal footer follow the counter (acmart.dtx:6822-6825). Body "
              "reorders, so text is word-bag gated.",
     ),
+    "fontsize-9-pages-test": Test(
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        text_equal="bag",
+        text_assertions=(
+            Assertion(engine="both", page=2, text="111:2"),
+            Assertion(engine="both", page=2, text="Lovelace"),
+        ),
+        note="multi-page acmsmall at the NON-DEFAULT 9pt base: heightrounded "
+             "geometry (571pt), rescaled ladder, page parity, continuation "
+             "head/folio. Body reorders, so text is word-bag gated.",
+    ),
     "fontsize-8-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
         text_equal=True,
