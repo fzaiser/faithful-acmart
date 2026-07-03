@@ -730,11 +730,9 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="An unnumbered display equation is produced by the displaymath "
-                      "environment. Again, in either environment",
-                typst="An unnumbered display equation is produced by the displaymath "
-                      "environment. Table 2. Some Typical Commands",
-                cause=ExtractionArtifact("display-equation table interleave"),
+                latex="and follow it with another numbered equation: ∞ ∑ ∫ π +2 xi = i=0 f (2)",
+                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 f (2)",
+                cause=ExtractionArtifact("display-math token-order extraction"),
             ),
         ),
         note="upstream acmlarge sample (wide single-column journal, POMACS).",

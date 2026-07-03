@@ -1,7 +1,8 @@
 // Smoke test for the newly modelled top-matter features: titlenote/subtitlenote,
-// teaser, received, badges, and the acks environment. Not a matched twin — just
-// exercises every code path so it compiles and renders sensibly.
-#import "/src/lib.typ": acmart, acks
+// teaser, received, badges, the acks environment, \anon, \grantsponsor/\grantnum,
+// and \part. Not a matched twin — just exercises every code path so it compiles
+// and renders sensibly.
+#import "/src/lib.typ": acmart, acks, anon, grantsponsor, grantnum, part
 
 #show: acmart.with(
   format: "acmsmall",
@@ -37,9 +38,15 @@
   ),
 )
 
+#part[First Part]
+
 = Introduction
-Some body text so the document has content. #lorem(40)
+Some body text so the document has content. This work was performed at
+#anon(substitute: "No Such Agency")[NSA]. #lorem(30)
 
 #acks[
-  We thank the anonymous reviewers and our funding agencies.
+  We thank the anonymous reviewers and our funding agencies. This work was
+  supported by the #grantsponsor("SP1", "Example Science Foundation",
+  "https://example.org/") under grant No.
+  #grantnum("SP1", "2026-XYZ", url: "https://example.org/grants/2026-XYZ").
 ]

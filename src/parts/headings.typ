@@ -20,6 +20,20 @@
   }
 }
 
+// Best-effort \@addpunct: true when the (plain-text tail of the) content
+// already ends in punctuation, so the run-in heading dot is suppressed
+// ("Results?" stays "Results?", not "Results?."). Only text tails are
+// inspected; content ending in math/boxes keeps the dot, like TeX's
+// \spacefactor heuristic usually would.
+#let _ends-with-punct(c) = {
+  if type(c) == str { return c.trim().match(regex("[.!?]$")) != none }
+  if type(c) != content { return false }
+  if c.has("text") { return _ends-with-punct(c.text) }
+  if c.has("body") { return _ends-with-punct(c.body) }
+  if c.has("children") and c.children.len() > 0 { return _ends-with-punct(c.children.last()) }
+  false
+}
+
 // Resolve a per-level entry of cfg.sec-fonts (family role -> actual font, size
 // step -> length). Each format supplies its own \@secfont/\@subsecfont/… via the
 // format dict (acmart.dtx:8415); the level STRUCTURE (skips, run-in, indent) is
@@ -32,7 +46,7 @@
 // Run-in heading: heading text flows inline, the following paragraph continues
 // on the same line. Returning inline content from the show rule achieves this;
 // a weak v() supplies the vertical space before without breaking the run-in.
-#let run-in-heading(it, cfg, f, before: 0pt, indent: 0pt, num: none, dot: true) = {
+#let run-in-heading(it, cfg, f, before: 0pt, indent: 0pt, num: none, dot: true, sep: none) = {
   v(before, weak: true)
   // Cancel the automatic first-line indent down to the desired `indent`. This
   // also absorbs the paragraph-start shim emitted after ACM block environments
@@ -42,8 +56,12 @@
   set text(font: f.font, style: f.style, weight: f.weight, size: f.size)
   if num != none [#num#h(1em)]
   it.body
-  if dot [.]
-  h(cfg.runin-sep) // horizontal gap to the body text (|afterskip|)
+  // \@adddotafter's \@addpunct: no added dot when the title already ends
+  // in punctuation.
+  if dot and not _ends-with-punct(it.body) [.]
+  // horizontal gap to the body text: the |afterskip| (3.5pt), or a plain
+  // interword space for amsart's subparagraph (afterskip -\fontdimen2\font).
+  if sep == auto [ ] else { h(cfg.runin-sep) }
 }
 
 #let render-heading(it, cfg) = {
@@ -62,6 +80,10 @@
     // format (acmsmall sf bold; sigconf serif Large bold; …). before .75bl, after .25bl.
     let f = sec-font(cfg, if lvl == 1 { "section" } else { "subsection" })
     let title = it.body
+    // (Known approximation: LaTeX's \@hangfrom aligns a WRAPPED title's
+    // continuation lines after "N\quad"; here they return to the margin. A
+    // measured hanging indent breaks the tagged-PDF reading order the Tier 1.9
+    // gate checks, so the rare two-line numbered title keeps the simple form.)
     block(above: tex-skip(cfg, 0.75 * bls), below: tex-skip(cfg, 0.25 * bls), sticky: true)[
       #set text(font: f.font, weight: f.weight, style: f.style, size: f.size)
       #set par(justify: false, leading: comp(cfg))
@@ -77,11 +99,12 @@
     run-in-heading(it, cfg, sec-font(cfg, "paragraph"),
       before: tex-skip(cfg, 0.5 * bls), indent: cfg.parindent, num: none)
   } else {
-    // subparagraph: acmart does not override the base \subparagraph in the
-    // generic/journal formats; the upstream sample shows an unstyled run-in title
-    // with no added dot and no paragraph indent.
+    // subparagraph: amsart's own definition (deps/amsart.cls:1124) — beforeskip
+    // \z@ (no extra vertical space beyond the paragraph break), run-in gap of
+    // one interword space (-\fontdimen2), unstyled body font, no added dot,
+    // no paragraph indent.
     run-in-heading(it, cfg,
       (font: cfg.fonts.body, weight: "regular", style: "normal", size: cfg.size.normalsize),
-      before: tex-skip(cfg, 0.5 * bls), indent: 0pt, num: none, dot: false)
+      before: tex-skip(cfg, 0pt), indent: 0pt, num: none, dot: false, sep: auto)
   }
 }

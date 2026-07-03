@@ -80,6 +80,30 @@
 #let tex-logo = _tex-logo
 #let bibtex-logo = _bibtex-logo
 
+// \anon{...} (acmart.dtx:6433): under the `anonymous` option the body is
+// replaced by the substitute in ACM Orange; otherwise the body prints as-is.
+#let anon(body, substitute: "ANONYMIZED") = context {
+  if anon-state.get() { text(fill: cmyk(0%, 42%, 100%, 1%), substitute) } else { body }
+}
+
+// \grantsponsor{id}{name}{url} typesets just the sponsor NAME (acmart.dtx:8866);
+// the id/url are metadata for ACM's production pipeline.
+#let grantsponsor(id, name, url) = name
+
+// \grantnum[url]{id}{num} typesets the grant number, plus " (url)" when the
+// optional url is given (acmart.dtx:8875).
+#let grantnum(id, num, url: none) = if url == none { num } else { [#num (#link(url)[#url])] }
+
+// \part: amsart's level-9 DISPLAY heading — \@parfont (the run-in paragraph
+// font, italic), 10pt before / 4pt after, unnumbered (level 9 > secnumdepth).
+#let part(body) = context {
+  let cfg = cfg-state.get()
+  let f = cfg.sec-fonts.paragraph
+  block(above: tex-skip(cfg, 10 * tp), below: tex-skip(cfg, 4 * tp), sticky: true,
+    text(font: cfg.fonts.at(f.family), weight: f.weight, style: f.style,
+      size: cfg.size.at(f.size), body))
+}
+
 // Direct ACM reference-list renderer for the bibtex/biblatex backends: reads the
 // .bib with the pure-Typst parser, so it never constructs a native bibliography
 // element and never invokes hayagriva. Used by the `bibliography` shadow below.
@@ -293,6 +317,17 @@
   author-draft: false,    // authordraft = timestamp + review + draft watermark/overlay
   submission-id: none,    // \acmSubmissionID — shown in the timestamp + anon. header
   start-page: none,       // \startPage — seeds the page counter (folios, timestamp range)
+  // \thanks — content or array of contents; printed as unlabeled paragraphs at
+  // the head of the authors-addresses footnote stream (each period-terminated;
+  // anonymous replaces each with "A note", acmart.dtx:6417/7790).
+  thanks: none,
+  // \authorsaddresses override: `auto` derives "Authors' Contact Information:"
+  // from the author dicts (the default); `none` suppresses the footnote
+  // (LaTeX's \authorsaddresses{}); content replaces the whole block verbatim.
+  authors-addresses: auto,
+  // \acmConference editors (the conference ACM Reference Format block appends
+  // ", E. One and E. Two (Eds.)." after the booktitle, acmart.dtx:7756).
+  editors: (),
   // No effect outside their relevant formats — accepted for API parity (so
   // the names aren't forgotten) but inert here, exactly as in real acmart:
   //   balance/pbalance — column balancing, a two-column-only feature
@@ -491,6 +526,9 @@
     anonymous: anonymous,
     submission-id: submission-id,
     start-page: start-page,
+    thanks: thanks,
+    authors-addresses: authors-addresses,
+    editors: editors,
   )
 
   let article-page(p) = {
@@ -789,7 +827,10 @@
 
   set heading(numbering: cfg.heading-numbering)
   show heading: it => {
-    if it.level == 1 { thm-counter.update(0) } // theorems numbered within section
+    // theorems are numbered within \thesection: the reset fires when the
+    // SECTION COUNTER steps, so unnumbered sections (\section*, acks,
+    // References) leave the theorem counter alone.
+    if it.level == 1 and it.numbering != none { thm-counter.update(0) }
     render-heading(it, cfg)
   }
 

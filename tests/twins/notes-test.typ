@@ -6,6 +6,7 @@
 #import "/src/lib.typ": acmart, acks
 
 #show: acmart.with(
+  thanks: [The authors thank the Example Foundation for supporting this work],
   format: "acmsmall",
   title: "A Title With a Note",
   title-note: [This funding note is attached to the title.],

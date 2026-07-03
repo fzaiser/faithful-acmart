@@ -368,7 +368,14 @@
     set par(justify: true, leading: lead, first-line-indent: 0pt, spacing: lead)
 
     let anon = meta.anonymous
-    let has-contact-info = cfg.name != "acmcp" and meta.bibstrip and not anon and meta.authors.len() > 0 and meta.authors.any(a => a.affiliation != none or a.email != none)
+    // \thanks pieces open the authors-addresses stream (acmart.dtx:6585); the
+    // contact block itself prints for journal/tog formats unless anonymous or
+    // overridden (\authorsaddresses, acmart.dtx:5327: `auto` derives it, `none`
+    // suppresses it, content replaces it). LaTeX prints name-only entries too.
+    let thanks = if meta.thanks == none { () } else if type(meta.thanks) == array { meta.thanks } else { (meta.thanks,) }
+    let has-contact-info = cfg.name != "acmcp" and meta.bibstrip and not anon and (
+      if meta.authors-addresses == auto { meta.authors.len() > 0 } else { meta.authors-addresses != none }
+    )
     let mode = meta.copyright
     let ptext = permission-text(mode, cc-type: meta.cc-type, cc-version: meta.cc-version)
     let has-copyright-info = cfg.name != "acmcp" and (
@@ -382,7 +389,7 @@
       for n in ni.notes {
         block(spacing: lead, tagged-par[#note-super(n.symbol)#n.body])
       }
-      if has-contact-info or has-copyright-info {
+      if thanks.len() > 0 or has-contact-info or has-copyright-info {
         // These are separate LaTeX footnote streams (ordinary notes, then
         // manyfoot authors-address/copyright streams). The later full-width
         // rule is already bottom-aligned; add the measured inter-stream strut so
@@ -396,14 +403,28 @@
       }
     }
 
-    // 2. Authors' Contact Information — only the journal/tog formats print this
-    // footnote (\if@ACM@journal@bibstrip@or@tog, acmart.dtx:6592); the conference
-    // formats carry contact info in the author grid instead. Suppressed if anon.
-    if has-contact-info {
+    // 2. \thanks + Authors' Contact Information — the authors-addresses stream.
+    // Only the journal/tog formats print the contact block (\if@ACM@journal@
+    // bibstrip@or@tog, acmart.dtx:6592); the conference formats carry contact
+    // info in the author grid instead (but \thanks prints everywhere).
+    if thanks.len() > 0 or has-contact-info {
       rule(100%)
-      let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
-      let contacts = meta.authors.map(contact-line).join("; ")
-      block(spacing: lead, tagged-par[#label #contacts.])
+      for t in thanks {
+        // \@setthanks: \par <text>\@addpunct. — anonymous swaps in "A note"
+        // (acmart.dtx:6420/7790).
+        block(spacing: lead, tagged-par[#if anon [A note.] else [#t.]])
+      }
+      if has-contact-info {
+        if meta.authors-addresses == auto {
+          let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
+          let contacts = meta.authors.map(contact-line).join("; ")
+          block(spacing: lead, tagged-par[#label #contacts.])
+        } else {
+          // \@setauthorsaddresses appends an unconditional period to the
+          // user-supplied block (verified: a block ending "UK." prints "UK..").
+          block(spacing: lead, tagged-par[#meta.authors-addresses.])
+        }
+      }
     }
 
     // 3. Copyright / permission (faithful to acmart's assembly). nonacm
@@ -969,8 +990,11 @@
           if not proceedings-ref {
             [#if j.short != none { emph(j.short) + " " }#meta.acm-volume, #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta)), #total #if total == 1 [page] else [pages].]
           } else {
-            // booktitle is resolved (explicit or derived from the conference) in acmart().
-            [In #emph(meta.booktitle). ACM, New York, NY, USA#if meta.acm-article != none [, Article #meta.acm-article], #total #if total == 1 [page] else [pages].]
+            // booktitle is resolved (explicit or derived from the conference) in
+            // acmart(). Editors follow the booktitle: an ITALIC ", " then the
+            // andified names and "(Ed./Eds.)." (acmart.dtx:7756-7758); with no
+            // editors the closing period is italic too (\textit{.}).
+            [In #emph(meta.booktitle)#if meta.editors.len() == 0 [#emph[.]] else [#emph[, ]#andify(meta.editors) (#if meta.editors.len() == 1 [Ed.] else [Eds.]).] ACM, New York, NY, USA#if meta.acm-article != none [, Article #meta.acm-article], #total #if total == 1 [page] else [pages].]
           }
         }#{
           if meta.doi != none [ #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]]

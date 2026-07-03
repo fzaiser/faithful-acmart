@@ -9,6 +9,7 @@
   title: "A Two-Column Conference Sample",
   conference: (short: "Conference'17", venue: "Washington, DC, USA"),
   booktitle: "Proceedings of ACM Conference (Conference'17)",
+  editors: ("Elena One", "Oscar Two"),
   isbn: "978-1-4503-XXXX-X/2018/06",
   doi: "XXXXXXX.XXXXXXX",
   acm-year: 2018, acm-month: 6,
