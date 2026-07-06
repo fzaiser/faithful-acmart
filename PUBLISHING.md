@@ -135,10 +135,14 @@ in `LICENSE` / `template/LICENSE`.
 
 1. Bump `version` in `typst.toml`.
 2. Update `template/main.typ`'s import to `@preview/faithful-acmart:<new-version>` and
-   any version numbers in `README.md`.
+   any version numbers in `README.md`, and re-point the README's cross-repo GitHub links
+   to the new tag (`…/blob/v<new-version>/…`, `…/tree/v<new-version>/…` — see Gotchas).
 3. Re-point the local symlink (above) to the new version.
 4. Regenerate `thumbnail.png` if the output changed.
-5. Copy the shipped files into a **new** `packages/preview/faithful-acmart/<new-version>/`
+5. Tag the release commit in the main repo and push the tag, so the tag-pinned README
+   links resolve: `git tag -a v<new-version> <commit> -m "faithful-acmart <new-version>"`
+   then `git push origin v<new-version>`.
+6. Copy the shipped files into a **new** `packages/preview/faithful-acmart/<new-version>/`
    directory (never edit an already-published version) and open a PR. The updater should
    be the same author as the previous version, or the previous author is consulted.
 
@@ -149,5 +153,13 @@ in `LICENSE` / `template/LICENSE`.
 - **`MIT AND MIT-0`** requires *both* `LICENSE` (MIT) and `template/LICENSE` (MIT-0) to
   be present and the split noted in the README.
 - **The thumbnail is auto-excluded** and must not be `image()`'d anywhere in the package.
+- **README GitHub links must be tag-pinned.** Links to excluded dev files (`DESIGN.md`,
+  `CONTRIBUTING.md`, `fonts/`) have to be absolute GitHub URLs — the bundle strips those
+  files, so relative links would 404 — and should point at the release *tag*
+  (`…/blob/v<version>/DESIGN.md`, `…/tree/v<version>/fonts`), not `/main`. Pinning keeps
+  them matched to the published version and silences `typst-package-check`'s "links to
+  default branch" warning. The tag must be **created and pushed** (`git tag -a v<version>
+  <commit>`; `git push origin v<version>`) before the links resolve — otherwise they 404
+  until it exists.
 - **Community tooling:** `typst-package-check` (lint), `tytanic` (tests), `typship`
   (install/submit).
