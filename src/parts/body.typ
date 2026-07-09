@@ -172,13 +172,15 @@
   // box sized to the NATURAL bullet, so the marker's layout footprint is unchanged:
   // llap still right-aligns on the natural width (exact horizontal position) and the
   // item's line height is not inflated (a plain `text(size: 1.65em)` or `scale`
-  // would push the next item down). `dy: -0.2em` raises the disc: `place`-centering
-  // the enlarged glyph in the box would seat its centre ~2pt BELOW the math axis
-  // (the box runs a full em above the baseline under the global top-edge:1em), so
-  // without the shift the bullet sits way too low; -0.2em puts the disc centre back
-  // at the axis (~0.25em above the baseline), where LaTeX renders it. `place`'s dy is
-  // out of flow, so it moves the disc without pushing the item down. Levels 2-4
-  // already match (bold en-dash/∗/·).
+  // would push the next item down). `dy: -0.2em` raises the disc to the math axis:
+  // `place`-centering pins the disc to the BOX centre, not the glyph's own axis, and
+  // that centre — a function of the box height, which the global top-edge:1em inflates
+  // — lands ~2pt too low (measured: disc 0.47pt above the baseline vs LaTeX's ~2.5pt).
+  // -0.2em (font-relative) lifts it back to the axis (~0.25em above the baseline),
+  // where LaTeX renders it, and `place`'s dy is out of flow so the item is not pushed
+  // down. (Merely resetting top-edge for the marker does NOT fix it — the disc then
+  // overshoots ABOVE the axis, because the position tracks box height either way; the
+  // shift is the accurate correction.) Levels 2-4 already match (bold en-dash/∗/·).
   let big-bullet = context box(
     width: measure($bullet$).width, height: measure($bullet$).height,
     place(right + horizon, dy: -0.2em, text(size: 1.65em)[$bullet$]))
