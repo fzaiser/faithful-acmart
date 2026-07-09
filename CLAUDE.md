@@ -109,17 +109,18 @@ while normal contact/copyright footnotes are suppressed. Also outstanding:
 math-font fidelity; continuation-page first baselines sit 1em (not
 `\topskip` = 10pt) below the top margin (~1pt on 9pt bases); wrapped numbered
 section titles don't hang (`\@hangfrom`); `quotation` (3pc) and `description`
-geometry; the opt-in booktabs `tabular` models the rule separation but its cell
-rows sit ~2pt taller than LaTeX's `\@arstrut` (the global `top-edge: 1em` leading
-reserves a full em above the baseline vs `0.7\baselineskip`). Modelled:
-`\titlenote`/`\subtitlenote`, `\thanks`,
+geometry. Modelled: `\titlenote`/`\subtitlenote`, `\thanks`,
 `\authorsaddresses`, `\received`, `acks`, `\anon`, `\grantsponsor`/`\grantnum`,
 `\editor`, `\part`, `\startPage`, teasers, badges, the review-mode margin
 ruler (fixed slots, both sides on two-column), per-size `heightrounded`
 geometry, the conference metadata (`conference`/`booktitle`/`isbn`), and the
 opt-in booktabs `tabular`/`toprule`/`midrule`/`bottomrule` (rule separation via
 `parts/tables.typ`, a wrapper function — NOT a `show table` rule, which would
-recurse). See
+recurse). The table row strut (`\@arstrut` = 0.7/0.3·`\baselineskip`, verified
+from `array.sty`+kernel `\strutbox`) is modelled in the cell text metrics by
+`body.typ`'s `show table` rule (`top-edge`/`bottom-edge`/`leading`), using the
+format's normalsize `\baselineskip` — so a table manually resized mid-document
+uses normalsize's strut (consistent with the doc's normalsize leading model). See
 DESIGN.md "Deliberate approximations" / "Known limitations" for the full list.
 Author *line grouping* follows acmart's exact structural rule (an
 affiliation-less author andifies onto the next; affiliations are never compared —

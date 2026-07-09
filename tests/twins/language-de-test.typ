@@ -4,7 +4,7 @@
 // acksname ("Danksagungen"), tablename ("Tabelle") — while the figure label
 // stays "Fig." (acmart sets it globally, not per language). Includes an English
 // translated title/keywords and German (de) hyphenation.
-#import "/src/lib.typ": acmart, proof, acks
+#import "/src/lib.typ": acmart, proof, acks, tabular, toprule, midrule, bottomrule
 
 #show: acmart.with(
   format: "acmsmall",
@@ -43,14 +43,13 @@ LaTeX-Klasse und der Typst-Portierung übereinstimmen.
 
 #figure(
   placement: none,
-  table(
+  tabular(
     columns: 2,
-    stroke: none,
-    table.hline(),
+    toprule(),
     [A], [B],
-    table.hline(),
+    midrule(),
     [1], [2],
-    table.hline(),
+    bottomrule(),
   ),
   caption: [Eine Tabelle mit lokalisiertem Etikett.],
 )

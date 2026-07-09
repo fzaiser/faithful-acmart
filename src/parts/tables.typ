@@ -18,10 +18,12 @@
 // OUTER edge of the top/bottom rule gets no separation — handled for free: that
 // rule has no row beyond the table boundary to space against).
 
-// Shared with the `set table` inset in parts/body.typ: the cell strut (LaTeX's
-// \@arstrut — height .7\baselineskip, depth .3). tabular adds the rule seps ON TOP
-// of this at rule-adjacent rows.
-#let table-inset = (left: 0.6em, right: 0.6em, top: 0.11em, bottom: 0.36em)
+// Shared with the `set table` inset in parts/body.typ. Only the horizontal cell
+// padding lives here; the vertical row strut (LaTeX's \@arstrut — height
+// .7\baselineskip, depth .3) is modelled in the cell TEXT metrics by body.typ's
+// `show table` rule (top-edge/bottom-edge), so the base top/bottom inset is 0 and
+// tabular's rule seps are the only vertical inset it adds.
+#let table-inset = (left: 0.6em, right: 0.6em, top: 0pt, bottom: 0pt)
 
 #let heavy-rule = 0.08em // \heavyrulewidth
 #let light-rule = 0.05em // \lightrulewidth

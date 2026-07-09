@@ -300,18 +300,17 @@ table in the printed output of this document.
 #figure(
   placement: top,
   caption: [Frequency of Special Characters],
-  table(
+  tabular(
     columns: 3,
     align: (center, center, left),
-    stroke: none,
-    table.hline(stroke: 0.08em),
+    toprule(),
     [Non-English or Math], [Frequency], [Comments],
-    table.hline(),
+    midrule(),
     [Ø], [1 in 1,000], [For Swedish names],
     [$pi$], [1 in 5], [Common in math],
     [\$], [4 in 5], [Used in business],
     [$Psi^2_1$], [1 in 40,000], [Unexplained usage],
-    table.hline(stroke: 0.08em),
+    bottomrule(),
   ),
 ) <tab:freq>
 
@@ -327,17 +326,16 @@ document.
   scope: "parent",
   placement: auto,
   caption: [Some Typical Commands],
-  table(
+  tabular(
     columns: 3,
     align: (center, center, left),
-    stroke: none,
-    table.hline(stroke: 0.08em),
+    toprule(),
     [Command], [A Number], [Comments],
-    table.hline(),
+    midrule(),
     [#raw("\\author")], [100], [Author],
     [#raw("\\table")], [300], [For tables],
     [#raw("\\table*")], [400], [For wider tables],
-    table.hline(stroke: 0.08em),
+    bottomrule(),
   ),
 ) <tab:commands>
 

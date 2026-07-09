@@ -404,15 +404,23 @@ taller-than-`\topskip` title line.
     and `tabular` must not wrap its output in `context` (a context block hides the
     table from `figure()`'s kind detection, losing the "Table N" supplement), so the
     x-height is expressed as em via Libertinus Serif's ratio 0.429 (4.29pt at 10pt).
-  - **Remaining approximation:** the cell row strut is ~2.2pt taller than LaTeX's
-    `\@arstrut` — the document's global `top-edge: 1em` reserves a full em (10pt at
-    10pt) above the baseline, versus LaTeX's `0.7\baselineskip` (~8.75pt). Previously
-    the *missing* rule gap accidentally compensated for this tall row, so a ruled table
-    landed close on total height; now that the gap is modelled, a `tabular` reads
-    slightly loose (rows tall) rather than tight (rules cramped). The paired strut-model
-    row-height fix (a per-cell `top-edge`/`bottom-edge` override sized to
-    `0.7`/`0.3 \baselineskip`) is the remaining step — no longer blocked, now that the
-    rule gap is modelable.
+    em tracks the table font size, so the seps and rule widths scale correctly across
+    formats (9pt sigconf … 12pt options) without a `tp` conversion.
+  - **Row strut.** Every LaTeX table row is `\@arstrut` — height `0.7\baselineskip`,
+    depth `0.3\baselineskip` (verified from `array.sty`'s `\@array` and the kernel's
+    `\strutbox`; acmart leaves `\arraystretch=1`/`\extrarowheight=0`). The document's
+    global `top-edge: 1em` would reserve a full em (>`0.7\baselineskip`) above the
+    baseline and can't be undone by inset, so `body.typ`'s `show table` rule models the
+    strut in the cell TEXT metrics instead: `top-edge: 0.7·baselineskip`,
+    `bottom-edge: −0.3·baselineskip`, `leading: 0` — making a single-line row exactly
+    `\baselineskip` and an n-line cell exactly n·`\baselineskip`, matching LaTeX. The
+    strut is font-size dependent via `\baselineskip`, so it uses the format's
+    `cfg.baselineskip` (per-format normalsize); a table the user manually wraps in a
+    different size would use the normalsize `\baselineskip` — consistent with the rest
+    of the document's normalsize-based rigid-leading model, and the acmart default is
+    normalsize tables. Verified against LaTeX: total table height matches to within the
+    rule-thickness measurement convention (Typst draws `hline` as a centered line,
+    LaTeX booktabs as a `\rule` with thickness).
 - **Caption first baseline** sits ~1.3pt below LaTeX's — the caption line inherits
   the global `top-edge: 1em` (9pt ascent at 9pt) rather than the font's natural
   ascender; same family as the continuation-page first-baseline item above, and left

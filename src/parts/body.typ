@@ -103,11 +103,24 @@
   }
   set figure(gap: cfg.abovecaptionskip)
 
-  // Tables: booktabs-like tight rows. A bare `table.hline` draws the light rule
-  // (0.05em); a plain Typst table has no rule SEPARATION, though. The `tabular`
-  // wrapper (parts/tables.typ) restores booktabs' \aboverulesep/\belowrulesep and
-  // supplies \toprule/\midrule/\bottomrule — see there. The strut inset is shared
-  // with tabular so plain and booktabs tables have identical rows.
+  // Tables. A bare `table.hline` draws the light rule (0.05em); a plain Typst table
+  // has no rule SEPARATION, though — the `tabular` wrapper (parts/tables.typ)
+  // restores booktabs' \aboverulesep/\belowrulesep and supplies
+  // \toprule/\midrule/\bottomrule. The strut inset is shared with tabular so plain
+  // and booktabs tables have identical rows.
+  //
+  // Row strut: LaTeX's \@arstrut makes every row 0.7\baselineskip tall + 0.3 deep
+  // (array \arraystretch is 1). Model it in the cell TEXT box rather than the inset,
+  // because the global top-edge:1em leading would otherwise reserve a full em above
+  // the baseline (~1.2× too much) and can't be undone by inset alone. top-edge
+  // 0.7bls / bottom-edge -0.3bls makes the single-line box exactly \baselineskip
+  // (baseline 0.3bls up from the bottom); leading 0 keeps a wrapped/multi-line cell
+  // at one \baselineskip per line, so an n-line cell is n·bls — matching LaTeX.
+  show table: it => {
+    set text(top-edge: 0.7 * cfg.baselineskip, bottom-edge: -0.3 * cfg.baselineskip)
+    set par(leading: 0pt)
+    it
+  }
   set table(inset: table-inset, stroke: none)
   set table.hline(stroke: light-rule)
 

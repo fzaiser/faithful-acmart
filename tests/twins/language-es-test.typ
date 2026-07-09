@@ -4,7 +4,7 @@
 // ("Demostración"), acksname ("Expresiones de gratitud"), tablename ("Cuadro")
 // — while the figure label stays "Fig." (acmart sets it globally). Includes an
 // English translated title/keywords and Spanish (es) hyphenation.
-#import "/src/lib.typ": acmart, proof, acks
+#import "/src/lib.typ": acmart, proof, acks, tabular, toprule, midrule, bottomrule
 
 #show: acmart.with(
   format: "acmsmall",
@@ -43,14 +43,13 @@ LaTeX y el porte de Typst.
 
 #figure(
   placement: none,
-  table(
+  tabular(
     columns: 2,
-    stroke: none,
-    table.hline(),
+    toprule(),
     [A], [B],
-    table.hline(),
+    midrule(),
     [1], [2],
-    table.hline(),
+    bottomrule(),
   ),
   caption: [Un cuadro con etiqueta localizada.],
 )

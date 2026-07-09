@@ -875,9 +875,12 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="Subsection This is a subsection. 9.1.1 • 111:3 how this equation",
-                typst="9.1 Subsection This is a subsection. 9.1.1 Subsubsection. "
-                      "This is a subsubsection.",
+                # The two-column reflow (shorter booktabs rows) lands the run-in
+                # subsubsection "9.1.1" past the inline-equation text in Typst's tag
+                # order, while LaTeX's pdftotext reads it (with the "111:3" running
+                # head) before that text — the same run-in/running-head interleave.
+                latex="9.1.1 • 111:3 how this equation",
+                typst="(See next section). 9.1.1 Subsubsection. This is a subsubsection.",
                 cause=ExtractionArtifact("run-in heading / running-head interleave"),
             ),
         ),
