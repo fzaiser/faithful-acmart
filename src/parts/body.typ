@@ -172,10 +172,16 @@
   // box sized to the NATURAL bullet, so the marker's layout footprint is unchanged:
   // llap still right-aligns on the natural width (exact horizontal position) and the
   // item's line height is not inflated (a plain `text(size: 1.65em)` or `scale`
-  // would push the next item down). Levels 2-4 already match (bold en-dash/∗/·).
+  // would push the next item down). `dy: -0.2em` raises the disc: `place`-centering
+  // the enlarged glyph in the box would seat its centre ~2pt BELOW the math axis
+  // (the box runs a full em above the baseline under the global top-edge:1em), so
+  // without the shift the bullet sits way too low; -0.2em puts the disc centre back
+  // at the axis (~0.25em above the baseline), where LaTeX renders it. `place`'s dy is
+  // out of flow, so it moves the disc without pushing the item down. Levels 2-4
+  // already match (bold en-dash/∗/·).
   let big-bullet = context box(
     width: measure($bullet$).width, height: measure($bullet$).height,
-    place(right + horizon, text(size: 1.65em)[$bullet$]))
+    place(right + horizon, dy: -0.2em, text(size: 1.65em)[$bullet$]))
   let list-marks = (big-bullet, text(weight: "bold")[–], [∗], [·])
   let llap(c) = context { h(-measure(c).width); c }
   let labelsep = if amsart-lists { 5 * tp } else { 4 * tp }
