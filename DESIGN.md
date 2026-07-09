@@ -125,13 +125,14 @@ default `normalsize`). Every leading, block gap, and `v()` routes through these.
 > Float spacing (`\intextsep`/`\abovecaptionskip` = 12pt) is its own constant, not
 > derived from `\bigskip`.
 
-The **number → title separator** is acmart's `\@seccntformat` `\quad` (1em). It is
-emitted as `h(1em − space) +` a real interword space (not a bare `h(1em)`): the two
-sum to an exact 1em, and the real space keeps the title one *word run* in the tagged
-PDF — an `h()` directly abutting the title text makes Typst tag the first word
-glyph-by-glyph, which scrambles the Tier 1.9 reading-order gate. (`space` is measured
-per heading font.) See the harness note below on why the section number itself is no
-longer a text-gate problem.
+The **number → title separator** is acmart's `\@seccntformat` `\quad` (1em),
+modelled as a 1em-wide box holding a single space (`box(width: 1em, sym.space)`) —
+literally a quad-width space. The space is load-bearing for the tagged PDF, not
+visible: a bare `h(1em)` (or an *empty* box) abutting the title makes Typst tag the
+first word glyph-by-glyph, scrambling the Tier 1.9 reading-order gate, whereas a box
+carrying real text keeps the title one *word run*. It extracts as an ordinary space,
+so the text gates are unaffected. See the harness note below on why the section
+number itself is no longer a text-gate problem.
 
 ### Run-in headings
 subsubsection/paragraph headings flow inline: a heading show rule returning *inline*

@@ -813,8 +813,7 @@ TESTS: dict[str, Test] = {
             ExpectedTextDiff(
                 latex="https://doi.org/XXXXXXX.XXXXXXX Introduction ACM's consolidated "
                       "article template",
-                typst="https://doi.org/XXXXXXX.XXXXXXX 1 Introduction ACM's consolidated "
-                      "article template",
+                typst="https://doi.org/XXXXXXX.XXXXXXX ACM's consolidated article template",
                 cause=ExtractionArtifact("anonymous-review heading extraction"),
             ),
             ExpectedTextDiff(
