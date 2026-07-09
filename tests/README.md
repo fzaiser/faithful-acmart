@@ -5,7 +5,7 @@ Test documents, organized by kind:
 | path | contents |
 |---|---|
 | `twins/` | matched pairs `NAME.tex` (real LaTeX acmart) + `NAME.typ` (ours), identical content, diffed page-by-page |
-| `typst-only/` | Typst-only docs with no LaTeX twin: smoke/alias/feature checks and the upstream-ref port (`sample-acmsmall.typ`, compared against the bundled sample) |
+| `typst-only/` | Typst-only docs with no LaTeX twin: smoke, alias, and feature checks |
 | `golden/` | committed Tier 1 golden raster hashes (`typst.sha256`) |
 | `out/` | generated PDFs + diffs (gitignored; created by `test.py build`) |
 

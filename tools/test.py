@@ -175,16 +175,10 @@ def pdf_text(pdf: Path, page: int | None = None) -> str:
 _URI = re.compile(rb"/URI\s*\(([^)]*)\)")
 
 
-def extract_uris(pdf: Path) -> set[str]:
-    """Hyperlink (/URI) targets in a PDF.
-
-    LaTeX/hyperref often compresses annotations into object streams, so qpdf is a
-    required part of the link gate rather than a best-effort enhancer.
-    """
+def _qdf_bytes(pdf: Path) -> bytes:
+    """PDF bytes decoded enough for simple annotation regexes."""
     if not shutil.which("qpdf"):
         raise RuntimeError("qpdf is required for the hyperlink gate")
-    data = pdf.read_bytes()
-    found = set(_URI.findall(data))
     proc = subprocess.run(
         ["qpdf", "--qdf", "--object-streams=disable", "--decode-level=all", str(pdf), "-"],
         capture_output=True,
@@ -192,8 +186,106 @@ def extract_uris(pdf: Path) -> set[str]:
     if proc.returncode not in (0, 3):
         msg = proc.stderr.decode("utf-8", "replace").strip()
         raise RuntimeError(f"qpdf failed while decoding links in {pdf.name}: {msg}")
-    found |= set(_URI.findall(proc.stdout))
+    return proc.stdout
+
+
+def extract_uris(pdf: Path) -> set[str]:
+    """External hyperlink (/URI) targets in a PDF."""
+    found = set(_URI.findall(pdf.read_bytes()))
+    found |= set(_URI.findall(_qdf_bytes(pdf)))
     return {u.decode("latin1") for u in found}
+
+
+def extract_internal_links(pdf: Path) -> dict:
+    """Internal PDF link summary, normalized across named and direct destinations.
+
+    LaTeX/hyperref usually writes named /GoTo actions; Typst writes direct /Dest
+    arrays. Destination names are engine-specific, so the gate compares counts and
+    normalized target coverage instead of raw names.
+    """
+    try:
+        import pikepdf
+    except ImportError as exc:
+        raise RuntimeError("pikepdf is required for the internal-link gate") from exc
+
+    def walk_dest_names(node, out: dict[str, object]) -> None:
+        if "/Names" in node:
+            names = list(node["/Names"])
+            for i in range(0, len(names), 2):
+                out[str(names[i])] = names[i + 1]
+        for kid in node.get("/Kids", []) or []:
+            walk_dest_names(kid, out)
+
+    def dest_name(value) -> str:
+        name = str(value)
+        return name[1:] if name.startswith("/") else name
+
+    def resolve_dest(value, dests: dict[str, object]):
+        if value is None:
+            return None
+        if isinstance(value, (pikepdf.String, pikepdf.Name)):
+            value = dests.get(dest_name(value))
+            if value is None:
+                return None
+        return value.get("/D", value) if hasattr(value, "get") else value
+
+    def normalize_dest(value, dests: dict[str, object], page_by_objgen: dict) -> tuple | None:
+        dest = resolve_dest(value, dests)
+        if dest is None:
+            return None
+        try:
+            page = page_by_objgen.get(dest[0].objgen)
+        except (AttributeError, IndexError, TypeError):
+            return None
+        if page is None:
+            return None
+        coords = []
+        for part in list(dest)[1:5]:
+            try:
+                coords.append(round(float(part), 1))
+            except (TypeError, ValueError):
+                coords.append(str(part))
+        return (page, *coords)
+
+    with pikepdf.open(pdf) as doc:
+        page_by_objgen = {page.objgen: i for i, page in enumerate(doc.pages, 1)}
+        dests: dict[str, object] = {}
+        names = doc.Root.get("/Names")
+        if names and "/Dests" in names:
+            walk_dest_names(names["/Dests"], dests)
+        root_dests = doc.Root.get("/Dests")
+        if root_dests:
+            for key, value in root_dests.items():
+                dests[dest_name(key)] = value
+
+        links: list[tuple[int, tuple]] = []
+        for src_page, page in enumerate(doc.pages, 1):
+            for annot in page.get("/Annots", []) or []:
+                if annot.get("/Subtype") != "/Link":
+                    continue
+                dest = None
+                action = annot.get("/A")
+                if action and str(action.get("/S")) == "/GoTo":
+                    dest = action.get("/D")
+                elif "/Dest" in annot:
+                    dest = annot.get("/Dest")
+                normalized = normalize_dest(dest, dests, page_by_objgen)
+                if normalized is not None:
+                    links.append((src_page, normalized))
+
+    return {
+        "count": len(links),
+        "unique_targets": len({target for _, target in links}),
+    }
+
+
+def _compile_failures(compiled: dict[str, tuple[int, str]]) -> list[str]:
+    failures = []
+    for name, (rc, stderr) in compiled.items():
+        if rc != 0:
+            detail = stderr.strip()
+            failures.append(f"{name} (rc={rc})" + (f": {detail}" if detail else ""))
+    return failures
 
 
 # ---------------------------------------------------------------------------
@@ -202,11 +294,14 @@ def extract_uris(pdf: Path) -> set[str]:
 def compile_typst(src: Path, out: Path) -> tuple[int, str]:
     """Compile a .typ via tc; return (returncode, stderr). Captures warnings."""
     out.parent.mkdir(parents=True, exist_ok=True)
+    out.unlink(missing_ok=True)
     proc = subprocess.run(
         [str(TC), "compile", str(src), str(out), "--diagnostic-format", "short"],
         capture_output=True, text=True,
         env={**os.environ, **TEST_CLOCK_ENV},
     )
+    if proc.returncode != 0:
+        out.unlink(missing_ok=True)
     return proc.returncode, proc.stderr
 
 
@@ -804,22 +899,28 @@ def cmd_build(args) -> int:
     build_all_latex(jobs=args.jobs, force=args.force)
     print("Compiling Typst test PDFs…")
     compiled = compile_all_typst()
-    bad = [n for n, (rc, _) in compiled.items() if rc != 0]
+    bad = _compile_failures(compiled)
     print("Building the Typst example…")
-    compile_typst(TEMPLATE, TYPST / "main.pdf")
-    print(f"\nBuilt {len(TESTS)} Typst PDFs + example into {TYPST.relative_to(ROOT)}/.")
+    example_rc, example_stderr = compile_typst(TEMPLATE, TYPST / "main.pdf")
+    if example_stderr.strip():
+        print(example_stderr.strip(), file=sys.stderr)
     if bad:
-        print(f"WARNING: {len(bad)} Typst sources failed to compile: {', '.join(bad)}",
-              file=sys.stderr)
+        print("WARNING: Typst test sources failed to compile:", file=sys.stderr)
+        for failure in bad:
+            print(f"  - {failure}", file=sys.stderr)
+    if example_rc != 0:
+        print(f"WARNING: Typst example failed to compile (rc={example_rc})", file=sys.stderr)
+    if bad or example_rc != 0:
         return 1
+    print(f"\nBuilt {len(TESTS)} Typst PDFs + example into {TYPST.relative_to(ROOT)}/.")
     return 0
 
 
 def gate_links(report: bool = False) -> list[str]:
-    """Tier 1.7 — hyperlink (/URI) sets must match LaTeX+hyperref by default.
+    """Tier 1.7 — external and internal hyperlink coverage.
 
-    The URI sets are always compared. ``expected_link_diff`` must be empty when
-    they match, and nonempty when a known mismatch is present.
+    URI sets are compared exactly for every twin. Tests that set minimum
+    internal-link counts also get normalized /GoTo and /Dest coverage checks.
     """
     failures: list[str] = []
     if not shutil.which("qpdf"):
@@ -849,6 +950,29 @@ def gate_links(report: bool = False) -> list[str]:
             failures.append(f"{name}: expected_link_diff is set, but hyperlink sets match")
         elif report:
             print(f"ok   {name}: {len(tu)} hyperlinks match")
+    for name, t in TESTS.items():
+        if not (t.min_internal_links or t.min_internal_destinations):
+            continue
+        tpdf = typst_pdf(name)
+        if not tpdf.exists():
+            failures.append(f"{name}: Typst PDF missing for internal-link assertion")
+            continue
+        try:
+            ti = extract_internal_links(tpdf)
+        except RuntimeError as exc:
+            failures.append(f"{name}: {exc}")
+            continue
+        if ti["count"] < t.min_internal_links:
+            failures.append(
+                f"{name}: expected at least {t.min_internal_links} internal links, "
+                f"found {ti['count']}")
+        if ti["unique_targets"] < t.min_internal_destinations:
+            failures.append(
+                f"{name}: expected at least {t.min_internal_destinations} internal "
+                f"link destinations, found {ti['unique_targets']}")
+        elif report:
+            print(f"ok   {name}: {ti['count']} internal links, "
+                  f"{ti['unique_targets']} destination(s)")
     return failures
 
 
@@ -1043,6 +1167,8 @@ def cmd_check(args) -> int:
     ok &= _run_gate("Tier 1.6 (expected errors)", gate_errors())
     print("\n== Tier 1.7 (hyperlinks) ==")
     ok &= _run_gate("Tier 1.7 (hyperlinks)", gate_links())
+    print("\n== Tier 1.75 (validation variants) ==")
+    ok &= _run_gate("Tier 1.75 (validation variants)", gate_validate(args.jobs, args.force))
     print("\n== Tier 1.8 (fonts) ==")
     ok &= _run_gate("Tier 1.8 (fonts)", gate_fonts())
     print("\n== Tier 1.9 (order) ==")
@@ -1054,7 +1180,14 @@ def cmd_check(args) -> int:
 
 def cmd_accept(_args) -> int:
     print("Compiling Typst test PDFs…")
-    compile_all_typst()
+    compiled = compile_all_typst()
+    failures = _compile_failures(compiled)
+    if failures:
+        print("Refusing to write golden hashes because Typst compilation failed:",
+              file=sys.stderr)
+        for failure in failures:
+            print(f"  - {failure}", file=sys.stderr)
+        return 1
     write_golden()
     print(f"wrote {GOLDEN_FILE.relative_to(ROOT)}")
     return 0
@@ -1238,11 +1371,14 @@ that review-mode line numbering has multiple lines to enumerate down the page.
 """
 
 
-def cmd_validate(args) -> int:
+def _validate_variant_results(
+    names: list[str],
+    jobs: int,
+    force: bool = False,
+) -> list[tuple[str, float, str]]:
     import numpy as np
     from PIL import Image
 
-    names = args.names or list(M.VARIANTS)
     LATEX.mkdir(parents=True, exist_ok=True)
     TYPST.mkdir(parents=True, exist_ok=True)
     DIFF.mkdir(parents=True, exist_ok=True)
@@ -1278,7 +1414,7 @@ def cmd_validate(args) -> int:
         Image.fromarray(np.concatenate([pad(ref), gap, pad(our)], axis=1)).save(
             DIFF / f"var-{name}-side.png")
 
-    def variant(name: str) -> str:
+    def variant(name: str) -> tuple[str, float, str]:
         opts, pre, typ_opts = M.VARIANTS[name]
         tex = LATEX / f"var-{name}.tex"
         new_tex = _VALIDATE_TEX.format(opts=opts, pre=pre)
@@ -1288,10 +1424,13 @@ def cmd_validate(args) -> int:
             tex.write_text(new_tex)
         typ = OUT / f"var-{name}.typ"
         typ.write_text(_VALIDATE_TYP.format(opts=typ_opts))
-        if args.force or not ref_is_fresh(tex, LATEX / f"var-{name}.pdf"):
+        if force or not ref_is_fresh(tex, LATEX / f"var-{name}.pdf"):
             latex_build(tex)
-        compile_typst(typ, TYPST / f"var-{name}.pdf")
-        typ.unlink()
+        rc, stderr = compile_typst(typ, TYPST / f"var-{name}.pdf")
+        typ.unlink(missing_ok=True)
+        if rc != 0:
+            detail = stderr.strip() or f"rc={rc}"
+            raise RuntimeError(f"{name}: Typst validation compile failed\n{detail}")
         ref, our = render(LATEX / f"var-{name}.pdf"), render(TYPST / f"var-{name}.pdf")
         save_side(name, ref, our)
         note = ""
@@ -1306,16 +1445,48 @@ def cmd_validate(args) -> int:
                 # A ±1-2/channel delta is expected (Typst writes CMYK as 8-bit).
                 if d > 2:
                     note += f"link rgb ref~{tuple(rc)} our~{tuple(oc)} (Δ{d}) "
-        return f"{name:16} {mismatch(ref, our):9.2f}   {note}"
+        return name, mismatch(ref, our), note
 
     ensure_class(LATEX)  # warm the class before the parallel fan-out (write race)
-    rows = _pmap(variant, names, args.jobs)
-    print(f"{'variant':16} {'mismatch%':>9}   notes")
-    print("-" * 50)
-    for row in rows:
-        print(row)
+    return _pmap(variant, names, jobs)
+
+
+def _validate_failures(rows: list[tuple[str, float, str]]) -> list[str]:
+    failures = []
+    missing = sorted(set(M.VARIANTS) - set(M.VARIANT_MISMATCH_MAX))
+    extra = sorted(set(M.VARIANT_MISMATCH_MAX) - set(M.VARIANTS))
+    if missing:
+        failures.append("validation variants missing mismatch thresholds: " + ", ".join(missing))
+    if extra:
+        failures.append("validation thresholds without variants: " + ", ".join(extra))
+    for name, pct, _note in rows:
+        limit = M.VARIANT_MISMATCH_MAX.get(name)
+        if limit is None:
+            failures.append(f"{name}: no validation mismatch threshold")
+        elif pct > limit:
+            failures.append(f"{name}: validation mismatch {pct:.2f}% > {limit:.2f}%")
+    return failures
+
+
+def gate_validate(jobs: int, force: bool = False) -> list[str]:
+    rows = _validate_variant_results(list(M.VARIANTS), jobs, force)
+    return _validate_failures(rows)
+
+
+def cmd_validate(args) -> int:
+    names = args.names or list(M.VARIANTS)
+    rows = _validate_variant_results(names, args.jobs, args.force)
+    failures = _validate_failures(rows)
+    print(f"{'variant':16} {'mismatch%':>9} {'max%':>7}   notes")
+    print("-" * 60)
+    for name, pct, note in rows:
+        limit = M.VARIANT_MISMATCH_MAX.get(name)
+        max_label = f"{limit:.2f}" if limit is not None else "unset"
+        print(f"{name:16} {pct:9.2f} {max_label:>7}   {note}")
     print(f"\nside-by-sides: {DIFF.relative_to(ROOT)}/var-*-side.png")
-    return 0
+    for failure in failures:
+        print(f"FAIL {failure}", file=sys.stderr)
+    return 1 if failures else 0
 
 
 def cmd_list(_args) -> int:
@@ -1343,6 +1514,10 @@ def cmd_list(_args) -> int:
             flags.append(f"orderdiff×{len(t.expected_order_diffs)}")
         if t.expected_link_diff:
             flags.append("linkdiff")
+        if t.min_internal_links:
+            flags.append(f"ilinks≥{t.min_internal_links}")
+        if t.min_internal_destinations:
+            flags.append(f"idests≥{t.min_internal_destinations}")
         if t.expected_metrics_diff:
             flags.append("metricdiff")
         if t.golden_exempt:

@@ -166,8 +166,10 @@ class Test:
     order-independent word/char bags cannot see. ``expected_order_diffs`` exempt
     known extraction-order asymmetries and anchor them to PDF fragments.
 
-    EVERY twin's hyperlink set is compared against LaTeX. ``expected_link_diff``
+    EVERY twin's external hyperlink set is compared against LaTeX. ``expected_link_diff``
     must be empty when links match, and nonempty when a known mismatch remains.
+    Any test may also set minimum internal-link counts for targeted regressions;
+    those checks normalize LaTeX named /GoTo actions and Typst direct /Dest arrays.
 
     EVERY twin's Tier 2 layout metrics are gated. ``expected_metrics_diff`` must
     be empty when metrics pass, and nonempty when a known metric mismatch remains.
@@ -188,6 +190,8 @@ class Test:
     expected_font_diffs: tuple[ExpectedFontDiff, ...] = ()
     expected_order_diffs: tuple[ExpectedOrderDiff, ...] = ()
     expected_link_diff: str = ""  # nonempty reason for an expected hyperlink-set mismatch
+    min_internal_links: int = 0
+    min_internal_destinations: int = 0
     note: str = ""
 
     def __post_init__(self) -> None:
@@ -197,6 +201,8 @@ class Test:
             raise ValueError("metrics_page1_only only applies to twin tests")
         if self.metrics_uniform_pitch and self.kind != "twin":
             raise ValueError("metrics_uniform_pitch only applies to twin tests")
+        if self.min_internal_links < 0 or self.min_internal_destinations < 0:
+            raise ValueError("minimum internal-link counts cannot be negative")
 
     @property
     def subdir(self) -> str:
@@ -488,6 +494,8 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", text="[1]"),
             Assertion(engine="typst", text="[8]"),
         ),
+        min_internal_links=8,
+        min_internal_destinations=8,
         note="Regression for the `bibtex` cite-path convergence edge (many `@key`s incl. "
              "dotted keys in one sentence used to crash with `read(none)`), and for the "
              "in-text cite -> reference-list hyperlinks. Golden-pins the linked numbers.",
@@ -1174,4 +1182,21 @@ VARIANTS: dict[str, tuple[str, str, str]] = {
     # naming the full journal + DOI (acmart.dtx:6612/6634).
     "authorversion": (",authorversion", r"\setcopyright{acmlicensed}",
                       '  author-version: true,\n'),
+}
+
+# Maximum allowed page-1 raster mismatch percentages for the validation variants.
+# These are deliberately a little above the current measured values, so `check`
+# catches real drift without turning harmless renderer noise into churn.
+VARIANT_MISMATCH_MAX: dict[str, float] = {
+    "acmlicensed": 4.75,
+    "acmcopyright": 4.50,
+    "rightsretained": 4.25,
+    "usgov": 4.00,
+    "usgovmixed": 4.50,
+    "cc-by-nc-sa": 3.75,
+    "screen": 4.75,
+    "review": 5.00,
+    "anonymous": 4.50,
+    "nonacm": 2.50,
+    "authorversion": 4.00,
 }

@@ -254,9 +254,8 @@
 
 // ---- cite -> reference-list hyperlinks -------------------------------------
 // Each reference entry carries `entry-label(key)`; cites `link` to it, matching
-// LaTeX+hyperref's in-text cite anchors (the golden gate is raster-based and the
-// link gate compares only external /URI targets, so these internal goto links are
-// invisible to both). The label is namespaced to avoid clashing with user labels.
+// LaTeX+hyperref's in-text cite anchors. The label is namespaced to avoid
+// clashing with user labels.
 #let entry-label(key) = label("acmref:" + key)
 #let cite-num-link(num, key) = link(entry-label(key))[#num]
 

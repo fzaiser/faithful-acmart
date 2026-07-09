@@ -309,8 +309,8 @@
   //              (keeps native @key cross-reference links), but an APPROXIMATION bounded
   //              by hayagriva's BibTeX->CSL data mapping (see DESIGN.md for the gaps).
   //   "biblatex" — pure-Typst port of the ACM BibLaTeX acmnumeric/acmauthoryear styles.
-  // On "bibtex"/"biblatex", in-text citations are not yet hyperlinked to the reference
-  // list (planned); DOI/arXiv/URL links within reference entries still work.
+  // On "bibtex"/"biblatex", in-text citations link to the rendered reference entries;
+  // DOI/arXiv/URL links within reference entries work as external links.
   bib-backend: "bibtex",
   // Citation style for ACM bibliography backends, mirroring acmart's \citestyle:
   // "numeric" (default, "[N]") or "author-year" ("[Author Year]" + a/b/c years).
