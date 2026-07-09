@@ -1,4 +1,5 @@
-# Python venv for diff tooling
+# Python environments for diff tooling
+.venv/
 tools/venv/
 
 # Python bytecode cache

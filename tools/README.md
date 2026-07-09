@@ -11,7 +11,8 @@ The build & validation harness:
 - [`tc`](tc) — `typst` wrapper that uses the bundled full Libertinus + Inconsolata
   fonts; always build through it.
 - [`probe.tex`](probe.tex) — the LaTeX layout probe used by `test.py probe`.
-- `venv/` — Python venv (Pillow, numpy, fonttools).
+- [`../pyproject.toml`](../pyproject.toml) / [`../uv.lock`](../uv.lock) — uv-managed
+  Python dependencies for the visual and PDF-structure gates.
 
 See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for setup, commands, output
 directories, and the gate descriptions.

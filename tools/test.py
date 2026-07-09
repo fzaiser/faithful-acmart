@@ -4,10 +4,10 @@
 This is the Python-owned replacement for the old Makefile + shell scripts. The
 test data lives in `tools/test_matrix.py`; this file turns it into commands.
 
-Run with the project venv (it has Pillow/numpy/fonttools/PyMuPDF/pikepdf for
-the visual and PDF-structure gates):
+Run through uv (it has Pillow/numpy/fonttools/PyMuPDF/pikepdf for the visual
+and PDF-structure gates):
 
-    tools/venv/bin/python tools/test.py <command> [args]
+    uv run python tools/test.py <command> [args]
 
 Commands
 --------
@@ -530,7 +530,7 @@ def write_golden() -> None:
     hashes = _golden_hashes()
     lines = [
         f"# Tier 1 golden raster hashes — Typst {M.TYPST_VERSION} @ {M.GOLDEN_DPI}dpi",
-        "# regenerate with: tools/test.py accept",
+        "# regenerate with: uv run python tools/test.py accept",
     ]
     for name in sorted(hashes):
         for i, h in enumerate(hashes[name], 1):
@@ -1037,7 +1037,7 @@ def gate_fonts(report: bool = False) -> list[str]:
     try:
         import fitz  # noqa: F401
     except ImportError:
-        return ["Tier 1.8 (fonts) requires PyMuPDF (tools/venv/bin/pip install pymupdf)"]
+        return ["Tier 1.8 (fonts) requires PyMuPDF (run `uv sync`)"]
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
@@ -1082,7 +1082,7 @@ def gate_order(report: bool = False) -> list[str]:
     try:
         import pikepdf  # noqa: F401
     except ImportError:
-        return ["Tier 1.9 (order) requires pikepdf (tools/venv/bin/pip install pikepdf)"]
+        return ["Tier 1.9 (order) requires pikepdf (run `uv sync`)"]
     import pdf_chunks as PC
     failures: list[str] = []
     for name, t in TESTS.items():

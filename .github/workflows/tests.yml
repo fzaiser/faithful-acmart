@@ -1,0 +1,54 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Regression suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            biber \
+            ghostscript \
+            poppler-utils \
+            qpdf \
+            texlive-bibtex-extra \
+            texlive-extra-utils \
+            texlive-fonts-extra \
+            texlive-latex-extra \
+            texlive-publishers \
+            texlive-science
+
+      - name: Install Typst
+        uses: typst-community/setup-typst@v5
+        with:
+          typst-version: 0.14.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Sync Python dependencies
+        run: uv sync --frozen
+
+      - name: Run regression suite
+        run: uv run --frozen python tools/test.py check

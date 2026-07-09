@@ -5,11 +5,10 @@ Typst source pleasant while matching LaTeX `acmart` output as closely as Typst c
 
 ## Development setup
 
-Create the local Python environment used by the validation harness:
+Sync the local Python environment used by the validation harness:
 
 ```sh
-python3 -m venv tools/venv
-tools/venv/bin/pip install pillow numpy fonttools pymupdf pikepdf
+uv sync
 ```
 
 The harness is one Python program, [`tools/test.py`](tools/test.py), driven by the
@@ -20,9 +19,9 @@ fonts in [`fonts/`](fonts/).
 Common commands:
 
 ```sh
-tools/venv/bin/python tools/test.py build   # LaTeX refs + Typst PDFs + example
-tools/venv/bin/python tools/test.py check   # all regression gates
-tools/venv/bin/python tools/test.py accept  # bless golden hashes after an intended change
+uv run python tools/test.py build   # LaTeX refs + Typst PDFs + example
+uv run python tools/test.py check   # all regression gates
+uv run python tools/test.py accept  # bless golden hashes after an intended change
 ```
 
 Building the example or running `typst init` locally needs the package linked into
@@ -32,8 +31,8 @@ Typst's data directory. On macOS:
 ln -sfn "$PWD" "$HOME/Library/Application Support/typst/packages/preview/faithful-acmart/0.1.0"
 ```
 
-The matched twins import `/src/lib.typ` directly, so `tools/test.py check` does not
-need this package link.
+The matched twins import `/src/lib.typ` directly, so `uv run python tools/test.py check`
+does not need this package link.
 
 ## Validation model
 
