@@ -226,7 +226,7 @@
 )
 
 #let acmart(
-  format: "acmsmall",
+  format: "manuscript",
   title: none,
   subtitle: none,
   title-note: none,
@@ -238,6 +238,8 @@
   //                   such dicts for multiple affiliations. All fields optional.
   //   email         — contact email.
   //   note          — a title footnote (e.g. "Both authors contributed equally").
+  //   note-id       — labels that note so a later author can reuse its mark.
+  //   note-ref      — reuses an earlier note-id, like \authornotemark.
   //   corresponding — true marks the corresponding author.
   // The email/affiliation declaration order is preserved in the contact line, as
   // acmart replays \email/\affiliation in source order (see normalize-author).
@@ -268,12 +270,13 @@
   acm-article: none,
   acm-year: datetime.today().year(),
   acm-month: datetime.today().month(),
-  doi: none,
+  doi: "10.1145/nnnnnnn.nnnnnnn",
   // Conference metadata (proceedings formats; acmart \acmConference / \acmBooktitle
   // / \acmISBN). `conference` is a dict (name / short / venue / date); the
   // conference copyright block prints "<short>, <venue>" (acmart.dtx:6620) and the
-  // ISBN line (acmart.dtx:6654). Ignored by the journal formats.
-  conference: none,
+  // ISBN line (acmart.dtx:6654). `auto` uses acmart's placeholder conference for
+  // proceedings formats and none for journal/manuscript formats.
+  conference: auto,
   booktitle: none,
   isbn: "978-x-xxxx-xxxx-x/YYYY/MM",
   // acmcp cover-page infobox content (acmart \acmCodeLink / \acmContributions,
@@ -419,9 +422,15 @@
   )
 
   // \settopmatter{printacmref} defaults true; nonacm flips it off unless the
-  // author forces it back on with print-acm-reference: true (acmart.dtx:2717). acmcp
-  // also forces it off (\@ACM@printacmreffalse, acmart.dtx:3006).
-  let print-acm-reference = if print-acm-reference == auto { not nonacm and cfg.name != "acmcp" } else { print-acm-reference }
+  // author forces it back on with print-acm-reference: true (acmart.dtx:2717).
+  // acmcp always forces it off (\@ACM@printacmreffalse, acmart.dtx:3006).
+  let print-acm-reference = if cfg.name == "acmcp" {
+    false
+  } else if print-acm-reference == auto {
+    not nonacm
+  } else {
+    print-acm-reference
+  }
   // authordraft turns on timestamp + review (acmart.dtx:2819-2820); resolve those
   // first so the downstream folio/line-number/footer logic sees the effective values.
   let timestamp = timestamp or author-draft
@@ -491,6 +500,20 @@
   let copyright-year = if copyright-year != none { copyright-year } else { acm-year }
   // Fill in optional author fields up front (see normalize-author).
   let authors = authors.map(normalize-author)
+
+  // \acmConference defaults to ACM's placeholder metadata in proceedings formats
+  // (acmart.cls:1548). It is not active for journal/manuscript output, where
+  // treating it as present would incorrectly switch the reference/footer wording.
+  let conference = if conference == auto {
+    if cfg.kind == "proceedings" {
+      (name: "ACM Conference", short: "Conference'17",
+       date: "July 2017", venue: "Washington, DC, USA")
+    } else {
+      none
+    }
+  } else {
+    conference
+  }
 
   // \@acmBooktitle defaults to "Proceedings of <conference name> (<short>)" when
   // not set explicitly, dropping the "(<short>)" when the name already is the

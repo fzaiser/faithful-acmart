@@ -11,6 +11,7 @@
 #import "journals.typ": lookup-journal
 #import "strings.typ": lang-record
 #import "body.typ": in-topmatter
+#import "punct.typ": add-punct
 #import "../formats/_base.typ": tp
 
 #let fnsymbols = ("∗", "†", "‡", "§", "¶", "‖", "∗∗", "††", "‡‡")
@@ -50,19 +51,31 @@
 
 // Fill in the optional author fields so the rest of the code can use plain field
 // access (a.email, a.note, ...) instead of defensive `.at(..., default:)`.
-#let normalize-author(a) = (
-  name: a.name,
-  orcid: a.at("orcid", default: none),
-  affiliation: a.at("affiliation", default: none),
-  email: a.at("email", default: none),
-  note: a.at("note", default: none),
-  corresponding: a.at("corresponding", default: false),
-  // The order the email and affiliation were declared, preserved so the contact
-  // line can replay them in that order — acmart prints \addresses in the order
-  // the \email/\affiliation commands were issued (acmart.dtx:7588), and Typst
-  // dicts keep insertion order, so the author dict's key order is the analog.
-  contact-order: a.keys().filter(k => k == "email" or k == "affiliation"),
-)
+#let normalize-author(a) = {
+  let note = a.at("note", default: none)
+  let note-id = a.at("note-id", default: none)
+  let note-ref = a.at("note-ref", default: none)
+  assert(not (note != none and note-ref != none),
+    message: "faithful-acmart: an author cannot set both `note` and `note-ref`; "
+      + "`note` defines a new author note, `note-ref` reuses an earlier `note-id`.")
+  assert(note-id == none or note != none,
+    message: "faithful-acmart: author `note-id` requires a `note` body to label.")
+  (
+    name: a.name,
+    orcid: a.at("orcid", default: none),
+    affiliation: a.at("affiliation", default: none),
+    email: a.at("email", default: none),
+    note: note,
+    note-id: note-id,
+    note-ref: note-ref,
+    corresponding: a.at("corresponding", default: false),
+    // The order the email and affiliation were declared, preserved so the contact
+    // line can replay them in that order — acmart prints \addresses in the order
+    // the \email/\affiliation commands were issued (acmart.dtx:7588), and Typst
+    // dicts keep insertion order, so the author dict's key order is the analog.
+    contact-order: a.keys().filter(k => k == "email" or k == "affiliation"),
+  )
+}
 
 // \orcid wraps the author's visible name in a link to the ORCID profile. A bare
 // identifier is resolved against https://orcid.org/; an explicit URL is used as-is.
@@ -270,18 +283,26 @@
   }
 
   let seen = (:)
+  let note-ids = (:)
   let marks = ()
   for a in meta.authors {
     let m = ()
     if a.corresponding { m.push("✉") }
     if a.note != none and not anon {
-      let key = repr(a.note)
+      let key = if a.note-id != none { "id:" + repr(a.note-id) } else { "body:" + repr(a.note) }
       if key not in seen {
         seen.insert(key, symbol-at(idx))
+        if a.note-id != none { note-ids.insert(repr(a.note-id), seen.at(key)) }
         notes.push((symbol: seen.at(key), body: a.note))
         idx += 1
       }
       m.push(seen.at(key))
+    } else if a.note-ref != none and not anon {
+      let key = repr(a.note-ref)
+      assert(key in note-ids,
+        message: "faithful-acmart: author `note-ref` " + repr(a.note-ref)
+          + " does not match an earlier author `note-id`.")
+      m.push(note-ids.at(key))
     }
     marks.push(m)
   }
@@ -419,16 +440,17 @@
       for t in thanks {
         // \@setthanks: \par <text>\@addpunct. — anonymous swaps in "A note"
         // (acmart.dtx:6420/7790).
-        block(spacing: lead, tagged-par[#if anon [A note.] else [#t.]])
+        block(spacing: lead, tagged-par[#add-punct(if anon [A note] else { t })])
       }
       if has-contact-info {
         if meta.authors-addresses == auto {
           let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
           let contacts = meta.authors.map(contact-line).join("; ")
-          block(spacing: lead, tagged-par[#label #contacts.])
+          block(spacing: lead, tagged-par[#add-punct([#label #contacts])])
         } else {
-          // \@setauthorsaddresses appends an unconditional period to the
-          // user-supplied block (verified: a block ending "UK." prints "UK..").
+          // The class source routes this through \@addpunct., but for the
+          // \authorsaddresses override the stored macro hides a user-supplied
+          // final stop from \@addpunct; LaTeX therefore prints "UK.." here.
           block(spacing: lead, tagged-par[#meta.authors-addresses.])
         }
       }

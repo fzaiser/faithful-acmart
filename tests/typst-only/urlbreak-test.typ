@@ -12,6 +12,7 @@
 #show: acmart.with(
   format: "acmsmall",
   title: "Forbidding URL Breaks on Hyphens",
+  doi: none,
   url-break-on-hyphens: false,
 )
 

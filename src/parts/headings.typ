@@ -13,25 +13,12 @@
 // stopped uppercasing section titles in v2.08; the bundled class is v2.18.)
 
 #import "spacing.typ": comp, tex-skip
+#import "punct.typ": add-punct
 
 #let heading-number(it) = {
   if it.numbering != none {
     numbering(it.numbering, ..counter(heading).at(it.location()))
   }
-}
-
-// Best-effort \@addpunct: true when the (plain-text tail of the) content
-// already ends in punctuation, so the run-in heading dot is suppressed
-// ("Results?" stays "Results?", not "Results?."). Only text tails are
-// inspected; content ending in math/boxes keeps the dot, like TeX's
-// \spacefactor heuristic usually would.
-#let _ends-with-punct(c) = {
-  if type(c) == str { return c.trim().match(regex("[.!?]$")) != none }
-  if type(c) != content { return false }
-  if c.has("text") { return _ends-with-punct(c.text) }
-  if c.has("body") { return _ends-with-punct(c.body) }
-  if c.has("children") and c.children.len() > 0 { return _ends-with-punct(c.children.last()) }
-  false
 }
 
 // Resolve a per-level entry of cfg.sec-fonts (family role -> actual font, size
@@ -55,10 +42,9 @@
   h(indent - cfg.parindent)
   set text(font: f.font, style: f.style, weight: f.weight, size: f.size)
   if num != none [#num#h(1em)]
-  it.body
   // \@adddotafter's \@addpunct: no added dot when the title already ends
   // in punctuation.
-  if dot and not _ends-with-punct(it.body) [.]
+  if dot { add-punct(it.body) } else { it.body }
   // horizontal gap to the body text: the |afterskip| (3.5pt), or a plain
   // interword space for amsart's subparagraph (afterskip -\fontdimen2\font).
   if sep == auto [ ] else { h(cfg.runin-sep) }

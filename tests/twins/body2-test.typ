@@ -30,7 +30,7 @@ Text before a figure to establish context for the caption comparison below.
 
 #definition[A definition uses an upright (roman) body and an italic head.]
 
-#proof[This is a proof, ending with a QED square.]
+#proof(name: [Proof.])[This is a proof, ending with a QED square.]
 
 - First bullet item in an itemized list.
 - Second bullet item, slightly longer so it may wrap around to a second line for spacing checks.

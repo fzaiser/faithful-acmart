@@ -421,6 +421,8 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", kind="absent",
                       text="Permission to make digital or hard copies"),
             Assertion(engine="typst", kind="absent",
+                      text="ACM Reference Format"),
+            Assertion(engine="typst", kind="absent",
                       text="Additional Key Words and Phrases"),
         ),
         note="format=acmcp: JDS cover page, infobox, unnumbered sections, and author contributions.",
@@ -1105,6 +1107,25 @@ TESTS: dict[str, Test] = {
     "feature-test": Test(
         kind="smoke", pages=1,
         note="Typst-only smoke for badges, teaser, title notes, and subtitle notes.",
+    ),
+    "defaults-test": Test(
+        kind="smoke", pages=1,
+        golden_exempt="Behavior smoke only; focused format twins own the rendered layout.",
+        text_assertions=(
+            Assertion(engine="typst", text="Manuscript submitted to ACM"),
+            Assertion(engine="typst", text="https://doi.org/10.1145/nnnnnnn.nnnnnnn"),
+        ),
+        note="Default acmart options: format=manuscript and placeholder DOI.",
+    ),
+    "proceedings-defaults-test": Test(
+        kind="smoke", pages=2,
+        golden_exempt="Behavior smoke only; sigconf twins own the rendered layout.",
+        text_assertions=(
+            Assertion(engine="typst", text="Conference'17, July 2017, Washington, DC, USA"),
+            Assertion(engine="typst", text="Proceedings of ACM Conference (Conference'17)"),
+            Assertion(engine="typst", text="https://doi.org/10.1145/nnnnnnn.nnnnnnn"),
+        ),
+        note="Proceedings defaults: placeholder \\acmConference/\\acmBooktitle and DOI.",
     ),
     "bib-relative-test": Test(
         kind="smoke", pages=1,

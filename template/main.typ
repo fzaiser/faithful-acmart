@@ -20,10 +20,12 @@
   copyright: "acmlicensed",
   copyright-year: 2018,
 
-  // Authors (consecutive authors sharing an affiliation are grouped on one line)
+  // Authors (note-id/note-ref share one author-note mark; consecutive authors
+  // sharing an affiliation are grouped on one line)
   authors: (
     (
       name: "Ben Trovato",
+      note-id: "equal-contribution",
       note: [Both authors contributed equally to this research.],
       email: "trovato@corporation.com",
       orcid: "1234-5678-9012",
@@ -32,7 +34,7 @@
     ),
     (
       name: "G.K.M. Tobin",
-      note: [Both authors contributed equally to this research.],
+      note-ref: "equal-contribution",
       corresponding: true,
       email: "webmaster@marysville-ohio.com",
       affiliation: (institution: "Institute for Clarity in Documentation",

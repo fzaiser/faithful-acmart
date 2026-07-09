@@ -20,7 +20,7 @@
   doi: "XXXXXXX.XXXXXXX",
   copyright: "acmlicensed", copyright-year: 2018,
   start-page: 7,
-  authors-addresses: [Authors' address: Ada Lovelace and Grace Hopper, Analytical Engine Institute, 1 Difference Way, London, UK],
+  authors-addresses: [Authors' address: Ada Lovelace and Grace Hopper, Analytical Engine Institute, 1 Difference Way, London, UK.],
   authors: (
     (name: "Ada Lovelace", email: "ada@example.com",
      affiliation: (institution: "Analytical Engine Institute", country: "UK")),

@@ -10,6 +10,7 @@
 // All share one counter, numbered within the section: 1.1, 1.2, ...
 
 #import "spacing.typ": tex-skip
+#import "punct.typ": add-punct
 #import "../formats/_base.typ": tp
 
 // Active format config, published by acmart() so the environment functions
@@ -122,7 +123,7 @@
     // proof's \topsep is a FIXED 6pt (+6pt stretch), acmart.dtx:8752 — not the
     // .5\baselineskip of the theorem styles (they only coincide at 10pt) — and
     // its label-body gap is the trivlist \labelsep (5pt), not \thmheadsep.
-    thm-block(cfg, _head-font(cfg.thm.proof-head, [#name.]),
+    thm-block(cfg, _head-font(cfg.thm.proof-head, add-punct(name)),
       [#body #h(1fr)#sym.square.stroked],
       topsep: 6 * tp, indent: cfg.thm.proof-indent, head-sep: 5 * tp)
   }

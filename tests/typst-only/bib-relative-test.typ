@@ -9,7 +9,7 @@
 // path — covered by the `bibtex-relative-path` expected-error case. The default
 // "typst" backend forwards to std.bibliography(..args), which is relative-safe too.)
 #import "/src/lib.typ": *
-#show: acmart.with(format: "acmsmall", title: "Relative Bibliography Path", bib-backend: "bibtex")
+#show: acmart.with(format: "acmsmall", title: "Relative Bibliography Path", doi: none, bib-backend: "bibtex")
 
 = Body
 A citation of the sibling bibliography @RelKey.

@@ -100,6 +100,10 @@ Set the output style with `format`:
 | `acmengage` | ACM EngageCSEdu format |
 | `acmcp` | ACM cover-page format (used by the Journal of Data Science) |
 
+If `format` is omitted, `acmart` defaults to `manuscript`, matching the LaTeX
+class. Proceedings formats also inherit acmart's placeholder conference metadata
+unless you pass `conference: none` or provide your own `conference` dictionary.
+
 ## Common options
 
 Most papers only need a subset of these:
@@ -120,10 +124,12 @@ Most papers only need a subset of these:
 | `short-title`, `short-authors` | Running-head overrides |
 | `font-size` | One of `8pt`, `9pt`, `10pt`, `11pt`, `12pt`, or `auto` |
 
-Author dictionaries accept `name`, `orcid`, `email`, `note`, `corresponding`, and
-`affiliation`. An affiliation is a dictionary with fields such as `institution`,
-`city`, `state`, and `country`; pass an array of affiliation dictionaries for multiple
-affiliations.
+Author dictionaries accept `name`, `orcid`, `email`, `note`, `note-id`,
+`note-ref`, `corresponding`, and `affiliation`. Use `note-id` on an author with a
+`note`, then `note-ref` on later authors to reuse that same footnote mark, like
+LaTeX's `\authornotemark`. An affiliation is a dictionary with fields such as
+`institution`, `city`, `state`, and `country`; pass an array of affiliation
+dictionaries for multiple affiliations.
 
 CCS entries are `(significance, area, concept)`: significance `500` or higher prints
 bold, `300` or higher prints italic, and lower values print roman.
