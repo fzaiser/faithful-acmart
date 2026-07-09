@@ -755,13 +755,10 @@ TESTS: dict[str, Test] = {
                       "trovato@corporation.com",
                 cause=ExtractionArtifact("author-note marker extraction"),
             ),
-            ExpectedTextDiff(
-                latex="doi:10.945/woot07-S422 http://video.google.com/videoplay?"
-                      "docid= [28] Barack Obama",
-                typst="doi:10.945/woot07-S422 http://video.google.com/videoplay?"
-                      "docid= Barack Obama",
-                cause=ExtractionArtifact("wrapped video URL extraction"),
-            ),
+            # (The former "wrapped video URL extraction" diff is gone: with the
+            # bibliography hanging indent now matching natbib's \bibhang, the
+            # reference reflows exactly as LaTeX and the video URL + docid + [28]
+            # cite extract identically in both engines.)
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
@@ -950,7 +947,7 @@ TESTS: dict[str, Test] = {
             ExpectedTextDiff(
                 latex="Name of the Title Is Hope Ben Trovato* Lars Thørväld Valerie "
                       "Béranger G.K.M. Tobin✉*",
-                typst="Name of the Title Is Hope Ben Trovato* ✉ G.K.M. Tobin * "
+                typst="Name of the Title Is Hope Ben Trovato* ✉* G.K.M. Tobin "
                       "trovato@corporation.com",
                 cause=ExtractionArtifact("authordraft author-stream extraction"),
             ),

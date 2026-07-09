@@ -86,6 +86,27 @@
   if anon-state.get() { text(fill: cmyk(0%, 42%, 100%, 1%), substitute) } else { body }
 }
 
+// True when `body` begins with a paragraph (its first substantive child is inline
+// text) rather than a block element (heading/figure/list/…). Used to reproduce
+// LaTeX's indent of a titleless document's OPENING paragraph: with Typst's
+// `first-line-indent: (…, all: false)` the first paragraph in the flow follows
+// nothing and so is never indented, but LaTeX (no \maketitle, no preceding
+// heading to fire \@afterindentfalse) applies \parindent to it. Leading
+// whitespace / invisible metadata (state/counter updates) are skipped so they
+// don't mask a real opening paragraph. A titled document is excluded by the
+// caller — \maketitle ends \@afterindentfalse, so ITS first paragraph is not
+// indented (which the all:false default already reproduces).
+#let _body-starts-with-paragraph(body) = {
+  if body.func() == text { return true }
+  if not body.has("children") { return false }
+  for c in body.children {
+    let n = repr(c.func())
+    if n in ("space", "parbreak", "pagebreak", "metadata", "state", "counter", "update") { continue }
+    return c.func() == text
+  }
+  false
+}
+
 // \grantsponsor{id}{name}{url} typesets just the sponsor NAME (acmart.dtx:8866);
 // the id/url are metadata for ACM's production pipeline.
 #let grantsponsor(id, name, url) = name
@@ -903,9 +924,14 @@
         // skip before the columns start — the author grid's \par\bigskip
         // (acmart.dtx:7503), or \@mkteasers' closing \medskip when a teaser is
         // the box's last element (acmart.dtx:7670).
+        // The head must be pinned to the FULL text width: \@mktitle@iii sets the
+        // title box \hsize=\textwidth and centres over it (acmart.dtx:7018/7499).
+        // Without the explicit width, Typst shrink-wraps the placed float to its
+        // widest child — an author-grid row is (textwidth − 2·author@bx@sep) wide
+        // — and left-anchors it, shifting the centred title/authors 1pc left.
         place(top, scope: "parent", float: true,
           clearance: tex-skip(cfg, if teaser != none { cfg.medskip } else { cfg.bigskip }),
-          make-title-head(cfg, meta))
+          block(width: 100%, spacing: 0pt, make-title-head(cfg, meta)))
         make-title-body(cfg, meta) // flows in column 1, beneath the spanning box
       } else {
         // acmcp narrows the TITLE box and the author lines by 6pc
@@ -913,6 +939,13 @@
         // stays full width. Other formats: nothing to narrow.
         make-title(cfg, meta)
       }
+    } else if _body-starts-with-paragraph(body) {
+      // Titleless document opening with a paragraph: LaTeX indents it (nothing
+      // fired \@afterindentfalse). A GLUED h() (no paragraph break) becomes that
+      // paragraph's first-line indent with zero vertical cost — a leading empty
+      // paragraph would instead add one line's leading. Guarded by the paragraph-
+      // first test so a heading/figure/list-first body is untouched.
+      h(cfg.parindent)
     }
 
     if cfg.name == "acmcp" {

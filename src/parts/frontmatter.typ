@@ -29,7 +29,13 @@
 
 // Match LaTeX \@textsuperscript marks. Typst's super() scales its body further;
 // the Dingbats-style envelope needs less inner scaling than text glyph marks.
-#let note-super(mark) = super(text(size: if mark == "✉" { 1.05em } else { 1.22em })[#mark])
+// The mark is wrapped in a zero-height box so its (enlarged, raised) glyph does
+// not inflate the line's ascent past the `top-edge: 1em` line box — otherwise
+// Typst grows the line to contain the superscript and a marked author/name line
+// gains ~2.6pt over TeX's rigid \baselineskip. `align(bottom, …)` keeps the
+// superscript anchored at the baseline so it prints in the identical spot.
+#let note-super(mark) = box(height: 0pt, align(bottom,
+  super(text(size: if mark == "✉" { 1.05em } else { 1.22em })[#mark])))
 
 // Join a list of names the ACM/amsart "andify" way ("a", "a and b",
 // "a, b, and c"). Items may be strings (author names) or content (names carrying
@@ -507,8 +513,12 @@
   }
 
   // float: true so the block reserves space at the bottom of the first page and
-  // the body text flows above it (rather than overlapping).
-  place(bottom, float: true, block(width: 100%, spacing: 0pt, stack))
+  // the body text flows above it (rather than overlapping). clearance mirrors the
+  // normal-footnote path (body.typ): LaTeX's body->footnote gap is \skip\footins
+  // with the rule's \kern-3pt pulling back up (~4pt), NOT Typst's 1.5em float
+  // default — without this the body stops ~1-2 lines short of where LaTeX allows.
+  place(bottom, float: true, clearance: cfg.footins-skip - cfg.footnote-rule-kern-above,
+    block(width: 100%, spacing: 0pt, stack))
 }
 
 // acmcp cover infobox (\set@ACM@acmcpbox, acmart.dtx:6725): a 5pc-wide box at the

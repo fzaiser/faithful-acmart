@@ -56,8 +56,14 @@
       if w <= size.width {
         align(center, cap)
       } else {
-        set par(justify: true)
-        align(left, cap)
+        // A justified paragraph does NOT stretch to the container under align() —
+        // its box shrinks to the natural line-break width, ending up a few pt
+        // narrow on each side. Pin it to the full column so it justifies
+        // edge-to-edge, matching acmart's `margin=\z@` caption (acmart.dtx:4197).
+        // align(left) overrides the figure's ambient centering so the justified
+        // paragraph's LAST line is ragged-left (as LaTeX's justified caption is),
+        // not ragged-centre — while the full-width block still stretches line 1.
+        block(width: 100%, align(left, { set par(justify: true); cap }))
       }
     })
   }
@@ -146,7 +152,18 @@
   // outermost list carries the \listisep block gap + the post-environment
   // paragraph indent.
   let enum-pats = if cfg.name == "sigplan" { ("1.", "a.", "i.", "A.") } else { ("(1)", "(a)", "(i)", "(A)") }
-  let list-marks = ([$bullet$], text(weight: "bold")[–], [∗], [·])
+  // Level-1 marker is amsart's math \bullet (deps/amsart.cls:881), not \textbullet.
+  // newtxmath's \bullet disc renders ~1.65x the diameter of Libertinus Math's, so
+  // enlarge it to match LaTeX's rendered disc (a deliberate visual compensation for
+  // the known math-font design difference). The enlarged glyph is `place`d inside a
+  // box sized to the NATURAL bullet, so the marker's layout footprint is unchanged:
+  // llap still right-aligns on the natural width (exact horizontal position) and the
+  // item's line height is not inflated (a plain `text(size: 1.65em)` or `scale`
+  // would push the next item down). Levels 2-4 already match (bold en-dash/∗/·).
+  let big-bullet = context box(
+    width: measure($bullet$).width, height: measure($bullet$).height,
+    place(right + horizon, text(size: 1.65em)[$bullet$]))
+  let list-marks = (big-bullet, text(weight: "bold")[–], [∗], [·])
   let llap(c) = context { h(-measure(c).width); c }
   let labelsep = if amsart-lists { 5 * tp } else { 4 * tp }
   // \leftmargin per (1-based) level; the amsart model measures like \settowidth

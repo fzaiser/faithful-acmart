@@ -132,11 +132,21 @@ content (not a block), with a weak `v()` for the before-skip and
 
 ### Page-1 footnote block
 The author-notes / contact-info / copyright stack is emitted with
-`place(bottom, float: true, …)` so it **reserves space** and the body flows above.
+`place(bottom, float: true, clearance: …)` so it **reserves space** and the body
+flows above. The `clearance` is `\skip\footins − \kern` (~4pt — the same body→
+footnote gap the in-body footnotes use), **not** Typst's 1.5em float default;
+without it the body stopped 1–2 lines short of where LaTeX fills. (The gap
+*between* the manyfoot streams — contact vs copyright — is still tighter than
+LaTeX's per-stream `\skip\footins`; the reported symptom was the space *above* the
+whole block, which the clearance addresses.)
 
 ### Captions
-`singlelinecheck`: a caption that fits one line is centred, otherwise
-left-justified — via `measure()` in the caption show rule.
+`singlelinecheck`: a caption that fits one line is centred, otherwise justified to
+the **full column** with a ragged-left last line
+(`block(width: 100%, align(left, …))`, matching acmart's `margin=\z@` caption) —
+branch chosen by `measure()` in the caption show rule. (`align()` alone leaves a
+justified paragraph at its natural break width, ~4pt narrow, and inherits the
+figure's centring on the last line.)
 
 ## Faithful to source vs matched to output
 
@@ -365,6 +375,29 @@ taller-than-`\topskip` title line.
 - **Wrapped numbered section titles** return to the left margin instead of hanging
   after "N\quad" (`\@hangfrom`): a measured hanging indent broke the tagged-PDF
   reading order (Tier 1.9), so the rare two-line numbered title keeps the simple form.
+- **Section-number → title gap is ~1.25em, ~0.25em wider than acmart's `\quad`**
+  (1em). The display heading emits `number` + `h(1em)` + a markup-newline space
+  before the title. That space is load-bearing for the PDF *tag tree*, not just
+  spacing: a bare `h(1em)` abutting the title makes Typst tag the first title word
+  glyph-by-glyph AND surfaces the section number as a stray word token — both break
+  the Tier 1.5 (text) / 1.9 (order) gates, because LaTeX's pdftotext exposes section
+  numbers *inconsistently* (surfaced in some documents, merged away in others) and
+  this structure happens to match it. Collapsing the space to reach a clean 1em (or
+  substituting a zero-width space) reintroduces those extraction divergences across
+  many twins, so the number keeps the slightly wide gap. The run-in headings
+  (subsubsection/paragraph) build in code mode with no such space and are exact 1em.
+- **`booktabs` rule separation is not modelled**: `\aboverulesep` (1.72pt) and
+  `\belowrulesep` (2.80pt) sit around every `\toprule`/`\midrule`/`\bottomrule`, but
+  Typst's `table.hline` carries a stroke with no surrounding vertical space, so ruled
+  tables are slightly tighter around their rules. The cell strut insets
+  (top 0.11em, bottom 0.3×`\baselineskip`) are otherwise exact; a strut-model row-
+  height fix would trade the (accidentally compensating) row height for the
+  un-modelable rule gap and read worse overall.
+- **Caption first baseline** sits ~1.3pt below LaTeX's — the caption line inherits
+  the global `top-edge: 1em` (9pt ascent at 9pt) rather than the font's natural
+  ascender; same family as the continuation-page first-baseline item above, and left
+  as-is to keep the baseline-grid model uniform (changing it would skew multi-line
+  caption pitch).
 - **`description`/terms geometry** is Typst's default (bold term, no colon — matching
   `\descriptionlabel` by coincidence); acmart's `\@ACM@labelwidth` hanging layout is
   not modelled.
