@@ -57,8 +57,9 @@ Write normal Typst. Cite with @key and finish with a bibliography.
 ```
 
 Use the wildcard import (`*`). It brings `acmart`, the theorem environments,
-`cite`, `bibliography`, and the textual citation helpers (`cite-text`, `cite-year`,
-`cite-author`) into scope. A complete starter document is in
+`cite`, `bibliography`, the textual citation helpers (`cite-text`, `cite-year`,
+`cite-author`), and the booktabs table helpers (`tabular`, `toprule`, `midrule`,
+`bottomrule`) into scope. A complete starter document is in
 [`template/main.typ`](template/main.typ).
 
 ## Fonts
@@ -180,6 +181,33 @@ section-scoped counter:
 
 Use `#acks[...]` or `#acknowledgments[...]` for the unnumbered acknowledgments
 section. It is suppressed automatically in anonymous mode.
+
+## Tables
+
+ACM tables use [booktabs](https://ctan.org/pkg/booktabs) style: no vertical rules,
+heavy top/bottom rules, a light middle rule, and a little breathing space around
+each rule. A plain Typst `table` draws the rules but not that surrounding space, so
+the package exports **`tabular`** — a drop-in replacement for `table` with the same
+arguments — plus **`toprule`**, **`midrule`**, and **`bottomrule`**, matching LaTeX's
+`\toprule`/`\midrule`/`\bottomrule`:
+
+```typst
+#figure(
+  tabular(
+    columns: 2,
+    toprule(),
+    [Method], [Accuracy],
+    midrule(),
+    [Baseline], [72.1%],
+    [Ours],     [88.4%],
+    bottomrule(),
+  ),
+  caption: [Results.],
+)
+```
+
+You can still use plain `table.hline()` for the rules inside `tabular` (it becomes a
+light rule); `toprule`/`bottomrule` additionally set the heavier booktabs weight.
 
 ## Known differences from LaTeX
 

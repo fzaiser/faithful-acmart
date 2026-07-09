@@ -86,6 +86,22 @@ Run-in headings continue inline with the following text, just like LaTeX.
     separator, as ACM journals require.],
 )
 
+ACM tables are booktabs-style: use `tabular` (a drop-in for `table`) with
+`toprule`/`midrule`/`bottomrule` for the correct rule weights and spacing.
+
+#figure(
+  tabular(
+    columns: 3,
+    toprule(),
+    [Method], [Time (s)], [Accuracy],
+    midrule(),
+    [Baseline], [12.4], [72.1%],
+    [Ours], [8.7], [88.4%],
+    bottomrule(),
+  ),
+  caption: [Tables use booktabs rules, as ACM requires.],
+)
+
 Theorem-like environments share a counter numbered within the section:
 
 #theorem[

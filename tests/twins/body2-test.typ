@@ -1,4 +1,4 @@
-#import "/src/lib.typ": acmart, theorem, lemma, definition, proof
+#import "/src/lib.typ": acmart, theorem, lemma, definition, proof, tabular, toprule, midrule, bottomrule
 #show: acmart.with(format: "acmsmall", nonacm: true)
 
 = Elements
@@ -12,15 +12,14 @@ Text before a figure to establish context for the caption comparison below.
 
 #figure(
   placement: none,
-  table(
+  tabular(
     columns: 2,
-    stroke: none,
-    table.hline(),
+    toprule(),
     [Header A], [Header B],
-    table.hline(),
+    midrule(),
     [Value 1], [Value 2],
     [Value 3], [Value 4],
-    table.hline(),
+    bottomrule(),
   ),
   caption: [A sample table caption set above the table body as ACM requires.],
 )

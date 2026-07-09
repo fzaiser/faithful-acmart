@@ -43,6 +43,7 @@ src/parts/
   copyright.typ        permission text + © owner per copyright mode (incl. CC)
   theorems.typ         theorem/lemma/.../proof environments (+ shared counter, cfg state)
   body.typ             captions, lists, table, code, footnote, bibliography rules
+  tables.typ           booktabs `tabular` wrapper + `toprule`/`midrule`/`bottomrule`
 ```
 
 **Format-as-data.** A format is a dict of measurements built as a function of the
@@ -384,13 +385,34 @@ taller-than-`\topskip` title line.
 - **Wrapped numbered section titles** return to the left margin instead of hanging
   after "N\quad" (`\@hangfrom`): a measured hanging indent broke the tagged-PDF
   reading order (Tier 1.9), so the rare two-line numbered title keeps the simple form.
-- **`booktabs` rule separation is not modelled**: `\aboverulesep` (1.72pt) and
-  `\belowrulesep` (2.80pt) sit around every `\toprule`/`\midrule`/`\bottomrule`, but
-  Typst's `table.hline` carries a stroke with no surrounding vertical space, so ruled
-  tables are slightly tighter around their rules. The cell strut insets
-  (top 0.11em, bottom 0.3×`\baselineskip`) are otherwise exact; a strut-model row-
-  height fix would trade the (accidentally compensating) row height for the
-  un-modelable rule gap and read worse overall.
+- **`booktabs` rule separation** is modelled by the opt-in **`tabular`** wrapper
+  (`parts/tables.typ`) plus **`toprule`/`midrule`/`bottomrule`** helpers. A bare
+  Typst `table.hline` carries a stroke with no surrounding vertical space, so a plain
+  `table` renders booktabs rules flush against the cell struts; `tabular` has the same
+  signature as `table` and re-adds `\aboverulesep` (`.4ex`) above each rule and
+  `\belowrulesep` (`.65ex`) below it, with heavy (`.08em`) `\toprule`/`\bottomrule`
+  and light (`.05em`) `\midrule` weights. Design notes:
+  - It is a **plain function, not a `show table` rule** — a show rule whose body emits
+    a `table` re-matches its own output (`maximum show rule depth exceeded`), so the
+    wrapper sidesteps recursion entirely and needs no re-entry guard. It builds
+    `std.table` internally, so it survives any shadowing of `table`.
+  - Each rule's row boundary is inferred from cell order (a child `hline`'s resolved
+    `y` is not exposed — reading it errors "not known at this point"): exact for the
+    common grid of auto-placed 1×1 cells (colspan honoured); an explicitly positioned
+    `table.cell(y: ..)` or a rowspan can misplace the separation.
+  - `\aboverulesep`/`\belowrulesep` are font-relative (`ex`); Typst has no `ex` unit
+    and `tabular` must not wrap its output in `context` (a context block hides the
+    table from `figure()`'s kind detection, losing the "Table N" supplement), so the
+    x-height is expressed as em via Libertinus Serif's ratio 0.429 (4.29pt at 10pt).
+  - **Remaining approximation:** the cell row strut is ~2.2pt taller than LaTeX's
+    `\@arstrut` — the document's global `top-edge: 1em` reserves a full em (10pt at
+    10pt) above the baseline, versus LaTeX's `0.7\baselineskip` (~8.75pt). Previously
+    the *missing* rule gap accidentally compensated for this tall row, so a ruled table
+    landed close on total height; now that the gap is modelled, a `tabular` reads
+    slightly loose (rows tall) rather than tight (rules cramped). The paired strut-model
+    row-height fix (a per-cell `top-edge`/`bottom-edge` override sized to
+    `0.7`/`0.3 \baselineskip`) is the remaining step — no longer blocked, now that the
+    rule gap is modelable.
 - **Caption first baseline** sits ~1.3pt below LaTeX's — the caption line inherits
   the global `top-edge: 1em` (9pt ascent at 9pt) rather than the font's natural
   ascender; same family as the continuation-page first-baseline item above, and left

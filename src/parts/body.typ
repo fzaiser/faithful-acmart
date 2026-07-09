@@ -8,6 +8,7 @@
 #import "spacing.typ": comp, tex-skip
 #import "../formats/_base.typ": tp
 #import "theorems.typ": cfg-state
+#import "tables.typ": table-inset, light-rule
 
 // True while the title head renders a teaser figure: the figure show rule
 // below must not add its \intextsep float spacing or the paragraph-indent shim
@@ -102,14 +103,13 @@
   }
   set figure(gap: cfg.abovecaptionskip)
 
-  // Tables: booktabs-like tight rows. booktabs.sty v1.61803398 sets
-  // \lightrulewidth=.05em and \heavyrulewidth=.08em; the default hline is the
-  // light rule, with top/bottom rules opt-in at the table source.
-  set table(
-    inset: (left: 0.6em, right: 0.6em, top: 0.11em, bottom: 0.36em),
-    stroke: none,
-  )
-  set table.hline(stroke: 0.05em)
+  // Tables: booktabs-like tight rows. A bare `table.hline` draws the light rule
+  // (0.05em); a plain Typst table has no rule SEPARATION, though. The `tabular`
+  // wrapper (parts/tables.typ) restores booktabs' \aboverulesep/\belowrulesep and
+  // supplies \toprule/\midrule/\bottomrule — see there. The strut inset is shared
+  // with tabular so plain and booktabs tables have identical rows.
+  set table(inset: table-inset, stroke: none)
+  set table.hline(stroke: light-rule)
 
   // Display equations in acmart/amsart are numbered by default and carry
   // generous \abovedisplayskip/\belowdisplayskip. Typst's native display math is

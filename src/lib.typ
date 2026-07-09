@@ -27,6 +27,7 @@
 #import "parts/headings.typ": render-heading
 #import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
 #import "parts/body.typ": apply-body, sidebar, marginfigure, margintable, fulltextwidth
+#import "parts/tables.typ": tabular, toprule, midrule, bottomrule
 #import "parts/strings.typ": resolve-language, lang-record
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks

@@ -109,11 +109,17 @@ while normal contact/copyright footnotes are suppressed. Also outstanding:
 math-font fidelity; continuation-page first baselines sit 1em (not
 `\topskip` = 10pt) below the top margin (~1pt on 9pt bases); wrapped numbered
 section titles don't hang (`\@hangfrom`); `quotation` (3pc) and `description`
-geometry. Modelled: `\titlenote`/`\subtitlenote`, `\thanks`,
+geometry; the opt-in booktabs `tabular` models the rule separation but its cell
+rows sit ~2pt taller than LaTeX's `\@arstrut` (the global `top-edge: 1em` leading
+reserves a full em above the baseline vs `0.7\baselineskip`). Modelled:
+`\titlenote`/`\subtitlenote`, `\thanks`,
 `\authorsaddresses`, `\received`, `acks`, `\anon`, `\grantsponsor`/`\grantnum`,
 `\editor`, `\part`, `\startPage`, teasers, badges, the review-mode margin
 ruler (fixed slots, both sides on two-column), per-size `heightrounded`
-geometry, and the conference metadata (`conference`/`booktitle`/`isbn`). See
+geometry, the conference metadata (`conference`/`booktitle`/`isbn`), and the
+opt-in booktabs `tabular`/`toprule`/`midrule`/`bottomrule` (rule separation via
+`parts/tables.typ`, a wrapper function — NOT a `show table` rule, which would
+recurse). See
 DESIGN.md "Deliberate approximations" / "Known limitations" for the full list.
 Author *line grouping* follows acmart's exact structural rule (an
 affiliation-less author andifies onto the next; affiliations are never compared —

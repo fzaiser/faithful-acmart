@@ -8,7 +8,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 
 | file | role |
 |---|---|
-| `lib.typ` | public `acmart()` entry: page setup, global text/par rules, header/footer, document options (review/screen/anonymous/nonacm/print-ccs/print-folios + the full acmart option set, recognized-but-unimplemented ones asserted not silently dropped), wires up the parts; re-exports `theorem`/`lemma`/…/`proof` |
+| `lib.typ` | public `acmart()` entry: page setup, global text/par rules, header/footer, document options (review/screen/anonymous/nonacm/print-ccs/print-folios + the full acmart option set, recognized-but-unimplemented ones asserted not silently dropped), wires up the parts; re-exports `theorem`/`lemma`/…/`proof` and the booktabs `tabular`/`toprule`/`midrule`/`bottomrule` |
 | `formats/_base.typ` | shared font-size ladder (amsart `\@typesizes`) + `make-format()`, the dict constructor that fills format-independent constants. `tp = 72/72.27*1pt` (TeX→PS point conversion) lives here |
 | `formats/<name>.typ` | active format builders (acmsmall, manuscript, acmlarge, acmtog, sigconf, sigplan, acmengage, sigchi-a, acmcp): probed geometry + the format flags, all shared values from `make-format` |
 | `parts/spacing.typ` | `comp()` / `tex-skip()` — the TeX→Typst baseline-grid conversion used by every `leading` and vertical gap (see DESIGN.md) |
@@ -18,6 +18,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/strings.typ` | localization for the `language` option: per-language fixed strings (keywords/acks/proof/table) + babel-name→Typst-lang map, transcribed from acmart.dtx |
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |
 | `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography integration |
+| `parts/tables.typ` | booktabs `tabular` wrapper (drop-in for `table`, adds `\aboverulesep`/`\belowrulesep` rule separation) + `toprule`/`midrule`/`bottomrule` helpers; the cell-strut inset is shared with `body.typ`'s `set table` |
 | `parts/theorems.typ` | theorem-like environments + shared counter; reads the active format via `state` (`cfg-state`) since users call them in the body |
 | `parts/bibtex.typ` | pure-Typst BibTeX reader (`.bib` → field dicts) for the ACM bibliography backends |
 | `parts/acmref.typ` | public facade for the pure-Typst ACM bibliography backends; re-exports the cite/bibliography functions and state used by `lib.typ` |
