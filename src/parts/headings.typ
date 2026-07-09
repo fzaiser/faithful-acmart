@@ -87,8 +87,18 @@
     block(above: tex-skip(cfg, 0.75 * bls), below: tex-skip(cfg, 0.25 * bls), sticky: true)[
       #set text(font: f.font, weight: f.weight, style: f.style, size: f.size)
       #set par(justify: false, leading: comp(cfg))
-      #if num != none [#num#h(1em)]
-      #title
+      // Number then acmart's \quad (1em) before the title (\@seccntformat). The
+      // quad is h(1em - space) + a real interword space: the total is an exact 1em
+      // (a bare markup newline before the title would add ~0.25em on top of h()),
+      // and the real space keeps the title a whole-word run in the tag tree — an
+      // h() directly abutting the title makes Typst tag it glyph-by-glyph and breaks
+      // the Tier 1.9 reading-order gate. `space` is measured (font-dependent).
+      #if num != none {
+        context {
+          let space = measure[a b].width - measure[ab].width
+          [#num#h(1em - space) #title]
+        }
+      } else { title }
     ]
   } else if lvl == 3 {
     // subsubsection: before .5bl, run-in

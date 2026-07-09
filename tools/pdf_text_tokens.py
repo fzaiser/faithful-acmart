@@ -77,9 +77,23 @@ def _without_review_line_number_lines(text: str) -> str:
     return _without_standalone_number_lines(text)
 
 
+def _drop_layout_numbers(text: str) -> str:
+    """Drop numbers that are LAYOUT chrome, not content: page folios (a number line
+    right before a page break) and the review-mode line-number ruler (>=20
+    standalone numbers). SECTION numbers are deliberately KEPT — they are content,
+    they appear in both engines, and they match: LaTeX typesets the number in its
+    own \\@hangfrom box so Poppler reads it on its own line while Typst reads it
+    inline with the title, but that is only a line-break difference the order-
+    independent bags and the whitespace-collapsing `normalize` absorb. (Dropping
+    every standalone-number line, as this once did, instead swept section numbers
+    up too, which forced the heading to keep an over-wide gap so its number would
+    land on its own extracted line — see DESIGN.md.)"""
+    return _without_review_line_number_lines(_without_page_folio_lines(text))
+
+
 def normalize(text: str) -> str:
     """Collapse Poppler text for exact text assertions."""
-    text = _without_standalone_number_lines(_clean(text)).replace("­", "")
+    text = _drop_layout_numbers(_clean(text)).replace("­", "")
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -114,7 +128,7 @@ def _join_word_hyphen_space(match: re.Match, text: str) -> str:
 
 
 def _prepare_for_tokens(raw: str) -> str:
-    text = _URL_SCHEME.sub("", _without_standalone_number_lines(_clean(raw)))
+    text = _URL_SCHEME.sub("", _drop_layout_numbers(_clean(raw)))
     text = _EOL_HYPHEN.sub(lambda m: _join_eol_hyphen(m, text), text)
     text = _WORD_HYPHEN_SPACE.sub(lambda m: _join_word_hyphen_space(m, text), text)
     text = text.replace("­", "")
@@ -187,7 +201,7 @@ def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
 
 def char_bag(raw: str) -> Counter:
     """Whitespace-, dash-, variation-selector-, and page-folio-free char bag."""
-    text = _without_review_line_number_lines(_without_page_folio_lines(_clean(raw))).translate(_DROP_DASHES)
+    text = _drop_layout_numbers(_clean(raw)).translate(_DROP_DASHES)
     text = text.replace("~", "")
     for old, new in CHAR_FOLD.items():
         text = text.replace(old, new)

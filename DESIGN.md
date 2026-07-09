@@ -125,6 +125,14 @@ default `normalsize`). Every leading, block gap, and `v()` routes through these.
 > Float spacing (`\intextsep`/`\abovecaptionskip` = 12pt) is its own constant, not
 > derived from `\bigskip`.
 
+The **number → title separator** is acmart's `\@seccntformat` `\quad` (1em). It is
+emitted as `h(1em − space) +` a real interword space (not a bare `h(1em)`): the two
+sum to an exact 1em, and the real space keeps the title one *word run* in the tagged
+PDF — an `h()` directly abutting the title text makes Typst tag the first word
+glyph-by-glyph, which scrambles the Tier 1.9 reading-order gate. (`space` is measured
+per heading font.) See the harness note below on why the section number itself is no
+longer a text-gate problem.
+
 ### Run-in headings
 subsubsection/paragraph headings flow inline: a heading show rule returning *inline*
 content (not a block), with a weak `v()` for the before-skip and
@@ -375,17 +383,6 @@ taller-than-`\topskip` title line.
 - **Wrapped numbered section titles** return to the left margin instead of hanging
   after "N\quad" (`\@hangfrom`): a measured hanging indent broke the tagged-PDF
   reading order (Tier 1.9), so the rare two-line numbered title keeps the simple form.
-- **Section-number → title gap is ~1.25em, ~0.25em wider than acmart's `\quad`**
-  (1em). The display heading emits `number` + `h(1em)` + a markup-newline space
-  before the title. That space is load-bearing for the PDF *tag tree*, not just
-  spacing: a bare `h(1em)` abutting the title makes Typst tag the first title word
-  glyph-by-glyph AND surfaces the section number as a stray word token — both break
-  the Tier 1.5 (text) / 1.9 (order) gates, because LaTeX's pdftotext exposes section
-  numbers *inconsistently* (surfaced in some documents, merged away in others) and
-  this structure happens to match it. Collapsing the space to reach a clean 1em (or
-  substituting a zero-width space) reintroduces those extraction divergences across
-  many twins, so the number keeps the slightly wide gap. The run-in headings
-  (subsubsection/paragraph) build in code mode with no such space and are exact 1em.
 - **`booktabs` rule separation is not modelled**: `\aboverulesep` (1.72pt) and
   `\belowrulesep` (2.80pt) sit around every `\toprule`/`\midrule`/`\bottomrule`, but
   Typst's `table.hline` carries a stroke with no surrounding vertical space, so ruled
@@ -425,3 +422,15 @@ gates. `tools/test.py probe` audits the numbers in `formats/*.typ`: it compiles
 [`tools/probe.tex`](tools/probe.tex) against the bundled acmart and dumps geometry,
 font-size steps, baselineskips, and skips (`PROBE …`/`SIZE …` lines) — every length in a
 format dict should trace to a probe line or an `acmart.dtx` macro.
+
+**Layout numbers vs content numbers.** The text gates strip *layout* numbers before
+comparing — page folios (a number line right before a page break, `_PAGE_FOLIO_LINE`)
+and the review-mode line-number ruler (≥20 standalone numbers) — via
+`_drop_layout_numbers` in [`pdf_text_tokens.py`](tools/pdf_text_tokens.py), shared by
+the sequence, word-bag, and char-bag gates. Section numbers are **kept**: they are
+content and match in both engines. (LaTeX typesets the number in its own `\@hangfrom`
+box, so Poppler reads it on its own line, while Typst reads it inline with the title —
+a line-break difference the order-independent bags and whitespace-collapsing sequence
+gate absorb.) An earlier version dropped *every* standalone-number line, which swept
+section numbers up too and forced the heading to keep an over-wide gap so its number
+would land on its own extracted line; distinguishing the two removed that constraint.

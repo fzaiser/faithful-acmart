@@ -688,7 +688,7 @@ TESTS: dict[str, Test] = {
         expected_order_diffs=(
             ExpectedOrderDiff(
                 latex="and follow it with another numbered equation: ∫ π +2 ∞ ∑ xi = f i=0 (2)",
-                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 f (2)",
+                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 0 f (2)",
                 cause=ExtractionArtifact("display-math token-order extraction"),
             ),
         ),
@@ -738,7 +738,7 @@ TESTS: dict[str, Test] = {
         expected_order_diffs=(
             ExpectedOrderDiff(
                 latex="and follow it with another numbered equation: ∞ ∑ ∫ π +2 xi = i=0 f (2)",
-                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 f (2)",
+                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 0 f (2)",
                 cause=ExtractionArtifact("display-math token-order extraction"),
             ),
         ),
@@ -813,7 +813,8 @@ TESTS: dict[str, Test] = {
             ExpectedTextDiff(
                 latex="https://doi.org/XXXXXXX.XXXXXXX Introduction ACM's consolidated "
                       "article template",
-                typst="https://doi.org/XXXXXXX.XXXXXXX ACM's consolidated article template",
+                typst="https://doi.org/XXXXXXX.XXXXXXX 1 Introduction ACM's consolidated "
+                      "article template",
                 cause=ExtractionArtifact("anonymous-review heading extraction"),
             ),
             ExpectedTextDiff(
@@ -988,7 +989,7 @@ TESTS: dict[str, Test] = {
         expected_order_diffs=(
             ExpectedOrderDiff(
                 latex="and follow it with another numbered equation: ∫ π +2 ∞ ∑ xi = f i=0 (2)",
-                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 f (2)",
+                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 0 f (2)",
                 cause=ExtractionArtifact("display-math token-order extraction"),
             ),
         ),

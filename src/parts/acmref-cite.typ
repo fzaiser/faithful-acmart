@@ -407,14 +407,18 @@
     for (i, k) in order.enumerate() { num-of.insert(k, i + 1) }
     set text(size: size)
     set par(justify: true, first-line-indent: 0pt, leading: if leading == auto { 0.65em } else { leading })
-    // natbib+amsart list geometry: the label box is as wide as the WIDEST label
-    // "[N]" (\settowidth\labelwidth{\@biblabel{N}}, natbib.sty:627), followed by
-    // \labelsep, with the label right-flushed inside it and every line (first +
-    // continuation) hanging at leftmargin = labelwidth + labelsep. \labelsep is
-    // 5pt, not acmart's 4pt: amsart re-sets it at begin-document (amsart.cls:241/
-    // 943) after acmart's \AtBeginDocument, so amsart wins. The measure must run
-    // under `text(size: size)` so it reads the bibliography's 8pt, not the caller's.
-    let labelsep = 5 * tp
+    // List geometry: the label box is as wide as the WIDEST label "[N]" and the
+    // label is right-flushed inside it, with every line (first + continuation)
+    // hanging at leftmargin = labelwidth + labelsep. This holds for BOTH engines —
+    // natbib (\settowidth\labelwidth{\@biblabel{N}} + \@biblabel right-flush,
+    // natbib.sty:627) and biblatex numeric (\labelwidth=\labelnumberwidth +
+    // \makelabel{\hss#1}, numeric.bbx:29) — but \labelsep DIFFERS:
+    //   • natbib/bst → \labelsep = 5pt (amsart re-sets it at begin-document,
+    //     amsart.cls:241/943, after acmart's 4pt \AtBeginDocument, so amsart wins);
+    //   • biblatex   → \biblabelsep = 2\labelsep = 10pt (biblatex.def:346).
+    // The measure must run under `text(size: size)` so it reads the bibliography's
+    // 8pt, not the caller's.
+    let labelsep = if format == "biblatex" { 2 * 5 * tp } else { 5 * tp }
     let labelwidth = measure(text(size: size)[[#order.len()]]).width
     if title != none { heading(level: 1, numbering: none, outlined: false, title) }
     for (i, key) in order.enumerate() {
