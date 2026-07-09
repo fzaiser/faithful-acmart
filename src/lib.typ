@@ -237,9 +237,8 @@
   //   affiliation   — a dict (institution / city / state / country), or an array of
   //                   such dicts for multiple affiliations. All fields optional.
   //   email         — contact email.
-  //   note          — a title footnote (e.g. "Both authors contributed equally").
-  //   note-id       — labels that note so a later author can reuse its mark.
-  //   note-ref      — reuses an earlier note-id, like \authornotemark.
+  //   note          — a title footnote, or an array of title footnotes; identical
+  //                   note content is shared across authors.
   //   corresponding — true marks the corresponding author.
   // The email/affiliation declaration order is preserved in the contact line, as
   // acmart replays \email/\affiliation in source order (see normalize-author).

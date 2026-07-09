@@ -124,12 +124,12 @@ Most papers only need a subset of these:
 | `short-title`, `short-authors` | Running-head overrides |
 | `font-size` | One of `8pt`, `9pt`, `10pt`, `11pt`, `12pt`, or `auto` |
 
-Author dictionaries accept `name`, `orcid`, `email`, `note`, `note-id`,
-`note-ref`, `corresponding`, and `affiliation`. Use `note-id` on an author with a
-`note`, then `note-ref` on later authors to reuse that same footnote mark, like
-LaTeX's `\authornotemark`. An affiliation is a dictionary with fields such as
-`institution`, `city`, `state`, and `country`; pass an array of affiliation
-dictionaries for multiple affiliations.
+Author dictionaries accept `name`, `orcid`, `email`, `note`, `corresponding`, and
+`affiliation`. `note` may be one note or an array of notes; repeated identical
+note content shares one footnote mark across authors, like LaTeX's
+`\authornotemark`. An affiliation is a dictionary with fields such as `institution`,
+`city`, `state`, and `country`; pass an array of affiliation dictionaries for
+multiple affiliations.
 
 CCS entries are `(significance, area, concept)`: significance `500` or higher prints
 bold, `300` or higher prints italic, and lower values print roman.

@@ -1,6 +1,6 @@
 %% notes-test — frontmatter footnote isolator (LaTeX twin of notes-test.typ).
 %% Exercises the SHARED footnote-symbol counter across the top matter: a title
-%% note (*), a subtitle note (dagger), and an author note (double-dagger), in the
+%% note (*), a subtitle note (dagger), and author notes (double-dagger/section sign), in the
 %% order acmart emits them (titlenote, subtitlenote, authornote). A separate
 %% corresponding-author envelope sits on the OTHER author so no single name mixes
 %% the envelope with a note symbol (that ordering is a documented approximation).
@@ -27,6 +27,7 @@
 
 \author{Alice Researcher}
 \authornote{Alice did the experiments.}
+\authornote{Alice wrote the supplemental material.}
 \email{alice@example.edu}
 \affiliation{%
   \institution{Example University}
@@ -45,7 +46,7 @@
 
 \begin{abstract}
   A short abstract anchoring the front matter so the footnote stack, the title
-  and subtitle notes, the author note, and the corresponding-author mark can be
+  and subtitle notes, the author notes, and the corresponding-author mark can be
   compared between the LaTeX and Typst renderings.
 \end{abstract}
 

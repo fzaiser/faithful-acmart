@@ -53,21 +53,12 @@
 // access (a.email, a.note, ...) instead of defensive `.at(..., default:)`.
 #let normalize-author(a) = {
   let note = a.at("note", default: none)
-  let note-id = a.at("note-id", default: none)
-  let note-ref = a.at("note-ref", default: none)
-  assert(not (note != none and note-ref != none),
-    message: "faithful-acmart: an author cannot set both `note` and `note-ref`; "
-      + "`note` defines a new author note, `note-ref` reuses an earlier `note-id`.")
-  assert(note-id == none or note != none,
-    message: "faithful-acmart: author `note-id` requires a `note` body to label.")
   (
     name: a.name,
     orcid: a.at("orcid", default: none),
     affiliation: a.at("affiliation", default: none),
     email: a.at("email", default: none),
-    note: note,
-    note-id: note-id,
-    note-ref: note-ref,
+    note: if note == none { () } else if type(note) == array { note } else { (note,) },
     corresponding: a.at("corresponding", default: false),
     // The order the email and affiliation were declared, preserved so the contact
     // line can replay them in that order — acmart prints \addresses in the order
@@ -283,26 +274,20 @@
   }
 
   let seen = (:)
-  let note-ids = (:)
   let marks = ()
   for a in meta.authors {
     let m = ()
     if a.corresponding { m.push("✉") }
-    if a.note != none and not anon {
-      let key = if a.note-id != none { "id:" + repr(a.note-id) } else { "body:" + repr(a.note) }
-      if key not in seen {
-        seen.insert(key, symbol-at(idx))
-        if a.note-id != none { note-ids.insert(repr(a.note-id), seen.at(key)) }
-        notes.push((symbol: seen.at(key), body: a.note))
-        idx += 1
+    if not anon {
+      for note in a.note {
+        let key = repr(note)
+        if key not in seen {
+          seen.insert(key, symbol-at(idx))
+          notes.push((symbol: seen.at(key), body: note))
+          idx += 1
+        }
+        m.push(seen.at(key))
       }
-      m.push(seen.at(key))
-    } else if a.note-ref != none and not anon {
-      let key = repr(a.note-ref)
-      assert(key in note-ids,
-        message: "faithful-acmart: author `note-ref` " + repr(a.note-ref)
-          + " does not match an earlier author `note-id`.")
-      m.push(note-ids.at(key))
     }
     marks.push(m)
   }
