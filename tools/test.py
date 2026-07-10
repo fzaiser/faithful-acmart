@@ -792,14 +792,28 @@ def _package_files() -> list[Path]:
     )
 
 
+def _release_readme(text: str, version: str) -> str:
+    """Pin repository links in the release copy without changing GitHub's README."""
+    repository = "https://github.com/fzaiser/faithful-acmart"
+    for view in ("blob", "tree"):
+        text = text.replace(
+            f"{repository}/{view}/main/",
+            f"{repository}/{view}/v{version}/",
+        )
+    return text
+
+
 def _stage_package(package_dir: Path) -> list[str]:
     selected = _package_files()
+    version = _package_manifest()["package"]["version"]
     rels: list[str] = []
     for source in selected:
         rel = source.relative_to(ROOT)
         destination = package_dir / rel
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
+        if rel.as_posix() == "README.md":
+            destination.write_text(_release_readme(destination.read_text(), version))
         rels.append(rel.as_posix())
     return rels
 
@@ -833,6 +847,20 @@ def gate_package(report: bool = False) -> list[str]:
             failures.append("package contains non-allowlisted files: " + ", ".join(unexpected))
         if missing:
             failures.append("package is missing required files: " + ", ".join(missing))
+
+        source_readme = (ROOT / "README.md").read_text()
+        staged_readme = (package_dir / "README.md").read_text()
+        release_tag = f"v{package['version']}"
+        repository = "https://github.com/fzaiser/faithful-acmart"
+        main_prefixes = tuple(f"{repository}/{view}/main/" for view in ("blob", "tree"))
+        tag_prefixes = tuple(
+            f"{repository}/{view}/{release_tag}/" for view in ("blob", "tree"))
+        if not any(prefix in source_readme for prefix in main_prefixes):
+            failures.append("repository README must link to the live main branch")
+        if (any(prefix in staged_readme for prefix in main_prefixes)
+                or not any(prefix in staged_readme for prefix in tag_prefixes)):
+            failures.append(
+                f"staged README did not rewrite main-branch links to {release_tag}")
 
         project = root / "project"
         shutil.copytree(package_dir / "template", project)

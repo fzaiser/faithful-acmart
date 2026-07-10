@@ -100,8 +100,7 @@ tools/tc compile --format png --pages 1 --ppi 250 template/main.typ thumbnail.pn
 tools/venv/bin/python tools/test.py package
 
 # 4. To install/update the official linter (needs rustc >= 1.85.1)
-cargo install --git https://github.com/typst/package-check \
-  --rev b75374ac133ea1e7482ca5a74b1a5d373bf67c7a --locked
+cargo install --git https://github.com/typst/package-check --locked
 ```
 
 Also confirm `authors` and `repository` in `typst.toml` and the copyright holder/year
@@ -122,6 +121,9 @@ in `LICENSE` / `template/LICENSE`.
    ```
 2. Create `packages/preview/faithful-acmart/<version>/` and copy the **shipped** files
    there — do not copy `.git` (no submodules), and drop everything in the exclude list.
+   In the copied `README.md` only, rewrite GitHub `/main/` links to `/v<version>/`.
+   Keep this repository's README on `main`; `tools/test.py package` applies the same
+   release-only rewrite to the staged bundle before compiling and linting it.
 3. Commit and open a PR. First-time authors get extra review; after merge + CI it can
    take ~30 min to appear on Universe. Published versions are permanent.
 
@@ -129,12 +131,12 @@ in `LICENSE` / `template/LICENSE`.
 
 1. Bump `version` in `typst.toml`.
 2. Update `template/main.typ`'s import to `@preview/faithful-acmart:<new-version>` and
-   any version numbers in `README.md`, and re-point the README's cross-repo GitHub links
-   to the new tag (`…/blob/v<new-version>/…`, `…/tree/v<new-version>/…` — see Gotchas).
+   any literal package version numbers in `README.md`. Leave the repository README's
+   cross-repo GitHub links on `main`; rewrite them only in the release copy.
 3. Re-point the local symlink (above) to the new version.
 4. Regenerate `thumbnail.png` if the output changed.
-5. Tag the release commit in the main repo and push the tag, so the tag-pinned README
-   links resolve: `git tag -a v<new-version> <commit> -m "faithful-acmart <new-version>"`
+5. Tag the release commit in the main repo and push the tag before assembling the
+   release copy: `git tag -a v<new-version> <commit> -m "faithful-acmart <new-version>"`
    then `git push origin v<new-version>`.
 6. Copy the shipped files into a **new** `packages/preview/faithful-acmart/<new-version>/`
    directory (never edit an already-published version) and open a PR. The updater should
@@ -147,13 +149,14 @@ in `LICENSE` / `template/LICENSE`.
 - **`MIT AND MIT-0`** requires *both* `LICENSE` (MIT) and `template/LICENSE` (MIT-0) to
   be present and the split noted in the README.
 - **The thumbnail is auto-excluded** and must not be `image()`'d anywhere in the package.
-- **README GitHub links must be tag-pinned.** Links to excluded dev files (`DESIGN.md`,
-  `CONTRIBUTING.md`, `fonts/`) have to be absolute GitHub URLs — the bundle strips those
-  files, so relative links would 404 — and should point at the release *tag*
-  (`…/blob/v<version>/DESIGN.md`, `…/tree/v<version>/fonts`), not `/main`. Pinning keeps
-  them matched to the published version and silences `typst-package-check`'s "links to
-  default branch" warning. The tag must be **created and pushed** (`git tag -a v<version>
-  <commit>`; `git push origin v<version>`) before the links resolve — otherwise they 404
-  until it exists.
+- **There are two README contexts.** The repository's `README.md` is also the GitHub
+  landing page, so its links to `DESIGN.md`, `CONTRIBUTING.md`, and `fonts/` must track
+  `main`. Those files are excluded from the downloaded package, so the copy submitted
+  to `typst/packages` must instead point at the immutable release tag
+  (`…/blob/v<version>/DESIGN.md`, `…/tree/v<version>/fonts`). Never commit that rewrite
+  back to the development README. Create and push the tag before assembling the release
+  copy; otherwise its links will 404. The package staging gate performs this rewrite in
+  its temporary copy and then lets `typst-package-check` reject any remaining default-
+  branch links.
 - **Community tooling:** `typst-package-check` (lint), `tytanic` (tests), `typship`
   (install/submit).

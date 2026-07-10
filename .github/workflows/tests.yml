@@ -51,7 +51,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Install Typst package checker
-        run: cargo install --git https://github.com/typst/package-check --rev b75374ac133ea1e7482ca5a74b1a5d373bf67c7a --locked
+        run: cargo install --git https://github.com/typst/package-check --locked
 
       - name: Run regression suite
         run: uv run --frozen python tools/test.py check
