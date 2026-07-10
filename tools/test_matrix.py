@@ -565,7 +565,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Pat Inventor. May 4, 2020. "
                       "\"A carefully specified widget.\" (May 4, 2020). "
                       "Utility Patent Patent No. US-123456"),
-            Assertion(engine="both", text="Holding Company. Filed electronically. doi: 10.1000/patent"),
+            Assertion(engine="both", text="Holding Company. Filed electronically. doi:10.1000/patent"),
         ),
         note="BibLaTeX driver order for book/chapter, translator, and patent fields.",
     ),
@@ -1094,7 +1094,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="[SW Rel.] Ben Greenman and Matthias Felleisen"),
             Assertion(engine="both", text="2004. Ieee tcsc executive committee. In "
                       "Proceedings of the IEEE International Conference on Web Services"),
-            Assertion(engine="both", text="3, 1, (Jan. 2005), 4. doi: "
+            Assertion(engine="both", text="3, 1, (Jan. 2005), 4. doi:"
                       "10.1145/1057270.1057278."),
             Assertion(engine="both", text="2017. Institutional members of the TEX users "
                       "group. Retrieved May 27, 2017"),

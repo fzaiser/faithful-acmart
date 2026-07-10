@@ -168,7 +168,7 @@
 }
 
 #let blx-label-title-italic(e) = {
-  e.entry-type in manual-like-types and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
+  (e.entry-type in (manual-like-types + ("book", "collection", "proceedings"))) and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
 }
 
 #let name-prefix-len(left, right) = {

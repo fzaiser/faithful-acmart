@@ -116,7 +116,10 @@
   c + " " + p.year
 }
 #let blx-date(e, full: false, suffix: "") = {
-  (c: (if full { blx-print-full-date(e) } else { blx-printdate(e, month-ok: false) }) + suffix, p: false)
+  // ACM's bundled author-year style prints month+year in ordinary label dates;
+  // a day appears only in drivers that explicitly use BibLaTeX's full date
+  // macro (notably patents).
+  (c: blx-printdate(e, suffix: suffix, month-ok: full), p: false)
 }
 #let blx-date-if-month(e) = {
   let p = blx-date-parts(e)
@@ -352,7 +355,9 @@
   // BibLaTeX's \printfield{doi} prepends the https://doi.org/ resolver unconditionally
   // (even when the field is already a full URL, which double-wraps it) — mirror that
   // so the link targets match LaTeX. The bst backend strips the prefix instead.
-  (c: link("https://doi.org/" + d)[doi: #d], p: false)
+  // The bundled ACM .bbx field format uses a tight `doi:` prefix. Staging that
+  // file matters: TeX Live's installed version can differ here.
+  (c: link("https://doi.org/" + d)[doi:#d], p: false)
 } else { none }
 #let blx-tail(e, url-always: false) = {
   let items = ()
@@ -552,8 +557,13 @@
   let holder = if has(e, "holder") {
     (c: render(join-names(e.names.holder)), p: false)
   } else { none }
+  let lead = if style == "author-year" and has(e, "author") {
+    (c: render(join-names(e.names.author)) + ". " + blx-print-full-date(e) + suffix, p: false)
+  } else {
+    blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false)
+  }
   blx-blocks(
-    blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false),
+    lead,
     blx-title-field(e, style: style),
     (c: "(" + blx-print-full-date(e) + ")", p: false),
     if identification == [] { none } else { (c: identification, p: false) },
