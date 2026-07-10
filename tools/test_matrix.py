@@ -25,6 +25,7 @@ from dataclasses import dataclass
 # The engine the Tier 1 goldens were captured with. Bumping Typst means
 # regenerating the golden hashes (`tools/test.py accept`).
 TYPST_VERSION = "0.14.2"
+MIN_TYPST_VERSION = "0.12.0"
 
 # Raster resolution (dpi) for the Tier 1 page-hash snapshots.
 GOLDEN_DPI = 150

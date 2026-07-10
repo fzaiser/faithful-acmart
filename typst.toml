@@ -23,17 +23,23 @@ compiler = "0.12.0"
 # the LaTeX sources / validation harness / bundled dev fonts, contributor docs, and the
 # ACM JDS logo (ACM's trademark — the acmcp format takes a user-supplied `acmcp-logo:`).
 exclude = [
+    "/.github",
+    "/.venv",
     "/acmart",
     "/fonts",
     "/tests",
     "/tools",
     "/tmp",
     "/.gitignore",
+    "/.python-version",
     "/CLAUDE.md",
     "/CONTRIBUTING.md",
     "/DESIGN.md",
     "/PUBLISHING.md",
     "/TODO.md",
+    "/acmart-upstream-findings.md",
+    "/pyproject.toml",
+    "/uv.lock",
     "/src/README.md",
     "/src/assets/acm-jdslogo.png",
 ]

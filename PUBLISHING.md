@@ -49,9 +49,10 @@ those rules were applied here so future releases don't have to re-derive them.
 `thumbnail.png` (auto-excluded from the downloaded bundle but present for the preview).
 
 **Excluded** (dev-only, via `exclude` in `typst.toml` — add new dev docs here):
-`/acmart`, `/fonts`, `/tests`, `/tools`, `/tmp`, `/.gitignore`, `/CLAUDE.md`,
-`/CONTRIBUTING.md`, `/DESIGN.md`, `/PUBLISHING.md`, `/TODO.md`, `/src/README.md`,
-`/src/assets/acm-jdslogo.png`.
+`/.github`, `/.venv`, `/acmart`, `/fonts`, `/tests`, `/tools`, `/tmp`,
+`/.gitignore`, `/.python-version`, `/CLAUDE.md`, `/CONTRIBUTING.md`, `/DESIGN.md`,
+`/PUBLISHING.md`, `/TODO.md`, `/acmart-upstream-findings.md`, `/pyproject.toml`,
+`/uv.lock`, `/src/README.md`, `/src/assets/acm-jdslogo.png`.
 
 ## Assets & fonts (the parts that need care)
 
@@ -93,21 +94,13 @@ tools/venv/bin/python tools/test.py check
 tools/tc compile --format png --pages 1 --ppi 250 template/main.typ thumbnail.png
 #    optional: oxipng -o4 --strip safe thumbnail.png
 
-# 3. Prove the SHIPPED bundle is self-sufficient — assemble it (repo minus excludes)
-#    and compile a fresh project against it with ONLY user-provided fonts:
-P=/tmp/pkgroot/preview/faithful-acmart/0.1.0
-rsync -a --exclude='.git' --exclude='/acmart' --exclude='/fonts' --exclude='/tests' \
-  --exclude='/tools' --exclude='/tmp' --exclude='/.gitignore' --exclude='/CLAUDE.md' \
-  --exclude='/CONTRIBUTING.md' --exclude='/DESIGN.md' --exclude='/PUBLISHING.md' \
-  --exclude='/TODO.md' --exclude='/src/README.md' --exclude='/src/assets/acm-jdslogo.png' \
-  --exclude='/thumbnail.png' ./ "$P/"
-mkdir -p /tmp/proj && cp "$P/template/"* /tmp/proj/ && cd /tmp/proj
-typst compile --package-path /tmp/pkgroot --font-path "$OLDPWD/fonts" --ignore-system-fonts main.typ out.pdf
-cd "$OLDPWD"
+# 3. The regression harness assembles the manifest-filtered bundle, asserts an
+#    allowlist, compiles a fresh template project from it, and runs the official
+#    linter offline:
+tools/venv/bin/python tools/test.py package
 
-# 4. Official linter (needs rustc >= 1.85.1)
+# 4. To install/update the official linter (needs rustc >= 1.85.1)
 cargo install --git https://github.com/typst/package-check --locked
-typst-package-check   # run inside the assembled package dir
 ```
 
 Also confirm `authors` and `repository` in `typst.toml` and the copyright holder/year

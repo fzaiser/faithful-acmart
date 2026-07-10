@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -42,6 +43,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import tomllib
 import unicodedata
 from collections import Counter
 from pathlib import Path
@@ -642,6 +644,114 @@ def gate_matrix_integrity(report: bool = False) -> list[str]:
             f"matrix: Typst version is {actual_version!r}, golden header pins {M.TYPST_VERSION!r}")
     if report and not failures:
         print(f"ok   {len(matrix_twins)} twins + {len(matrix_smokes)} smokes; Typst {actual_version}")
+    return failures
+
+
+def _package_manifest() -> dict:
+    return tomllib.loads((ROOT / "typst.toml").read_text())
+
+
+def _package_files() -> list[Path]:
+    """Files selected by typst.toml's root-relative exclude list."""
+    manifest = _package_manifest()
+    excluded = tuple(item.lstrip("/").rstrip("/") for item in manifest["package"]["exclude"])
+
+    def is_excluded(rel: str) -> bool:
+        return rel == ".git" or rel.startswith(".git/") or any(
+            rel == item or rel.startswith(item + "/") for item in excluded)
+
+    return sorted(
+        p for p in ROOT.rglob("*")
+        if p.is_file() and not is_excluded(p.relative_to(ROOT).as_posix())
+    )
+
+
+def _stage_package(package_dir: Path) -> list[str]:
+    selected = _package_files()
+    rels: list[str] = []
+    for source in selected:
+        rel = source.relative_to(ROOT)
+        destination = package_dir / rel
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        rels.append(rel.as_posix())
+    return rels
+
+
+def gate_package(report: bool = False) -> list[str]:
+    """Manifest allowlist, fresh-package compile, and official offline lint."""
+    failures: list[str] = []
+    manifest = _package_manifest()
+    package = manifest["package"]
+
+    if package.get("compiler") != M.MIN_TYPST_VERSION:
+        failures.append(
+            f"package compiler floor {package.get('compiler')!r} != tested {M.MIN_TYPST_VERSION!r}")
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        package_root = root / "packages"
+        package_dir = package_root / "preview" / package["name"] / package["version"]
+        rels = _stage_package(package_dir)
+
+        allowed_root = {"LICENSE", "README.md", "thumbnail.png", "typst.toml"}
+        unexpected = [rel for rel in rels if not (
+            rel in allowed_root or rel.startswith("src/") or rel.startswith("template/")
+        )]
+        required = {
+            "LICENSE", "README.md", "thumbnail.png", "typst.toml",
+            "src/lib.typ", "template/main.typ", "template/refs.bib", "template/LICENSE",
+        }
+        missing = sorted(required - set(rels))
+        if unexpected:
+            failures.append("package contains non-allowlisted files: " + ", ".join(unexpected))
+        if missing:
+            failures.append("package is missing required files: " + ", ".join(missing))
+
+        project = root / "project"
+        shutil.copytree(package_dir / "template", project)
+        output = project / "out.pdf"
+        compile_proc = subprocess.run(
+            ["typst", "compile", str(project / "main.typ"), str(output),
+             "--package-path", str(package_root), "--root", str(project),
+             "--font-path", str(ROOT / "fonts"), "--ignore-system-fonts"],
+            capture_output=True, text=True, env={**os.environ, **TEST_CLOCK_ENV},
+        )
+        if compile_proc.returncode != 0 or not output.exists():
+            failures.append(
+                "fresh staged package failed to compile:\n" +
+                (compile_proc.stderr + compile_proc.stdout).strip())
+
+        checker = shutil.which("typst-package-check")
+        if checker is None:
+            failures.append("typst-package-check is not installed")
+        else:
+            check_proc = subprocess.run(
+                [checker, "check", "--offline", "--json", str(package_dir)],
+                capture_output=True, text=True,
+            )
+            diagnostics = []
+            for line in check_proc.stdout.splitlines():
+                try:
+                    diagnostics.append(json.loads(line))
+                except json.JSONDecodeError:
+                    diagnostics.append({"kind": "error", "message": line})
+            unexpected = [d for d in diagnostics if not (
+                d.get("code") == "compile/warning"
+                and "current font is not designed for math" in d.get("message", "")
+            )]
+            # The offline checker does not load the repository's excluded dev
+            # fonts, so its bundled compiler reports the documented Libertinus
+            # Math absence. Package rules prohibit shipping that font; accept
+            # only this exact warning and reject every other lint/compile issue.
+            if unexpected or (check_proc.returncode != 0 and not diagnostics):
+                failures.append(
+                    "typst-package-check failed:\n" +
+                    (check_proc.stderr + "\n" + "\n".join(
+                        f"{d.get('code', d.get('kind'))}: {d.get('message')}" for d in unexpected
+                    )).strip())
+    if report and not failures:
+        print(f"ok   {len(rels)} shipped files; fresh template compile; offline package lint")
     return failures
 
 
@@ -1452,6 +1562,44 @@ def cmd_unit(_args) -> int:
     return 1 if failures else 0
 
 
+def cmd_package(_args) -> int:
+    failures = gate_package(report=True)
+    for failure in failures:
+        print(failure, file=sys.stderr)
+    return 1 if failures else 0
+
+
+def cmd_min_version(_args) -> int:
+    """Compile a representative subset under the manifest's minimum Typst."""
+    proc = subprocess.run([str(TC), "--version"], capture_output=True, text=True)
+    match = re.search(r"\b(\d+\.\d+\.\d+)\b", proc.stdout + proc.stderr)
+    actual = match.group(1) if match else None
+    if proc.returncode != 0 or actual != M.MIN_TYPST_VERSION:
+        print(
+            f"minimum-version job requires Typst {M.MIN_TYPST_VERSION}, found {actual!r}",
+            file=sys.stderr,
+        )
+        return 1
+    sources = (
+        TESTS_DIR / "typst-only" / "defaults-test.typ",
+        TESTS_DIR / "typst-only" / "proceedings-defaults-test.typ",
+        TESTS_DIR / "twins" / "title-test.typ",
+        TESTS_DIR / "twins" / "body2-test.typ",
+        TESTS_DIR / "twins" / "biblatex-driver-test.typ",
+    )
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as td:
+        for source in sources:
+            rc, stderr = compile_typst(source, Path(td) / f"{source.stem}.pdf")
+            if rc != 0:
+                failures.append(f"{source.relative_to(ROOT)}:\n{stderr.strip()}")
+            else:
+                print(f"ok   {source.relative_to(ROOT)}")
+    for failure in failures:
+        print(failure, file=sys.stderr)
+    return 1 if failures else 0
+
+
 def cmd_check(args) -> int:
     print("Building LaTeX references…")
     build_all_latex(jobs=args.jobs, force=args.force)
@@ -1467,6 +1615,8 @@ def cmd_check(args) -> int:
     ok &= _run_gate("Tier 0 (smoke)", gate_smoke(compiled))
     print("\n== Tier 0.5 (unit) ==")
     ok &= _run_gate("Tier 0.5 (unit)", gate_unit())
+    print("\n== Tier 0.75 (package) ==")
+    ok &= _run_gate("Tier 0.75 (package)", gate_package())
     print("\n== Tier 1 (golden) ==")
     ok &= _run_gate("Tier 1 (golden)", gate_golden())
     print("\n== Tier 1.5 (text) ==")
@@ -1924,6 +2074,8 @@ def main() -> int:
                    help="run all regression gates").set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
     sub.add_parser("unit", help="run pure-Typst unit tests (tests/unit/*.typ); no LaTeX").set_defaults(fn=cmd_unit)
+    sub.add_parser("package", help="validate and compile the manifest-filtered package").set_defaults(fn=cmd_package)
+    sub.add_parser("min-version", help="compile compatibility fixtures under Typst 0.12.0").set_defaults(fn=cmd_min_version)
 
     o = sub.add_parser("overlay",
                        help="per-twin vector overlay + side-by-side PDFs vs LaTeX")

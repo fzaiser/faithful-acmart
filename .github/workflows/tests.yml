@@ -50,5 +50,25 @@ jobs:
       - name: Sync Python dependencies
         run: uv sync --frozen
 
+      - name: Install Typst package checker
+        run: cargo install --git https://github.com/typst/package-check --locked
+
       - name: Run regression suite
         run: uv run --frozen python tools/test.py check
+
+  minimum-typst:
+    name: Typst 0.12 compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install minimum Typst
+        uses: typst-community/setup-typst@v5
+        with:
+          typst-version: 0.12.0
+
+      - name: Compile compatibility fixtures
+        run: python3 tools/test.py min-version
