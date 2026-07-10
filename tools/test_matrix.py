@@ -768,6 +768,11 @@ TESTS: dict[str, Test] = {
         text_assertions=(
             Assertion(engine="both", text="2020a"),                  # \natexlab suffix
             Assertion(engine="both", text="Jones et al."),           # >2-author short label (\citet)
+            # Presort a/b grouping (bst forward/reverse pass over presort order):
+            # grpB/grpA share the "Smith et al." 2020 label, split by grpC in the
+            # final name/title sort — only presort grouping still assigns a/b.
+            Assertion(engine="both", text="2020b"),
+            Assertion(engine="both", text="IEEE Task Force"),        # editor.organization.sort label
         ),
     ),
     "mathfields": Test(

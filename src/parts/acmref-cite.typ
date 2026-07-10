@@ -197,7 +197,18 @@
   let label = if bib-format-state.final() == "biblatex" { lab-disambiguation-label(e) } else { bst-lab-label(e) }
   label + "\u{0}" + year-value(e).c
 }
+// \natexlab a/b/c suffixes are assigned in BibTeX's PRESORT order (bst forward/
+// reverse pass run right after the presort SORT), where entries are grouped by
+// (citation label, year) so equal-label entries are always adjacent — unlike the
+// FINAL bib.sort.order (name/year/title), which can interleave a different-label
+// entry between two same-label ones and split the group. For the bst backend we
+// therefore regroup over the presort key (dedup label+year, then the final
+// name/title order for the a/b order within a group) before the passes. BibLaTeX
+// (biber) already groups same-label entries adjacently, so its order is kept.
 #let extra-labels(db, order) = {
+  if bib-format-state.final() != "biblatex" {
+    order = order.sorted(key: k => (lab-dedup-key(db.at(k)), sort-key(db.at(k))))
+  }
   let res = (:)
   let i = 0
   while i < order.len() {

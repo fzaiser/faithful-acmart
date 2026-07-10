@@ -597,19 +597,49 @@
   em-render(em, if t == "periodical" { () } else { trailing(e) })
 }
 
-// ---- sort key -------------------------------------------------------------
-// .bst sort key: alphabetical by author/editor (von last first), then year, then
-// title — ties on surname break by given name, like bibtex's label-based presort.
-#let sort-key(e) = {
-  let ppl = e.names.at("author", default: e.names.at("editor", default: ()))
-  let names = ppl.map(n => (n.von + " " + n.last + " " + n.first).trim()).join(" ")
-  if names == none { names = "" }   // ().join() is none, not ""
-  // bibtex sorts on purify$(name): drops \commands + grouping braces and reduces
-  // foreign chars to ASCII, so {{R Core Team}} sorts under "R" and "Stra\ss e"
-  // under "Strasse" — exactly BibTeX's order. (tex.typ's purify is the faithful
-  // port; lower() makes the compare case-insensitive, as our presort does.)
-  names = lower(purify(names))
-  if names == "" and has(e, "key") { names = lower(purify(fld(e, "key"))) }
-  let y = if has(e, "year") { fld(e, "year") } else { "" }
-  names + "   " + y + "   " + lower(purify(fld(e, "title", d: "")))
+// ---- final sort (BibTeX's two-phase SORT) ---------------------------------
+// sortify (bst:2874): purify$ then downcase — BibTeX's case-insensitive compare
+// that also drops \commands/grouping braces and folds foreign chars to ASCII.
+#let sortify(s) = lower(purify(s))
+// sort.format.names (bst:2890): each name as "{vv{ } }{ll{ }}{  f{ }}{  jj{ }}"
+// (von + last + first-INITIALS + jr), sortified and joined; a trailing "others"
+// becomes " et~al". The exact BibTeX inter-token spacing is not reproduced — only
+// the relative ordering matters, which surname+initials fully determines.
+#let sort-format-names(people) = {
+  let parts = ()
+  for (i, n) in people.enumerate() {
+    if i == people.len() - 1 and is-others(n) { parts.push("et al") }
+    else {
+      let fi = purify(n.first).split(regex("\s+")).filter(t => t != "").map(t => t.clusters().first())
+      let s = (purify(n.von), purify(n.last), fi.join(" "), purify(n.jr)).filter(p => p != none and p.trim() != "").join(" ")
+      parts.push(lower(if s == none { "" } else { s }))
+    }
+  }
+  parts.join("   ")
 }
+// The type-dispatched name source (bst:3024-3041 / presort). BibTeX's type$ sees
+// the literal entry type, so aliases (collection, online, …) fall through to
+// author.sort — NO editor fallback for those.
+#let author-sort(e) = if has(e, "author") { sort-format-names(e.names.author) } else if has(e, "key") { sortify(fld(e, "key")) } else { "" }
+#let author-editor-sort(e) = if has(e, "author") { sort-format-names(e.names.author) } else if has(e, "editor") { sort-format-names(e.names.editor) } else if has(e, "key") { sortify(fld(e, "key")) } else { "" }
+#let editor-organization-sort(e) = if has(e, "editor") { sort-format-names(e.names.editor) } else if has(e, "organization") { sortify(fld(e, "organization")) } else if has(e, "key") { sortify(fld(e, "key")) } else { "" }
+#let author-editor-organization-sort(e) = if has(e, "author") { sort-format-names(e.names.author) } else if has(e, "editor") { sort-format-names(e.names.editor) } else if has(e, "organization") { sortify(fld(e, "organization")) } else if has(e, "key") { sortify(fld(e, "key")) } else { "" }
+#let sort-names(e) = {
+  let t = e.entry-type
+  if t in ("book", "inbook", "article") { author-editor-sort(e) }
+  else if t in ("proceedings", "periodical") { editor-organization-sort(e) }
+  else if t == "manual" { author-editor-organization-sort(e) }
+  else { author-sort(e) }
+}
+// sort.format.title (bst:2913): drop a leading "A "/"An "/"The ", then sortify.
+#let sort-format-title(raw) = {
+  let s = raw
+  if s.starts-with("The ") { s = s.slice(4) }
+  if s.starts-with("An ") { s = s.slice(3) }
+  if s.starts-with("A ") { s = s.slice(2) }
+  sortify(s)
+}
+// bib.sort.order (bst:3122): sort.label(name source) + year + title — the FINAL
+// reference-list order. A NUL joins the fields so a shorter field always sorts
+// before its own extension (like BibTeX's blank field separator).
+#let sort-key(e) = sort-names(e) + "\u{0}" + sortify(fld(e, "year", d: "")) + "\u{0}" + sort-format-title(fld(e, "title", d: ""))

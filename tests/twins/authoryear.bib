@@ -30,3 +30,15 @@
   title  = {Just Me},
   year   = {2021},
 }
+
+% Presort a/b grouping (bst forward/reverse pass runs over presort order, where
+% same-label entries are adjacent): grpB and grpA share the "Smith et al." 2020
+% label but the FINAL name/title sort puts grpC ("Smith and Nolan") between them.
+% grpB -> 2020a, grpA -> 2020b, grpC no suffix. Verified against the real bibtex.
+@article{grpA, author={Xara Smith and Yuki Xavier and Zed Young}, title={Alpha work}, journal={J. ACM}, volume={1}, number={1}, pages={1--9}, year={2020}}
+@article{grpB, author={Xara Smith and Amy Adams and Ben Baker}, title={Gamma work}, journal={J. ACM}, volume={2}, number={1}, pages={1--9}, year={2020}}
+@article{grpC, author={Xara Smith and Nora Nolan}, title={Delta work}, journal={J. ACM}, volume={3}, number={1}, pages={1--9}, year={2020}}
+
+% Organization-only proceedings: editor.organization.sort dispatch (sorts by the
+% organization name, ahead of "Smith"); the org is both the sort key and the label.
+@proceedings{OrgProc, organization={IEEE Task Force}, title={Org-only proceedings}, year={2020}, publisher={IEEE}, address={NY}}
