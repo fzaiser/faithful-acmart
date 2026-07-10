@@ -68,6 +68,7 @@
   // `date` may be shorter than a full YYYY (malformed input); guard the slice
   // as blx-date-parts does rather than letting .slice(0, 4) panic.
   let date = fld(e, "date", d: "")
-  let y = if has(e, "year") { fld(e, "year") } else if date.len() >= 4 { date.slice(0, 4) } else { "[n.d.]" }
+  // "[n.\,d.]" — a thin space, matching format.year (bst:511) and calc.basic.label.
+  let y = if has(e, "year") { fld(e, "year") } else if date.len() >= 4 { date.slice(0, 4) } else { "[n.\u{2009}d.]" }
   (c: y, p: false)
 }

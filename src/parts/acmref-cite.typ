@@ -79,6 +79,10 @@
   let path = bib-path-state.final()
   if path == none { return none }
   let db = read-merged(path)
+  // Stamp each entry with its citation key (cite$) for the author.key.label
+  // last-ditch fallback — the first 3 chars of the key when there is no
+  // author/editor/organization/key field (bst:1968).
+  for (k, e) in db { db.insert(k, e + (cite-key: k)) }
   let cited = cited-state.final()
   if bib-format-state.final() == "biblatex" { resolve-biblatex(db, cited) }
   else { resolve-crossref(db, cited) }
@@ -140,10 +144,13 @@
   let ed = if has(e, "editor") { names-fn(e.names.editor) }
   let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
   let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
-  if t in ("book", "inbook", "article") { pick((au, ed, key)) }
-  else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key)) }
-  else if t in manual-like-types { pick((au, ed, org, key)) }
-  else { pick((au, key)) }
+  // author.key.label &co. fall back to cite$[0:3] when nothing else is present (bst:1968)
+  let ck = e.at("cite-key", default: "")
+  let key3 = ck.clusters().slice(0, calc.min(3, ck.clusters().len())).join()
+  if t in ("book", "inbook", "article") { pick((au, ed, key, key3)) }
+  else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key, key3)) }
+  else if t in manual-like-types { pick((au, ed, org, key, key3)) }
+  else { pick((au, key, key3)) }
 }
 #let bst-lab-disambiguation-label(e) = bst-lab-label(e, full: true)
 
@@ -273,7 +280,10 @@
 // natbib author-year \citep/\citet: group consecutive same-label entries, then
 // group their years by base year so suffixes collapse ("2020a,b,c"); ", " between
 // distinct years, "; " between author groups. \citet puts years in brackets.
-#let cite-ay(keys, db, order, extras, citet: false) = {
+// `mode`: "citep" ([Label Year; …], the default), "citet" (Label [Year]), or
+// "citealt" (Label Year — no brackets, natbib \citealt). `supplement` is natbib's
+// postnote, joined with notesep ", " inside the closing bracket (dtx:3272).
+#let cite-ay(keys, db, order, extras, mode: "citep", supplement: none) = {
   let ks = cite-order(keys, order)
   let lgroups = ()
   for k in ks {
@@ -293,9 +303,18 @@
   }
   // link each author group to its first entry (hyperref anchors the whole citation)
   let parts = lgroups.map(g => link(entry-label(g.key),
-    if citet { g.shown + " [" + render-years(g.years) + "]" }
+    if mode == "citet" { g.shown + " [" + render-years(g.years) + "]" }
     else { g.shown + " " + render-years(g.years) }))
-  if citet { parts.join("; ") } else { "[" + parts.join("; ") + "]" }
+  let note = if supplement != none { [, #supplement] } else { [] }
+  if mode == "citep" { "[" + parts.join("; ") + note + "]" } else { parts.join("; ") }
+}
+// natbib \citet/\citealt in NUMBERS mode: "Author et al. [N]" / "Author et al. N".
+#let numeric-textcite(ks, db, order, brackets: true) = {
+  cite-order(ks, order).map(k => {
+    let num = order.position(x => x == k) + 1
+    let label = cite-label-content(k, db, order)
+    link(entry-label(k), if brackets { [#label \[#num\]] } else { [#label #num] })
+  }).join(", ")
 }
 
 // collapse [1,2,3,5] -> "1–3, 5", each number linked to its entry. `pairs` are
@@ -317,13 +336,16 @@
 // numeric \cite: each cited key -> its reference-list number; the .bst collapses
 // ranges while BibLaTeX lists them in command order. Every key is known here
 // (ensure-known ran first, so `position` never returns none).
-#let numeric-cite(ks, order) = {
+#let numeric-cite(ks, order, supplement: none) = {
   let pairs = ks.map(k => (num: order.position(x => x == k) + 1, key: k))
-  if bib-format-state.final() == "biblatex" {
-    [[#pairs.map(p => cite-num-link(p.num, p.key)).join(", ")]]
+  let inner = if bib-format-state.final() == "biblatex" {
+    pairs.map(p => cite-num-link(p.num, p.key)).join(", ")
   } else {
-    [[#collapse-linked(pairs)]]
+    collapse-linked(pairs)
   }
+  // natbib notesep ", " before the postnote, inside the brackets (dtx:3272)
+  let note = if supplement != none { [, #supplement] } else { [] }
+  [[#inner#note]]
 }
 
 // An undefined citation key is a hard error, matching Typst's native `cite`/`@key`
@@ -364,27 +386,60 @@
 // \citep "[Label Year]"
 #let bbl-cite(..keys) = {
   let ks = keys.pos()
+  let supp = keys.named().at("supplement", default: none)
   register-cites(ks)
   with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
-      cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order))
+      cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order), supplement: supp)
     } else {
-      numeric-cite(ks, p.order)
+      numeric-cite(ks, p.order, supplement: supp)
     }
   })
 }
 
-// \citet "Label [Year]" (author-year); falls back to numeric brackets otherwise
+// \citet: "Label [Year]" (author-year) / "Author et al. [N]" (numbers mode —
+// natbib keeps the author name in numeric \citet, dtx numbers style).
 #let bbl-citet(..keys) = {
   let ks = keys.pos()
   register-cites(ks)
   with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
-      cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order), citet: true)
+      cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order), mode: "citet")
     } else {
-      numeric-cite(ks, p.order)
+      numeric-textcite(ks, p.db, p.order)
     }
   })
+}
+
+// \citealt: like \citet but with no brackets ("Label Year" / "Author et al. N").
+#let bbl-citealt(..keys) = {
+  let ks = keys.pos()
+  register-cites(ks)
+  with-prepared(ks, p => {
+    if cite-style-state.get() == "author-year" {
+      cite-ay(ks, p.db, p.order, extra-labels(p.db, p.order), mode: "citealt")
+    } else {
+      numeric-textcite(ks, p.db, p.order, brackets: false)
+    }
+  })
+}
+
+// \citeyearpar: the year(s) in brackets. \citeyear yields the YEAR in BOTH modes
+// (numbers mode too — natbib prints "[1978]", not "[N]"); the a/b suffix only
+// applies in author-year mode.
+#let bbl-citeyearpar(..keys) = {
+  let ks = keys.pos()
+  register-cites(ks)
+  with-prepared(ks, p => {
+    let extras = if cite-style-state.get() == "author-year" { extra-labels(p.db, p.order) } else { (:) }
+    "[" + cite-order(ks, p.order).map(k =>
+      link(entry-label(k), year-value(p.db.at(k)).c + extras.at(k, default: ""))).join(", ") + "]"
+  })
+}
+
+// \shortcite (dtx:3670): \cite in numbers mode, \citeyearpar in author-year mode.
+#let bbl-shortcite(..keys) = context {
+  if cite-style-state.get() == "author-year" { bbl-citeyearpar(..keys) } else { bbl-cite(..keys) }
 }
 
 // \citeyear: just the year(s) with suffix; \citeauthor: just the label
@@ -430,7 +485,9 @@
     // 8pt, not the caller's.
     let labelsep = if format == "biblatex" { 2 * 5 * tp } else { 5 * tp }
     let labelwidth = measure(text(size: size)[[#order.len()]]).width
-    if title != none { heading(level: 1, numbering: none, outlined: false, title) }
+    // acmart \addcontentsline's the bibliography heading (dtx:3165-3168), so it is
+    // outlined (PDF bookmark), unlike our default headings.
+    if title != none { heading(level: 1, numbering: none, outlined: true, title) }
     for (i, key) in order.enumerate() {
       let e = db.at(key)
       // "See [parent]" citation for a child whose parent is in the list

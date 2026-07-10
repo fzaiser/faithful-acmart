@@ -24,7 +24,7 @@
 #import "parts/tables.typ": tabular, toprule, midrule, bottomrule
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
-#import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citeyear, bbl-citeauthor, bbl-bibliography, cite-style-state, tex-render-state
+#import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state, tex-render-state
 // the built-in bibtex-backend field renderer, exported so a custom `tex-render` can wrap it
 #import "parts/tex.typ": tex-to-content as default-tex-render, latex-logo as _latex-logo, tex-logo as _tex-logo, bibtex-logo as _bibtex-logo
 
@@ -43,10 +43,13 @@
 #let cite(..args) = context {
   let cfg = cfg-state.get()
   let keys = args.pos()
+  // `supplement: [p. 5]` (natbib's postnote) is forwarded to both backends —
+  // rendered as "[1, p. 5]" through the ACM engine (notesep ", ", dtx:3272).
+  let named = args.named()
   if cfg == none or cfg.bib-backend == "typst" {
-    keys.map(k => std.cite(_cite-label(k))).join()
+    keys.map(k => std.cite(_cite-label(k), ..named)).join()
   } else {
-    bbl-cite(..keys.map(str))
+    bbl-cite(..keys.map(str), ..named)
   }
 }
 
@@ -68,6 +71,13 @@
 #let cite-text = _cite-variant(bbl-citet, "prose")
 #let cite-year = _cite-variant(bbl-citeyear, "year")
 #let cite-author = _cite-variant(bbl-citeauthor, "author")
+// Further natbib variants faithful to acmart's setup:
+//   cite-alt     — "Author Year"/"Author [N]" with no brackets   (\citealt)
+//   cite-yearpar — the year/number in brackets                   (\citeyearpar)
+//   short-cite   — \cite in numeric mode, \citeyearpar in a-year (\shortcite, dtx:3670)
+#let cite-alt = _cite-variant(bbl-citealt, "prose")
+#let cite-yearpar = _cite-variant(bbl-citeyearpar, "year")
+#let short-cite = _cite-variant(bbl-shortcite, "normal")
 // Friendly alias for the acknowledgments environment (acmart names it `acks`).
 #let acknowledgments = acks
 #let latex-logo = _latex-logo
