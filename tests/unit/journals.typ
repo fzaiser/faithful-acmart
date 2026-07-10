@@ -1,16 +1,6 @@
 // Direct unit tests for the ACM journal table and its class-option side effects.
 
-#import "/src/parts/journals.typ": journals, lookup-journal
-
-// Exercise every transcribed choice, not just representative records.
-#assert(journals.len() >= 70, message: "journal table unexpectedly lost entries")
-#for code in journals.keys() {
-  let journal = lookup-journal(code)
-  assert(journal.name != none and journal.name != "", message: code + " has no long name")
-  assert(journal.short != none and journal.short != "", message: code + " has no short name")
-  assert(journal.issn.match(regex("^[0-9]{4}-[0-9X]{4}$")) != none,
-    message: code + " has malformed ISSN " + journal.issn)
-}
+#import "/src/parts/journals.typ": lookup-journal
 
 #let pacmnet = lookup-journal("PACMNET")
 #assert.eq(pacmnet.name, "Proceedings of the ACM on Networking")

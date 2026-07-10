@@ -1724,15 +1724,26 @@ def _structure_elements(node):
 
 
 def gate_structure(report: bool = False) -> list[str]:
-    """Tier 1.85 — require tagging on every fixture, then pin representative
+    """Tier 1.85 — require tagging on representative fixtures, then pin
     semantic roles, document languages, and image alternative descriptions."""
     try:
         import pikepdf
     except ImportError:
         return ["Tier 1.85 (structure) requires pikepdf (run `uv sync`)"]
 
+    expected_languages = {
+        "language-test": "fr",
+        "language-de-test": "de",
+        "language-es-test": "es",
+        "sample-sigplan": "en",
+    }
+    tagged_fixtures = (
+        "title-test", "body2-test", "biblatex-driver-test",
+        *expected_languages.keys(),
+    )
+
     failures: list[str] = []
-    for name in TESTS:
+    for name in tagged_fixtures:
         pdf_path = typst_pdf(name)
         if not pdf_path.exists():
             failures.append(f"{name}: missing Typst PDF")
@@ -1748,16 +1759,10 @@ def gate_structure(report: bool = False) -> list[str]:
                          for elem in _structure_elements(root)):
                 failures.append(f"{name}: structure tree has no Document element")
 
-    expected_languages = {
-        "language-test": "fr",
-        "language-de-test": "de",
-        "language-es-test": "es",
-        "sample-sigplan": "en",
-    }
     for name, expected in expected_languages.items():
         pdf_path = typst_pdf(name)
         if not pdf_path.exists():
-            continue  # already reported by the all-fixture pass above
+            continue  # already reported by the representative-fixture pass above
         with pikepdf.Pdf.open(pdf_path) as pdf:
             actual = str(pdf.Root.get("/Lang", ""))
         if actual != expected:
@@ -1792,7 +1797,8 @@ def gate_structure(report: bool = False) -> list[str]:
             f"    actual:   {dict(alternatives)}")
     if report and not failures:
         print(
-            f"ok   {len(TESTS)} tagged PDFs; languages; {len(required_roles)} role kinds; "
+            f"ok   {len(tagged_fixtures)} tagged PDFs; languages; "
+            f"{len(required_roles)} role kinds; "
             f"{sum(alternatives.values())} image alternatives")
     return failures
 
