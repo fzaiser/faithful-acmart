@@ -21,6 +21,9 @@ Common commands:
 ```sh
 uv run python tools/test.py build   # LaTeX refs + Typst PDFs + example
 uv run python tools/test.py check   # all regression gates
+uv run python tools/test.py unit    # fast Typst logic/data tests
+uv run python tools/test.py package # validate the exact distributable bundle
+uv run python tools/test.py smoke body2-test theorem-transition-test # targeted build/page checks
 uv run python tools/test.py accept  # bless golden hashes after an intended change
 ```
 
@@ -40,18 +43,21 @@ The port is validated by rendering both the real LaTeX `acmart` output and the T
 output, then comparing them page-by-page. LaTeX references are built from the bundled
 upstream sources in [`acmart/`](acmart/), not from the system TeX installation.
 
-The main check builds the LaTeX references, compiles every Typst test once, and then
-runs the gates:
+The main check builds the LaTeX references, compiles every Typst test once in
+parallel, and then runs the gates:
 
-- warning and page-count smoke checks
+- matrix/source-data integrity and a pinned, converged LaTeX oracle
+- warning, page-count, unit, and staged-package checks
 - committed Typst raster hashes in `tests/golden/`
-- extracted-text equality and semantic assertions
-- expected compile-error checks
-- cross-engine layout metrics
+- extracted text, PDF metadata, links, fonts, and expected-error checks
+- tagged-PDF roles, language/alt metadata, and logical reading order
+- exact, explicitly bounded cross-engine layout metrics
 
 `tools/test.py validate` separately builds copyright and option variants and reports
 page-1 mismatch percentages. `tools/test.py probe --format <name>` audits layout
-measurements against the LaTeX class.
+measurements against the LaTeX class. `tools/test.py source-data` verifies the
+transcribed journal table against `acmart.dtx`, and `tools/test.py structure` reports
+the tagged-PDF semantic checks without rerunning the rest of the suite.
 
 ## What the tests cover
 

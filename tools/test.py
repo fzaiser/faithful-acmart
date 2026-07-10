@@ -12,6 +12,7 @@ and PDF-structure gates):
 Commands
 --------
   build            build the LaTeX references, every Typst test PDF, and the example
+  smoke [names]    build and page-check selected matrix tests (default: all)
   check            run all regression gates (smoke / unit / golden / text / errors / metrics)
   unit             run the pure-Typst unit tests in tests/unit/*.typ (no LaTeX needed)
   accept           rebuild Typst PDFs and refresh the Tier 1 golden hashes
@@ -22,6 +23,8 @@ Commands
   list             print the test matrix
   clean            remove all generated output (tests/out/)
   metrics          print the Tier 2 layout-metric table for every page (no gating)
+  structure        report tagged-PDF roles, language, and image alternatives
+  source-data      compare transcribed data tables with bundled acmart.dtx
   linepitch FILE   measure baseline pitch / first-line position in a PDF (--dpi, --page)
 
 External tools required: Typst, TeX Live (pdflatex, bibtex, pdfjam), Poppler
@@ -313,14 +316,14 @@ def compile_typst(src: Path, out: Path) -> tuple[int, str]:
     return proc.returncode, proc.stderr
 
 
-def compile_all_typst() -> dict[str, tuple[int, str]]:
-    """Compile every test's Typst source once into tests/out/typst/.
+def compile_all_typst(names: list[str] | None = None) -> dict[str, tuple[int, str]]:
+    """Compile selected tests (all by default) once into tests/out/typst/.
 
     Returns {name: (returncode, stderr)} so the smoke gate can inspect warnings
     without recompiling.
     """
     TYPST.mkdir(parents=True, exist_ok=True)
-    items = list(TESTS.items())
+    items = list(TESTS.items()) if names is None else [(name, TESTS[name]) for name in names]
 
     def compile_one(item: tuple[str, Test]) -> tuple[str, tuple[int, str]]:
         name, t = item
@@ -647,6 +650,129 @@ def gate_matrix_integrity(report: bool = False) -> list[str]:
     return failures
 
 
+def _compact_tex_text(value: str) -> str:
+    """Normalize whitespace-only TeX source formatting in literal data fields."""
+    return re.sub(r"\s+", " ", value.replace("~", " ").replace(r"\&", "&")).strip()
+
+
+def _latex_journal_records() -> dict[str, dict]:
+    """Extract the journal choice arms directly from the bundled acmart.dtx."""
+    source = (ACMART / "acmart.dtx").read_text()
+    start = source.index(r"\ifcase\@journalCode@nr", source.index("{acmJournal}"))
+    end = source.index(r"\else % FACMP", start)
+    choice = source[start:end]
+    records: dict[str, dict] = {}
+    arms = re.finditer(
+        r"(?:\\relax|\\or)\s*%\s*([A-Z0-9]+)\s*(.*?)"
+        r"(?=(?:\\or)\s*%|\Z)",
+        choice,
+        re.S,
+    )
+    for match in arms:
+        code, body = match.groups()
+
+        def field(macro: str) -> str | None:
+            found = re.search(rf"\\def\\{re.escape(macro)}\{{(.*?)\}}%", body, re.S)
+            return _compact_tex_text(found.group(1)) if found else None
+
+        records[code] = {
+            "name": field("@journalName"),
+            "short": field("@journalNameShort"),
+            "issn": field("@permissionCodeTwo") or field("@permissionCodeOne"),
+            "screen": r"\@ACM@screentrue" in body,
+        }
+    return records
+
+
+def _typst_journal_records() -> dict[str, dict]:
+    """Extract the intentionally regular one-record-per-line Typst table."""
+    records: dict[str, dict] = {}
+    pattern = re.compile(
+        r'^\s*([A-Z0-9]+): \(name: "([^"]*)", short: "([^"]*)", '
+        r'issn: "([^"]*)"(, screen: true)?\),$',
+        re.M,
+    )
+    for code, name, short, issn, screen in pattern.findall(
+            (ROOT / "src" / "parts" / "journals.typ").read_text()):
+        records[code] = {
+            "name": name, "short": short, "issn": issn, "screen": bool(screen),
+        }
+    return records
+
+
+def _typst_table_body(source: str, variable: str) -> str:
+    found = re.search(
+        rf"(?s)^#let {re.escape(variable)} = \((.*?)\)", source, re.M)
+    if not found:
+        raise ValueError(f"could not find Typst table {variable}")
+    return found.group(1)
+
+
+def _typst_mapping_keys(source: str, variable: str) -> set[str]:
+    body = _typst_table_body(source, variable)
+    pairs = re.findall(
+        r'(?:^|,)\s*(?:"([^"]+)"|([A-Za-z][A-Za-z0-9-]*))\s*:', body)
+    return {quoted or bare for quoted, bare in pairs}
+
+
+def _typst_tuple_strings(source: str, variable: str) -> set[str]:
+    return set(re.findall(r'"([^"]*)"', _typst_table_body(source, variable)))
+
+
+def gate_source_data(report: bool = False) -> list[str]:
+    """Ensure transcribed journal records still match the bundled LaTeX source.
+
+    PACMNET's long name is the one deliberate correction: upstream says
+    "Networkng", while this port intentionally publishes "Networking".
+    """
+    failures: list[str] = []
+    try:
+        expected = _latex_journal_records()
+        actual = _typst_journal_records()
+    except (OSError, ValueError) as error:
+        return [f"source-data parser failed: {error}"]
+    if "PACMNET" in expected:
+        expected["PACMNET"]["name"] = "Proceedings of the ACM on Networking"
+    if missing := sorted(set(expected) - set(actual)):
+        failures.append("journal data: missing Typst records " + ", ".join(missing))
+    if extra := sorted(set(actual) - set(expected)):
+        failures.append("journal data: records absent from LaTeX " + ", ".join(extra))
+    for code in sorted(set(expected) & set(actual)):
+        if expected[code] != actual[code]:
+            failures.append(
+                f"journal data: {code} differs from acmart.dtx\n"
+                f"    expected: {expected[code]}\n"
+                f"    actual:   {actual[code]}")
+
+    math_tables = (
+        ("_math-sym", "math-symbols", True),
+        ("_math-op-cw", "math-operators", True),
+        ("_math-fn1", "math-functions-one", True),
+        ("_math-fn2", "math-functions-two", True),
+        ("_math-noop", "math-noops", False),
+        ("_math-cs-space", "math-spacing-symbols", True),
+    )
+    try:
+        tex_source = (ROOT / "src" / "parts" / "tex.typ").read_text()
+        tex_tests = (TESTS_DIR / "unit" / "tex.typ").read_text()
+        for source_name, test_name, is_mapping in math_tables:
+            source_members = (_typst_mapping_keys(tex_source, source_name) if is_mapping
+                              else _typst_tuple_strings(tex_source, source_name))
+            tested_members = _typst_tuple_strings(tex_tests, test_name)
+            if source_members != tested_members:
+                failures.append(
+                    f"math coverage: {test_name} does not exactly cover {source_name}\n"
+                    f"    untested: {sorted(source_members - tested_members)}\n"
+                    f"    stale:    {sorted(tested_members - source_members)}")
+    except (OSError, ValueError) as error:
+        failures.append(f"math-coverage parser failed: {error}")
+    if report and not failures:
+        print(
+            f"ok   {len(actual)} journal records match acmart.dtx (PACMNET typo corrected); "
+            f"{len(math_tables)} math tables exhaustively tested")
+    return failures
+
+
 def _package_manifest() -> dict:
     return tomllib.loads((ROOT / "typst.toml").read_text())
 
@@ -755,14 +881,16 @@ def gate_package(report: bool = False) -> list[str]:
     return failures
 
 
-def build_all_latex(jobs: int = 1, force: bool = False) -> None:
-    """Build every LaTeX twin in parallel (``jobs`` at a time).
+def build_all_latex(
+        jobs: int = 1, force: bool = False, names: list[str] | None = None) -> None:
+    """Build selected LaTeX twins (all by default) in parallel.
 
     Up-to-date references are skipped unless ``force`` (see ``ref_is_fresh``).
     """
     ensure_class(LATEX)  # serial, before fan-out: avoids a class/asset write race
+    selected = set(TESTS) if names is None else set(names)
     twins = [(name, TESTS_DIR / t.subdir / f"{name}.tex")
-             for name, t in TESTS.items() if t.kind == "twin"]
+             for name, t in TESTS.items() if name in selected and t.kind == "twin"]
 
     def build_one(item: tuple[str, Path]) -> None:
         name, tex = item
@@ -778,13 +906,15 @@ def build_all_latex(jobs: int = 1, force: bool = False) -> None:
 # ---------------------------------------------------------------------------
 # Gates
 # ---------------------------------------------------------------------------
-def gate_smoke(compiled: dict[str, tuple[int, str]]) -> list[str]:
+def gate_smoke(
+        compiled: dict[str, tuple[int, str]], names: list[str] | None = None) -> list[str]:
     """Tier 0 — compile cleanliness, page counts, twin page-count parity.
 
     Uses the already-captured compile results (no recompilation).
     """
     failures: list[str] = []
-    for name, t in TESTS.items():
+    items = TESTS.items() if names is None else ((name, TESTS[name]) for name in names)
+    for name, t in items:
         rc, stderr = compiled[name]
         local: list[str] = []
         if rc != 0:
@@ -1312,6 +1442,19 @@ def cmd_build(args) -> int:
     return 0
 
 
+def cmd_smoke(args) -> int:
+    names = args.names or list(TESTS)
+    unknown = [name for name in names if name not in TESTS]
+    if unknown:
+        print("unknown test name(s): " + ", ".join(unknown), file=sys.stderr)
+        return 2
+    print("Building selected LaTeX references…")
+    build_all_latex(jobs=args.jobs, force=args.force, names=names)
+    print("Compiling selected Typst tests…")
+    compiled = compile_all_typst(names)
+    return 0 if _run_gate("Tier 0 (targeted smoke)", gate_smoke(compiled, names)) else 1
+
+
 def gate_links(report: bool = False) -> list[str]:
     """Tier 1.7 — external and internal hyperlink coverage.
 
@@ -1535,6 +1678,97 @@ def gate_order(report: bool = False) -> list[str]:
     return failures
 
 
+# --- Tier 1.85: tagged-PDF semantics ---------------------------------------
+def _structure_elements(node):
+    """Yield every structure element below a StructTreeRoot in document order."""
+    import pikepdf
+    if isinstance(node, pikepdf.Array):
+        for item in node:
+            yield from _structure_elements(item)
+        return
+    if not isinstance(node, pikepdf.Dictionary):
+        return
+    if "/S" in node:
+        yield node
+    children = node.get("/K")
+    if children is not None:
+        yield from _structure_elements(children)
+
+
+def gate_structure(report: bool = False) -> list[str]:
+    """Tier 1.85 — require tagging on every fixture, then pin representative
+    semantic roles, document languages, and image alternative descriptions."""
+    try:
+        import pikepdf
+    except ImportError:
+        return ["Tier 1.85 (structure) requires pikepdf (run `uv sync`)"]
+
+    failures: list[str] = []
+    for name in TESTS:
+        pdf_path = typst_pdf(name)
+        if not pdf_path.exists():
+            failures.append(f"{name}: missing Typst PDF")
+            continue
+        with pikepdf.Pdf.open(pdf_path) as pdf:
+            mark_info = pdf.Root.get("/MarkInfo")
+            root = pdf.Root.get("/StructTreeRoot")
+            if not mark_info or not bool(mark_info.get("/Marked")):
+                failures.append(f"{name}: PDF catalog is not marked as tagged")
+            if not root:
+                failures.append(f"{name}: PDF has no structure tree")
+            elif not any(str(elem.get("/S")) == "/Document"
+                         for elem in _structure_elements(root)):
+                failures.append(f"{name}: structure tree has no Document element")
+
+    expected_languages = {
+        "language-test": "fr",
+        "language-de-test": "de",
+        "language-es-test": "es",
+        "sample-sigplan": "en",
+    }
+    for name, expected in expected_languages.items():
+        pdf_path = typst_pdf(name)
+        if not pdf_path.exists():
+            continue  # already reported by the all-fixture pass above
+        with pikepdf.Pdf.open(pdf_path) as pdf:
+            actual = str(pdf.Root.get("/Lang", ""))
+        if actual != expected:
+            failures.append(f"{name}: PDF language {actual!r} != {expected!r}")
+
+    sample = "sample-sigplan"
+    sample_pdf = typst_pdf(sample)
+    if not sample_pdf.exists():
+        return failures
+    with pikepdf.Pdf.open(sample_pdf) as pdf:
+        elements = list(_structure_elements(pdf.Root.get("/StructTreeRoot")))
+        roles = Counter(str(elem.get("/S")) for elem in elements)
+        alternatives = Counter(
+            str(elem.get("/Alt")) for elem in elements if "/Alt" in elem
+        )
+    required_roles = {
+        "/Document", "/H1", "/H2", "/P", "/L", "/LI", "/Table", "/TR",
+        "/TD", "/Figure", "/Caption", "/Link", "/Formula",
+    }
+    missing_roles = sorted(role for role in required_roles if not roles[role])
+    if missing_roles:
+        failures.append(f"{sample}: missing semantic roles {', '.join(missing_roles)}")
+    expected_alternatives = Counter({
+        "Enjoying the baseball game from the third-base seats. "
+        "Ichiro Suzuki preparing to bat.": 1,
+        "A woman and a girl in white dresses sit in an open car.": 1,
+    })
+    if alternatives != expected_alternatives:
+        failures.append(
+            f"{sample}: image alternatives changed\n"
+            f"    expected: {dict(expected_alternatives)}\n"
+            f"    actual:   {dict(alternatives)}")
+    if report and not failures:
+        print(
+            f"ok   {len(TESTS)} tagged PDFs; languages; {len(required_roles)} role kinds; "
+            f"{sum(alternatives.values())} image alternatives")
+    return failures
+
+
 def gate_unit(report: bool = False) -> list[str]:
     """Tier 0.5 — pure-Typst unit tests (tests/unit/*.typ). These import a module
     and assert on its output via #assert.eq, so a failure aborts the compile with
@@ -1559,6 +1793,20 @@ def cmd_unit(_args) -> int:
     failures = gate_unit(report=True)
     for f in failures:
         print(f, file=sys.stderr)
+    return 1 if failures else 0
+
+
+def cmd_structure(_args) -> int:
+    failures = gate_structure(report=True)
+    for failure in failures:
+        print(failure, file=sys.stderr)
+    return 1 if failures else 0
+
+
+def cmd_source_data(_args) -> int:
+    failures = gate_source_data(report=True)
+    for failure in failures:
+        print(failure, file=sys.stderr)
     return 1 if failures else 0
 
 
@@ -1609,6 +1857,8 @@ def cmd_check(args) -> int:
     ok = True
     print("\n== Tier 0.1 (matrix integrity) ==")
     ok &= _run_gate("Tier 0.1 (matrix integrity)", gate_matrix_integrity())
+    print("\n== Tier 0.15 (source data) ==")
+    ok &= _run_gate("Tier 0.15 (source data)", gate_source_data())
     print("\n== Tier 0.25 (LaTeX oracle) ==")
     ok &= _run_gate("Tier 0.25 (LaTeX oracle)", gate_latex_oracle())
     print("\n== Tier 0 (smoke) ==")
@@ -1631,6 +1881,8 @@ def cmd_check(args) -> int:
     ok &= _run_gate("Tier 1.75 (validation variants)", gate_validate(args.jobs, args.force))
     print("\n== Tier 1.8 (fonts) ==")
     ok &= _run_gate("Tier 1.8 (fonts)", gate_fonts())
+    print("\n== Tier 1.85 (structure) ==")
+    ok &= _run_gate("Tier 1.85 (structure)", gate_structure())
     print("\n== Tier 1.9 (order) ==")
     ok &= _run_gate("Tier 1.9 (order)", gate_order())
     print("\n== Tier 2 (metrics) ==")
@@ -2070,6 +2322,10 @@ def main() -> int:
 
     sub.add_parser("build", parents=[par],
                    help="build LaTeX refs + all Typst PDFs + example").set_defaults(fn=cmd_build)
+    smoke = sub.add_parser("smoke", parents=[par],
+                           help="build and page-check selected matrix tests")
+    smoke.add_argument("names", nargs="*", help="test names (default: all)")
+    smoke.set_defaults(fn=cmd_smoke)
     sub.add_parser("check", parents=[par],
                    help="run all regression gates").set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
@@ -2096,6 +2352,8 @@ def main() -> int:
     sub.add_parser("list", help="print the test matrix").set_defaults(fn=cmd_list)
     sub.add_parser("clean", help="remove tests/out/").set_defaults(fn=cmd_clean)
     sub.add_parser("metrics", help="print the Tier 2 metric table (no gating)").set_defaults(fn=cmd_metrics)
+    sub.add_parser("source-data", help="compare transcribed tables with acmart.dtx").set_defaults(fn=cmd_source_data)
+    sub.add_parser("structure", help="report tagged-PDF semantic checks").set_defaults(fn=cmd_structure)
     sub.add_parser("order", help="report the Tier 1.9 per-chunk reading-order check").set_defaults(fn=cmd_order)
 
     lp = sub.add_parser("linepitch", help="measure baseline pitch / first-line position")

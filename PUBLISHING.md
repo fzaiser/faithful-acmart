@@ -100,7 +100,8 @@ tools/tc compile --format png --pages 1 --ppi 250 template/main.typ thumbnail.pn
 tools/venv/bin/python tools/test.py package
 
 # 4. To install/update the official linter (needs rustc >= 1.85.1)
-cargo install --git https://github.com/typst/package-check --locked
+cargo install --git https://github.com/typst/package-check \
+  --rev b75374ac133ea1e7482ca5a74b1a5d373bf67c7a --locked
 ```
 
 Also confirm `authors` and `repository` in `typst.toml` and the copyright holder/year

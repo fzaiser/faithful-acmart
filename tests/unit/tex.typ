@@ -82,6 +82,55 @@
 // \ensuremath switches to math (was routed to text mode -> \alpha panicked).
 #has("\\ensuremath{\\alpha}", "equation")
 
+// Exhaust the transcribed math command tables. Representative equations would
+// miss a typo in an otherwise unused Typst symbol identifier; evaluating every
+// entry makes each mapping prove that it names a real math symbol/function.
+#let math-symbols = (
+  "alpha", "beta", "gamma", "delta", "epsilon", "varepsilon", "zeta", "eta",
+  "theta", "vartheta", "iota", "kappa", "lambda", "mu", "nu", "xi", "omicron",
+  "pi", "varpi", "rho", "varrho", "sigma", "varsigma", "tau", "upsilon", "phi",
+  "varphi", "chi", "psi", "omega", "Gamma", "Delta", "Theta", "Lambda", "Xi",
+  "Pi", "Sigma", "Upsilon", "Phi", "Psi", "Omega", "times", "cdot", "div", "pm",
+  "mp", "ast", "star", "oplus", "otimes", "odot", "circ", "bullet", "cup", "cap",
+  "setminus", "wedge", "land", "vee", "lor", "leq", "le", "geq", "ge", "neq",
+  "ne", "approx", "equiv", "sim", "simeq", "cong", "propto", "ll", "gg", "to",
+  "rightarrow", "Rightarrow", "leftarrow", "Leftarrow", "leftrightarrow", "mapsto",
+  "infty", "partial", "nabla", "forall", "exists", "neg", "in", "notin", "ni",
+  "subset", "subseteq", "supset", "supseteq", "emptyset", "varnothing", "perp",
+  "parallel", "angle", "ell", "hbar", "aleph", "prime", "dag", "ddag", "ldots",
+  "dots", "cdots", "sum", "prod", "int",
+)
+#let math-operators = (
+  "log", "ln", "exp", "sin", "cos", "tan", "cot", "sec", "csc", "lim", "limsup",
+  "liminf", "max", "min", "sup", "inf", "det", "dim", "gcd", "bmod",
+)
+#let math-functions-one = (
+  "sqrt", "mathbb", "mathcal", "mathbf", "mathrm", "mathit", "mathsf", "mathtt",
+  "mathfrak", "boldsymbol", "hat", "widehat", "tilde", "widetilde", "bar",
+  "overline", "underline", "vec", "dot", "ddot", "check", "breve", "acute", "grave",
+)
+#let math-functions-two = ("frac", "tfrac", "dfrac", "binom")
+#let math-noops = (
+  "left", "right", "displaystyle", "textstyle", "scriptstyle", "limits", "nolimits",
+  "bigl", "bigr", "big", "Big", "biggl", "biggr",
+)
+#let math-spacing-symbols = (",", ":", ">", ";", " ", "!")
+#for command in math-symbols + math-operators {
+  has("$\\" + command + "$", "equation")
+}
+#for command in math-functions-one {
+  has("$\\" + command + "{x}$", "equation")
+}
+#for command in math-functions-two {
+  has("$\\" + command + "{x}{y}$", "equation")
+}
+#for command in math-noops {
+  has("$x \\" + command + " y$", "equation")
+}
+#for symbol in math-spacing-symbols {
+  has("$a\\" + symbol + "b$", "equation")
+}
+
 // Declaration *switches* restyle the REST of the group, not just the next char:
 // `{\it a b}` -> italic over the whole "a b" (the old arg-grab gave italic over
 // "a" only). `[a b]` as one leaf inside the styled content is the discriminator.
