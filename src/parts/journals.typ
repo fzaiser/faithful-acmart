@@ -84,8 +84,13 @@
   TWEB: (name: "ACM Transactions on the Web", short: "ACM Trans. Web", issn: "1559-114X"),
 )
 
+#let _screen-journals = ("IMWUT", "PACMCGIT", "PACMHCI", "PACMPL", "PACMSE", "POMACS")
+
 #let lookup-journal(key) = {
-  if key == none { return (name: none, short: none, issn: "XXXX-XXXX") }
+  if key == none { return (name: none, short: none, issn: "XXXX-XXXX", screen: false) }
   let s = str(key)
-  journals.at(s, default: (name: s, short: s, issn: "XXXX-XXXX"))
+  assert(s in journals,
+    message: "faithful-acmart: unknown ACM journal code " + repr(s)
+      + "; expected one of " + repr(journals.keys()) + ".")
+  journals.at(s) + (screen: s in _screen-journals)
 }

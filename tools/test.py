@@ -93,6 +93,19 @@ def page_count(pdf: Path) -> int:
     return int(m.group(1)) if m else -1
 
 
+def pdf_info(pdf: Path) -> dict[str, str]:
+    """Poppler document-information fields as a simple name/value mapping."""
+    proc = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True)
+    if proc.returncode != 0:
+        return {}
+    return {
+        key.strip(): value.strip()
+        for line in proc.stdout.splitlines()
+        if ":" in line
+        for key, value in (line.split(":", 1),)
+    }
+
+
 def rasterize(pdf: Path, dpi: int, prefix: Path) -> list[Path]:
     subprocess.run(
         ["pdftoppm", "-r", str(dpi), "-png", str(pdf), str(prefix)],
@@ -760,7 +773,6 @@ def _error_source(extra_arg: str, body: str = "= Body\nText.") -> str:
 #show: acmart.with(
   format: "acmsmall",
   title: "Expected Error",
-  authors: ((name: "Ada Lovelace"),),
   abstract: [A tiny document.],
   {extra_arg}
 )
@@ -791,6 +803,24 @@ def gate_errors() -> list[str]:
                 f"{name}: expected diagnostic containing {expected!r}, got:\n{diagnostics.strip()}")
         else:
             print(f"ok   {name}")
+    return failures
+
+
+def gate_metadata(report: bool = False) -> list[str]:
+    """Tier 1.55 — PDF metadata populated by the acmart show rule."""
+    failures: list[str] = []
+    for name, expected in M.METADATA_EXPECTATIONS.items():
+        pdf = typst_pdf(name)
+        if not pdf.exists():
+            failures.append(f"{name}: missing Typst PDF for metadata gate")
+            continue
+        actual = pdf_info(pdf)
+        for field, value in expected.items():
+            if actual.get(field) != value:
+                failures.append(
+                    f"{name}: PDF {field} metadata is {actual.get(field)!r}, expected {value!r}")
+        if report and not any(f.startswith(name + ":") for f in failures):
+            print(f"ok   {name}: title/author/keywords metadata")
     return failures
 
 
@@ -1163,6 +1193,8 @@ def cmd_check(args) -> int:
     ok &= _run_gate("Tier 1 (golden)", gate_golden())
     print("\n== Tier 1.5 (text) ==")
     ok &= _run_gate("Tier 1.5 (text)", gate_text())
+    print("\n== Tier 1.55 (metadata) ==")
+    ok &= _run_gate("Tier 1.55 (metadata)", gate_metadata())
     print("\n== Tier 1.6 (expected errors) ==")
     ok &= _run_gate("Tier 1.6 (expected errors)", gate_errors())
     print("\n== Tier 1.7 (hyperlinks) ==")

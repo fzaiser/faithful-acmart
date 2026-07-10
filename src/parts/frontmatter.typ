@@ -49,14 +49,29 @@
   (items.slice(0, n - 1).join([, ]), items.at(n - 1)).join([, and ])
 }
 
+// An author's `affiliation` may be a single dict or an array of dicts (a person
+// with several affiliations, like LaTeX's repeated \affiliation). Normalize to a
+// list of dicts; none -> empty list. This precedes normalize-author because that
+// helper also enforces acmart's required country field.
+#let affil-list(aff) = {
+  if aff == none { () } else if type(aff) == array { aff } else { (aff,) }
+}
+
 // Fill in the optional author fields so the rest of the code can use plain field
 // access (a.email, a.note, ...) instead of defensive `.at(..., default:)`.
 #let normalize-author(a) = {
   let note = a.at("note", default: none)
+  let affiliation = a.at("affiliation", default: none)
+  for aff in affil-list(affiliation) {
+    let country = aff.at("country", default: none)
+    assert(country != none and (type(country) != str or country.trim() != ""),
+      message: "faithful-acmart: every author affiliation must include a nonempty `country`, "
+        + "matching acmart's required \\country field. Author: " + repr(a.name) + ".")
+  }
   (
     name: a.name,
     orcid: a.at("orcid", default: none),
-    affiliation: a.at("affiliation", default: none),
+    affiliation: affiliation,
     email: a.at("email", default: none),
     note: if note == none { () } else if type(note) == array { note } else { (note,) },
     corresponding: a.at("corresponding", default: false),
@@ -81,13 +96,6 @@
 // visible text and the mailto target (acmart.dtx:7478/7551/7608). Wrap the address
 // so the contact lines carry the same hidden mailto annotations LaTeX emits.
 #let email-link(email) = link("mailto:" + email)[#email]
-
-// An author's `affiliation` may be a single dict or an array of dicts (a person
-// with several affiliations, like LaTeX's repeated \affiliation). Normalize to a
-// list of dicts; none -> empty list.
-#let affil-list(aff) = {
-  if aff == none { () } else if type(aff) == array { aff } else { (aff,) }
-}
 
 // Join the present (non-none) values of `keys` from dict `d` with ", ". Returns
 // none — not "" — when no field is present, so absence is *always* `none` (a

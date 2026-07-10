@@ -29,6 +29,23 @@ TYPST_VERSION = "0.14.2"
 # Raster resolution (dpi) for the Tier 1 page-hash snapshots.
 GOLDEN_DPI = 150
 
+# PDF document-information fields emitted by Typst's native `document` metadata.
+# acmart also sets PDF Subject from CCS concepts, but Typst currently exposes no
+# document-level subject field, so that one intentional engine limitation is not
+# listed here.
+METADATA_EXPECTATIONS: dict[str, dict[str, str]] = {
+    "title-test": {
+        "Title": "The Name of the Title Is Hope",
+        "Author": "Ben Trovato, Lars Thørväld, Valerie Béranger",
+        "Keywords": "datasets, neural networks, gaze detection, text tagging",
+    },
+    "anonymous-test": {
+        "Title": "An Anonymous Submission",
+        "Author": "Anonymous Author(s)",
+        "Keywords": "datasets, anonymity",
+    },
+}
+
 # Tier 2 gate tolerances (PDF points; both engines emit 1/72in big points).
 # Only robust, renderer-agnostic invariants are gated. Right margin and line
 # count depend on cross-engine line-breaking, so metrics report them but does
@@ -1149,6 +1166,15 @@ ERROR_CASES: dict[str, tuple] = {
     "bad-font-size-type": ('font-size: "10pt",', "must be a length"),
     "bad-language": ('language: "klingon",', "unsupported language"),
     "draft-option": ("draft: true,", "option `draft` has no effect"),
+    "bad-journal": ('journal: "NOT-A-JOURNAL",', "unknown ACM journal code"),
+    "missing-affiliation-country": (
+        'authors: ((name: "Ada Lovelace", affiliation: (institution: "Analytical Engine Institute")),),',
+        "every author affiliation must include a nonempty `country`",
+    ),
+    "missing-affiliation-country-nonacm": (
+        'nonacm: true, authors: ((name: "Ada Lovelace", affiliation: (institution: "Analytical Engine Institute")),),',
+        "every author affiliation must include a nonempty `country`",
+    ),
     # the "bst" backend errors on an unsupported TeX command rather than passing
     # it through silently, pointing the user at the tex-render callback.
     "bst-unknown-cmd": (

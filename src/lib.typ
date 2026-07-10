@@ -235,7 +235,8 @@
   //   name          (required) — the author's name, uppercased in the title block.
   //   orcid         — ORCID identifier or profile URL; links the visible author name.
   //   affiliation   — a dict (institution / city / state / country), or an array of
-  //                   such dicts for multiple affiliations. All fields optional.
+  //                   such dicts for multiple affiliations. As in acmart, country is
+  //                   required whenever an affiliation is supplied.
   //   email         — contact email.
   //   note          — a title footnote, or an array of title footnotes; identical
   //                   note content is shared across authors.
@@ -499,6 +500,30 @@
   let copyright-year = if copyright-year != none { copyright-year } else { acm-year }
   // Fill in optional author fields up front (see normalize-author).
   let authors = authors.map(normalize-author)
+
+  // acmart publishes title, author, and keyword metadata through hyperref. Typst's
+  // native document metadata has no `subject` field (where LaTeX places CCS
+  // concepts), but the fields it does support should not be left blank. Document
+  // metadata authors/keywords must be strings; preserve rich content in the visible
+  // top matter while publishing the string-valued subset to the PDF metadata.
+  let document-authors = if anonymous {
+    ("Anonymous Author(s)",)
+  } else {
+    authors.map(a => a.name).filter(n => type(n) == str)
+  }
+  let document-keywords = if type(keywords) == array {
+    keywords.filter(k => type(k) == str)
+  } else if type(keywords) == str {
+    (keywords,)
+  } else {
+    ()
+  }
+  set document(title: title, author: document-authors, keywords: document-keywords)
+
+  // Six proceedings-style ACM journals force hyperref's screen colours in the
+  // class, even when the user did not pass the `screen` option.
+  let journal-record = lookup-journal(journal)
+  let screen = screen or journal-record.screen
 
   // \acmConference defaults to ACM's placeholder metadata in proceedings formats
   // (acmart.cls:1548). It is not active for journal/manuscript output, where
