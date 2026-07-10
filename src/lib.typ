@@ -25,7 +25,8 @@
 #import "formats/_base.typ": tp
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
-#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received, make-badges, lookup-journal, pub-date, andify, normalize-author
+#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received, make-badges, pub-date, andify, normalize-author
+#import "parts/metadata.typ": resolve-publication
 #import "parts/body.typ": apply-body, sidebar, marginfigure, margintable, fulltextwidth
 #import "parts/tables.typ": tabular, toprule, midrule, bottomrule
 #import "parts/strings.typ": resolve-language, lang-record
@@ -520,10 +521,15 @@
   }
   set document(title: title, author: document-authors, keywords: document-keywords)
 
+  // Resolve the journal record and DOI target once. Every page-chrome and
+  // front-matter path consumes these effective values instead of repeating a
+  // journal-table lookup or reconstructing the DOI URL.
+  let publication = resolve-publication(journal, doi)
+  let journal = publication.journal
+  let doi = publication.doi
   // Six proceedings-style ACM journals force hyperref's screen colours in the
   // class, even when the user did not pass the `screen` option.
-  let journal-record = lookup-journal(journal)
-  let screen = screen or journal-record.screen
+  let screen = screen or journal.screen
 
   // \acmConference defaults to ACM's placeholder metadata in proceedings formats
   // (acmart.cls:1548). It is not active for journal/manuscript output, where
@@ -606,9 +612,8 @@
     } else if print-folios [#p]
   }
   let journal-footer = {
-    let j = lookup-journal(journal)
-    if not nonacm and (j.short != none or (cfg.name == "acmsmall" and conference != none)) {
-      let prefix = if j.short != none { j.short } else { [] }
+    if not nonacm and (journal.short != none or (cfg.name == "acmsmall" and conference != none)) {
+      let prefix = if journal.short != none { journal.short } else { [] }
       let article = if acm-article != none or (cfg.name == "acmsmall" and conference != none) {
         [, Article #if acm-article != none { acm-article }]
       } else { [] }
@@ -620,7 +625,7 @@
     if cfg.name == "acmengage" {
       // \@formatdoi is \url{...} (acmart.dtx:6204), so the head DOI is a live
       // link, styled upright roman by acmengage's \urlstyle{rm}.
-      [EngageCSEdu.#if doi != none { text(font: cfg.fonts.body)[ #link("https://doi.org/" + doi)[https:\/\/doi.org\/#doi]] }]
+      [EngageCSEdu.#if doi != none { text(font: cfg.fonts.body)[ #link(doi.url)[https:\/\/doi.org\/#doi.bare]] }]
     } else if conference != none {
       let short = conference.at("short", default: conference.at("name", default: none))
       let date = conference.at("date", default: none)
@@ -649,9 +654,8 @@
     let odd = calc.odd(pageno)
     let first-page = here().page() == 1
     let bib = if cfg.name == "acmcp" {
-      let j = lookup-journal(journal)
-      if j.short != none {
-        [#j.name, Volume #acm-volume, Issue #acm-number#if acm-article != none [, Article #acm-article] (#pub-date(meta))#if doi != none { linebreak(); link("https://doi.org/" + doi)[https:\/\/doi.org\/#doi] }]
+      if journal.short != none {
+        [#journal.name, Volume #acm-volume, Issue #acm-number#if acm-article != none [, Article #acm-article] (#pub-date(meta))#if doi != none { linebreak(); link(doi.url)[https:\/\/doi.org\/#doi.bare] }]
       }
     } else if cfg.name == "acmtog" and conference != none {
       // acmtog's conference footer ends with a period (acmart.dtx:8064:

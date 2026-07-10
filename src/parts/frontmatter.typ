@@ -8,7 +8,6 @@
 
 #import "copyright.typ": permission-text, copyright-owner
 #import "spacing.typ": comp, tex-skip
-#import "journals.typ": lookup-journal
 #import "strings.typ": lang-record
 #import "body.typ": in-topmatter
 #import "punct.typ": add-punct
@@ -376,7 +375,7 @@
   let fs = cfg.size.footnotesize
   let lead = comp(cfg, sz: "footnotesize")
   let ni = collect-notes(meta)
-  let j = lookup-journal(meta.journal)
+  let j = meta.journal
 
   let rule(width) = {
     v(cfg.footnote-rule-kern-above, weak: true)
@@ -501,7 +500,7 @@
           // journal bibstrip, else the booktitle (acmart.dtx:6638-6644).
           let venue = if meta.bibstrip and meta.conference == none { j.name } else { meta.booktitle }
           [This is the author's version of the work. It is posted here for your personal use. Not for redistribution. The definitive Version of Record was published in #emph(venue)#{
-            if meta.doi != none [, #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi].]
+            if meta.doi != none [, #link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare].]
             else [.]
           }]
         } else if meta.bibstrip and meta.conference == none {
@@ -514,13 +513,13 @@
           }]
           if meta.doi != none {
             linebreak()
-            link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
+            link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare]
           }
         } else {
           // conference: ACM ISBN <isbn> then DOI (acmart.dtx:6654).
           if has-isbn(meta) { [ACM ISBN #meta.isbn]; linebreak() }
           if meta.doi != none {
-            link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]
+            link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare]
           }
         }
       })
@@ -999,7 +998,7 @@
 
   // --- ACM Reference Format ---
   if meta.print-acm-reference {
-    let j = lookup-journal(meta.journal)
+    let j = meta.journal
     let proceedings-ref = not meta.bibstrip or meta.conference != none
     // \@mkbibcitation does `\par\medskip\small ...`; next block is 9pt
     v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
@@ -1023,7 +1022,7 @@
             [In #emph(meta.booktitle)#if meta.editors.len() == 0 [#emph[.]] else [#emph[, ]#andify(meta.editors) (#if meta.editors.len() == 1 [Ed.] else [Eds.]).] ACM, New York, NY, USA#if meta.acm-article != none [, Article #meta.acm-article], #total #if total == 1 [page] else [pages].]
           }
         }#{
-          if meta.doi != none [ #link("https://doi.org/" + meta.doi)[https:\/\/doi.org\/#meta.doi]]
+          if meta.doi != none [ #link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare]]
         }
       ], chunk: true)
     }
