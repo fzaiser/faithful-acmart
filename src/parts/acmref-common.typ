@@ -28,11 +28,17 @@
 
 // ---- field access ---------------------------------------------------------
 #let fld(e, name, d: none) = e.fields.at(name, default: d)
-#let has(e, name) = name in e.fields and e.fields.at(name).trim() != ""
+// empty.or.unknown (bst:128): missing, whitespace-only, OR starting with "??"
+// (the TUG/BibNet "unknown value" marker) all count as absent, everywhere.
+#let has(e, name) = {
+  if name not in e.fields { return false }
+  let v = e.fields.at(name)
+  v.trim() != "" and not v.starts-with("??")
+}
 #let articleno-of(e) = if has(e, "articleno") { fld(e, "articleno") } else if has(e, "eid") { fld(e, "eid") } else { none }
 
 // ---- names ----------------------------------------------------------------
-#let is-others(n) = n.last == "others" and n.first == "" and n.von == ""
+#let is-others(n) = n.last == "others" and n.first == "" and n.von == "" and n.jr == ""
 #let one-name(n) = (n.first, n.von, n.last).filter(p => p != "").join(" ") + (
   if n.jr != "" { ", " + n.jr } else { "" })
 
@@ -53,7 +59,9 @@
 }
 
 // ---- small shared helpers -------------------------------------------------
-#let dashify(s) = s.replace("--", "\u{2013}").replace("-", "\u{2013}")
+// n.dashify (bst:1264) + TeX dash ligatures: a lone hyphen is promoted to an
+// en-dash, "--" stays an en-dash, and "---" (or longer) is kept as an em-dash.
+#let dashify(s) = s.replace(regex("-+"), m => if m.text.len() >= 3 { "\u{2014}" } else { "\u{2013}" })
 #let von-last(n) = (n.von, n.last).filter(p => p != "").join(" ")
 // ---- year piece -----------------------------------------------------------
 #let year-value(e) = {

@@ -9,6 +9,29 @@
 // ACM journal.canon.abbrev: map a full journal name to its canonical abbreviation
 #let canon-abbrev(j) = journal-canon.at(j, default: j)
 
+// tie.or.space.connect (bst:1352): join with a non-breaking tie when the SECOND
+// operand is short (text.length < 3), otherwise an ordinary space.
+#let tie-connect(a, b) = a + (if b.clusters().len() < 3 { "\u{00A0}" } else { " " }) + b
+
+// strip.articleno.or.eid (bst:449): drop a leading "Article"/"article"/"Paper"/
+// "paper" and one following space or "~", so articleno = {Article 5} → "5".
+#let strip-articleno(t) = {
+  for w in ("Article", "article", "Paper", "paper") {
+    if t.starts-with(w) { t = t.slice(w.len()) }
+  }
+  if t.starts-with(" ") { t = t.slice(1) }
+  if t.starts-with("~") { t = t.slice("~".len()) }
+  t
+}
+// format.year (bst:503): year, else date[0:4], else "[n.\,d.]" — always something.
+#let format-year-str(e) = {
+  if has(e, "year") { fld(e, "year") }
+  else {
+    let date = fld(e, "date", d: "")
+    if date.len() >= 4 { date.slice(0, 4) } else { "[n.\u{2009}d.]" }
+  }
+}
+
 // ---- output state machine -------------------------------------------------
 // state: "before" | "mid" | "block"   (sentence collapses to block)
 #let em-init = (pieces: (), state: "before")
@@ -90,7 +113,8 @@
   if raw == none or raw.trim() == "" { return none }
   let body = it(render(raw))
   if has(e, "edition") {
-    let ed = lower(fld(e, "edition"))
+    // edition "l" change.case$ (bst:1301): brace-protected words keep their case.
+    let ed = change-case(fld(e, "edition"), "l")
     (c: body + " (" + render(ed) + " ed.)", p: false)
   } else { (c: body, p: ends-punct(raw)) }
 }
@@ -111,7 +135,7 @@
   // "Number <n> in <series>" when a number is present and volume is absent.
   if has(e, "volume") { return none }
   if has(e, "number") and has(e, "series") {
-    (c: "Number " + fld(e, "number") + " in " + render(fld(e, "series")), p: false)
+    (c: tie-connect("Number", fld(e, "number")) + " in " + render(fld(e, "series")), p: false)
   } else { none }
 }
 
@@ -132,7 +156,7 @@
 #let format-chapter-pages(e) = {
   if has(e, "chapter") {
     let ty = if has(e, "type") { render(change-case(fld(e, "type"), "t")) } else { "Chapter" }
-    let r = ty + " " + fld(e, "chapter")
+    let r = tie-connect(ty, fld(e, "chapter"))
     if has(e, "pages") { r = r + ", " + dashify(fld(e, "pages")) }
     (c: r, p: false)
   } else { format-pages(e) }
@@ -141,13 +165,14 @@
 #let format-pages-noart(e) = {
   if articleno-of(e) != none { none }
   else if has(e, "pages") { format-pages(e) }
-  else if has(e, "numpages") { (c: fld(e, "numpages") + " pages", p: false) }
+  else if has(e, "numpages") { (c: fld(e, "numpages") + "\u{00A0}pages", p: false) }
   else { none }
 }
-// reduce.pages.to.page.count: numpages wins; else parse the first three numbers of
-// `pages` — a bare "1--N" range reduces to N (its page count), anything else
-// (n:1--n:m, 5--12, ...) stays verbatim. (The .bst's second `if` overwrites the
-// first, so only the "1--N" case actually reduces.)
+// reduce.pages.to.page.count (bst:946): numpages wins; else the .bst's SECOND `if`
+// (which overwrites the first) is the only branch that reduces — its final page
+// count is the second parsed number when pages starts with "1" and has no third
+// number, otherwise the pages string verbatim. A bare "1--N" → N, "1" → the
+// (empty) second number → prints nothing; "n:1--n:m"/"5--12" stay verbatim.
 #let reduce-pages(e) = {
   if has(e, "numpages") { return fld(e, "numpages") }
   if not has(e, "pages") { return none }
@@ -155,48 +180,59 @@
   let nums = p.matches(regex("[0-9]+"))
   let p1 = if nums.len() > 0 { nums.at(0).text } else { none }
   let p3 = if nums.len() > 2 { nums.at(2).text } else { none }
-  if nums.len() >= 2 and p1 == "1" and p3 == none { nums.at(1).text } else { p }
+  if p1 == "1" and p3 == none { if nums.len() > 1 { nums.at(1).text } else { none } } else { p }
 }
-// calc.format.page.count: "<count> pages" (misc/periodical/articleno paths)
+// format.page.count (bst:1540): "<count>~pages" — always a non-breaking tie.
 #let format-page-count(e) = {
   let c = reduce-pages(e)
-  if c == none { none } else { (c: dashify(c) + " pages", p: false) }
+  if c == none { none } else { (c: dashify(c) + "\u{00A0}pages", p: false) }
 }
 
 // ---- date / journal -------------------------------------------------------
-// optional ", Article N" prefix, then "(month year)"/"(day month year)", joined
-// by a leading space (`lead`); `lead: false` drops it for standalone use (the
-// content can't be .trim()ed once rendered, unlike the old decoded string).
+// format.articleno (bst:481): "Article N" with strip.articleno.or.eid; none when
+// neither articleno nor eid is present.
+#let format-articleno(e) = {
+  let art = articleno-of(e)
+  if art == none { none } else { (c: "Article " + strip-articleno(art), p: false) }
+}
+// format.day.month.year (bst:538): an "Article N" prefix (", Article N" only when
+// the caller has already set output.state to after.block, i.e. `lead: true`), then
+// an unconditional " (day month year)" with the format.year fallback. day precedes
+// the month (bst:520). Always returns a value — format.year always emits something.
 #let format-day-month-year(e, lead: true) = {
   let art = articleno-of(e)
-  let pre = if art != none { ", Article " + art } else { "" }
-  let sp = if lead { " " } else { "" }
-  if not has(e, "month") {
-    if has(e, "year") { (c: pre + sp + "(" + fld(e, "year") + ")", p: false) }
-    else if art != none { (c: pre, p: false) } else { none }
-  } else {
-    let d = if has(e, "day") { fld(e, "day") + " " } else { "" }
-    let y = if has(e, "year") { fld(e, "year") } else { "[n.d.]" }
-    (c: pre + sp + "(" + render(fld(e, "month")) + " " + d + y + ")", p: false)
-  }
+  let art-pre = if art != none {
+    (if lead { ", " } else { "" }) + "Article " + strip-articleno(art)
+  } else { "" }
+  let dm = if has(e, "month") {
+    if has(e, "day") { fld(e, "day") + " " + render(fld(e, "month")) + " " }
+    else { render(fld(e, "month")) + " " }
+  } else { "" }
+  (c: art-pre + " (" + dm + format-year-str(e) + ")", p: false)
 }
 // "N pages" when articleno present (numpages, or reduced from pages)
 #let format-articleno-numpages(e) = {
   if articleno-of(e) == none { return none }
   format-page-count(e)
 }
+// format.journal.volume.number.day.month.year (bst:1718): emphasized canonical
+// journal (empty when absent, but volume/number/date still print, bst:1725), the
+// volume/number block, then the date — omitted only for @inproceedings (bst:1755).
 #let format-journal-block(e) = {
-  if not has(e, "journal") { return none }
-  let c = it(render(canon-abbrev(fld(e, "journal"))))
-  if has(e, "volume") and has(e, "number") {
-    c = c + " " + fld(e, "volume") + ", " + fld(e, "number")
+  let jname = if has(e, "journal") { it(render(canon-abbrev(fld(e, "journal")))) } else { none }
+  let vn = if has(e, "volume") and has(e, "number") {
+    " " + fld(e, "volume") + ", " + fld(e, "number")
   } else if has(e, "volume") {
-    c = c + " " + fld(e, "volume")
+    " " + fld(e, "volume")
   } else if has(e, "number") {
-    c = c + " " + fld(e, "number")
-  }
-  let dmy = format-day-month-year(e)
-  if e.entry-type != "inproceedings" and dmy != none { c = c + dmy.c }
+    " " + fld(e, "number")
+  } else { none }
+  let dmy = if e.entry-type != "inproceedings" { format-day-month-year(e) } else { none }
+  if jname == none and vn == none and dmy == none { return none }
+  let c = []
+  if jname != none { c = c + jname }
+  if vn != none { c = c + vn }
+  if dmy != none { c = c + dmy.c }
   (c: c, p: false)
 }
 #let format-journal-underreview(e) = {
@@ -217,6 +253,12 @@
   let bt = format-emph-booktitle(e)
   if bt == none { return none }
   (c: [In ] + bt.c + format-city(e), p: false)
+}
+// format.in.booktitle (bst:1800): non-emphasized "In booktitle (city)" for
+// proceedings that appear in a journal.
+#let format-in-booktitle(e) = {
+  if not has(e, "booktitle") { return none }
+  (c: [In ] + render(fld(e, "booktitle")) + format-city(e), p: false)
 }
 #let format-in-ed-booktitle(e) = {
   let bt = format-emph-booktitle(e)
@@ -272,6 +314,9 @@
 // the path (http://doi.acm.org/10.1145/X -> 10.1145/X).
 #let strip-doi(d) = {
   if d.starts-with("10.") { return d }
+  // Only a URL-prefixed value is stripped (host up to the first "/"); a schemeless
+  // value is unrecognized and kept verbatim, matching the .bst's warn-and-keep.
+  if d.match(regex("(?i)^https?://")) == none { return d }
   let s = d.replace(regex("(?i)^https?://"), "")
   let parts = s.split("/")
   if parts.len() <= 1 { d } else { parts.slice(1).join("/") }
@@ -282,11 +327,13 @@
   let ep = fld(e, "eprint")
   let prefix = fld(e, "archiveprefix", d: if has(e, "eprinttype") { fld(e, "eprinttype") } else { "arxiv" })
   let cls = if has(e, "primaryclass") { fld(e, "primaryclass") } else if has(e, "eprintclass") { fld(e, "eprintclass") } else { none }
-  let suffix = if cls != none { " [" + cls + "]" } else { "" }
+  // "~[class]" is a non-breaking tie in the .bst (bst:740/743).
+  let suffix = if cls != none { "\u{00A0}[" + cls + "]" } else { "" }
   if lower(prefix) == "arxiv" {
     [arXiv:#link("https://arxiv.org/abs/" + ep)[#ep]#suffix]
   } else {
-    [#prefix:#ep#suffix]
+    // non-arXiv: lowercase the archiveprefix ("l" change.case$, bst:734).
+    [#change-case(prefix, "l"):#ep#suffix]
   }
 }
 
@@ -319,11 +366,16 @@
 // ---- per-entry-type handlers ----------------------------------------------
 #let howpub(e) = if has(e, "howpublished") { V(fld(e, "howpublished")) } else { none }
 
-#let lead-author-year(em, e, ysuf) = {
-  em = out(em, format-authors(e), variant: "norm")
-  if not has(e, "author") and has(e, "editor") { em = out(em, format-editors(e)) }
-  // format.key fallback: an author-less entry shows its `key` field in that slot
-  if not has(e, "author") and not has(e, "editor") and has(e, "key") { em = out(em, V(fld(e, "key"))) }
+// The lead author/year slot. Only article/underreview fall back to the editor
+// (bst:2198, `format.editors "editor" output.check`) and NEVER show a key
+// (`author format.no.key`, bst:2208); every other driver instead uses `format.key`
+// (author, else the `key` field) and never the editor (bst:2368/2400/… `author
+// format.key output`). This is what keeps an editor-only @inproceedings from
+// printing its editor twice (once here, once in the inline `(Eds.)` list).
+#let lead-author-year(em, e, ysuf, editor-ok: false, key-ok: true) = {
+  if has(e, "author") { em = out(em, format-authors(e), variant: "norm") }
+  else if editor-ok and has(e, "editor") { em = out(em, format-editors(e)) }
+  else if key-ok and has(e, "key") { em = out(em, V(fld(e, "key"))) }
   em = out-year(em, ysuf(year-value(e)))
   em
 }
@@ -335,23 +387,33 @@
 #let handle(e, xref-cite: none, year-suffix: "") = {
   // append the \natexlab suffix to the lead year value (no-op in numeric mode)
   let ysuf = v => if year-suffix == "" { v } else { (c: v.c + year-suffix, p: v.p) }
-  let lead = (em, e) => lead-author-year(em, e, ysuf)
+  let lead = (em, e, ..o) => lead-author-year(em, e, ysuf, ..o)
   let has-xref = has(e, "crossref") and xref-cite != none
   let t = e.entry-type
   let em = em-init
   // aliases
   let manual-like = ("online", "game", "video", "artifactsoftware", "artifactdataset", "software", "dataset", "preprint", "manual")
   if t == "article" or t == "underreview" {
-    em = lead(em, e)
+    // article/underreview are the only drivers that fall back to the editor and
+    // never emit a key (bst:2198/2208).
+    em = lead(em, e, editor-ok: true, key-ok: false)
     em = nblock(em)
     em = out(em, format-articletitle(e))
-    em = nblock(em)
+    em = nblock(em)   // new.block between title and howpublished (bst:2210/2249)
     em = out(em, howpub(e))
-    em = nblock(em)
-    if t == "underreview" { em = out(em, format-journal-underreview(e)) }
-    else {
+    if t == "underreview" {
+      // format.journal.underreview does NOT set after.block, so after a
+      // howpublished the journal joins with a comma, not a period (bst:1762/2257).
+      em = out(em, format-journal-underreview(e))
+    } else {
       if has-xref { em = out(em, format-article-crossref(e, xref-cite)) }
-      else { em = out(em, format-journal-block(e)) }
+      else {
+        // format.journal.volume.number.day.month.year sets output.state to
+        // after.block (bst:1750), so the preceding piece (howpublished, or the
+        // title) is always closed with a period before the journal block.
+        em = nblock(em)
+        em = out(em, format-journal-block(e))
+      }
       em = out(em, format-pages-noart(e))
       em = out(em, format-articleno-numpages(e))
     }
@@ -412,6 +474,19 @@
     em = out(em, howpub(e), variant: "dotspace")
     if has-xref {
       em = out(em, format-incoll-inproc-crossref(e, xref-cite))
+    } else if has(e, "journal") {
+      // proceedings appearing in a journal (bst:2410/2461): non-emphasized "In
+      // booktitle (city)" (comma-joined), editors fml, new.sentence, journal block
+      // (format-journal-block drops the date for @inproceedings, bst:1755).
+      if t == "presentation" {
+        em = nsentence(em)
+        em = out(em, format-venue(e))
+      } else {
+        em = out(em, format-in-booktitle(e))
+      }
+      em = out(em, format-editors-fml(e))
+      em = nsentence(em)
+      em = out(em, format-journal-block(e))
     } else {
       if t == "presentation" {
         em = nsentence(em)
@@ -428,6 +503,8 @@
       em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
       em = out(em, format-bookpages(e))
     }
+    // "Article N" then pages, after every branch (bst:2431/2436/2484/2489).
+    em = out(em, format-articleno(e))
     em = out(em, format-pages-noart(e))
     em = out(em, format-articleno-numpages(e))
   } else if t == "mastersthesis" or t == "phdthesis" {
@@ -516,7 +593,8 @@
     em = nblock(em)
     em = out(em, format-title(e))
   }
-  em-render(em, trailing(e))
+  // @periodical ends at fin.entry (bst:2669) with no trailing note/DOI/URL block.
+  em-render(em, if t == "periodical" { () } else { trailing(e) })
 }
 
 // ---- sort key -------------------------------------------------------------

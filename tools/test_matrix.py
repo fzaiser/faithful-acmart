@@ -167,17 +167,17 @@ class ResidualSignatures:
 EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
     "mathfields": ResidualSignatures(font="33b5c052b30812736e907581e38b04c1be363ec608e59cd34c8a13ce193f5170"),
-    "sample-acmsmall": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="b011bb574b0c3e6332e072a3cf7268d88ac0e06d7416674ed7e2a03b8e784142"),
-    "sample-manuscript": ResidualSignatures(text="527362f83210ff0362215154e012092aab9bd63ce53912de5b238fb09c890f30", font="ba2c719c2aa71bf411ef3fa382d5365f3b4ab49c2f8f7ccb4ca175b689f95a43", order="457f10d3f56df13ff4baff3612fe22eada818355eee6dcfe4c5154de5d9dee74"),
-    "sample-acmlarge": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="c32956ff5fef018c73b6d9b5f9084c8653cb892302fd05884ff6f7a53506f95e"),
-    "sample-sigconf": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="da3fad63db3dd04dfedfaf2d5eb1fb23c583708920c465d37d5e913d8ef36e86"),
-    "sample-sigplan": ResidualSignatures(text="7d9968c88a217d27c519a492459acf69ce9cec81d249b76ecb62f945ae36e54d", font="3047dcaee4a2bdbdae98523a9df44b4b10a0041399d537ed6b0e1a177cc8549f", order="2d25d7956168f03ea10393c2f996cf32ed0895f7c56704510fde7665358cdb2b"),
-    "sample-acmsmall-submission": ResidualSignatures(text="177dedfe4469ece8a23d03c2ed894a6e48f85a1b734c78afaec531eebd7b1d59", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="33160f565094321d629e06954ac6ddcc79817d22be972d4ef949a4983b19fb99"),
-    "sample-acmsmall-conf": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
-    "sample-acmtog": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="99003eab1044dc98b50f27a2e1cbc5a03e58413cd714e1318bd76ce7a4250922"),
-    "sample-acmtog-conf": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
-    "sample-sigconf-i13n": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="d3c9c50f4594efe40103a7db9e56117878bc6399a13653dd6eb25c8b2e7aae14"),
-    "sample-sigconf-authordraft": ResidualSignatures(text="195c1ea29cf78801a70a29f0adea32e9ea84435d5bc4625002832b1f892e76df", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="5e7664bcc6fd86d84a63ee11df1e2d86c6a650bf7181fb107743053292711289"),
+    "sample-acmsmall": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="b011bb574b0c3e6332e072a3cf7268d88ac0e06d7416674ed7e2a03b8e784142"),
+    "sample-manuscript": ResidualSignatures(text="f9f44935ab0a5d44f5a8d01a24eae936e5c438469863fb7b1147be60ec8c8b2b", font="ba2c719c2aa71bf411ef3fa382d5365f3b4ab49c2f8f7ccb4ca175b689f95a43", order="457f10d3f56df13ff4baff3612fe22eada818355eee6dcfe4c5154de5d9dee74"),
+    "sample-acmlarge": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="c32956ff5fef018c73b6d9b5f9084c8653cb892302fd05884ff6f7a53506f95e"),
+    "sample-sigconf": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="da3fad63db3dd04dfedfaf2d5eb1fb23c583708920c465d37d5e913d8ef36e86"),
+    "sample-sigplan": ResidualSignatures(text="64d45c6ec6bd58b47516cc3d55893a729472555d899928c4bcfc09b9c29fedae", font="3047dcaee4a2bdbdae98523a9df44b4b10a0041399d537ed6b0e1a177cc8549f", order="2d25d7956168f03ea10393c2f996cf32ed0895f7c56704510fde7665358cdb2b"),
+    "sample-acmsmall-submission": ResidualSignatures(text="05be43ea4c0c8fc81a09a46798912baad17a3435f87e97cb80c878bc0e2568ed", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="33160f565094321d629e06954ac6ddcc79817d22be972d4ef949a4983b19fb99"),
+    "sample-acmsmall-conf": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
+    "sample-acmtog": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="99003eab1044dc98b50f27a2e1cbc5a03e58413cd714e1318bd76ce7a4250922"),
+    "sample-acmtog-conf": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
+    "sample-sigconf-i13n": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="d3c9c50f4594efe40103a7db9e56117878bc6399a13653dd6eb25c8b2e7aae14"),
+    "sample-sigconf-authordraft": ResidualSignatures(text="3321920016639ea933b9c80491c647cb8ce4f5792b813a2774f5af2902941cf5", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="5e7664bcc6fd86d84a63ee11df1e2d86c6a650bf7181fb107743053292711289"),
     "sample-acmsmall-biblatex": ResidualSignatures(text="5a6d00df8ca31bf0749a95d1a044429c6892ada636dac526b75e92df6f6ed961", font="49aeb0090f34955cfe4955eb61ec3205d5316489e0e531efc5b177d41a4d0312", order="325dd262a0d7815097013690111f9d8452db63d9960cc95fb7a902c22c9b0867"),
     "sample-sigconf-biblatex": ResidualSignatures(text="314ea015168ec50ce6b645fecc148d93820ff6964468897a8d096c0a555200b9", font="331464ac0b75d83068122c1a2016d6e6e77733b7111debd67a0e13bcbb89a919", order="202add8013355fa3d61b8a1ebfa99845cab8bb6a9edf0303679e5002a45ac2be"),
     "sample-acmengage": ResidualSignatures(order="1badbb9a301a35b813960065b70e1c6ffee6bf6940a19c9e2c0e65f0edf23478"),
@@ -745,6 +745,12 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Preprint"),               # howpublished in @article
             Assertion(engine="both", text="Jan von der Berg"),       # comma von-name
             Assertion(engine="both", text="Ludwig van Beethoven"),   # no-comma von-name
+            # 2026-07 bst audit fixes (char-bag is order-blind, so these guard order):
+            Assertion(engine="both", text="23 Oct."),                # day-before-month (bst:520)
+            Assertion(engine="both", text="Article 7"),              # unpublished + articleno
+            Assertion(engine="both", text="Article 5"),              # strip.articleno.or.eid: {Article 5} -> 5
+            Assertion(engine="both", kind="absent", text="Article Article"),  # strip prefix
+            Assertion(engine="both", text="Fifth ed."),              # braced edition keeps its case (change.case l)
         ),
     ),
     "crossref": Test(

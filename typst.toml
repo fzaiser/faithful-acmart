@@ -38,6 +38,7 @@ exclude = [
     "/PUBLISHING.md",
     "/TODO.md",
     "/acmart-upstream-findings.md",
+    "/port-audit-2026-07.md",
     "/pyproject.toml",
     "/uv.lock",
     "/src/README.md",
