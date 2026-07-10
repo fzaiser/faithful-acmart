@@ -48,36 +48,77 @@
 // A `table` that adds booktabs rule separation around every horizontal rule. Same
 // call signature as `table`; use `table.hline` (or toprule/midrule/bottomrule) for
 // the rules. A child hline's resolved `y` is not exposed, so each rule's row
-// boundary is inferred from cell order: exact for the common grid of auto-placed
-// 1x1 cells (colspan is honoured), but an explicitly positioned cell
-// (`table.cell(y: ..)`) or a rowspan can misplace the separation.
+// boundary is inferred with the same row-major occupancy model as `table`, so
+// colspan, rowspan, and explicitly positioned cells all contribute to the next
+// automatic position.
 #let tabular(..args) = {
   let cols = args.named().at("columns", default: 1)
   let ncols = if type(cols) == array { cols.len() } else if type(cols) == int { cols } else { 1 }
 
-  // Walk the children in order. A rule sits at row boundary floor(seen / ncols);
+  // `tabular` is a drop-in table wrapper: preserve a caller's inset and add the
+  // booktabs separation to its top/bottom components. Accept the same scalar,
+  // sides dictionary, or per-cell function forms as `table`.
+  let caller-inset = args.named().at("inset", default: table-inset)
+  let inset-at(x, y) = {
+    let value = if type(caller-inset) == function { caller-inset(x, y) } else { caller-inset }
+    if type(value) == dictionary {
+      (
+        left: value.at("left", default: value.at("x", default: 0pt)),
+        right: value.at("right", default: value.at("x", default: 0pt)),
+        top: value.at("top", default: value.at("y", default: 0pt)),
+        bottom: value.at("bottom", default: value.at("y", default: 0pt)),
+      )
+    } else { (left: value, right: value, top: value, bottom: value) }
+  }
+
+  // Walk the children in order. A rule sits at the row boundary containing the
+  // next automatic cell position. Occupied slots make rowspans and explicit
+  // cells advance that cursor just as they do in Typst's table placement.
   // `below-top` rows have a rule directly above (top += \belowrulesep), `above-
   // bottom` rows have a rule directly below (bottom += \aboverulesep).
   let below-top = ()
   let above-bottom = ()
-  let seen = 0
+  let occupied = ()
+  let cursor = 0
+  let slot(x, y) = str(x) + ":" + str(y)
+  let advance(position, cells) = {
+    while slot(calc.rem(position, ncols), calc.quo(position, ncols)) in cells {
+      position += 1
+    }
+    position
+  }
   for c in args.pos() {
     if c.func() == std.table.hline {
       let y-field = c.fields().at("y", default: auto)
-      let y = if y-field == auto { calc.quo(seen, ncols) } else { y-field }
+      let y = if y-field == auto { calc.quo(cursor, ncols) } else { y-field }
       below-top.push(y)
       if y > 0 { above-bottom.push(y - 1) }
     } else if c.func() != std.table.vline {
-      seen += if c.func() == std.table.cell { c.fields().at("colspan", default: 1) } else { 1 }
+      let fields = if c.func() == std.table.cell { c.fields() } else { (:) }
+      let colspan = fields.at("colspan", default: 1)
+      let rowspan = fields.at("rowspan", default: 1)
+      let cell-x = fields.at("x", default: auto)
+      let cell-y = fields.at("y", default: auto)
+      cursor = advance(cursor, occupied)
+      let x = if cell-x == auto { calc.rem(cursor, ncols) } else { cell-x }
+      let y = if cell-y == auto { calc.quo(cursor, ncols) } else { cell-y }
+      for dy in range(rowspan) {
+        for dx in range(colspan) { occupied.push(slot(x + dx, y + dy)) }
+      }
+      if cell-x == auto and cell-y == auto { cursor = y * ncols + x + colspan }
+      cursor = advance(cursor, occupied)
     }
   }
 
   std.table(
     ..args,
-    inset: (x, y) => (
-      ..table-inset,
-      top: table-inset.top + (if y in below-top { belowrulesep } else { 0pt }),
-      bottom: table-inset.bottom + (if y in above-bottom { aboverulesep } else { 0pt }),
-    ),
+    inset: (x, y) => {
+      let base = inset-at(x, y)
+      (
+        ..base,
+        top: base.top + (if y in below-top { belowrulesep } else { 0pt }),
+        bottom: base.bottom + (if y in above-bottom { aboverulesep } else { 0pt }),
+      )
+    },
   )
 }
