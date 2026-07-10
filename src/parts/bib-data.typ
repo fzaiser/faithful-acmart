@@ -1,4 +1,5 @@
-// Built-in journal data transcribed from ACM-Reference-Format.bst (auto-extracted).
+// Built-in journal data transcribed from ACM-Reference-Format.bst. The source-data
+// gate checks both maps exactly against the bundled BST; it never rewrites this file.
 //  * journal-macros: the .bst's MACRO {abbr} {"Full Name"} table — seed values so
 //    `journal = csur` resolves like bibtex even when the .bib doesn't define it.
 //  * journal-canon: the .bst's journal.canon.abbrev table (Full Name -> canonical

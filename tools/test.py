@@ -24,7 +24,7 @@ Commands
   clean            remove all generated output (tests/out/)
   metrics          print the Tier 2 layout-metric table for every page (no gating)
   structure        report tagged-PDF roles, language, and image alternatives
-  source-data      compare transcribed data tables with bundled acmart.dtx
+  source-data      compare transcribed tables with bundled acmart.dtx and ACM-Reference-Format.bst
   linepitch FILE   measure baseline pitch / first-line position in a PDF (--dpi, --page)
 
 External tools required: Typst, TeX Live (pdflatex, bibtex, pdfjam), Poppler
@@ -719,8 +719,105 @@ def _typst_tuple_strings(source: str, variable: str) -> set[str]:
     return set(re.findall(r'"([^"]*)"', _typst_table_body(source, variable)))
 
 
+_QUOTED_STRING = r'"((?:\\.|[^"\\])*)"'
+
+
+def _unique_mapping(pairs: list[tuple[str, str]], label: str) -> dict[str, str]:
+    """Turn parsed key/value pairs into a map while rejecting hidden duplicates."""
+    result: dict[str, str] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate {label} key {key!r}")
+        result[key] = value
+    return result
+
+
+def _latex_bib_data() -> dict[str, dict[str, str]]:
+    """Extract the journal macro and canonical-abbreviation tables from the BST."""
+    source = (ACMART / "ACM-Reference-Format.bst").read_text()
+
+    macro_start = source.index("%%% ACM journal names")
+    macro_end = source.index("\nREAD", macro_start)
+    macro_source = source[macro_start:macro_end]
+    macro_pairs = [
+        (key.strip(), value)
+        for key, value in re.findall(
+            rf"MACRO\s*\{{\s*([^}}]+?)\s*\}}\s*\{{\s*{_QUOTED_STRING}\s*\}}",
+            macro_source,
+            re.S,
+        )
+    ]
+    macro_declarations = len(re.findall(r"\bMACRO\s*\{", macro_source))
+    if len(macro_pairs) != macro_declarations:
+        raise ValueError(
+            "parsed only " + str(len(macro_pairs)) + " of "
+            + str(macro_declarations) + " journal MACRO declarations")
+
+    canon_start = source.index("FUNCTION { journal.canon.abbrev }")
+    canon_end = source.index("FUNCTION { format.journal.volume.number.day.month.year }", canon_start)
+    canon_source = source[canon_start:canon_end]
+    canon_pairs = re.findall(
+        rf"^\s*journal\s+{_QUOTED_STRING}\s*=\s*\{{\s*{_QUOTED_STRING}\s*\}}\s*\{{",
+        canon_source,
+        re.M,
+    )
+    canon_declarations = len(re.findall(r'^\s*journal\s+"', canon_source, re.M))
+    if len(canon_pairs) != canon_declarations:
+        raise ValueError(
+            "parsed only " + str(len(canon_pairs)) + " of "
+            + str(canon_declarations) + " journal.canon.abbrev arms")
+
+    return {
+        "journal-macros": _unique_mapping(macro_pairs, "BST journal macro"),
+        "journal-canon": _unique_mapping(canon_pairs, "BST canonical abbreviation"),
+    }
+
+
+def _typst_string_mapping(source: str, variable: str) -> dict[str, str]:
+    """Parse a regular quoted-string Typst mapping without evaluating Typst."""
+    marker = f"#let {variable} = ("
+    start = source.index(marker) + len(marker)
+    end_match = re.search(r"^\)\s*$", source[start:], re.M)
+    if end_match is None:
+        raise ValueError(f"could not find end of Typst table {variable}")
+    body = source[start:start + end_match.start()]
+    pairs = re.findall(
+        rf"^\s*{_QUOTED_STRING}\s*:\s*{_QUOTED_STRING}\s*,\s*$",
+        body,
+        re.M,
+    )
+    declarations = len(re.findall(r'^\s*"', body, re.M))
+    if len(pairs) != declarations:
+        raise ValueError(
+            f"parsed only {len(pairs)} of {declarations} entries in Typst table {variable}")
+    return _unique_mapping(pairs, f"Typst {variable}")
+
+
+def _typst_bib_data() -> dict[str, dict[str, str]]:
+    source = (ROOT / "src" / "parts" / "bib-data.typ").read_text()
+    return {
+        "journal-macros": _typst_string_mapping(source, "journal-macros"),
+        "journal-canon": _typst_string_mapping(source, "journal-canon"),
+    }
+
+
+def _compare_transcribed_mapping(
+        failures: list[str], label: str, upstream: str,
+        expected: dict[str, str], actual: dict[str, str]) -> None:
+    if missing := sorted(set(expected) - set(actual)):
+        failures.append(f"{label}: missing Typst entries: " + ", ".join(missing))
+    if extra := sorted(set(actual) - set(expected)):
+        failures.append(f"{label}: entries absent from {upstream}: " + ", ".join(extra))
+    for key in sorted(set(expected) & set(actual)):
+        if expected[key] != actual[key]:
+            failures.append(
+                f"{label}: {key!r} differs from {upstream}\n"
+                f"    expected: {expected[key]!r}\n"
+                f"    actual:   {actual[key]!r}")
+
+
 def gate_source_data(report: bool = False) -> list[str]:
-    """Ensure transcribed journal records still match the bundled LaTeX source.
+    """Ensure transcribed data still matches the bundled LaTeX/BibTeX sources.
 
     PACMNET's long name is the one deliberate correction: upstream says
     "Networkng", while this port intentionally publishes "Networking".
@@ -743,6 +840,18 @@ def gate_source_data(report: bool = False) -> list[str]:
                 f"journal data: {code} differs from acmart.dtx\n"
                 f"    expected: {expected[code]}\n"
                 f"    actual:   {actual[code]}")
+
+    bib_expected: dict[str, dict[str, str]] = {}
+    bib_actual: dict[str, dict[str, str]] = {}
+    try:
+        bib_expected = _latex_bib_data()
+        bib_actual = _typst_bib_data()
+        for table in ("journal-macros", "journal-canon"):
+            _compare_transcribed_mapping(
+                failures, f"bibliography data {table}", "ACM-Reference-Format.bst",
+                bib_expected[table], bib_actual[table])
+    except (OSError, ValueError) as error:
+        failures.append(f"bibliography source-data parser failed: {error}")
 
     math_tables = (
         ("_math-sym", "math-symbols", True),
@@ -769,6 +878,8 @@ def gate_source_data(report: bool = False) -> list[str]:
     if report and not failures:
         print(
             f"ok   {len(actual)} journal records match acmart.dtx (PACMNET typo corrected); "
+            f"{len(bib_actual['journal-macros'])} BST journal macros and "
+            f"{len(bib_actual['journal-canon'])} canonical abbreviations match; "
             f"{len(math_tables)} math tables exhaustively tested")
     return failures
 
@@ -2386,7 +2497,10 @@ def main() -> int:
     sub.add_parser("list", help="print the test matrix").set_defaults(fn=cmd_list)
     sub.add_parser("clean", help="remove tests/out/").set_defaults(fn=cmd_clean)
     sub.add_parser("metrics", help="print the Tier 2 metric table (no gating)").set_defaults(fn=cmd_metrics)
-    sub.add_parser("source-data", help="compare transcribed tables with acmart.dtx").set_defaults(fn=cmd_source_data)
+    sub.add_parser(
+        "source-data",
+        help="compare transcribed tables with acmart.dtx and ACM-Reference-Format.bst",
+    ).set_defaults(fn=cmd_source_data)
     sub.add_parser("structure", help="report tagged-PDF semantic checks").set_defaults(fn=cmd_structure)
     sub.add_parser("order", help="report the Tier 1.9 per-chunk reading-order check").set_defaults(fn=cmd_order)
 

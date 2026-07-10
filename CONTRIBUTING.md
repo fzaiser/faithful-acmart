@@ -56,8 +56,10 @@ parallel, and then runs the gates:
 `tools/test.py validate` separately builds copyright and option variants and reports
 page-1 mismatch percentages. `tools/test.py probe --format <name>` audits layout
 measurements against the LaTeX class. `tools/test.py source-data` verifies the
-transcribed journal table against `acmart.dtx`, and `tools/test.py structure` reports
-the tagged-PDF semantic checks without rerunning the rest of the suite.
+transcribed journal table against `acmart.dtx` and the bibliography journal macros
+and canonical abbreviations against `ACM-Reference-Format.bst`; it is a checker and
+never rewrites the Typst data. `tools/test.py structure` reports the tagged-PDF
+semantic checks without rerunning the rest of the suite.
 
 ## What the tests cover
 
