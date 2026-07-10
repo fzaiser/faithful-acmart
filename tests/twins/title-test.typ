@@ -19,8 +19,11 @@
      orcid: "1234-5678-9012", email: "trovato@corporation.com",
      affiliation: (institution: "Institute for Clarity in Documentation",
                    city: "Dublin", state: "Ohio", country: "USA")),
+    // department declared BEFORE institution: the contact line replays the fields
+    // in the user's declared key order (department, institution, city, country),
+    // matching acmart's \@mkauthorsaddresses command-order replay.
     (name: "Lars Thørväld", corresponding: true, email: "larst@affiliation.org",
-     affiliation: (institution: "The Thørväld Group", department: "Theory Division",
+     affiliation: (department: "Theory Division", institution: "The Thørväld Group",
                    city: "Hekla", country: "Iceland")),
     // three affiliations: the title strip andifies them ("A, B, and C",
     // \andify\@currentaffiliations) while the contact line joins with " and ".
@@ -37,11 +40,21 @@
     title block, an author list with affiliations, an author note, an ORCID, a
     corresponding author, the abstract, CCS concepts, and keywords.
   ],
+  // Deliberately long CCS + keyword lists so the CCS Concepts and Keywords run-in
+  // lines WRAP past one line — exercising \@specialsection's justified paragraph
+  // body (a ragged-setting regression only becomes visible once a line wraps).
   ccs: (
     (500, "Computing methodologies", "Massively parallel algorithms"),
     (300, "Computing methodologies", "Concurrent algorithms"),
+    (300, "Human-centered computing", "Human computer interaction (HCI)"),
+    (100, "Information systems", "Information retrieval query processing"),
   ),
-  keywords: ("datasets", "neural networks", "gaze detection", "text tagging"),
+  keywords: (
+    "datasets", "neural networks", "gaze detection", "text tagging",
+    "computational linguistics", "human-computer interaction",
+    "information retrieval", "probabilistic graphical models",
+    "distributed systems", "reproducible research",
+  ),
 )
 
 This document isolates the article frontmatter so that the title block, author

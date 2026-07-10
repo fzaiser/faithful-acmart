@@ -1,5 +1,5 @@
 #import "/src/lib.typ": *
-#show: acmart.with(format: "acmsmall", bib-backend: "biblatex")
+#show: acmart.with(format: "acmsmall", nonacm: true, bib-backend: "biblatex")
 
 #heading(numbering: none, level: 1)[BibLaTeX Numeric Driver Cases]
 This sentence cites a report #cite("DriverReport") and a legacy techreport

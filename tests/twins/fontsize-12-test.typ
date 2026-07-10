@@ -1,5 +1,5 @@
 #import "/src/lib.typ": acmart
-#show: acmart.with(format: "acmsmall", font-size: 12pt)
+#show: acmart.with(format: "acmsmall", nonacm: true, font-size: 12pt)
 
 = Configurable Base Font Size
 

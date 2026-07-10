@@ -319,7 +319,13 @@ taller-than-`\topskip` title line.
 - **Contact-info field order follows the author dict's key order** — acmart's
   `\@mkauthorsaddresses` replays the declared `\email`/`\affiliation` order; Typst
   dicts preserve insertion order, so writing `email:` before `affiliation:` (or vice
-  versa) reproduces the declaration order (guarded by the Tier 1.9 order gate).
+  versa) reproduces the declaration order (guarded by the Tier 1.9 order gate). The
+  **affiliation's own fields** (`institution`/`department`/`city`/`state`/`country`)
+  likewise print in the user's declared key order, not a fixed tuple — acmart replays
+  `\institution`/`\department`/… in command order, so an affiliation written
+  `department:` before `institution:` reads "Theory Division, The Group, …" in the
+  contact line (`contact-affil-strings`, `frontmatter.typ`; `title-test` declares one
+  department-first).
 - **Author line grouping IS faithful**: `group-authors` (`frontmatter.typ`) implements
   `\@mkauthors@i` (acmart.dtx:7337) — authors accumulate onto a line and an
   `\affiliation` closes it for everyone accumulated so far; values are never compared.

@@ -38,7 +38,10 @@ METADATA_EXPECTATIONS: dict[str, dict[str, str]] = {
     "title-test": {
         "Title": "The Name of the Title Is Hope",
         "Author": "Ben Trovato, Lars Thørväld, Valerie Béranger",
-        "Keywords": "datasets, neural networks, gaze detection, text tagging",
+        "Keywords": "datasets, neural networks, gaze detection, text tagging, "
+                    "computational linguistics, human-computer interaction, "
+                    "information retrieval, probabilistic graphical models, "
+                    "distributed systems, reproducible research",
     },
     "anonymous-test": {
         "Title": "An Anonymous Submission",
@@ -166,12 +169,13 @@ class ResidualSignatures:
 # evidence and rationale.
 EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
+    "manuscript-pages-test": ResidualSignatures(text="13857b6c3436762b1c09a161ad0ba212a0fc064b6c149ce01b1dc4ec95b82cfd"),
     "mathfields": ResidualSignatures(font="33b5c052b30812736e907581e38b04c1be363ec608e59cd34c8a13ce193f5170"),
     "sample-acmsmall": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="b011bb574b0c3e6332e072a3cf7268d88ac0e06d7416674ed7e2a03b8e784142"),
     "sample-manuscript": ResidualSignatures(text="f9f44935ab0a5d44f5a8d01a24eae936e5c438469863fb7b1147be60ec8c8b2b", font="ba2c719c2aa71bf411ef3fa382d5365f3b4ab49c2f8f7ccb4ca175b689f95a43", order="457f10d3f56df13ff4baff3612fe22eada818355eee6dcfe4c5154de5d9dee74"),
     "sample-acmlarge": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="c32956ff5fef018c73b6d9b5f9084c8653cb892302fd05884ff6f7a53506f95e"),
     "sample-sigconf": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="da3fad63db3dd04dfedfaf2d5eb1fb23c583708920c465d37d5e913d8ef36e86"),
-    "sample-sigplan": ResidualSignatures(text="64d45c6ec6bd58b47516cc3d55893a729472555d899928c4bcfc09b9c29fedae", font="3047dcaee4a2bdbdae98523a9df44b4b10a0041399d537ed6b0e1a177cc8549f", order="2d25d7956168f03ea10393c2f996cf32ed0895f7c56704510fde7665358cdb2b"),
+    "sample-sigplan": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="3047dcaee4a2bdbdae98523a9df44b4b10a0041399d537ed6b0e1a177cc8549f", order="2d25d7956168f03ea10393c2f996cf32ed0895f7c56704510fde7665358cdb2b"),
     "sample-acmsmall-submission": ResidualSignatures(text="05be43ea4c0c8fc81a09a46798912baad17a3435f87e97cb80c878bc0e2568ed", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="33160f565094321d629e06954ac6ddcc79817d22be972d4ef949a4983b19fb99"),
     "sample-acmsmall-conf": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
     "sample-acmtog": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="99003eab1044dc98b50f27a2e1cbc5a03e58413cd714e1318bd76ce7a4250922"),
@@ -180,7 +184,7 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "sample-sigconf-authordraft": ResidualSignatures(text="3321920016639ea933b9c80491c647cb8ce4f5792b813a2774f5af2902941cf5", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="5e7664bcc6fd86d84a63ee11df1e2d86c6a650bf7181fb107743053292711289"),
     "sample-acmsmall-biblatex": ResidualSignatures(text="5a6d00df8ca31bf0749a95d1a044429c6892ada636dac526b75e92df6f6ed961", font="49aeb0090f34955cfe4955eb61ec3205d5316489e0e531efc5b177d41a4d0312", order="325dd262a0d7815097013690111f9d8452db63d9960cc95fb7a902c22c9b0867"),
     "sample-sigconf-biblatex": ResidualSignatures(text="314ea015168ec50ce6b645fecc148d93820ff6964468897a8d096c0a555200b9", font="331464ac0b75d83068122c1a2016d6e6e77733b7111debd67a0e13bcbb89a919", order="202add8013355fa3d61b8a1ebfa99845cab8bb6a9edf0303679e5002a45ac2be"),
-    "sample-acmengage": ResidualSignatures(order="1badbb9a301a35b813960065b70e1c6ffee6bf6940a19c9e2c0e65f0edf23478"),
+    "sample-acmengage": ResidualSignatures(order="e1375d589c6da53376f20ce6acd938b50f3b317e20333dd6ab48744b32034f58"),
 }
 
 
@@ -263,7 +267,7 @@ class MetricAllowance:
 EXPECTED_METRIC_DIFFS: dict[str, tuple[MetricAllowance, ...]] = {
     "sigplan-test": (MetricAllowance(1, "top", 5.25),),
     "acmengage-test": (MetricAllowance(1, "top", 5.25),),
-    "acmcp-test": (MetricAllowance(1, "left", 1.75), MetricAllowance(1, "top", 6.25)),
+    "acmcp-test": (MetricAllowance(1, "top", 6.25),),
     "sigchi-a-test": (MetricAllowance(1, "left", 6.25),),
     "authorversion-conf-test": (MetricAllowance(1, "top", 5.0),),
     "sample-acmsmall": (MetricAllowance(8, "left", 1.25),),
@@ -480,13 +484,28 @@ TESTS: dict[str, Test] = {
     ),
     "manuscript-pages-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
-        text_equal="bag",
+        # timestamp mode: LaTeX embeds the compile HH:MM in the footer, which Typst
+        # (no wall-clock access) omits — so the word bag cannot be exact. The char
+        # residual + the page-2 slug assertion still gate the footer content: with
+        # timestamp on, the "Manuscript submitted to ACM" slug on page 2 comes from
+        # the timestamp branch ([RO,LE]), so that assertion guards it.
+        text_equal=False,
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="2026-07-01 12:00. Page 2 of 1",
+                typst="2026-07-01. Page 2 of 1",
+                cause=AcceptedTypstBehavior(
+                    "Typst has no wall-clock access, so the timestamp footer prints the "
+                    "compile date without the HH:MM time (DESIGN.md)."),
+                page=2,
+            ),
+        ),
         text_assertions=(
             Assertion(engine="both", page=2, text="Lovelace and Hopper"),
             Assertion(engine="both", page=2, text="Manuscript submitted to ACM"),
         ),
-        note="Continuation-page header/footer + multi-page body. Body flow reorders "
-             "across engines, so text is gated order-independently (word-bag).",
+        note="Continuation-page header/footer + multi-page body with timestamp mode. "
+             "Body flow reorders across engines; the timestamp time is Typst-omitted.",
     ),
     "acmlarge-test": Test(
         kind="twin", pages=1,
@@ -565,7 +584,7 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF, text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="Code and data links: https://example.com/data Background",
+                latex="Code and data links: https://example.com/data Keywords: datasets",
                 typst="Code and data links: https://example.com/ data Keywords: datasets",
                 cause=ExtractionArtifact("cover-infobox URL extraction"),
             ),
@@ -1070,12 +1089,13 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                # The two-column reflow (shorter booktabs rows) lands the run-in
-                # subsubsection "9.1.1" past the inline-equation text in Typst's tag
-                # order, while LaTeX's pdftotext reads it (with the "111:3" running
-                # head) before that text — the same run-in/running-head interleave.
+                # LaTeX's pdftotext reads the run-in subsubsection "9.1.1" (with the
+                # "111:3" running head) before the inline-equation text, whereas Typst
+                # emits the whole "9.1.1 Subsubsection…" run-in chunk in tag order (the
+                # preceding "(See next section)." paragraph extracts after it) — the
+                # same run-in/running-head interleave.
                 latex="9.1.1 • 111:3 how this equation",
-                typst="(See next section). 9.1.1 Subsubsection. This is a subsubsection.",
+                typst="9.1.1 Subsubsection. This is a subsubsection.",
                 cause=ExtractionArtifact("run-in heading / running-head interleave"),
             ),
         ),

@@ -1,5 +1,5 @@
 #import "/src/lib.typ": *
-#show: acmart.with(format: "acmsmall", bib-backend: "bibtex")
+#show: acmart.with(format: "acmsmall", nonacm: true, bib-backend: "bibtex")
 
 #let keys = (
   "Cohen07", "JCohen96", "Kosiur01", "Editor00", "Editor00a", "Spector90",

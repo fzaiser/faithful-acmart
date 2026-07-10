@@ -1,5 +1,5 @@
 #import "/src/lib.typ": acmart
-#show: acmart.with(format: "acmsmall")
+#show: acmart.with(format: "acmsmall", nonacm: true)
 
 The quick brown fox jumps over the lazy dog. Pack my box with five dozen
 liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards

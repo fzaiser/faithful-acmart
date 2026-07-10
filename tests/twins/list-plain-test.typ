@@ -4,6 +4,10 @@
 // hook-ordering bug.
 #import "/src/lib.typ": acmart
 #show: acmart.with(format: "acmsmall")
+// This body-only twin's .tex uses \pagestyle{empty}\thispagestyle{empty} to drop
+// the journal footer (acmart otherwise prints the bibstrip footer even without a
+// journal set); the Typst analog is suppressing the page footer.
+#set page(footer: none)
 
 = Lists
 Text before the itemized list establishes the paragraph baseline and the

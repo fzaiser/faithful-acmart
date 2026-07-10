@@ -1,5 +1,5 @@
 #import "/src/lib.typ": acmart
-#show: acmart.with(format: "acmsmall")
+#show: acmart.with(format: "acmsmall", nonacm: true)
 
 = Section Number 1
 The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow. Two driven jocks help fax my big quiz. Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal from every young wage earner. We study the typographic fidelity of a Typst reimplementation of the acmart class across multiple pages to check drift.

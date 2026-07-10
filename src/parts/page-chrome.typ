@@ -19,14 +19,16 @@
       if print-folios [#meta.acm-article:#p] else [#meta.acm-article]
     } else if print-folios [#p]
   }
+  // LaTeX prints \@journalNameShort, Vol. V, No. N, Article A. Publication date: D.
+  // UNCONDITIONALLY for the journal formats (acmart.dtx:8256): an empty \@acmArticle
+  // yields "Article ." (the upstream blemish, replicated), a missing journal an empty
+  // name prefix — the footer still prints. Gated only by `nonacm` (the caller already
+  // restricts this to journal formats).
   let journal-footer = {
     let journal = meta.journal
-    if not meta.nonacm and (journal.short != none or (cfg.name == "acmsmall" and meta.conference != none)) {
+    if not meta.nonacm {
       let prefix = if journal.short != none { journal.short } else { [] }
-      let article = if meta.acm-article != none or (cfg.name == "acmsmall" and meta.conference != none) {
-        [, Article #if meta.acm-article != none { meta.acm-article }]
-      } else { [] }
-      [#prefix, Vol. #meta.acm-volume, No. #meta.acm-number#article. Publication date: #pub-date(meta).]
+      [#prefix, Vol. #meta.acm-volume, No. #meta.acm-number, Article #if meta.acm-article != none { meta.acm-article }. Publication date: #pub-date(meta).]
     }
   }
   let manuscript-footer = if not meta.nonacm [Manuscript submitted to ACM]
@@ -74,9 +76,17 @@
       let start = if meta.start-page == none { 1 } else { meta.start-page }
       let ts = [#if meta.submission-id != none { [Submission ID: #meta.submission-id. ] }#date. Page #pageno of #{start}--#{total}.]
       if cfg.name == "manuscript" {
-        let ts = if first-page and not meta.nonacm [#ts#h(1em)Manuscript submitted to ACM] else { ts }
-        let folio = if first-page and folio != none { text(size: cfg.size.small, folio) }
-        if odd { footer-row(l: ts, r: folio) } else { footer-row(l: folio, r: ts) }
+        if first-page {
+          // Page 1: timestamp and slug share one corner (verified exact), folio opposite.
+          let ts = if not meta.nonacm [#ts#h(1em)Manuscript submitted to ACM] else { ts }
+          let folio = if folio != none { text(size: cfg.size.small, folio) }
+          if odd { footer-row(l: ts, r: folio) } else { footer-row(l: folio, r: ts) }
+        } else {
+          // Pages >=2: LaTeX keeps the "Manuscript submitted to ACM" slug at
+          // \fancyfoot[RO,LE] and the timestamp at [LO,RE] — both print, opposite
+          // corners, parity-swapped (acmart.dtx:7938/7945).
+          if odd { footer-row(l: ts, r: manuscript-footer) } else { footer-row(l: manuscript-footer, r: ts) }
+        }
       } else if cfg.kind == "proceedings" {
         if odd { footer-row(l: ts, c: folio) } else { footer-row(c: folio, r: ts) }
       } else if odd {

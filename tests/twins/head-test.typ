@@ -1,5 +1,5 @@
 #import "/src/lib.typ": acmart, noindentparagraph
-#show: acmart.with(format: "acmsmall")
+#show: acmart.with(format: "acmsmall", nonacm: true)
 
 = Introduction
 The quick brown fox jumps over the lazy dog. Pack my box with five dozen

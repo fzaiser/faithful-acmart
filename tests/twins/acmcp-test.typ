@@ -25,6 +25,12 @@
     draft geometry and section typography between the LaTeX and Typst renderings.
   ],
   keywords: ("datasets", "neural networks", "gaze detection"),
+  // acmcp renders CCS via the real \section* form (sans-bold heading + 9pt body),
+  // NOT the journals' run-in line — keywords stay in the cover infobox.
+  ccs: (
+    (500, "Computing methodologies", "Massively parallel algorithms"),
+    (300, "Computing methodologies", "Concurrent algorithms"),
+  ),
   code-data-link: link("https://example.com/data")[https://example.com/data],
   contributions: [BT designed the study; VB performed it.],
 )

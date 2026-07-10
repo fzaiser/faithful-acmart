@@ -1,6 +1,6 @@
 #import "/src/lib.typ": *
 #show: acmart.with(
-  format: "acmsmall",
+  format: "acmsmall", nonacm: true,
   bib-backend: "bibtex",
   // custom commands LaTeX defines via \newcommand: compose with the default
   // renderer to expand them first (\widget -> W, \RR -> ℝ, which NFKC-folds to R).

@@ -108,6 +108,16 @@
 // affiliation dict, empty affiliations dropped via join-fields' none).
 #let affil-strings(aff, keys) = affil-list(aff).map(a => join-fields(a, keys)).filter(v => v != none)
 
+// The affiliation fields the journal contact line may print, in the user's OWN
+// declaration order (acmart replays \institution/\department/\city/... in the
+// order the commands were issued, acmart.dtx:7588). Typst dicts preserve insertion
+// order, so we iterate each affiliation dict's own keys (filtered to this printable
+// set) rather than a fixed tuple. See DESIGN.md "Author top matter".
+#let contact-affil-fields = ("institution", "department", "city", "state", "country")
+#let contact-affil-strings(aff) = affil-list(aff).map(a => {
+  join-fields(a, a.keys().filter(k => k in contact-affil-fields))
+}).filter(v => v != none)
+
 // Title-block affiliation: institution, country (city/state go to contact info).
 // Multiple affiliations are andified — \andify\@currentaffiliations
 // (acmart.dtx:7248): "A and B", "A, B, and C".
@@ -243,7 +253,9 @@
   let pf = cfg.sec-fonts.paragraph
   let head = if cfg.bibstrip { [#label:] } else { text(weight: pf.weight, style: pf.style)[#label:] }
   v(tex-skip(cfg, cfg.medskip, sz: sz), weak: true)
-  fm-block(cfg, [#head #content], sz: sz, justify: false, spacing: comp(cfg, sz: sz), chunk: true)
+  // \@specialsection bodies are ordinary JUSTIFIED paragraphs (acmart.dtx:6773);
+  // only visible when the label+content wraps past one line.
+  fm-block(cfg, [#head #content], sz: sz, spacing: comp(cfg, sz: sz), chunk: true)
 }
 
 // Assign footnote symbols across the whole top matter, matching acmart's shared
@@ -313,10 +325,10 @@
   let parts = (author-name(a, a.name),)
   for field in a.contact-order {
     if field == "affiliation" {
-      // each affiliation as "institution, department, city, state, country"
+      // each affiliation's fields joined ", " in the user's declared key order
       // (\department prints ", <dept>", acmart.dtx:7605); several affiliations
       // joined by " and " (LaTeX's institution separator, acmart.dtx:7601-7602).
-      let affs = affil-strings(a.affiliation, ("institution", "department", "city", "state", "country"))
+      let affs = contact-affil-strings(a.affiliation)
       if affs.len() > 0 { parts.push(affs.join(" and ")) }
     } else if a.email != none {
       parts.push(email-link(a.email))
@@ -346,8 +358,17 @@
 
 // authordraft stamps the page-1 copyright block with a black large-bold notice
 // overlaying the (greyed) copyright text (acmart.dtx:6606-6610). place() gives it
-// zero size, so the copyright lines flow behind it.
-#let draft-stamp(cfg) = place(top + left, text(size: cfg.size.large, weight: "bold")[Unpublished working draft. Not for distribution.])
+// zero size, so the copyright lines flow behind it. \raisebox{-2ex} lowers the
+// stamp baseline 2ex below the block's first (permission) baseline — the ex is the
+// SURROUNDING footnote font's x-height (the \large is inside the box, so it does not
+// set the ex). The block's first baseline sits 1em(footnotesize) below its top and
+// place() honours the stamp's own top-edge (1em of \large), so we cancel that
+// size difference and add 2ex.
+#let draft-stamp(cfg) = context {
+  let ex = measure(text(size: cfg.size.footnotesize, top-edge: "x-height", bottom-edge: "baseline")[x]).height
+  place(top + left, dy: 2 * ex + cfg.size.footnotesize - cfg.size.large,
+    text(size: cfg.size.large, weight: "bold")[Unpublished working draft. Not for distribution.])
+}
 
 // The conference info line in the copyright block (acmart.dtx:6617-6621). The
 // form is format-dependent: engage prints "<booktitle>, <year>.", every other
@@ -468,6 +489,11 @@
       block(spacing: lead, {
         if meta.author-draft { draft-stamp(cfg) }
         set text(fill: if meta.author-draft { luma(90%) } else { black })
+        // acmart sets \parskip = 0.1\baselineskip inside this block (acmart.dtx:6611),
+        // so each \par boundary (permission->conf-info, conf-info->(c)) gets that extra
+        // space; the \\ lines (the (c) and closing lines) stay plain (unaffected by
+        // par spacing). Line box is 1em, so a parbreak yields spacing + size baselines.
+        set par(spacing: lead + 0.1 * cfg.bls.footnotesize)
         if not meta.author-version and ptext != none { ptext; parbreak() }
         // No ragged override: LaTeX sets this block as ordinary justified
         // footnote paragraphs whose short lines end in \\ (a line before an
@@ -481,7 +507,9 @@
         )
         if proceedings-copyright {
           let cl = conf-info-line(cfg, meta)
-          if cl != none { cl; linebreak() }
+          // conf-info ends with \par (acmart.dtx:6618/6620), not \\ — a parbreak so
+          // it carries the 0.1\baselineskip parskip above the (c) line.
+          if cl != none { cl; parbreak() }
         }
         // © <year> <owner>  (copyright-year always has a value; see acmart() in lib.typ)
         let owner = copyright-owner(mode)
@@ -909,13 +937,17 @@
 // acmart's \@specialsection is small run-in text for journals and sigplan, but a
 // real unnumbered section for the other proceedings (acmart.dtx:6763-6817).
 #let special-section(cfg, label, content, lang: none) = {
-  if cfg.bibstrip or cfg.name == "sigplan" {
+  // acmcp keeps the ACM reference format suppressed but still renders CCS via the
+  // real \section* form (acmart.dtx:6797), NOT the journals' \small run-in line —
+  // so it is excluded from the bibstrip (run-in) branch here (keywords are already
+  // acmcp-suppressed by the caller, so only CCS reaches this).
+  if (cfg.bibstrip and cfg.name != "acmcp") or cfg.name == "sigplan" {
     special-line(cfg, label, if lang != none { text(lang: lang, content) } else { content })
   } else {
     // Proceedings \section*{label}: the heading is a real section and the body is
     // normalsize (\@specialsection, acmart.dtx:6786) — NOT the journals' \small.
     heading(numbering: none, outlined: false)[#label]
-    fm-block(cfg, if lang != none { text(lang: lang, content) } else { content }, sz: "normalsize", justify: false, chunk: true)
+    fm-block(cfg, if lang != none { text(lang: lang, content) } else { content }, sz: "normalsize", chunk: true)
   }
 }
 
@@ -926,7 +958,7 @@
   if items.len() == 0 { return }
   block(width: 100%, spacing: 0pt)[
     #set text(font: cfg.fonts.body, size: cfg.size.normalsize)
-    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: comp(cfg))
+    #set par(justify: true, first-line-indent: 0pt, leading: comp(cfg), spacing: comp(cfg))
     #for item in items {
       let label = item.first()
       let value = item.last()
@@ -1068,7 +1100,9 @@
   v(tex-skip(cfg, cfg.bigskip, sz: "small"), weak: true)
   block(width: 100%, spacing: 0pt)[
     #set text(font: cfg.fonts.body, weight: "regular", style: "normal", size: cfg.size.small)
-    #set par(justify: false, leading: comp(cfg, sz: "small"), first-line-indent: 0pt)
+    // \@specialsection-style body: an ordinary justified paragraph (visible only
+    // when the accumulated paper-history line wraps).
+    #set par(justify: true, leading: comp(cfg, sz: "small"), first-line-indent: 0pt)
     #format-received(received)
   ]
 }

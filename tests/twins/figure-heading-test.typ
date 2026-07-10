@@ -1,5 +1,5 @@
 #import "/src/lib.typ": acmart
-#show: acmart.with(format: "acmsmall")
+#show: acmart.with(format: "acmsmall", nonacm: true)
 
 = Figure Heading Indent
 Text before the first figure establishes the normal body left edge.

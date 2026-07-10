@@ -1,5 +1,5 @@
 #import "/src/lib.typ": *
-#show: acmart.with(format: "acmsmall", bib-backend: "bibtex")
+#show: acmart.with(format: "acmsmall", nonacm: true, bib-backend: "bibtex")
 
 #let keys = ("UnpubX", "MacroJournal", "ConcatTest", "DoiUrl", "ArtPages", "ColonPages", "MiscPages", "BookPages", "TRnoNum", "BookPagesField", "IssueTest", "HowPub", "KeyOnly", "ArtHP", "IpHP", "Accents", "VonNames", "Formatting", "IpArtNo", "IpJournal", "IpEdOnly", "MiscEdIgnore", "PerNoteDoi", "ArtNoJournal", "ArtPrefixed", "QQNote", "DayMonthPer", "UnpubArt", "BracedEd", "OnePage", "URevHP")
 
