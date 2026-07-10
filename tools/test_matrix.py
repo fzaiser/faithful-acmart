@@ -147,6 +147,136 @@ class ExpectedOrderDiff:
 
 
 @dataclass(frozen=True)
+class ResidualSignatures:
+    """Exact hashes of accepted gate residuals for one twin.
+
+    Human-readable Expected*Diff entries explain and anchor a difference; these
+    hashes ensure that exemption accepts only the measured char/font/order delta,
+    not any future mismatch in the same document.
+    """
+
+    text: str = ""
+    font: str = ""
+    order: str = ""
+
+
+# Populated below the test matrix. Keeping signatures separate makes their role
+# explicit: they are machine snapshots, while Test.expected_*_diff is reviewable
+# evidence and rationale.
+EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
+    "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
+    "mathfields": ResidualSignatures(font="33b5c052b30812736e907581e38b04c1be363ec608e59cd34c8a13ce193f5170"),
+    "sample-acmsmall": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="b011bb574b0c3e6332e072a3cf7268d88ac0e06d7416674ed7e2a03b8e784142"),
+    "sample-manuscript": ResidualSignatures(text="527362f83210ff0362215154e012092aab9bd63ce53912de5b238fb09c890f30", font="ba2c719c2aa71bf411ef3fa382d5365f3b4ab49c2f8f7ccb4ca175b689f95a43", order="457f10d3f56df13ff4baff3612fe22eada818355eee6dcfe4c5154de5d9dee74"),
+    "sample-acmlarge": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="c32956ff5fef018c73b6d9b5f9084c8653cb892302fd05884ff6f7a53506f95e"),
+    "sample-sigconf": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="da3fad63db3dd04dfedfaf2d5eb1fb23c583708920c465d37d5e913d8ef36e86"),
+    "sample-sigplan": ResidualSignatures(text="7d9968c88a217d27c519a492459acf69ce9cec81d249b76ecb62f945ae36e54d", font="3047dcaee4a2bdbdae98523a9df44b4b10a0041399d537ed6b0e1a177cc8549f", order="2d25d7956168f03ea10393c2f996cf32ed0895f7c56704510fde7665358cdb2b"),
+    "sample-acmsmall-submission": ResidualSignatures(text="177dedfe4469ece8a23d03c2ed894a6e48f85a1b734c78afaec531eebd7b1d59", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="33160f565094321d629e06954ac6ddcc79817d22be972d4ef949a4983b19fb99"),
+    "sample-acmsmall-conf": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
+    "sample-acmtog": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="99003eab1044dc98b50f27a2e1cbc5a03e58413cd714e1318bd76ce7a4250922"),
+    "sample-acmtog-conf": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
+    "sample-sigconf-i13n": ResidualSignatures(text="8cba954a5520fd058c6ee4b3ef213b985cb2dfc4605901a961fc7cad13facde4", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="d3c9c50f4594efe40103a7db9e56117878bc6399a13653dd6eb25c8b2e7aae14"),
+    "sample-sigconf-authordraft": ResidualSignatures(text="195c1ea29cf78801a70a29f0adea32e9ea84435d5bc4625002832b1f892e76df", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="5e7664bcc6fd86d84a63ee11df1e2d86c6a650bf7181fb107743053292711289"),
+    "sample-acmsmall-biblatex": ResidualSignatures(text="5a6d00df8ca31bf0749a95d1a044429c6892ada636dac526b75e92df6f6ed961", font="49aeb0090f34955cfe4955eb61ec3205d5316489e0e531efc5b177d41a4d0312", order="325dd262a0d7815097013690111f9d8452db63d9960cc95fb7a902c22c9b0867"),
+    "sample-sigconf-biblatex": ResidualSignatures(text="314ea015168ec50ce6b645fecc148d93820ff6964468897a8d096c0a555200b9", font="331464ac0b75d83068122c1a2016d6e6e77733b7111debd67a0e13bcbb89a919", order="202add8013355fa3d61b8a1ebfa99845cab8bb6a9edf0303679e5002a45ac2be"),
+    "sample-acmengage": ResidualSignatures(order="1badbb9a301a35b813960065b70e1c6ffee6bf6940a19c9e2c0e65f0edf23478"),
+}
+
+
+@dataclass(frozen=True)
+class ExpectedLinkDiff:
+    """Exact external-link multiset residual plus its rationale."""
+
+    reason: str
+    missing: tuple[str, ...] = ()
+    extra: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ExpectedDashDiff:
+    """Exact normalized dash-count residual plus its rationale."""
+
+    reason: str
+    latex_only: int = 0
+    typst_only: int = 0
+
+
+_LINK_MULTIPLICITY = "exact annotation-multiplicity difference in the integration fixture"
+EXPECTED_LINK_DIFFS: dict[str, ExpectedLinkDiff] = {
+    "manuscript-pages-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/XXXXXXX.XXXXXXX",)),
+    "acmlarge-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/XXXXXXX.XXXXXXX",)),
+    "acmcp-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://example.com/data",)),
+    "sample-acmsmall": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
+    "sample-manuscript": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1188913.1188915", "https://doi.org/10.1145/1057270.1057278"), extra=("https://www.acm.org/publications/taps/describing-figures/",)),
+    "sample-acmlarge": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1145/1057270.1057278"), extra=("http://ccrma.stanford.edu/~jos/bayes/bayes.html",)),
+    "sample-sigconf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
+    "sample-sigplan": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.acm.org/publications/proceedings-template", "https://doi.org/10.1145/1188913.1188915", "https://doi.org/10.1145/567752.567774", "https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1145/1057270.1057278"), extra=("https://doi.org/10.1109/ICWS.2004.64",)),
+    "sample-acmsmall-submission": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
+    "sample-acmsmall-conf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
+    "sample-acmtog": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
+    "sample-acmtog-conf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
+    "sample-sigconf-i13n": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
+    "sample-sigconf-authordraft": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
+    "sample-acmsmall-biblatex": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1057270.1057278",), extra=("https://www.acm.org/publications/proceedings-template", "https://github.com/nuprl/tag-sound", "http://archive.softwareheritage.org/swh:1:dir:cd0b0abeee707e57cd699e2e2ebd075da8ebf1f7;origin=https://github.com/nuprl/tag-sound;visit=swh:1:snp:7967bc0abee8bf3bfffb9252207a07b73538525a;anchor=swh:1:rev:4cc09ca228947a99c8f4ac45eefb76e96ee96e53")),
+    "sample-sigconf-biblatex": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1188913.1188915", "https://hal.archives-ouvertes.fr/hal-02090402v1", "https://doi.org/10.1007/3-540-65193-4_29"), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm", "https://github.com/scilab/scilab", "http://archive.softwareheritage.org/swh:1:cnt:43a6b232768017b03da934ba22d9cc3f2726a6c5;origin=https://github.com/rdicosmo/parmap;visit=swh:1:snp:2a6c348c53eb77d458f24c9cbcecaf92e3c45615;anchor=swh:1:rel:373e2604d96de4ab1d505190b654c5c4045db773;path=/src/parmap.ml;lines=192-228", "https://github.com/nuprl/tag-sound", "http://archive.softwareheritage.org/swh:1:dir:cd0b0abeee707e57cd699e2e2ebd075da8ebf1f7;origin=https://github.com/nuprl/tag-sound;visit=swh:1:snp:7967bc0abee8bf3bfffb9252207a07b73538525a;anchor=swh:1:rev:4cc09ca228947a99c8f4ac45eefb76e96ee96e53", "http://archive.softwareheritage.org/swh:1:rel:636541bbf6c77863908eae744610a3d91fa58855;origin=https://github.com/CGAL/cgal/", "http://video.google.com/videoplay?docid=6528042696351994555")),
+    "sample-acmcp": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://orcid.org/1234-5678-9012",)),
+    "sample-acmengage": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.engage-csedu.org/ontology", "https://doi.org/10.1145/1188913.1188915", "http://ccrma.stanford.edu/~jos/bayes/bayes.html"), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://creativecommons.org/licenses/by/4.0")),
+}
+
+_DASH_EXTRACTION = "exact normalized dash residual caused by cross-engine extraction/reflow"
+EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
+    "figure-heading-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "list-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
+    "manuscript-pages-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "acmtog-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=3),
+    "sigconf-authors-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "acmcp-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
+    "biblatex-edge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
+    "bib-all": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "notes-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
+    "options-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
+    "authorversion-conf-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "sample-acmlarge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
+    "sample-sigconf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=6),
+    "sample-sigplan": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=15),
+    "sample-acmtog": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=7),
+    "sample-acmtog-conf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=8),
+    "sample-sigconf-i13n": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=7),
+    "sample-sigconf-authordraft": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=6),
+    "sample-acmsmall-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=3),
+    "sample-sigconf-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=8),
+    "sample-acmcp": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "sample-acmengage": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=8),
+}
+
+
+@dataclass(frozen=True)
+class MetricAllowance:
+    """One expected out-of-tolerance metric with a hard maximum delta."""
+
+    page: int
+    key: str
+    max_delta: float
+
+
+EXPECTED_METRIC_DIFFS: dict[str, tuple[MetricAllowance, ...]] = {
+    "sigplan-test": (MetricAllowance(1, "top", 5.25),),
+    "acmengage-test": (MetricAllowance(1, "top", 5.25),),
+    "acmcp-test": (MetricAllowance(1, "left", 1.75), MetricAllowance(1, "top", 6.25)),
+    "sigchi-a-test": (MetricAllowance(1, "left", 6.25),),
+    "authorversion-conf-test": (MetricAllowance(1, "top", 5.0),),
+    "sample-acmsmall": (MetricAllowance(8, "left", 1.25),),
+    "sample-sigplan": (MetricAllowance(1, "top", 5.25),),
+    "sample-acmsmall-conf": (MetricAllowance(8, "left", 1.25),),
+    "sample-acmtog": (MetricAllowance(2, "left", 1.25),),
+    "sample-sigconf-i13n": (MetricAllowance(3, "left", 1.25),),
+    "sample-acmsmall-biblatex": (MetricAllowance(8, "left", 1.25),),
+    "sample-acmcp": (MetricAllowance(1, "left", 1.75),),
+    "sample-acmengage": (MetricAllowance(1, "top", 5.25),),
+}
+
+
+@dataclass(frozen=True)
 class Test:
     """One test stem and how the gates treat it.
 
@@ -166,9 +296,9 @@ class Test:
     equality for extraction-order noise; ``False`` exempt with
     ``expected_text_diffs``; ``None`` unset.
 
-    Independently of ``text_equal``, EVERY twin is also gated by an exact char
-    multiset check (``char_bag``). If char bags differ, ``expected_text_diffs``
-    are required and serve as the exemption evidence.
+    Independently of ``text_equal``, EVERY twin is also gated by exact character
+    and normalized-dash multisets. Expected differences carry both reviewable
+    evidence and an exact residual signature/count, so no exemption is blanket.
 
     EVERY twin is ALSO gated by the Tier 1.8 per-letter FONT check (``font_bag``,
     via PyMuPDF): each alphabetic character must render in the same family (serif/
@@ -183,13 +313,15 @@ class Test:
     order-independent word/char bags cannot see. ``expected_order_diffs`` exempt
     known extraction-order asymmetries and anchor them to PDF fragments.
 
-    EVERY twin's external hyperlink set is compared against LaTeX. ``expected_link_diff``
-    must be empty when links match, and nonempty when a known mismatch remains.
+    EVERY twin's external hyperlink annotation multiset is compared against
+    LaTeX. ``EXPECTED_LINK_DIFFS`` records exact missing/extra multiplicities for
+    known differences.
     Any test may also set minimum internal-link counts for targeted regressions;
     those checks normalize LaTeX named /GoTo actions and Typst direct /Dest arrays.
 
-    EVERY twin's Tier 2 layout metrics are gated. ``expected_metrics_diff`` must
-    be empty when metrics pass, and nonempty when a known metric mismatch remains.
+    EVERY twin's Tier 2 layout metrics are gated. ``expected_metrics_diff`` gives
+    the rationale while ``EXPECTED_METRIC_DIFFS`` names the exact page/key
+    failures and caps each accepted delta.
     ``golden_exempt`` removes a test from the Typst raster golden set, and must
     explain why the rendered PDF is not golden-pinned.
     """
@@ -206,12 +338,16 @@ class Test:
     text_assertions: tuple[Assertion, ...] = ()
     expected_font_diffs: tuple[ExpectedFontDiff, ...] = ()
     expected_order_diffs: tuple[ExpectedOrderDiff, ...] = ()
-    expected_link_diff: str = ""  # nonempty reason for an expected hyperlink-set mismatch
     min_internal_links: int = 0
     min_internal_destinations: int = 0
+    review_line_numbers: bool = False
     note: str = ""
 
     def __post_init__(self) -> None:
+        if self.kind not in ("twin", "smoke"):
+            raise ValueError(f"unknown test kind {self.kind!r}")
+        if self.text_equal not in (None, True, False, "bag"):
+            raise ValueError(f"unknown text_equal value {self.text_equal!r}")
         if self.metrics_page1_only and self.pages <= 1:
             raise ValueError("metrics_page1_only is only meaningful for multi-page tests")
         if self.metrics_page1_only and self.kind != "twin":
@@ -220,6 +356,8 @@ class Test:
             raise ValueError("metrics_uniform_pitch only applies to twin tests")
         if self.min_internal_links < 0 or self.min_internal_destinations < 0:
             raise ValueError("minimum internal-link counts cannot be negative")
+        if self.review_line_numbers and self.kind != "twin":
+            raise ValueError("review_line_numbers only applies to twin tests")
 
     @property
     def subdir(self) -> str:
@@ -740,7 +878,7 @@ TESTS: dict[str, Test] = {
         note="full twin of the upstream acmsmall sample.",
     ),
     "sample-manuscript": Test(
-        kind="twin", pages=11,
+        kind="twin", pages=11, review_line_numbers=True,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -852,7 +990,7 @@ TESTS: dict[str, Test] = {
         note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
     ),
     "sample-acmsmall-submission": Test(
-        kind="twin", pages=10,
+        kind="twin", pages=10, review_line_numbers=True,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -990,6 +1128,7 @@ TESTS: dict[str, Test] = {
     "sample-sigconf-authordraft": Test(
         kind="twin", pages=6,
         golden_exempt=_AUTHORDRAFT_GOLDEN_EXEMPT,
+        review_line_numbers=True,
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(

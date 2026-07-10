@@ -47,7 +47,7 @@ from collections import Counter
 from pathlib import Path
 
 import test_matrix as M
-from pdf_text_tokens import CHAR_FOLD, bag_coverage, char_bag, normalize
+from pdf_text_tokens import CHAR_FOLD, bag_coverage, char_bag, dash_bag, normalize
 from test_matrix import TESTS, Test
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -186,28 +186,20 @@ def pdf_text(pdf: Path, page: int | None = None) -> str:
     return proc.stdout
 
 
-_URI = re.compile(rb"/URI\s*\(([^)]*)\)")
-
-
-def _qdf_bytes(pdf: Path) -> bytes:
-    """PDF bytes decoded enough for simple annotation regexes."""
-    if not shutil.which("qpdf"):
-        raise RuntimeError("qpdf is required for the hyperlink gate")
-    proc = subprocess.run(
-        ["qpdf", "--qdf", "--object-streams=disable", "--decode-level=all", str(pdf), "-"],
-        capture_output=True,
-    )
-    if proc.returncode not in (0, 3):
-        msg = proc.stderr.decode("utf-8", "replace").strip()
-        raise RuntimeError(f"qpdf failed while decoding links in {pdf.name}: {msg}")
-    return proc.stdout
-
-
-def extract_uris(pdf: Path) -> set[str]:
-    """External hyperlink (/URI) targets in a PDF."""
-    found = set(_URI.findall(pdf.read_bytes()))
-    found |= set(_URI.findall(_qdf_bytes(pdf)))
-    return {u.decode("latin1") for u in found}
+def extract_uris(pdf: Path) -> Counter[str]:
+    """External hyperlink annotation targets, preserving multiplicity."""
+    try:
+        import pikepdf
+    except ImportError as exc:
+        raise RuntimeError("pikepdf is required for the hyperlink gate") from exc
+    found: Counter[str] = Counter()
+    with pikepdf.open(pdf) as doc:
+        for page in doc.pages:
+            for annotation in page.get("/Annots", []) or []:
+                action = annotation.get("/A")
+                if action is not None and action.get("/S") == "/URI" and "/URI" in action:
+                    found[str(action["/URI"])] += 1
+    return found
 
 
 def extract_internal_links(pdf: Path) -> dict:
@@ -326,10 +318,13 @@ def compile_all_typst() -> dict[str, tuple[int, str]]:
     without recompiling.
     """
     TYPST.mkdir(parents=True, exist_ok=True)
-    results: dict[str, tuple[int, str]] = {}
-    for name, t in TESTS.items():
-        results[name] = compile_typst(TESTS_DIR / t.subdir / f"{name}.typ", typst_pdf(name))
-    return results
+    items = list(TESTS.items())
+
+    def compile_one(item: tuple[str, Test]) -> tuple[str, tuple[int, str]]:
+        name, t = item
+        return name, compile_typst(TESTS_DIR / t.subdir / f"{name}.typ", typst_pdf(name))
+
+    return dict(_pmap(compile_one, items, default_jobs()))
 
 
 # ---------------------------------------------------------------------------
@@ -575,6 +570,81 @@ def gate_latex_oracle(report: bool = False) -> list[str]:
     return failures
 
 
+def gate_matrix_integrity(report: bool = False) -> list[str]:
+    """Ensure test files, matrix entries, residuals, goldens, and engine agree."""
+    failures: list[str] = []
+    matrix_twins = {name for name, t in TESTS.items() if t.kind == "twin"}
+    matrix_smokes = {name for name, t in TESTS.items() if t.kind == "smoke"}
+    typ_twins = {p.stem for p in (TESTS_DIR / "twins").glob("*.typ")
+                 if not p.name.startswith("_")}
+    tex_twins = {p.stem for p in (TESTS_DIR / "twins").glob("*.tex")
+                 if not p.name.startswith("_")}
+    typ_smokes = {p.stem for p in (TESTS_DIR / "typst-only").glob("*.typ")
+                  if not p.name.startswith("_")}
+
+    comparisons = (
+        ("Typst twin files", typ_twins, matrix_twins),
+        ("LaTeX twin files", tex_twins, matrix_twins),
+        ("Typst-only smoke files", typ_smokes, matrix_smokes),
+    )
+    for label, actual, expected in comparisons:
+        if missing := sorted(expected - actual):
+            failures.append(f"matrix: {label} missing {', '.join(missing)}")
+        if orphan := sorted(actual - expected):
+            failures.append(f"matrix: unregistered {label}: {', '.join(orphan)}")
+
+    for name, t in TESTS.items():
+        residual = M.EXPECTED_RESIDUALS.get(name, M.ResidualSignatures())
+        for kind, diffs in (("text", t.expected_text_diffs),
+                            ("font", t.expected_font_diffs),
+                            ("order", t.expected_order_diffs)):
+            signature = getattr(residual, kind)
+            if diffs and not signature:
+                failures.append(f"{name}: expected_{kind}_diffs lacks a residual signature")
+            if signature and not diffs:
+                failures.append(f"{name}: {kind} residual signature has no expected diff evidence")
+    for orphan in sorted(set(M.EXPECTED_RESIDUALS) - set(TESTS)):
+        failures.append(f"matrix: residual signature for unknown test {orphan}")
+    for label, mapping in (("link", M.EXPECTED_LINK_DIFFS),
+                           ("dash", M.EXPECTED_DASH_DIFFS),
+                           ("metric", M.EXPECTED_METRIC_DIFFS)):
+        for orphan in sorted(set(mapping) - set(TESTS)):
+            failures.append(f"matrix: expected {label} residual for unknown test {orphan}")
+        for non_twin in sorted(name for name in mapping if name in TESTS and TESTS[name].kind != "twin"):
+            failures.append(f"matrix: expected {label} residual belongs to non-twin {non_twin}")
+    for name, t in TESTS.items():
+        allowances = M.EXPECTED_METRIC_DIFFS.get(name, ())
+        if t.expected_metrics_diff and not allowances:
+            failures.append(f"{name}: expected_metrics_diff lacks bounded metric allowances")
+        if allowances and not t.expected_metrics_diff:
+            failures.append(f"{name}: metric allowances lack expected_metrics_diff rationale")
+        keys = [(item.page, item.key) for item in allowances]
+        if len(keys) != len(set(keys)):
+            failures.append(f"{name}: duplicate metric allowance page/key")
+        for item in allowances:
+            if item.page < 1 or item.key not in ("left", "top", "pitch", "line_pitch"):
+                failures.append(f"{name}: invalid metric allowance {item!r}")
+            if item.max_delta <= 0:
+                failures.append(f"{name}: nonpositive metric allowance {item!r}")
+
+    golden = read_golden()
+    expected_golden = {name for name, t in TESTS.items() if not t.golden_exempt}
+    if missing := sorted(expected_golden - set(golden)):
+        failures.append("matrix: missing golden entries: " + ", ".join(missing))
+    if extra := sorted(set(golden) - expected_golden):
+        failures.append("matrix: orphan/exempt golden entries: " + ", ".join(extra))
+
+    proc = subprocess.run([str(TC), "--version"], capture_output=True, text=True)
+    match = re.search(r"\b(\d+\.\d+\.\d+)\b", proc.stdout + proc.stderr)
+    actual_version = match.group(1) if match else None
+    if proc.returncode != 0 or actual_version != M.TYPST_VERSION:
+        failures.append(
+            f"matrix: Typst version is {actual_version!r}, golden header pins {M.TYPST_VERSION!r}")
+    if report and not failures:
+        print(f"ok   {len(matrix_twins)} twins + {len(matrix_smokes)} smokes; Typst {actual_version}")
+    return failures
+
+
 def build_all_latex(jobs: int = 1, force: bool = False) -> None:
     """Build every LaTeX twin in parallel (``jobs`` at a time).
 
@@ -723,6 +793,24 @@ def _first_diff(a: str, b: str) -> str:
     return "strings differ, but no token diff was found"
 
 
+def _residual_digest(missing: Counter, extra: Counter) -> str:
+    """Stable SHA-256 of a signed gate residual.
+
+    Counter keys may be strings or font/order tuples, so serialize their reprs in
+    sorted order rather than relying on insertion order or JSON type coercion.
+    """
+    payload = repr((
+        sorted(((repr(key), count) for key, count in missing.items())),
+        sorted(((repr(key), count) for key, count in extra.items())),
+    )).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _expected_residual(name: str, kind: str) -> str:
+    residual = M.EXPECTED_RESIDUALS.get(name)
+    return getattr(residual, kind) if residual is not None else ""
+
+
 def _assertion_targets(name: str, t: Test, a: M.Assertion) -> list[tuple[str, Path]]:
     if a.engine == "typst":
         return [("Typst", typst_pdf(name))]
@@ -747,7 +835,8 @@ def _check_expected_pdf_diffs(
     for i, d in enumerate(diffs, 1):
         cause = getattr(d, "cause", None)
         explanation = getattr(cause, "reason", "").strip() or f"expected {kind} diff {i}"
-        lneedle, tneedle = normalize(d.latex), normalize(d.typst)
+        norm_kw = {"review_line_numbers": t.review_line_numbers}
+        lneedle, tneedle = normalize(d.latex, **norm_kw), normalize(d.typst, **norm_kw)
         scope = f" page {d.page}" if d.page is not None else ""
         if not isinstance(cause, M.DIFF_CAUSE_TYPES):
             failures.append(
@@ -762,12 +851,12 @@ def _check_expected_pdf_diffs(
             continue
 
         lhaystack = (
-            normalize(pdf_text(latex_pdf(name, t), page=d.page))
-            if d.page is not None else normalize(lraw)
+            normalize(pdf_text(latex_pdf(name, t), page=d.page), **norm_kw)
+            if d.page is not None else normalize(lraw, **norm_kw)
         )
         thaystack = (
-            normalize(pdf_text(typst_pdf(name), page=d.page))
-            if d.page is not None else normalize(traw)
+            normalize(pdf_text(typst_pdf(name), page=d.page), **norm_kw)
+            if d.page is not None else normalize(traw, **norm_kw)
         )
         if lneedle not in lhaystack:
             failures.append(
@@ -813,13 +902,15 @@ def gate_text(report: bool = False) -> list[str]:
         local: list[str] = []
         lraw, traw = pdf_text(lref), pdf_text(tpdf)
         if t.text_equal is True:
-            ltext, ttext = normalize(lraw), normalize(traw)
+            ltext = normalize(lraw, review_line_numbers=t.review_line_numbers)
+            ttext = normalize(traw, review_line_numbers=t.review_line_numbers)
             if ltext != ttext:
                 local.append(f"{name}: normalized text differs\n    {_first_diff(ltext, ttext)}")
             elif report:
                 print(f"equal {name}")
         elif t.text_equal == "bag":
-            cov, miss, extra = bag_coverage(lraw, traw)
+            cov, miss, extra = bag_coverage(
+                lraw, traw, review_line_numbers=t.review_line_numbers)
             if miss or extra:
                 local.append(
                     f"{name}: word bags differ ({cov * 100:.2f}% common)\n"
@@ -839,31 +930,59 @@ def gate_text(report: bool = False) -> list[str]:
         # must match as an exact character multiset (order-, line-break-, number-
         # and scheme-independent), unless it carries expected_text_diffs evidence
         # for a known content difference or a pdftotext extraction artifact.
-        ca, cb = char_bag(lraw), char_bag(traw)
+        ca = char_bag(lraw, review_line_numbers=t.review_line_numbers)
+        cb = char_bag(traw, review_line_numbers=t.review_line_numbers)
         cm, ce = ca - cb, cb - ca
-        if cm or ce:
-            if t.expected_text_diffs:
-                if report:
-                    print(f"skip  {name}: char bag exempt by expected_text_diffs")
-            else:
+        if t.expected_text_diffs:
+            actual = _residual_digest(cm, ce)
+            expected = _expected_residual(name, "text")
+            if not expected:
+                local.append(f"{name}: expected_text_diffs requires an exact text residual signature")
+            elif actual != expected:
                 local.append(
-                    f"{name}: char bags differ (read both pdftotext dumps to locate)\n"
+                    f"{name}: text residual changed (expected {expected}, got {actual})\n"
                     f"    only in LaTeX: {dict(cm)}\n    only in Typst: {dict(ce)}")
+            elif report:
+                print(f"diff  {name}: exact expected char residual {actual[:12]}")
+        elif cm or ce:
+            local.append(
+                f"{name}: char bags differ (read both pdftotext dumps to locate)\n"
+                f"    only in LaTeX: {dict(cm)}\n    only in Typst: {dict(ce)}")
         else:
             if report:
                 print(f"char  {name}: exact")
+
+        da = dash_bag(lraw, review_line_numbers=t.review_line_numbers)
+        db = dash_bag(traw, review_line_numbers=t.review_line_numbers)
+        dm, de = da - db, db - da
+        expected_dash = M.EXPECTED_DASH_DIFFS.get(name)
+        if expected_dash is not None:
+            expected_missing = Counter({"-": expected_dash.latex_only}) + Counter()
+            expected_extra = Counter({"-": expected_dash.typst_only}) + Counter()
+            if dm != expected_missing or de != expected_extra:
+                local.append(
+                    f"{name}: dash residual changed ({expected_dash.reason}); "
+                    f"expected {dict(expected_missing)}/{dict(expected_extra)}, "
+                    f"got {dict(dm)}/{dict(de)}")
+            elif report:
+                print(f"dash  {name}: exact expected residual {dict(dm)}/{dict(de)}")
+        elif dm or de:
+            local.append(
+                f"{name}: normalized dash counts differ\n"
+                f"    only in LaTeX: {dict(dm)}\n    only in Typst: {dict(de)}")
 
         local.extend(_check_expected_text_diffs(name, t, lraw, traw))
         if report and t.expected_text_diffs:
             print(f"diff  {name}: {len(t.expected_text_diffs)} expected text/char diff(s) documented")
 
         for i, a in enumerate(t.text_assertions, 1):
-            needle = normalize(a.text)
+            needle = normalize(a.text, review_line_numbers=t.review_line_numbers)
             if not needle:
                 local.append(f"{name}: text assertion {i} has empty text")
                 continue
             for label, pdf in _assertion_targets(name, t, a):
-                haystack = normalize(pdf_text(pdf, page=a.page))
+                haystack = normalize(
+                    pdf_text(pdf, page=a.page), review_line_numbers=t.review_line_numbers)
                 scope = f" page {a.page}" if a.page is not None else ""
                 if a.kind == "contains" and needle not in haystack:
                     local.append(f"{name}: {label}{scope} missing text assertion {i}: {needle!r}")
@@ -981,13 +1100,16 @@ def gate_metrics(report: bool = False) -> list[str]:
             gated_summary += "/line-pitch"
         if report:
             print(name + ":")
-        local: list[str] = []
+        hard_failures: list[str] = []
+        observed: dict[tuple[int, str], float] = {}
+        compared = 0
         if not pages:
-            local.append(f"{name}: no shared pages for metric comparison")
+            hard_failures.append(f"{name}: no shared pages for metric comparison")
         for p in pages:
             a, b = lm.get(p), tm.get(p)
             if a is None or b is None:
                 continue
+            compared += 1
             lpd = _line_pitch_drift(a["pitches"], b["pitches"]) if line_pitch else None
             if report:
                 lpd_s = (f"  line-pitch {lpd[0]:.2f}pt×{lpd[1]}" if lpd and lpd[1]
@@ -1001,22 +1123,45 @@ def gate_metrics(report: bool = False) -> list[str]:
             for key, lim, label in gated:
                 d = abs(a[key] - b[key])
                 if d > lim:
-                    local.append(f"{name} p{p}: {label} Δ={d:.2f}pt (LaTeX {a[key]:.2f} vs "
-                                 f"Typst {b[key]:.2f}, tol {lim})")
+                    observed[(p, key)] = d
             # Per-line pitch: only when the line-break structure matches (aligned
             # pitch sequences); otherwise the median pitch above is the gate.
             if lpd and lpd[1] and lpd[0] > tol["line_pitch"]:
-                local.append(f"{name} p{p}: single-line pitch Δ={lpd[0]:.2f}pt over {lpd[1]} "
-                             f"lines (tol {tol['line_pitch']}) — a line is off the body grid")
+                observed[(p, "line_pitch")] = lpd[0]
         if report:
             continue
-        if local:
-            if t.expected_metrics_diff:
-                print(f"diff {name} (expected metrics diff: {t.expected_metrics_diff})")
+        if compared == 0:
+            hard_failures.append(f"{name}: zero pages yielded comparable metric data")
+        if hard_failures:
+            failures.extend(hard_failures)
+            continue
+
+        allowances = M.EXPECTED_METRIC_DIFFS.get(name, ())
+        allowed = {(item.page, item.key): item.max_delta for item in allowances}
+        if t.expected_metrics_diff:
+            missing = sorted(set(allowed) - set(observed))
+            unexpected = sorted(set(observed) - set(allowed))
+            excessive = sorted(
+                (key, observed[key], allowed[key])
+                for key in set(observed) & set(allowed)
+                if observed[key] > allowed[key]
+            )
+            if missing or unexpected or excessive:
+                failures.append(
+                    f"{name}: metric residual changed ({t.expected_metrics_diff})\n"
+                    f"    expected-but-passing: {missing}\n"
+                    f"    unexpected failures: {[(k, round(observed[k], 2)) for k in unexpected]}\n"
+                    f"    over budget: {[(k, round(got, 2), limit) for k, got, limit in excessive]}")
             else:
-                failures.extend(local)
-        elif t.expected_metrics_diff:
-            failures.append(f"{name}: expected_metrics_diff is set, but metrics are within tolerance")
+                print(f"diff {name} (exact expected metric keys; bounded deltas)")
+        elif allowances:
+            failures.append(f"{name}: metric allowances exist without expected_metrics_diff rationale")
+        elif observed:
+            details = []
+            for (page, key), delta in sorted(observed.items()):
+                limit = tol["line_pitch" if key == "line_pitch" else key]
+                details.append(f"{name} p{page}: {key} Δ={delta:.2f}pt (tol {limit})")
+            failures.extend(details)
         else:
             print(f"ok   {name}")
     return failures
@@ -1060,12 +1205,10 @@ def cmd_build(args) -> int:
 def gate_links(report: bool = False) -> list[str]:
     """Tier 1.7 — external and internal hyperlink coverage.
 
-    URI sets are compared exactly for every twin. Tests that set minimum
+    URI annotation multisets are compared exactly for every twin. Tests that set minimum
     internal-link counts also get normalized /GoTo and /Dest coverage checks.
     """
     failures: list[str] = []
-    if not shutil.which("qpdf"):
-        return ["Tier 1.7 (hyperlinks) requires qpdf on PATH"]
     for name, t in TESTS.items():
         if t.kind != "twin":
             continue
@@ -1079,18 +1222,23 @@ def gate_links(report: bool = False) -> list[str]:
             failures.append(f"{name}: {exc}")
             continue
         miss, extra = lu - tu, tu - lu
-        if miss or extra:
-            if t.expected_link_diff:
-                if report:
-                    print(f"diff  {name}: expected hyperlink diff ({t.expected_link_diff})")
-            else:
+        expected_link_diff = M.EXPECTED_LINK_DIFFS.get(name)
+        if expected_link_diff is not None:
+            expected_miss = Counter(expected_link_diff.missing)
+            expected_extra = Counter(expected_link_diff.extra)
+            if miss != expected_miss or extra != expected_extra:
                 failures.append(
-                    f"{name}: hyperlink sets differ\n"
-                    f"    only in LaTeX: {sorted(miss)}\n    only in Typst: {sorted(extra)}")
-        elif t.expected_link_diff:
-            failures.append(f"{name}: expected_link_diff is set, but hyperlink sets match")
+                    f"{name}: hyperlink residual changed ({expected_link_diff.reason})\n"
+                    f"    expected LaTeX-only: {dict(expected_miss)}, got {dict(miss)}\n"
+                    f"    expected Typst-only: {dict(expected_extra)}, got {dict(extra)}")
+            elif report:
+                print(f"diff  {name}: exact expected hyperlink multiset residual")
+        elif miss or extra:
+            failures.append(
+                f"{name}: hyperlink multisets differ\n"
+                f"    only in LaTeX: {dict(miss)}\n    only in Typst: {dict(extra)}")
         elif report:
-            print(f"ok   {name}: {len(tu)} hyperlinks match")
+            print(f"ok   {name}: {sum(tu.values())} hyperlink annotations match")
     for name, t in TESTS.items():
         if not (t.min_internal_links or t.min_internal_destinations):
             continue
@@ -1192,11 +1340,17 @@ def gate_fonts(report: bool = False) -> list[str]:
         miss, extra = (lb := font_bag(lref)) - (tb := font_bag(tpdf)), tb - lb
         if t.expected_font_diffs:
             failures.extend(expected_failures)
-            if miss or extra:
-                if report:
-                    print(f"diff  {name}: {len(t.expected_font_diffs)} expected font diff(s)")
-            else:
-                failures.append(f"{name}: expected_font_diffs is set, but fonts match")
+            actual = _residual_digest(miss, extra)
+            expected = _expected_residual(name, "font")
+            if not expected:
+                failures.append(f"{name}: expected_font_diffs requires an exact font residual signature")
+            elif actual != expected:
+                failures.append(
+                    f"{name}: font residual changed (expected {expected}, got {actual})\n"
+                    f"    only in LaTeX: {dict(list(miss.items())[:8])}\n"
+                    f"    only in Typst: {dict(list(extra.items())[:8])}")
+            elif report:
+                print(f"diff  {name}: exact expected font residual {actual[:12]}")
         elif miss or extra:
             failures.append(
                 f"{name}: per-letter fonts differ (PyMuPDF; key = char,family,bold,italic,size,colour)\n"
@@ -1244,19 +1398,28 @@ def gate_order(report: bool = False) -> list[str]:
             continue
         bad = [(role, toks, r) for role, toks in chunks
                if (r := PC.chunk_order(toks, stream))["disorder"]]
-        if bad:
-            if t.expected_order_diffs:
-                if report:
-                    print(f"diff  {name}: {len(t.expected_order_diffs)} expected order diff(s)")
-            else:
-                lines = [f"{name}: {len(bad)} chunk(s) out of order vs LaTeX "
-                         f"(structure-tree order vs flat stream; read both pdftotext dumps)"]
-                for role, toks, r in bad[:4]:
-                    lines.append(f"    <{role}> disorder={r['disorder']}/{r['present']}: "
-                                 f"{' '.join(toks)[:70]!r}")
-                failures.append("\n".join(lines))
-        elif t.expected_order_diffs:
-            failures.append(f"{name}: expected_order_diffs is set, but chunk order matches")
+        if t.expected_order_diffs:
+            residual = Counter({
+                (role, tuple(toks), result["disorder"], result["present"]): 1
+                for role, toks, result in bad
+            })
+            actual = _residual_digest(residual, Counter())
+            expected = _expected_residual(name, "order")
+            if not expected:
+                failures.append(f"{name}: expected_order_diffs requires an exact order residual signature")
+            elif actual != expected:
+                failures.append(
+                    f"{name}: order residual changed (expected {expected}, got {actual}); "
+                    f"{len(bad)} chunk(s) now fail")
+            elif report:
+                print(f"diff  {name}: exact expected order residual {actual[:12]}")
+        elif bad:
+            lines = [f"{name}: {len(bad)} chunk(s) out of order vs LaTeX "
+                     f"(structure-tree order vs flat stream; read both pdftotext dumps)"]
+            for role, toks, r in bad[:4]:
+                lines.append(f"    <{role}> disorder={r['disorder']}/{r['present']}: "
+                             f"{' '.join(toks)[:70]!r}")
+            failures.append("\n".join(lines))
         elif report:
             print(f"ok   {name}: chunk order matches")
     return failures
@@ -1296,6 +1459,8 @@ def cmd_check(args) -> int:
     compiled = compile_all_typst()
 
     ok = True
+    print("\n== Tier 0.1 (matrix integrity) ==")
+    ok &= _run_gate("Tier 0.1 (matrix integrity)", gate_matrix_integrity())
     print("\n== Tier 0.25 (LaTeX oracle) ==")
     ok &= _run_gate("Tier 0.25 (LaTeX oracle)", gate_latex_oracle())
     print("\n== Tier 0 (smoke) ==")
@@ -1657,8 +1822,10 @@ def cmd_list(_args) -> int:
             flags.append(f"fontdiff×{len(t.expected_font_diffs)}")
         if t.expected_order_diffs:
             flags.append(f"orderdiff×{len(t.expected_order_diffs)}")
-        if t.expected_link_diff:
+        if name in M.EXPECTED_LINK_DIFFS:
             flags.append("linkdiff")
+        if name in M.EXPECTED_DASH_DIFFS:
+            flags.append("dashdiff")
         if t.min_internal_links:
             flags.append(f"ilinks≥{t.min_internal_links}")
         if t.min_internal_destinations:

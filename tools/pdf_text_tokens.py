@@ -77,7 +77,7 @@ def _without_review_line_number_lines(text: str) -> str:
     return _without_standalone_number_lines(text)
 
 
-def _drop_layout_numbers(text: str) -> str:
+def _drop_layout_numbers(text: str, *, review_line_numbers: bool = False) -> str:
     """Drop numbers that are LAYOUT chrome, not content: page folios (a number line
     right before a page break) and the review-mode line-number ruler (>=20
     standalone numbers). SECTION numbers are deliberately KEPT — they are content,
@@ -88,12 +88,14 @@ def _drop_layout_numbers(text: str) -> str:
     every standalone-number line, as this once did, instead swept section numbers
     up too, which forced the heading to keep an over-wide gap so its number would
     land on its own extracted line — see DESIGN.md.)"""
-    return _without_review_line_number_lines(_without_page_folio_lines(text))
+    text = _without_page_folio_lines(text)
+    return _without_review_line_number_lines(text) if review_line_numbers else text
 
 
-def normalize(text: str) -> str:
+def normalize(text: str, *, review_line_numbers: bool = False) -> str:
     """Collapse Poppler text for exact text assertions."""
-    text = _drop_layout_numbers(_clean(text)).replace("­", "")
+    text = _drop_layout_numbers(
+        _clean(text), review_line_numbers=review_line_numbers).replace("­", "")
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -127,8 +129,9 @@ def _join_word_hyphen_space(match: re.Match, text: str) -> str:
     return match.group(1) + ("-" if _looks_urlish(context) else "") + match.group(2)
 
 
-def _prepare_for_tokens(raw: str) -> str:
-    text = _URL_SCHEME.sub("", _drop_layout_numbers(_clean(raw)))
+def _prepare_for_tokens(raw: str, *, review_line_numbers: bool = False) -> str:
+    text = _URL_SCHEME.sub("", _drop_layout_numbers(
+        _clean(raw), review_line_numbers=review_line_numbers))
     text = _EOL_HYPHEN.sub(lambda m: _join_eol_hyphen(m, text), text)
     text = _WORD_HYPHEN_SPACE.sub(lambda m: _join_word_hyphen_space(m, text), text)
     text = text.replace("­", "")
@@ -175,10 +178,10 @@ def _word_symbol_tokens(piece: str) -> list[str]:
     return split
 
 
-def tokenize(raw: str) -> list[str]:
+def tokenize(raw: str, *, review_line_numbers: bool = False) -> list[str]:
     """Ordered token stream used by word bags and intra-chunk order checks."""
     tokens: list[str] = []
-    for piece in _prepare_for_tokens(raw).split():
+    for piece in _prepare_for_tokens(raw, review_line_numbers=review_line_numbers).split():
         if _looks_urlish(piece):
             tokens.extend(_url_tokens(piece))
         else:
@@ -186,23 +189,36 @@ def tokenize(raw: str) -> list[str]:
     return tokens
 
 
-def bag_tokens(raw: str) -> Counter:
+def bag_tokens(raw: str, *, review_line_numbers: bool = False) -> Counter:
     """Token multiset for order-independent text comparison."""
-    return Counter(tokenize(raw))
+    return Counter(tokenize(raw, review_line_numbers=review_line_numbers))
 
 
-def bag_coverage(a: str, b: str) -> tuple[float, Counter, Counter]:
+def bag_coverage(
+    a: str, b: str, *, review_line_numbers: bool = False,
+) -> tuple[float, Counter, Counter]:
     """Fraction of tokens that agree as multisets, plus LaTeX-only/Typst-only rests."""
-    ca, cb = bag_tokens(a), bag_tokens(b)
+    ca = bag_tokens(a, review_line_numbers=review_line_numbers)
+    cb = bag_tokens(b, review_line_numbers=review_line_numbers)
     miss, extra = ca - cb, cb - ca
     total = sum(ca.values()) + sum(cb.values())
     return 1 - sum((miss + extra).values()) / max(1, total), miss, extra
 
 
-def char_bag(raw: str) -> Counter:
-    """Whitespace-, dash-, variation-selector-, and page-folio-free char bag."""
-    text = _drop_layout_numbers(_clean(raw)).translate(_DROP_DASHES)
+def char_bag(raw: str, *, review_line_numbers: bool = False) -> Counter:
+    """Whitespace/dash/layout-hyphen/page-chrome-free character multiset.
+
+    Dash parity is deliberately a separate exact gate (`dash_bag`) so a known
+    extraction-only dash mismatch does not exempt any other character.
+    """
+    text = _prepare_for_tokens(raw, review_line_numbers=review_line_numbers).replace("-", "")
     text = text.replace("~", "")
     for old, new in CHAR_FOLD.items():
         text = text.replace(old, new)
     return Counter(re.sub(r"\s+", "", text))
+
+
+def dash_bag(raw: str, *, review_line_numbers: bool = False) -> Counter:
+    """Normalized real-dash multiset after removing discretionary line breaks."""
+    text = _prepare_for_tokens(raw, review_line_numbers=review_line_numbers)
+    return Counter(ch for ch in text if ch == "-")
