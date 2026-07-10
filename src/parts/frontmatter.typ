@@ -193,8 +193,11 @@
     else if s.sig >= 300 { emph(s.spec) }
     else { s.spec }
   }
-  // \ccsdesc separates every concept (areas and specifics) with "; " and ends
-  // with "." (acmart.dtx:5994-6006), so areas are joined by "; " too.
+  // \ccsdesc separates every concept (areas and specifics) with "; ", so areas
+  // are joined by "; " too. The closing "." only prints when the @concepts counter
+  // reaches zero, which happens iff EVERY concept carries a specific (each specific
+  // decrements the counter that every \ccsdesc call incremented, acmart.dtx:5989-6006);
+  // any area-only concept — trailing or not — leaves the list ending in "; " instead.
   for (i, area) in areas.enumerate() {
     if i > 0 { [; ] }
     [• #strong(area)]
@@ -204,7 +207,7 @@
       specs.map(style-spec).join("; ")
     }
   }
-  [.]
+  if areas.all(area => by-area.at(area).len() > 0) { [.] } else { [;] }
 }
 
 // Wrap inline content as an explicit paragraph so Typst's PDF tagger emits it as
@@ -584,11 +587,16 @@
     #if meta.code-data-link != none { v(big, weak: true); [Code and data links:\ #meta.code-data-link] }
     #if meta.keywords != none { v(big, weak: true); [Keywords: #kw-join(meta.keywords)] }
     #if meta.contributions != none { v(big, weak: true); meta.contributions }
-    #let contacts = meta.authors.map(contact-line)
-    #if contacts.len() > 0 {
+    #if meta.authors.len() > 0 {
       v(big, weak: true)
-      let label = if contacts.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
-      [#label #acmcp-contact-lines(meta.authors).]
+      let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
+      // Anonymous review replaces the replayed \addresses with "Anonymous Author(s)"
+      // (\@mkauthorsaddresses under \if@ACM@anonymous), as for the journal contact block.
+      if meta.anonymous {
+        [#label Anonymous Author(s).]
+      } else {
+        [#label #acmcp-contact-lines(meta.authors).]
+      }
     }
   ]
 }
@@ -813,7 +821,7 @@
   // sits centered rather than left-aligned. Rows are \lineskip (1pc) apart. The
   // conference box keeps the ambient body first-line indent (\parindent).
   let fli = (amount: cfg.parindent, all: false)
-  stack(dir: ttb, spacing: 12pt, ..chunk-rows(groups, n).map(row => align(center, grid(
+  stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..chunk-rows(groups, n).map(row => align(center, grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,
     ..row.map(g => author-grid-box(cfg, g, contact-fn, fli: fli)),
@@ -863,7 +871,7 @@
   let contact-fn(group) = group.authors.map(a => a.email).filter(e => e != none).map(email-link) + affil-conf-lines(group.affiliation)
   // Boxes flow left-aligned (sigchiamode skips \centering) and wrap after N; rows
   // are \lineskip (1pc) apart. The box first line is unindented (\parindent 0).
-  stack(dir: ttb, spacing: 12pt, ..chunk-rows(groups, n).map(row => grid(
+  stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..chunk-rows(groups, n).map(row => grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,
     align: top + left,

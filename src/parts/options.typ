@@ -68,12 +68,14 @@
       + "compile.",
   )
 
-  // acmcp suppresses the ACM reference block. Otherwise nonacm flips the
-  // default off but an explicit true can restore it (acmart.dtx:2717/3006).
-  let print-acm-reference = if cfg.name == "acmcp" {
-    false
-  } else if print-acm-reference == auto {
-    not nonacm
+  // acmcp and nonacm each flip the ACM reference block's DEFAULT off via an
+  // \AtBeginDocument{\@ACM@printacmreffalse} hook (acmart.dtx:2717/3006), but a
+  // user's explicit choice still wins — LaTeX honours a post-\begin{document}
+  // \settopmatter{printacmref=true}. This package has no preamble-vs-body timing,
+  // so an explicit argument always overrides the format default (see DESIGN.md
+  // "Explicit arguments override format defaults").
+  let print-acm-reference = if print-acm-reference == auto {
+    not nonacm and cfg.name != "acmcp"
   } else {
     print-acm-reference
   }
@@ -111,6 +113,11 @@
     message: "faithful-acmart: `cite-style` must be \"numeric\" or \"author-year\".")
   assert(type(data.acm-month) == int and data.acm-month >= 1 and data.acm-month <= 12,
     message: "faithful-acmart: `acm-month` must be an integer 1..12; got " + repr(data.acm-month) + ".")
+  // acmart warns and resets a non-integer \settopmatter{authorsperrow}; we fail
+  // early and clearly instead (0 = acmart's automatic per-group default).
+  assert(type(data.authors-per-row) == int and data.authors-per-row >= 0,
+    message: "faithful-acmart: `authors-per-row` must be a non-negative integer "
+      + "(0 selects the automatic per-row default); got " + repr(data.authors-per-row) + ".")
 
   (
     cfg: cfg,

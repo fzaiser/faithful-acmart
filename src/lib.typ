@@ -260,8 +260,11 @@
   // Conference metadata (proceedings formats; acmart \acmConference / \acmBooktitle
   // / \acmISBN). `conference` is a dict (name / short / venue / date); the
   // conference copyright block prints "<short>, <venue>" (acmart.dtx:6620) and the
-  // ISBN line (acmart.dtx:6654). `auto` uses acmart's placeholder conference for
-  // proceedings formats and none for journal/manuscript formats.
+  // ISBN line (acmart.dtx:6654). `auto` reproduces acmart's UNTOUCHED default — the
+  // class's placeholder "Conference'17" line on proceedings formats (none on
+  // journal/manuscript). Explicit `none` is a Typst-only SUPPRESSION of that line;
+  // acmart has no way to blank the conference, so this is a deliberate extension,
+  // not the LaTeX default (see DESIGN.md "Package policy").
   conference: auto,
   booktitle: none,
   isbn: "978-x-xxxx-xxxx-x/YYYY/MM",
@@ -388,6 +391,7 @@
     cite-style: cite-style,
     acm-month: acm-month,
     article-type: article-type,
+    authors-per-row: authors-per-row,
   ))
   let cfg = options.cfg
   let print-acm-reference = options.print-acm-reference

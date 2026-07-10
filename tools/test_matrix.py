@@ -1338,6 +1338,16 @@ TESTS: dict[str, Test] = {
         note="Regression: a single relative #bibliography path resolves against the "
              "caller on the bibtex engine backend (arguments-origin threaded to read()).",
     ),
+    "acmcp-acmref-test": Test(
+        kind="smoke", pages=1,
+        golden_exempt="Behavior smoke only; acmcp-test owns the rendered cover layout.",
+        text_assertions=(
+            Assertion(engine="typst", text="ACM Reference Format"),
+            Assertion(engine="typst", text="An acmcp Reference-Format Override"),
+        ),
+        note="A4.1: explicit print-acm-reference: true overrides acmcp's default "
+             "suppression (LaTeX honours a post-\\begin \\settopmatter{printacmref=true}).",
+    ),
 }
 
 
@@ -1356,6 +1366,7 @@ ERROR_CASES: dict[str, tuple] = {
     "bad-language": ('language: "klingon",', "unsupported language"),
     "draft-option": ("draft: true,", "option `draft` has no effect"),
     "bad-journal": ('journal: "NOT-A-JOURNAL",', "unknown ACM journal code"),
+    "bad-authors-per-row": ("authors-per-row: 2.5,", "`authors-per-row` must be a non-negative integer"),
     "missing-affiliation-country": (
         'authors: ((name: "Ada Lovelace", affiliation: (institution: "Analytical Engine Institute")),),',
         "every author affiliation must include a nonempty `country`",

@@ -70,7 +70,14 @@
       manuscript-footer
     }
     let folio = if print-folios { [#pageno] }
-    if timestamp {
+    if cfg.name == "acmcp" {
+      // acmcp's foot (\fancyfoot[L,C]{}\fancyfoot[R]{bib}, acmart.dtx:8129) clears
+      // any timestamp slot and keeps the foot rule + bib on every page — so acmcp
+      // is handled BEFORE the timestamp branch (LaTeX wipes the stamp on acmcp).
+      place(top + left, dy: -(8.35 * tp - cfg.size.footnotesize) - 0.1 * tp,
+        line(length: 100%, stroke: 0.1 * tp))
+      footer-row(r: bib)
+    } else if timestamp {
       let total = counter(page).final().first()
       let date = datetime.today().display("[year]-[month]-[day]")
       let start = if meta.start-page == none { 1 } else { meta.start-page }
@@ -94,10 +101,6 @@
       } else {
         grid(columns: (1fr, 1fr), align(left, bib), align(right, ts))
       }
-    } else if cfg.name == "acmcp" {
-      place(top + left, dy: -(8.35 * tp - cfg.size.footnotesize) - 0.1 * tp,
-        line(length: 100%, stroke: 0.1 * tp))
-      footer-row(r: bib)
     } else if cfg.name == "manuscript" and first-page {
       let folio = if folio != none { text(size: cfg.size.small, folio) }
       if odd { footer-row(l: bib, r: folio) } else { footer-row(l: folio, r: bib) }

@@ -175,6 +175,37 @@ taller-than-`\topskip` title line.
 > older (v2.03) and *does* uppercase level-1 titles, so always validate against the
 > bundled class (`tools/test.py`'s `ensure_class` generates it from [`acmart/`](acmart/)).
 
+## Package policy
+
+Two deliberate policies where LaTeX's semantics have no direct Typst analog. Both
+are *package conventions*, not "the LaTeX fact" — flagged here so they aren't
+mistaken for faithfulness bugs.
+
+- **Explicit arguments override format defaults.** LaTeX distinguishes a preamble
+  option from a post-`\begin{document}` `\settopmatter`, and several class options
+  (`nonacm`, `acmcp`) flip a `\settopmatter` key off via an
+  `\AtBeginDocument{\@ACM@…false}` hook (acmart.dtx:2717/3006) that a *preamble*
+  setting cannot beat but a *body* one can. This package has no such timing, so it
+  resolves the ambiguity by letting an explicit user argument always win over a
+  format default. The motivating case is `print-acm-reference`: `nonacm`/`acmcp`
+  flip its **default** to false, but `print-acm-reference: true` re-enables the ACM
+  Reference Format block — matching a reachable LaTeX `\settopmatter{printacmref=true}`
+  after `\begin{document}` (probe-verified on acmcp). `options.typ` resolves `auto`
+  to the format default and passes any explicit value straight through.
+- **`conference: auto` vs `none`.** `auto` reproduces acmart's *untouched* default —
+  on proceedings formats that is the class's placeholder "Conference'17" line
+  (`\acmConference` defaults, acmart.dtx), none on journal/manuscript. Explicit
+  `none` is a **Typst-only suppression** of that line: acmart offers no way to blank
+  the conference, so `none` is a deliberate extension, distinct from `auto`.
+- **Author notes dedup by content.** acmart's `\authornote` attaches a footnote to a
+  specific author and repeats an *identical* note under a fresh symbol only if
+  written twice; two authors sharing one note use `\authornotemark[n]` to reuse the
+  first symbol. Our API stores each author's `note` as content, and `collect-notes`
+  deduplicates by content — two authors with the *same* note content share one
+  symbol automatically (the `\authornotemark`-equivalent comes for free), while
+  distinct notes each get their own symbol. This is an intentional API mapping, not
+  a divergence.
+
 ## Bibliography — three backends (`bib-backend`)
 
 - **`"typst"` — idiomatic, an approximation.** Native `bibliography()` with Typst's
