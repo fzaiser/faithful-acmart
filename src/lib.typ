@@ -15,7 +15,7 @@
 
 #import "formats/_base.typ": tp
 #import "parts/spacing.typ": comp, tex-skip
-#import "parts/headings.typ": render-heading, _in-heading, _body-since-heading
+#import "parts/headings.typ": render-heading, _in-heading, _body-since-heading, noindentparagraph as _noindentparagraph
 #import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received
 #import "parts/metadata.typ": resolve-metadata
 #import "parts/options.typ": resolve-options
@@ -118,6 +118,11 @@
 // \grantnum[url]{id}{num} typesets the grant number, plus " (url)" when the
 // optional url is given (acmart.dtx:8875).
 #let grantnum(id, num, url: none) = if url == none { num } else { [#num (#link(url)[#url])] }
+
+// \noindentparagraph{body} (acmart.dtx:8376): a run-in paragraph-level heading at
+// zero indent with no trailing dot (see parts/headings.typ). Reads the active cfg
+// like the other body-level environments.
+#let noindentparagraph(body) = context { _noindentparagraph(cfg-state.get(), body) }
 
 // \part: amsart's level-9 DISPLAY heading — \@parfont (the run-in paragraph
 // font, italic), 10pt before / 4pt after, unnumbered (level 9 > secnumdepth).
@@ -493,6 +498,15 @@
     top-edge: 1em,
     bottom-edge: 0pt,
     lang: cfg.lang, // main language (acmart `language`); drives hyphenation
+    // amsart sets \widowpenalty = \clubpenalty = \brokenpenalty = 10000 (never
+    // leave a widow/orphan line, never break after a hyphen). Typst's cost model
+    // is a soft optimizer weight, not TeX's hard penalty, and has no brokenpenalty
+    // analogue, but a strong widow/orphan cost mirrors the intent. Ablation: at
+    // both 1000% and 10000% the entire twin/sample suite is byte-identical to the
+    // 100% default (our fixtures contain no avoidable widows/orphans), so the
+    // strong value is a zero-regression faithfulness choice that only bites on
+    // longer real documents. See DESIGN.md "Deliberate approximations".
+    costs: (widow: 10000%, orphan: 10000%),
   )
   show math.equation: set text(font: cfg.fonts.math)
 

@@ -1,4 +1,4 @@
-#import "/src/lib.typ": acmart
+#import "/src/lib.typ": acmart, noindentparagraph
 #show: acmart.with(format: "acmsmall")
 
 = Introduction
@@ -17,6 +17,9 @@ liquor jugs. How vexingly quick daft zebras jump!
 ==== An inline heading
 The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow.
 Two driven jocks help fax my big quiz.
+
+#noindentparagraph[A margin run-in]
+This no-indent run-in heading sits flush at the text margin with no trailing dot.
 
 = Second Section
 Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal

@@ -43,7 +43,7 @@
 // Run-in heading: heading text flows inline, the following paragraph continues
 // on the same line. Returning inline content from the show rule achieves this;
 // a weak v() supplies the vertical space before without breaking the run-in.
-#let run-in-heading(it, cfg, f, before: 0pt, indent: 0pt, ambient: true, num: none, dot: true, sep: none) = {
+#let run-in-heading(body, cfg, f, before: 0pt, indent: 0pt, ambient: true, num: none, dot: true, sep: none) = {
   v(before, weak: true)
   // Reach the desired `indent`. When an ambient first-line indent is present
   // (this run-in continues after a body paragraph, or the paragraph-start shim
@@ -57,7 +57,7 @@
   if num != none [#num#h(1em)]
   // \@adddotafter's \@addpunct: no added dot when the title already ends
   // in punctuation.
-  if dot { add-punct(it.body) } else { it.body }
+  if dot { add-punct(body) } else { body }
   // horizontal gap to the body text: the |afterskip| (3.5pt), or a plain
   // interword space for amsart's subparagraph (afterskip -\fontdimen2\font).
   if sep == auto [ ] else { h(cfg.runin-sep) }
@@ -129,13 +129,13 @@
     // drops the run-in's own beforeskip, leaving only the display's afterskip
     // (.25bl); a display block's `below` spacing does not reach a following
     // paragraph, so the run-in carries that gap itself.
-    run-in-heading(it, cfg, sec-font(cfg, "subsubsection"),
+    run-in-heading(it.body, cfg, sec-font(cfg, "subsubsection"),
       before: tex-skip(cfg, if suppress-before { 0.25 * bls } else { 0.5 * bls }),
       indent: 0pt, ambient: ambient, num: num)
   } else if lvl == 4 {
     // paragraph: indented, run-in, before .5bl (.25bl right after a display
     // heading, see above), unnumbered (secnumdepth 3)
-    run-in-heading(it, cfg, sec-font(cfg, "paragraph"),
+    run-in-heading(it.body, cfg, sec-font(cfg, "paragraph"),
       before: tex-skip(cfg, if suppress-before { 0.25 * bls } else { 0.5 * bls }),
       indent: cfg.parindent, ambient: ambient, num: none)
   } else {
@@ -143,9 +143,19 @@
     // \z@ (no extra vertical space beyond the paragraph break), run-in gap of
     // one interword space (-\fontdimen2), unstyled body font, no added dot,
     // no paragraph indent.
-    run-in-heading(it, cfg,
+    run-in-heading(it.body, cfg,
       (font: cfg.fonts.body, weight: "regular", style: "normal", size: cfg.size.normalsize),
       before: tex-skip(cfg, 0pt), indent: 0pt, ambient: ambient, num: none, dot: false, sep: auto)
   }
   _in-heading.update(false)
 }
+
+// \noindentparagraph (acmart.dtx:8376): the level-4 `paragraph` run-in, but at
+// zero indent (\z@ instead of \parindent) and WITHOUT \@adddotafter — no trailing
+// dot. acmart uses it internally for the journal CCS/keywords labels; exposed as a
+// standalone function because a Typst heading element cannot carry the no-indent /
+// no-dot variant. Not a heading, so it doesn't participate in the \if@nobreak
+// adjacency — it is used mid-body (after a paragraph), where the ambient indent is
+// present and the h(0 - parindent) reaches the margin.
+#let noindentparagraph(cfg, body) = run-in-heading(body, cfg, sec-font(cfg, "paragraph"),
+  before: tex-skip(cfg, 0.5 * cfg.baselineskip), indent: 0pt, num: none, dot: false)

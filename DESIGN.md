@@ -426,9 +426,12 @@ taller-than-`\topskip` title line.
   ascender; same family as the continuation-page first-baseline item above, and left
   as-is to keep the baseline-grid model uniform (changing it would skew multi-line
   caption pitch).
-- **`description`/terms geometry** is Typst's default (bold term, no colon — matching
-  `\descriptionlabel` by coincidence); acmart's `\@ACM@labelwidth` hanging layout is
-  not modelled.
+- **`description`/terms: no `show` rule, on purpose.** Typst's default term-list label
+  is `strong` (= `\upshape\bfseries`), which *coincides* with acmart's
+  `\descriptionlabel` font, and the colon-less label matches because Typst swallows the
+  colon in `/ term: body` source — so overriding the term list would only risk drift.
+  What is *not* modelled is acmart's hanging `\@ACM@labelwidth` geometry (the wide,
+  right-aligned label column); that remains an accepted gap.
 - **Full BibLaTeX sample drift**: `sample-sigconf-biblatex` (with the software artifact
   block) reflows to one extra Typst page (dense two-column bibliography); the bundled
   samples gate visual snapshots, not page parity, and `biblatex-test` is the exact text
@@ -437,6 +440,37 @@ taller-than-`\topskip` title line.
   to `sigconf`; `acmsmall-tagged`/`sigconf-tagged` need `\DocumentMetadata{tagging=on}` +
   `lualatex-dev`, which pdflatex rejects. All render identically to their base, adding
   zero coverage.
+- **No trailing indent after a display equation or verbatim block.** Unlike lists /
+  figures / quotes (which emit an env-block indent shim), a paragraph *after* a
+  `$ … $` block equation or a fenced code block is left un-indented. A block equation /
+  verbatim is very often a mid-paragraph *continuation* — the official ACM samples set
+  text right after `\end{equation}` / `\end{verbatim}` with no blank line, which LaTeX
+  does **not** indent (`\@doendpe` for verbatim; a continued paragraph for the
+  equation) — and Typst cannot tell that apart from a blank-line-separated new
+  paragraph, which LaTeX *would* indent, because a block equation/verbatim always ends
+  the Typst paragraph either way. An unconditional shim would regress the (common)
+  continuation case, so the port matches it and users add an explicit `#h(parindent)`
+  (as `_sample-common.typ` does) where the blank-line indent is wanted.
+- **Display-math vertical skips** are approximate. The below-equation gap is measured
+  from the equation's *ink* bounding box, so it leaks the descender depth of the last
+  row (~2.3bp low vs LaTeX's `\belowdisplayskip` from the math axis). amsart's
+  *short* display skips (`\abovedisplayshortskip` 0pt / `\belowdisplayshortskip`
+  ≈2.1pt, used when the line before the display is short) are **not** modelled — every
+  display uses the long `\abovedisplayskip`/`\belowdisplayskip` (≈`\medskip`).
+- **Float / caption micro-gaps ≤ 3.3bp.** The `bottom-edge: 0pt` line-box model gives
+  a caption strut no depth, so the figure-body↔caption and caption↔surround gaps run
+  up to ~3.3bp tight. And `\textfloatsep` (the space between a top/bottom float and the
+  text, 15pt) is approximated by Typst's fixed float clearance of `1.5em` — exact at a
+  10pt base, but ~1.5pt tight on the 9pt formats.
+- **Widow / orphan / broken penalties.** amsart sets `\widowpenalty = \clubpenalty =
+  \brokenpenalty = 10000` (never a widow/orphan line, never a page break after a
+  hyphen). The port sets `text(costs: (widow: 10000%, orphan: 10000%))` — Typst's cost
+  is a *soft* optimizer weight, not TeX's hard penalty, and there is **no**
+  `brokenpenalty` analogue. Ablation: at both 1000% and 10000% the entire twin/sample
+  suite is byte-identical to Typst's 100% default (the fixtures contain no avoidable
+  widows/orphans), so the strong value is a zero-regression faithfulness choice that
+  only affects longer real documents; the un-modelled `\brokenpenalty` may leave a page
+  break after a hyphenated line where LaTeX would forbid it.
 
 ## Test harness
 

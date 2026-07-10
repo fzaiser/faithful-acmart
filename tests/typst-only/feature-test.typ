@@ -2,7 +2,7 @@
 // teaser, received, badges, the acks environment, \anon, \grantsponsor/\grantnum,
 // and \part. Not a matched twin — just exercises every code path so it compiles
 // and renders sensibly.
-#import "/src/lib.typ": acmart, acks, anon, grantsponsor, grantnum, part
+#import "/src/lib.typ": acmart, acks, anon, grantsponsor, grantnum, part, noindentparagraph
 
 #show: acmart.with(
   format: "acmsmall",
@@ -43,6 +43,9 @@
 = Introduction
 Some body text so the document has content. This work was performed at
 #anon(substitute: "No Such Agency")[NSA]. #lorem(30)
+
+#noindentparagraph[A no-indent run-in heading] flows into the following text at
+the margin without a trailing dot. #lorem(15)
 
 #acks[
   We thank the anonymous reviewers and our funding agencies. This work was
