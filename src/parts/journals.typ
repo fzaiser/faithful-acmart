@@ -1,7 +1,7 @@
 // ACM journal table, transcribed in full from acmart.dtx's \acmJournal choice
 // table (the dummy FACMP fallback is intentionally omitted).
 //
-// key -> (name, short, issn). issn is acmart's \@permissionCodeTwo (falling back
+// key -> (name, short, issn, screen?). issn is acmart's \@permissionCodeTwo (falling back
 // to \@permissionCodeOne when Two is absent), used in the
 // "ACM <issn>/<year>/<month>-ART<article>" copyright line; `short` is the
 // running-head/footer abbreviation.
@@ -17,7 +17,7 @@
   FAC: (name: "Formal Aspects of Computing", short: "Form. Asp. Comput.", issn: "1433-299X"),
   GAMES: (name: "ACM Games: Research and Practice", short: "ACM Games", issn: "2832-5516"),
   HEALTH: (name: "ACM Transactions on Computing for Healthcare", short: "ACM Trans. Comput. Healthcare", issn: "2637-8051"),
-  IMWUT: (name: "Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies", short: "Proc. ACM Interact. Mob. Wearable Ubiquitous Technol.", issn: "2474-9567"),
+  IMWUT: (name: "Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies", short: "Proc. ACM Interact. Mob. Wearable Ubiquitous Technol.", issn: "2474-9567", screen: true),
   JACM: (name: "Journal of the ACM", short: "J. ACM", issn: "1557-735X"),
   JATS: (name: "Journal on Autonomous Transportation Systems", short: "ACM J. Auton. Transport. Syst.", issn: "2833-0528"),
   JDIQ: (name: "ACM Journal of Data and Information Quality", short: "ACM J. Data Inform. Quality", issn: "1936-1963"),
@@ -27,13 +27,13 @@
   JETC: (name: "ACM Journal on Emerging Technologies in Computing Systems", short: "ACM J. Emerg. Technol. Comput. Syst.", issn: "1550-4840"),
   JOCCH: (name: "ACM Journal on Computing and Cultural Heritage", short: "ACM J. Comput. Cult. Herit.", issn: "1556-4711"),
   JRC: (name: "ACM Journal on Responsible Computing", short: "ACM J. Responsib. Comput.", issn: "2832-0565"),
-  PACMCGIT: (name: "Proceedings of the ACM on Computer Graphics and Interactive Techniques", short: "Proc. ACM Comput. Graph. Interact. Tech.", issn: "2577-6193"),
-  PACMHCI: (name: "Proceedings of the ACM on Human-Computer Interaction", short: "Proc. ACM Hum.-Comput. Interact.", issn: "2573-0142"),
+  PACMCGIT: (name: "Proceedings of the ACM on Computer Graphics and Interactive Techniques", short: "Proc. ACM Comput. Graph. Interact. Tech.", issn: "2577-6193", screen: true),
+  PACMHCI: (name: "Proceedings of the ACM on Human-Computer Interaction", short: "Proc. ACM Hum.-Comput. Interact.", issn: "2573-0142", screen: true),
   PACMMOD: (name: "Proceedings of the ACM on Management of Data", short: "Proc. ACM Manag. Data", issn: "2836-6573"),
   PACMNET: (name: "Proceedings of the ACM on Networking", short: "Proc. ACM Netw.", issn: "2834-5509"),
-  PACMPL: (name: "Proceedings of the ACM on Programming Languages", short: "Proc. ACM Program. Lang.", issn: "2475-1421"),
-  PACMSE: (name: "Proceedings of the ACM on Software Engineering", short: "Proc. ACM Softw. Eng.", issn: "2994-970X"),
-  POMACS: (name: "Proceedings of the ACM on Measurement and Analysis of Computing Systems", short: "Proc. ACM Meas. Anal. Comput. Syst.", issn: "2476-1249"),
+  PACMPL: (name: "Proceedings of the ACM on Programming Languages", short: "Proc. ACM Program. Lang.", issn: "2475-1421", screen: true),
+  PACMSE: (name: "Proceedings of the ACM on Software Engineering", short: "Proc. ACM Softw. Eng.", issn: "2994-970X", screen: true),
+  POMACS: (name: "Proceedings of the ACM on Measurement and Analysis of Computing Systems", short: "Proc. ACM Meas. Anal. Comput. Syst.", issn: "2476-1249", screen: true),
   TAAS: (name: "ACM Transactions on Autonomous and Adaptive Systems", short: "ACM Trans. Autonom. Adapt. Syst.", issn: "1556-4703"),
   TACCESS: (name: "ACM Transactions on Accessible Computing", short: "ACM Trans. Access. Comput.", issn: "1936-7236"),
   TACO: (name: "ACM Transactions on Architecture and Code Optimization", short: "ACM Trans. Arch. Code Optim.", issn: "1544-3973"),
@@ -84,13 +84,12 @@
   TWEB: (name: "ACM Transactions on the Web", short: "ACM Trans. Web", issn: "1559-114X"),
 )
 
-#let _screen-journals = ("IMWUT", "PACMCGIT", "PACMHCI", "PACMPL", "PACMSE", "POMACS")
-
 #let lookup-journal(key) = {
   if key == none { return (name: none, short: none, issn: "XXXX-XXXX", screen: false) }
   let s = str(key)
   assert(s in journals,
     message: "faithful-acmart: unknown ACM journal code " + repr(s)
       + "; expected one of " + repr(journals.keys()) + ".")
-  journals.at(s) + (screen: s in _screen-journals)
+  let journal = journals.at(s)
+  journal + (screen: journal.at("screen", default: false))
 }
