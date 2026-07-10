@@ -36,6 +36,9 @@
   v.trim() != "" and not v.starts-with("??")
 }
 #let articleno-of(e) = if has(e, "articleno") { fld(e, "articleno") } else if has(e, "eid") { fld(e, "eid") } else { none }
+// A present field as a rendered value, else none (discarded by the .bst `output`);
+// shared by both backends for the many "if has(e, f) { V(fld(e, f)) }" driver sites.
+#let fV(e, name) = if has(e, name) { V(fld(e, name)) } else { none }
 
 // ---- names ----------------------------------------------------------------
 #let is-others(n) = n.last == "others" and n.first == "" and n.von == "" and n.jr == ""

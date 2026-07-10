@@ -12,15 +12,13 @@
 // (TeX-significant: {ACM} casing, \url{...}); the formatter's tx() resolves them.
 
 #import "bib-data.typ": journal-macros
-#import "scan.typ": match-brace, match-delim, split-list-and
+#import "scan.typ": match-brace, match-delim, split-list-and, ws
 
 // ACM journal-style month macros (full name if <=5 letters, else abbreviated)
 #let months = (
   jan: "Jan.", feb: "Feb.", mar: "March", apr: "April", may: "May", jun: "June",
   jul: "July", aug: "Aug.", sep: "Sept.", oct: "Oct.", nov: "Nov.", dec: "Dec.",
 )
-
-#let ws = (" ", "\n", "\t", "\r")
 
 #let skip-ws(cp, i) = {
   while i < cp.len() and cp.at(i) in ws { i += 1 }

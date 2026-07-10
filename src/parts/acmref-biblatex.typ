@@ -3,7 +3,7 @@
 #import "tex.typ": purify
 #import "bibtex.typ": parse-names
 #import "scan.typ": match-brace, split-list-and
-#import "acmref-common.typ": render, blx-ends-punct, V, it, fld, has, articleno-of, join-names, dashify
+#import "acmref-common.typ": render, blx-ends-punct, V, it, fld, has, fV, articleno-of, join-names, dashify
 
 // ---- BibLaTeX ACM driver port ---------------------------------------------
 // Source files mirrored here:
@@ -58,7 +58,6 @@
   out
 }
 
-#let blx-field(e, name) = if has(e, name) { V(fld(e, name)) } else { none }
 #let blx-list-field(e, ..names) = {
   for name in names.pos() {
     if has(e, name) { return V(fld(e, name)) }
@@ -498,8 +497,8 @@
     lead,
     blx-title-field(e, style: style),
     blx-bytranslator(e),
-    blx-field(e, "howpublished"),
-    blx-field(e, "version"),
+    fV(e, "howpublished"),
+    fV(e, "version"),
     blx-note(e),
     blx-list-field(e, "organization"),
     blx-eprint-date(e),
@@ -523,15 +522,15 @@
 }
 #let blx-report(e, style: "numeric", suffix: "", thesis: false) = {
   let ty = if thesis {
-    if has(e, "type") { blx-field(e, "type") } else if e.entry-type == "phdthesis" { (c: "Ph.D. Dissertation", p: false) } else { (c: "Master\u{2019}s thesis", p: false) }
+    if has(e, "type") { fV(e, "type") } else if e.entry-type == "phdthesis" { (c: "Ph.D. Dissertation", p: false) } else { (c: "Master\u{2019}s thesis", p: false) }
   } else if has(e, "type") and has(e, "number") { (c: render(fld(e, "type")) + " " + render(fld(e, "number")), p: false) }
-  else if has(e, "type") { blx-field(e, "type") }
+  else if has(e, "type") { fV(e, "type") }
   else { none }
   blx-blocks(
     blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false),
     blx-title-field(e, style: style),
     ty,
-    blx-field(e, "version"),
+    fV(e, "version"),
     blx-institution-location(e),
     blx-note(e),
     blx-chapter-pages(e),

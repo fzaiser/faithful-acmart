@@ -25,7 +25,9 @@
 // Assembled as content (not a joined string) so the year int renders directly.
 #let pub-date(meta) = [#month-names.at(meta.acm-month - 1) #meta.acm-year]
 
-#let has-isbn(meta) = meta.isbn != none and meta.isbn != ""
+// acmart renders the DOI as \url{https://doi.org/<doi>} (a live link). `doi` is the
+// resolved record (meta.doi, with `.url` and `.bare`); callers guard on `meta.doi != none`.
+#let doi-link(doi) = link(doi.url)[https:\/\/doi.org\/#doi.bare]
 
 // Match LaTeX \@textsuperscript marks. Typst's super() scales its body further;
 // the Dingbats-style envelope needs less inner scaling than text glyph marks.
@@ -417,7 +419,7 @@
     // overridden (\authorsaddresses, acmart.dtx:5327: `auto` derives it, `none`
     // suppresses it, content replaces it). LaTeX prints name-only entries too.
     let thanks = if meta.thanks == none { () } else if type(meta.thanks) == array { meta.thanks } else { (meta.thanks,) }
-    let has-contact-info = cfg.name != "acmcp" and meta.bibstrip and not anon and (
+    let has-contact-info = cfg.name != "acmcp" and cfg.bibstrip and not anon and (
       if meta.authors-addresses == auto { meta.authors.len() > 0 } else { meta.authors-addresses != none }
     )
     let mode = meta.copyright
@@ -438,7 +440,7 @@
         // manyfoot authors-address/copyright streams). The later full-width
         // rule is already bottom-aligned; add the measured inter-stream strut so
         // the author-note rule/text sit at the LaTeX height above it.
-        let stream-gap = if meta.bibstrip {
+        let stream-gap = if cfg.bibstrip {
           2 * lead + cfg.footnote-rule-kern-below
         } else {
           lead
@@ -506,7 +508,7 @@
         // (acmart.dtx:6615-6622): italic "<conf short>, <conf venue>", or for the
         // engage/booktitle path "<booktitle>, <year>.". Journal/tog skip it.
         let proceedings-copyright = cfg.name != "manuscript" and (
-          not meta.bibstrip or meta.conference != none
+          not cfg.bibstrip or meta.conference != none
         )
         if proceedings-copyright {
           let cl = conf-info-line(cfg, meta)
@@ -529,28 +531,28 @@
         } else if meta.author-version {
           // The "Version of Record" notice names the emphasized journal for a
           // journal bibstrip, else the booktitle (acmart.dtx:6638-6644).
-          let venue = if meta.bibstrip and meta.conference == none { j.name } else { meta.booktitle }
+          let venue = if cfg.bibstrip and meta.conference == none { j.name } else { meta.booktitle }
           [This is the author's version of the work. It is posted here for your personal use. Not for redistribution. The definitive Version of Record was published in #emph(venue)#{
-            if meta.doi != none [, #link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare].]
+            if meta.doi != none [, #doi-link(meta.doi).]
             else [.]
           }]
-        } else if meta.bibstrip and meta.conference == none {
+        } else if cfg.bibstrip and meta.conference == none {
           // ACM <issn>/<year>/<month>-ART<article> then DOI (acmart.dtx:6651).
           // \@acmArticle defaults to empty, so ART may have no number. str() on the
           // month delimits the number from the following "-ART" (markup would
           // otherwise read "acm-month-ART" as one hyphenated identifier).
-          [ACM #j.issn/#str(meta.acm-year)/#str(meta.acm-month)-ART#{
+          [ACM #j.issn/#meta.acm-year/#str(meta.acm-month)-ART#{
             if meta.acm-article != none { str(meta.acm-article) }
           }]
           if meta.doi != none {
             linebreak()
-            link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare]
+            doi-link(meta.doi)
           }
         } else {
           // conference: ACM ISBN <isbn> then DOI (acmart.dtx:6654).
-          if has-isbn(meta) { [ACM ISBN #meta.isbn]; linebreak() }
+          if meta.isbn != none and meta.isbn != "" { [ACM ISBN #meta.isbn]; linebreak() }
           if meta.doi != none {
-            link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare]
+            doi-link(meta.doi)
           }
         }
       })
@@ -599,6 +601,33 @@
       }
     }
   ]
+}
+
+// The acmcp single-page cover: the body sits on a light tint of the article colour
+// (\@ACM@color@frame, acmart.dtx:5899: \colorbox{@ACM@Article@color!10!white}), with
+// the hsize reduced 6.5pc on the right (acmart.dtx:5902) to clear the top-right cover
+// infobox. ONLY the body is tinted — title/authors/abstract above stay on white. The
+// infobox (JDS logo + code/data, keywords, contributions, contact info;
+// \set@ACM@acmcpbox, acmart.dtx:6724) is bottom-aligned in the right column, matching
+// LaTeX's zref feedback that butts the infobox bottom against the frame bottom. acmcp
+// is a single-page cover format, so keeping the framed body in one grid cell is
+// acceptable. `art-color` is the resolved article-type colour (options.article.color).
+#let make-acmcp-cover(cfg, meta, art-color, body) = {
+  let tint = art-color.lighten(90%)
+  let fbox = 3 * tp // \fboxsep
+  let body-reduction = 6.5 * 12 * tp // \advance\hsize -6.5pc (acmart.dtx:5902)
+  let framed-body = pad(left: -fbox, block(
+    fill: tint,
+    inset: fbox,
+    width: 100% + 2 * fbox,
+    body,
+  ))
+  block(width: 100%, breakable: false, spacing: 0pt, grid(
+    columns: (1fr, body-reduction),
+    column-gutter: 0pt,
+    grid.cell(align: top + left)[#framed-body],
+    grid.cell(align: bottom + right)[#make-acmcp-infobox(cfg, meta)],
+  ))
 }
 
 // --- Shared title-head pieces (used by both the journal and the conference head;
@@ -662,19 +691,26 @@
 }
 
 // Render an author's note marks as superscripts.
-#let render-marks(marks) = {
-  for m in marks {
-    note-super(m)
-  }
-}
+#let render-marks(marks) = marks.map(note-super).join()
 
 // Attach each author's collected note marks (collect-notes order) as `_marks`, so
 // group-authors and the per-name rendering can read them off the author dict.
-#let mark-authors(meta, ni) = meta.authors.enumerate().map(((i, a)) => {
-  let a2 = a
-  a2.insert("_marks", ni.marks.at(i))
-  a2
-})
+#let mark-authors(meta, ni) = meta.authors.enumerate().map(((i, a)) => a + (_marks: ni.marks.at(i)))
+
+// Anonymous review replaces the whole author strip with "Anonymous Author(s)" (plus a
+// "Submission Id: <id>" line when set, acmart.dtx:5190-5193). The three heads differ
+// only in box width, whether the author-font weight is set explicitly, and — for the
+// journal strip — the \MakeUppercase + tagged-par wrapper.
+#let anon-author-strip(cfg, meta, width: auto, weight: none, upper-case: false, tagged: false) = {
+  let af = cfg.author-font
+  let body = [Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]]
+  if upper-case { body = upper(body) }
+  if tagged { body = tagged-par(body) }
+  block(spacing: 0pt, width: width)[
+    #set text(font: cfg.fonts.at(af.family), size: cfg.size.at(af.size), ..(if weight != none { (weight: weight) } else { (:) }))
+    #body
+  ]
+}
 
 // The teaser figure box (\@mkteasers, acmart.dtx:7661-7671): appended INSIDE
 // \mktitle@bx as "\par\bigskip <figure> \par" with a closing \medskip. The
@@ -682,7 +718,7 @@
 // format because the author box's trailing skip differs, and TeX skips ADD).
 // The in-topmatter flag suppresses the body float spacing + indent shim that
 // the global figure show rule would add (parts/body.typ).
-#let teaser-figure(cfg, meta) = {
+#let teaser-figure(meta) = {
   in-topmatter.update(true)
   block(width: 100%, spacing: 0pt)[
     #set figure(placement: none)
@@ -718,10 +754,7 @@
   // plus, when a submission id is set, a "\\Submission Id: <id>" second line
   // (acmart.dtx:5190-5193); the journal strip's \MakeUppercase covers both lines.
   if meta.anonymous {
-    block(spacing: 0pt, width: author-width)[
-      #set text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))
-      #tagged-par[#upper[Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]]]
-    ]
+    anon-author-strip(cfg, meta, width: author-width, weight: af.weight, upper-case: true, tagged: true)
   } else {
   block(spacing: 0pt, width: author-width)[
     #set par(justify: false, leading: comp(cfg, sz: af.size), spacing: 0pt)
@@ -748,7 +781,7 @@
   // abstract medskip under whichever came last.
   if meta.teaser != none {
     v(tex-skip(cfg, cfg.medskip + cfg.bigskip), weak: true)
-    teaser-figure(cfg, meta)
+    teaser-figure(meta)
   }
   v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
 }
@@ -838,10 +871,7 @@
   // title box \par\bigskip + @mkauthors@iii leading \par\medskip before the boxes
   v(tex-skip(cfg, cfg.bigskip + cfg.medskip) - subtitle-extra(cfg, meta), weak: true)
   if meta.anonymous {
-    block(spacing: 0pt)[
-      #set text(font: cfg.fonts.at(cfg.author-font.family), size: cfg.size.at(cfg.author-font.size))
-      Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]
-    ]
+    anon-author-strip(cfg, meta)
   } else {
     make-authors-grid(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
   }
@@ -851,7 +881,7 @@
   // closing \medskip with one) is the two-column float clearance in lib.typ.
   if meta.teaser != none {
     v(tex-skip(cfg, 2 * cfg.bigskip), weak: true)
-    teaser-figure(cfg, meta)
+    teaser-figure(meta)
   }
 }
 
@@ -917,16 +947,13 @@
   let box-gap = desc + tex-skip(cfg, 2 * cfg.bigskip) - subtitle-extra(cfg, meta)
   if meta.teaser != none {
     v(box-gap, weak: true)
-    teaser-figure(cfg, meta)
+    teaser-figure(meta)
     v(tex-skip(cfg, cfg.medskip + cfg.bigskip), weak: true)
   } else {
     v(box-gap, weak: true)
   }
   if meta.anonymous {
-    block(spacing: 0pt)[
-      #set text(font: cfg.fonts.at(cfg.author-font.family), weight: cfg.author-font.weight, size: cfg.size.at(cfg.author-font.size))
-      Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]
-    ]
+    anon-author-strip(cfg, meta, weight: cfg.author-font.weight)
   } else {
     sigchi-authors(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
   }
@@ -992,27 +1019,20 @@
   // --- Abstract ---
   // Journals (bibstrip) set the abstract in \small with no heading; proceedings do
   // \section*{Abstract} + a normalsize body (\@mkabstract, acmart.dtx:7688-7696).
-  if meta.abstract != none {
-    if meta.bibstrip {
-      fm-block(cfg, meta.abstract, indent: cfg.parindent)
-    } else {
-      heading(numbering: none, outlined: false)[#abstract-name]
-      fm-block(cfg, meta.abstract, indent: cfg.parindent, sz: "normalsize")
-    }
+  let render-abstract(name, body) = if cfg.bibstrip {
+    fm-block(cfg, body, indent: cfg.parindent)
+  } else {
+    heading(numbering: none, outlined: false)[#name]
+    fm-block(cfg, body, indent: cfg.parindent, sz: "normalsize")
   }
+  if meta.abstract != none { render-abstract(abstract-name, meta.abstract) }
   // Translated abstracts: each is another block in its own language, right after the
-  // main one; proceedings repeat the abstract heading per language.
+  // main one; proceedings repeat the abstract heading per language. Each translated
+  // abstract is headed by its own language's \abstractname (babel: Résumé /
+  // Zusammenfassung / Resumen / …), not the English one.
   for (l, ab) in meta.translated-abstract {
     let rec = lang-record(l)
-    // Each translated abstract is headed by its own language's \abstractname
-    // (babel: Résumé / Zusammenfassung / Resumen / …), not the English one.
-    let name = rec.at("abstract", default: abstract-name)
-    if meta.bibstrip {
-      fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent)
-    } else {
-      heading(numbering: none, outlined: false)[#name]
-      fm-block(cfg, text(lang: rec.code, ab), indent: cfg.parindent, sz: "normalsize")
-    }
+    render-abstract(rec.at("abstract", default: abstract-name), text(lang: rec.code, ab))
   }
 
   // --- CCS Concepts (suppressed by \settopmatter{printccs=false}) ---
@@ -1023,7 +1043,7 @@
   // --- Keywords ---
   // acmcp suppresses normal keyword top matter; the infobox prints it instead.
   if meta.keywords != none and cfg.name != "acmcp" {
-    let label = if meta.bibstrip { meta.strings.keywords } else { meta.strings.keywords_proceedings }
+    let label = if cfg.bibstrip { cfg.strings.keywords } else { cfg.strings.keywords_proceedings }
     special-section(cfg, label, kw-join(meta.keywords))
   }
   // Translated keywords (secondary languages): each block carries \keywordsname
@@ -1031,7 +1051,7 @@
   if cfg.name != "acmcp" {
     for (l, kw) in meta.translated-keywords {
       let rec = lang-record(l)
-      let label = if meta.bibstrip { rec.keywords } else { rec.keywords_proceedings }
+      let label = if cfg.bibstrip { rec.keywords } else { rec.keywords_proceedings }
       special-section(cfg, label, kw-join(kw), lang: rec.code)
     }
   }
@@ -1039,7 +1059,7 @@
   // --- ACM Reference Format ---
   if meta.print-acm-reference {
     let j = meta.journal
-    let proceedings-ref = not meta.bibstrip or meta.conference != none
+    let proceedings-ref = not cfg.bibstrip or meta.conference != none
     // \@mkbibcitation does `\par\medskip\small ...`; next block is 9pt
     v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
     context {
@@ -1062,7 +1082,7 @@
             [In #emph(meta.booktitle)#if meta.editors.len() == 0 [#emph[.]] else [#emph[, ]#andify(meta.editors) (#if meta.editors.len() == 1 [Ed.] else [Eds.]).] ACM, New York, NY, USA#if meta.acm-article != none [, Article #meta.acm-article], #total #if total == 1 [page] else [pages].]
           }
         }#{
-          if meta.doi != none [ #link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare]]
+          if meta.doi != none [ #doi-link(meta.doi)]
         }
       ], chunk: true)
     }
@@ -1119,11 +1139,10 @@
 // acmsmall: \@acmBadgeL at left, \@acmBadgeR at right; acmart.dtx:8203-8206).
 // `badges` is a dict with optional `left`/`right` content (typically an image at
 // `cfg.badge-width` wide, optionally wrapped in a link). Returns header content.
-#let make-badges(cfg, badges) = {
-  if badges == none { return none }
+#let make-badges(badges) = {
   let l = badges.at("left", default: none)
   let r = badges.at("right", default: none)
   grid(columns: (1fr, 1fr),
-    align(left + bottom, if l != none { l }),
-    align(right + bottom, if r != none { r }))
+    align(left + bottom, l),
+    align(right + bottom, r))
 }

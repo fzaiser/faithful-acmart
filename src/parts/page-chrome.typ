@@ -2,7 +2,7 @@
 
 #import "../formats/_base.typ": tp
 #import "spacing.typ": comp
-#import "frontmatter.typ": make-badges, pub-date, andify
+#import "frontmatter.typ": make-badges, pub-date, doi-link, andify
 
 #let make-page-chrome(cfg, meta, options) = {
   let print-folios = options.print-folios
@@ -12,7 +12,7 @@
   let short-authors = options.short-authors
   let badges = options.badges
   let article-type = options.article-type
-  let article = options.article
+  let acmcp-art = options.article
 
   let article-page(p) = {
     if meta.acm-article != none {
@@ -27,7 +27,7 @@
   let journal-footer = {
     let journal = meta.journal
     if not meta.nonacm {
-      let prefix = if journal.short != none { journal.short } else { [] }
+      let prefix = if journal.short != none { journal.short }
       [#prefix, Vol. #meta.acm-volume, No. #meta.acm-number, Article #if meta.acm-article != none { meta.acm-article }. Publication date: #pub-date(meta).]
     }
   }
@@ -36,7 +36,7 @@
     if cfg.name == "acmengage" {
       // \@formatdoi is \url{...} (acmart.dtx:6204), so the head DOI is a live
       // link, styled upright roman by acmengage's \urlstyle{rm}.
-      [EngageCSEdu.#if meta.doi != none { text(font: cfg.fonts.body)[ #link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare]] }]
+      [EngageCSEdu.#if meta.doi != none { text(font: cfg.fonts.body)[ #doi-link(meta.doi)] }]
     } else if meta.conference != none {
       let short = meta.conference.at("short", default: meta.conference.at("name", default: none))
       let date = meta.conference.at("date", default: none)
@@ -60,7 +60,7 @@
     let first-page = here().page() == 1
     let bib = if cfg.name == "acmcp" {
       if meta.journal.short != none {
-        [#meta.journal.name, Volume #meta.acm-volume, Issue #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta))#if meta.doi != none { linebreak(); link(meta.doi.url)[https:\/\/doi.org\/#meta.doi.bare] }]
+        [#meta.journal.name, Volume #meta.acm-volume, Issue #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta))#if meta.doi != none { linebreak(); doi-link(meta.doi) }]
       }
     } else if cfg.name == "acmtog" and meta.conference != none {
       [#conference-line.]
@@ -121,7 +121,7 @@
   } else { short-authors }
   let header = context {
     if here().page() <= 1 {
-      if badges != none { return make-badges(cfg, badges) }
+      if badges != none { return make-badges(badges) }
       return
     }
     let p = counter(page).get().first()
@@ -169,11 +169,11 @@
 
   let acmcp-label = if cfg.name == "acmcp" {
     let textheight = cfg.paper.height - cfg.margin.top - cfg.margin.bottom
-    let lbl = rotate(-90deg, reflow: true, box(fill: article.color, inset: 3 * tp,
+    let lbl = rotate(-90deg, reflow: true, box(fill: acmcp-art.color, inset: 3 * tp,
       text(font: cfg.fonts.body, size: cfg.size.normalsize, fill: white,
         top-edge: "ascender", bottom-edge: "descender")[#article-type Article]))
     context place(top + left, dx: 0pt,
-      dy: cfg.margin.top - measure(lbl).height / 2 + 0.2 * textheight * article.nr,
+      dy: cfg.margin.top - measure(lbl).height / 2 + 0.2 * textheight * acmcp-art.nr,
       lbl)
   }
 
@@ -204,7 +204,7 @@
     footer: footer,
     background: {
       acmcp-label
-      if review-ruler != none { review-ruler }
+      review-ruler
       if watermark != none { align(center + horizon, watermark) }
     },
   )

@@ -36,10 +36,11 @@
 // 8..12 range).
 #let size-ladder(
   font-size,
-  allowed: (8pt, 9pt, 10pt, 11pt, 12pt),
   format: "",
   baseline-stretch: 1,
 ) = {
+  // acmart's supported base sizes (acmart.dtx:3063); no caller overrides this set.
+  let allowed = (8pt, 9pt, 10pt, 11pt, 12pt)
   assert(
     type(font-size) == length and font-size in allowed,
     message: "faithful-acmart: option `font-size` must be a length, one of "

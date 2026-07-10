@@ -14,9 +14,10 @@
 // aliases to sigconf, and bespoke sigchi-a (landscape) / acmcp (cover page).
 
 #import "formats/_base.typ": tp
+#import "parts/colors.typ": acm-orange, acm-purple
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading, _in-heading, _body-since-heading, noindentparagraph as _noindentparagraph
-#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received
+#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-cover, make-received
 #import "parts/metadata.typ": resolve-metadata
 #import "parts/options.typ": resolve-options
 #import "parts/page-chrome.typ": make-page-chrome
@@ -26,7 +27,7 @@
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
 #import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state, tex-render-state
 // the built-in bibtex-backend field renderer, exported so a custom `tex-render` can wrap it
-#import "parts/tex.typ": tex-to-content as default-tex-render, latex-logo as _latex-logo, tex-logo as _tex-logo, bibtex-logo as _bibtex-logo
+#import "parts/tex.typ": tex-to-content as default-tex-render, latex-logo, tex-logo, bibtex-logo
 
 // A citation key may be given as a label (`<smith20>`, idiomatic) or a string
 // ("smith20", for keys built dynamically or with characters awkward in a label).
@@ -80,14 +81,11 @@
 #let short-cite = _cite-variant(bbl-shortcite, "normal")
 // Friendly alias for the acknowledgments environment (acmart names it `acks`).
 #let acknowledgments = acks
-#let latex-logo = _latex-logo
-#let tex-logo = _tex-logo
-#let bibtex-logo = _bibtex-logo
 
 // \anon{...} (acmart.dtx:6433): under the `anonymous` option the body is
 // replaced by the substitute in ACM Orange; otherwise the body prints as-is.
 #let anon(body, substitute: "ANONYMIZED") = context {
-  if anon-state.get() { text(fill: cmyk(0%, 42%, 100%, 1%), substitute) } else { body }
+  if anon-state.get() { text(fill: acm-orange, substitute) } else { body }
 }
 
 // True when `body` begins with a paragraph (its first substantive child is inline
@@ -473,7 +471,7 @@
     // head font) hangs below the head baseline, so the baseline sits
     // headsep + .3bls above the body top (measured: the old leading-based
     // model left heads 1-1.4pt low). manuscript's head is normalsize serif.
-    header-ascent: cfg.head.sep + 0.3 * (if cfg.name == "manuscript" { cfg.bls.normalsize } else { cfg.bls.at("footnotesize") }),
+    header-ascent: cfg.head.sep + 0.3 * (if cfg.name == "manuscript" { cfg.bls.normalsize } else { cfg.bls.footnotesize }),
     // The footer's FIRST baseline sits \footskip below the body — verified
     // exact for every format, including acmcp's two-line footer (journal line
     // + DOI, acmart.dtx:8264), whose second line simply hangs one footnotesize
@@ -537,7 +535,6 @@
 
   // `screen`: colour hyperlinks (acmart ACMPurple for refs/cites, ACMDarkBlue
   // for URLs). Without it, links stay black as in print acmart.
-  let acm-purple = cmyk(55%, 100%, 0%, 15%)
   let acm-dark-blue = cmyk(100%, 58%, 0%, 21%)
   let colorize = (dest, body) => {
     // \urlstyle{sf} (sigplan/sigchi-a, acmart.dtx:3623): URL links set in sans.
@@ -632,31 +629,7 @@
     }
 
     if cfg.name == "acmcp" {
-      // The body sits on a light tint of the article colour (\@ACM@color@frame,
-      // acmart.dtx:5899: \colorbox{@ACM@Article@color!10!white}), the hsize reduced
-      // 6.5pc on the right (acmart.dtx:5902) to clear the top-right cover infobox.
-      // ONLY the body is tinted — title/authors/abstract above stay on white. The
-      // infobox (JDS logo + code/data, keywords, contributions, contact info;
-      // \set@ACM@acmcpbox, acmart.dtx:6724) is bottom-aligned in the right column,
-      // matching LaTeX's zref feedback that butts the infobox bottom against the
-      // frame bottom. acmcp is a single-page cover format, so keeping the framed
-      // body in one grid cell is acceptable.
-      let article = options.article
-      let tint = article.color.lighten(90%)
-      let fbox = 3 * tp // \fboxsep
-      let body-reduction = 6.5 * 12 * tp // \advance\hsize -6.5pc (acmart.dtx:5902)
-      let framed-body = pad(left: -fbox, block(
-        fill: tint,
-        inset: fbox,
-        width: 100% + 2 * fbox,
-        body,
-      ))
-      block(width: 100%, breakable: false, spacing: 0pt, grid(
-        columns: (1fr, body-reduction),
-        column-gutter: 0pt,
-        grid.cell(align: top + left)[#framed-body],
-        grid.cell(align: bottom + right)[#make-acmcp-infobox(cfg, meta)],
-      ))
+      make-acmcp-cover(cfg, meta, options.article.color, body)
     } else {
       body
     }

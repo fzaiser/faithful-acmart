@@ -10,6 +10,7 @@
 #import "../formats/sigchi-a.typ": sigchia
 #import "../formats/acmcp.typ": acmcp
 #import "strings.typ": resolve-language
+#import "colors.typ": acm-orange, acm-purple
 
 #let formats = (
   manuscript: manuscript,
@@ -27,9 +28,9 @@
 
 #let acmcp-article-types = (
   "Research": (nr: 0, color: cmyk(100%, 10%, 0%, 10%)),
-  "Review": (nr: 1, color: cmyk(0%, 42%, 100%, 1%)),
+  "Review": (nr: 1, color: acm-orange),
   "Discussion": (nr: 2, color: cmyk(20%, 0%, 100%, 19%)),
-  "Invited": (nr: 3, color: cmyk(55%, 100%, 0%, 15%)),
+  "Invited": (nr: 3, color: acm-purple),
   "Position": (nr: 4, color: cmyk(0%, 90%, 86%, 0%)),
 )
 

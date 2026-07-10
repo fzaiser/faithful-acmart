@@ -4,7 +4,7 @@
 
 #import "bib-data.typ": journal-canon
 #import "tex.typ": purify, change-case
-#import "acmref-common.typ": render, ends-punct, V, it, fld, has, articleno-of, is-others, join-names, dashify, von-last, year-value
+#import "acmref-common.typ": render, ends-punct, V, it, fld, has, fV, articleno-of, is-others, join-names, dashify, von-last, year-value
 
 // ACM journal.canon.abbrev: map a full journal name to its canonical abbreviation
 #let canon-abbrev(j) = journal-canon.at(j, default: j)
@@ -37,7 +37,7 @@
 #let em-init = (pieces: (), state: "before")
 
 #let sep-for(state, variant) = {
-  if state == "before" { "first" }
+  if state == "before" { "first" }  // never consulted: em-render emits piece 0 with no separator
   else if state == "mid" {
     if variant == "dotspace" { "dotspace" }
     else if variant == "removenospace" { "none" }
@@ -364,7 +364,7 @@
 }
 
 // ---- per-entry-type handlers ----------------------------------------------
-#let howpub(e) = if has(e, "howpublished") { V(fld(e, "howpublished")) } else { none }
+#let howpub(e) = fV(e, "howpublished")
 
 // The lead author/year slot. Only article/underreview fall back to the editor
 // (bst:2198, `format.editors "editor" output.check`) and NEVER show a key
@@ -436,8 +436,8 @@
       em = nblock(em)
       em = out(em, format-number-series(e))
       em = nsentence(em)
-      em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
-      em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+      em = out(em, fV(e, "publisher"))
+      em = out(em, fV(e, "address"))
       if t == "inbook" {
         em = out(em, format-bookpages(e))
         em = out(em, format-chapter-pages(e))
@@ -462,8 +462,8 @@
       em = out(em, format-bvolume(e))
       em = out(em, format-number-series(e))
       em = nsentence(em)
-      em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
-      em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+      em = out(em, fV(e, "publisher"))
+      em = out(em, fV(e, "address"))
       em = out(em, format-bookpages(e))
       em = out(em, format-chapter-pages(e))
     }
@@ -498,9 +498,9 @@
       em = out(em, format-editors-fml(e))
       if not has(e, "series") { em = out(em, format-bvolume-noseries(e)) }
       em = nsentence(em)
-      em = out(em, if has(e, "organization") { V(fld(e, "organization")) } else { none })
-      em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
-      em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+      em = out(em, fV(e, "organization"))
+      em = out(em, fV(e, "publisher"))
+      em = out(em, fV(e, "address"))
       em = out(em, format-bookpages(e))
     }
     // "Article N" then pages, after every branch (bst:2431/2436/2484/2489).
@@ -515,8 +515,8 @@
     let default = if t == "phdthesis" { "Ph.\u{2009}D. Dissertation" } else { "Master's thesis" }
     em = out(em, format-thesis-type(e, default))
     em = nsentence(em)
-    em = out(em, if has(e, "school") { V(fld(e, "school")) } else { none })
-    em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+    em = out(em, fV(e, "school"))
+    em = out(em, fV(e, "address"))
     em = nblock(em)
     em = out(em, format-advisor(e))
   } else if t == "periodical" {
@@ -543,9 +543,9 @@
     em = out(em, format-bvolume(e))
     em = out(em, format-number-series(e))
     em = nsentence(em)
-    em = out(em, if has(e, "organization") { V(fld(e, "organization")) } else { none })
-    em = out(em, if has(e, "publisher") { V(fld(e, "publisher")) } else { none })
-    em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+    em = out(em, fV(e, "organization"))
+    em = out(em, fV(e, "publisher"))
+    em = out(em, fV(e, "address"))
   } else if t == "techreport" {
     em = lead(em, e)
     em = nblock(em)
@@ -553,8 +553,8 @@
     em = nblock(em)
     em = out(em, format-tr-number(e))
     em = nsentence(em)
-    em = out(em, if has(e, "institution") { V(fld(e, "institution")) } else { none })
-    em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+    em = out(em, fV(e, "institution"))
+    em = out(em, fV(e, "address"))
     em = nsentence(em)
     em = out(em, if has(e, "pages") { (c: dashify(fld(e, "pages")) + " pages", p: false) } else { none })
   } else if t == "unpublished" {
@@ -571,8 +571,8 @@
     em = nblock(em)
     em = out(em, format-title(e))
     em = nblock(em)
-    em = out(em, if has(e, "howpublished") { V(fld(e, "howpublished")) } else { none })
-    if t == "booklet" { em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none }) }
+    em = out(em, fV(e, "howpublished"))
+    if t == "booklet" { em = out(em, fV(e, "address")) }
     else { em = out(em, format-page-count(e)) }
   } else if t in manual-like {
     // manual & friends (online/software/dataset/preprint/...): title + org + address;
@@ -585,8 +585,8 @@
     em = nblock(em)
     em = out(em, format-btitle(e))
     em = nblock(em)
-    em = out(em, if has(e, "organization") { V(fld(e, "organization")) } else { none })
-    em = out(em, if has(e, "address") { V(fld(e, "address")) } else { none })
+    em = out(em, fV(e, "organization"))
+    em = out(em, fV(e, "address"))
   } else {
     // fallback: author. year. title.
     em = lead(em, e)
