@@ -104,8 +104,19 @@
     blx-month(p.month) + " " + p.year + suffix
   } else { p.year + suffix }
 }
+#let blx-print-full-date(e) = {
+  let p = blx-date-parts(e)
+  if p.year == none { return "[n. d.]" }
+  if p.month == none { return p.year }
+  let c = blx-month(p.month)
+  if p.day != none {
+    let day = p.day.trim(regex("^0+"))
+    c += " " + if day == "" { "0" } else { day } + ","
+  }
+  c + " " + p.year
+}
 #let blx-date(e, full: false, suffix: "") = {
-  (c: blx-printdate(e, suffix: suffix, month-ok: full), p: false)
+  (c: (if full { blx-print-full-date(e) } else { blx-printdate(e, month-ok: false) }) + suffix, p: false)
 }
 #let blx-date-if-month(e) = {
   let p = blx-date-parts(e)
@@ -293,6 +304,9 @@
   let suffix = if e.names.editor.len() > 1 { ", (Eds.)" } else { ", (Ed.)" }
   (c: render(join-names(e.names.editor)) + suffix, p: true)
 }
+#let blx-bytranslator(e) = if has(e, "translator") {
+  (c: "Trans. by " + render(join-names(e.names.translator)), p: false)
+} else { none }
 #let blx-isbn(e) = if has(e, "isbn") { (c: "isbn: " + fld(e, "isbn"), p: false) } else { none }
 #let blx-journal(e) = {
   if not has(e, "journal") { return none }
@@ -370,7 +384,7 @@
 #let blx-lead(e, style: "numeric", suffix: "", editor-ok: true, org-ok: true, key-ok: true) = {
   let who = blx-person-label(e, editor-ok: editor-ok, org-ok: org-ok, key-ok: key-ok)
   let dt = blx-date(e, full: style == "author-year", suffix: suffix)
-  if who == none { return dt }
+  if who == none { return if style == "numeric" { dt } else { none } }
   let sep = if style == "numeric" and who.kind == "editor" { " " } else { ". " }
   (c: who.c + sep + dt.c, p: false)
 }
@@ -403,6 +417,7 @@
 #let blx-article-like(e, style: "numeric", suffix: "") = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
+  blx-bytranslator(e),
   blx-journal(e),
   blx-note(e),
   ..blx-tail(e),
@@ -412,6 +427,7 @@
   blx-blocks(
     if title-led { none } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) },
     blx-title-field(e, style: style),
+    blx-bytranslator(e),
     blx-booktitle(e, with-in: true, style: style),
     blx-editor-block(e, style: style),
     blx-volume(e),
@@ -424,6 +440,7 @@
 #let blx-incollection(e, style: "numeric", suffix: "") = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
+  blx-bytranslator(e),
   blx-booktitle-simple(e, with-in: true, style: style),
   blx-series-number(e, style: style),
   blx-edition(e),
@@ -440,6 +457,7 @@
   blx-blocks(
     lead,
     blx-title-field(e, style: style),
+    blx-bytranslator(e),
     blx-bookauthor(e),
     blx-booktitle-simple(e, with-in: false, style: style),
     blx-edition(e),
@@ -456,6 +474,7 @@
 #let blx-book-like(e, style: "numeric", suffix: "") = blx-blocks(
   blx-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
+  blx-bytranslator(e),
   blx-edition(e),
   blx-series-number(e, style: style),
   blx-volume(e),
@@ -473,6 +492,7 @@
   blx-blocks(
     lead,
     blx-title-field(e, style: style),
+    blx-bytranslator(e),
     blx-field(e, "howpublished"),
     blx-field(e, "version"),
     blx-note(e),
@@ -510,6 +530,35 @@
     blx-institution-location(e),
     blx-note(e),
     blx-chapter-pages(e),
+    ..blx-tail(e),
+  )
+}
+
+#let blx-patent(e, style: "numeric", suffix: "") = {
+  let locations = if has(e, "location") {
+    split-list-and(fld(e, "location"), trim: true, filter-empty: true).map(render).join(", ")
+  } else if has(e, "address") {
+    split-list-and(fld(e, "address"), trim: true, filter-empty: true).map(render).join(", ")
+  } else { none }
+  let identification = []
+  if has(e, "type") { identification += render(fld(e, "type")) }
+  if has(e, "number") {
+    if identification != [] { identification += " " }
+    identification += "Patent No. " + render(fld(e, "number"))
+  }
+  if locations != none and locations != [] {
+    identification += " (" + locations + ")"
+  }
+  let holder = if has(e, "holder") {
+    (c: render(join-names(e.names.holder)), p: false)
+  } else { none }
+  blx-blocks(
+    blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false),
+    blx-title-field(e, style: style),
+    (c: "(" + blx-print-full-date(e) + ")", p: false),
+    if identification == [] { none } else { (c: identification, p: false) },
+    holder,
+    blx-note(e),
     ..blx-tail(e),
   )
 }
@@ -730,6 +779,7 @@
   else if t == "incollection" { blx-incollection(e, style: style, suffix: year-suffix) }
   else if t == "inbook" { blx-inbook(e, style: style, suffix: year-suffix) }
   else if t == "book" or t == "proceedings" or t == "collection" { blx-book-like(e, style: style, suffix: year-suffix) }
+  else if t == "patent" { blx-patent(e, style: style, suffix: year-suffix) }
   else if t in blx-software-types { blx-software-driver(e, t) }
   else if t == "online" or t == "manual" or t == "misc" or t == "game" or t == "video" or t == "artifactdataset" or t == "dataset" or t == "preprint" {
     blx-online(e, style: style, suffix: year-suffix)

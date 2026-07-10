@@ -558,8 +558,16 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Driver Series 7. (3rd ed.). Vol. 2. "
                       "Ed. by Eve Editor and Oscar Organizer"),
             Assertion(engine="both", text="isbn: 978-1-23456-789-7"),
+            Assertion(engine="both", text="A translator-led book. Trans. by Trevor Translator. "
+                      "Translation House, London."),
+            Assertion(engine="both", text="Avery Author. 2019. \"An article in translation.\" "
+                      "Trans. by Tina Translator."),
+            Assertion(engine="both", text="Pat Inventor. May 4, 2020. "
+                      "\"A carefully specified widget.\" (May 4, 2020). "
+                      "Utility Patent Patent No. US-123456"),
+            Assertion(engine="both", text="Holding Company. Filed electronically. doi: 10.1000/patent"),
         ),
-        note="BibLaTeX driver order for book, inbook, and incollection fields.",
+        note="BibLaTeX driver order for book/chapter, translator, and patent fields.",
     ),
     "biblatex-driver-numeric-test": Test(
         kind="twin", pages=1,
@@ -568,8 +576,14 @@ TESTS: dict[str, Test] = {
                       "Research Note RN-7. Example Lab, Ann Arbor, MI."),
             Assertion(engine="both", text="Tara Techreport. 2024. UPPERCASE Techreport Title. "
                       "Technical Memorandum TM-9. Legacy Lab, Palo Alto, CA."),
+            Assertion(engine="both", text="2018. A translator-led book. "
+                      "Trans. by Trevor Translator. Translation House, London."),
+            Assertion(engine="both", text="Avery Author. 2019. An article in translation. "
+                      "Trans. by Tina Translator."),
+            Assertion(engine="both", text="Pat Inventor. 2020. A carefully specified widget. "
+                      "(May 4, 2020). Utility Patent Patent No. US-123456"),
         ),
-        note="BibLaTeX numeric report drivers, including legacy @techreport aliasing.",
+        note="BibLaTeX numeric report sourcemap plus translator and patent drivers.",
     ),
     "bib-all": Test(
         kind="twin", pages=1,

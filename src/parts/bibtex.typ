@@ -278,7 +278,7 @@
   // rendered by our backends, but the upstream ACM BibLaTeX drivers do print it
   // (acmnumeric/acmauthoryear.bbx `translator+others`), so keep it in the parsed
   // data model rather than dropping it on the floor.
-  for role in ("author", "editor", "bookauthor", "translator") {
+  for role in ("author", "editor", "bookauthor", "translator", "holder") {
     if role in fields { names.insert(role, parse-names(fields.at(role))) }
   }
   (key: key, entry: (entry-type: etype, fields: fields, names: names))
