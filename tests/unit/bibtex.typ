@@ -128,6 +128,31 @@
   "Tech Press",
 )
 
+// Real BibTeX applies @string definitions in source order. A later redefinition
+// changes later entries only; the old two-pass parser incorrectly rewrote `early`.
+#let ordered = parse-bib("@string{label = \"First\"}
+@misc{early, title = label}
+@string{label = \"Second\"}
+@misc{late, title = label}")
+#assert.eq(ordered.early.fields.title, "First")
+#assert.eq(ordered.late.fields.title, "Second")
+
+// A forward/undefined macro is empty in BibTeX. Omit a wholly empty field, but
+// retain the defined pieces of a concatenation. Decimal literals are not macros.
+#let undefined = parse-bib("@misc{before, title = future, note = \"pre\" # missing # \"post\", year = 2026}
+@string{future = \"Now defined\"}
+@misc{after, title = future}")
+#assert("title" not in undefined.before.fields)
+#assert.eq(undefined.before.fields.note, "prepost")
+#assert.eq(undefined.before.fields.year, "2026")
+#assert.eq(undefined.after.fields.title, "Now defined")
+
+// @string identifiers follow BibTeX's broader identifier grammar, not `\w`.
+#assert.eq(
+  fields-of("@string{publisher-name = \"Hyphen Press\"}@book{x, publisher = publisher-name}", "x").publisher,
+  "Hyphen Press",
+)
+
 // Quoted value respects brace depth: an inner {"} does not end the string.
 #assert.eq(fields-of("@misc{c, note = \"a {\"} b\"}", "c").note, "a {\"} b")
 

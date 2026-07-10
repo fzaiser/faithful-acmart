@@ -5,8 +5,8 @@
 //   (<key>: (entry-type: str, fields: (name: value), names: (author: (..), editor: (..))))
 // where each parsed name is (first:, von:, last:, jr:).
 //
-// Handles: @string macros (last definition wins; seeded with the .bst's built-in
-// month + journal MACROs), "quoted" and {braced} values with correct brace-depth
+// Handles: source-ordered @string macros (seeded with the .bst's built-in month
+// + journal MACROs), "quoted" and {braced} values with correct brace-depth
 // nesting, `#` concatenation, and BibTeX name syntax ("First von Last" /
 // "von Last, Jr, First", joined by " and "). Nested braces are KEPT in values
 // (TeX-significant: {ACM} casing, \url{...}); the formatter's tx() resolves them.
@@ -67,7 +67,14 @@
       let j = i
       while j < cp.len() and not (cp.at(j) in (",", "}", "#") or cp.at(j) in ws) { j += 1 }
       let tok = cp.slice(i, j).join("").trim()
-      parts.push(macros.at(lower(tok), default: tok))
+      // A bare decimal is a BibTeX literal; every other bare token is a string
+      // macro. Undefined macros contribute the empty string (BibTeX warns but
+      // continues), rather than leaking their identifier into the bibliography.
+      parts.push(if tok.match(regex("^\d+$")) != none {
+        tok
+      } else {
+        macros.at(lower(tok), default: "")
+      })
       i = j
     }
     i = skip-ws(cp, i)
@@ -258,7 +265,11 @@
     // pipeline (BibTeX-style). Names tokenize on the RAW string too — exactly like
     // BibTeX's format.name$ (brace/case rules in parse-names), so "Stra\ss e" and
     // "{Barnes and Noble}" split the way bibtex splits them.
-    fields.insert(name, collapse-ws(val))
+    let val = collapse-ws(val)
+    // An entirely undefined/empty value is absent in BibTeX's output. In a
+    // concatenation, only the undefined fragment disappears and the remaining
+    // text is retained, because read-value joins fragments before this check.
+    if val != "" { fields.insert(name, val) }
     i = skip-ws-comment(cp, ni)
     while i < cp.len() and cp.at(i) == "," { i = skip-ws-comment(cp, i + 1) }
   }
@@ -298,35 +309,36 @@
 #let parse-bib(text) = {
   let cp = text.codepoints()
   let blocks = scan-blocks(cp)
-  // pass 1: macro table — built-ins first, then @string (later defs win)
+  // BibTeX reads the database as a stream. An entry sees only @string definitions
+  // that precede it; redefining a macro affects later entries but cannot rewrite
+  // an earlier one. Built-in month/journal macros seed that stream.
   let macros = (:)
   for (k, v) in journal-macros { macros.insert(lower(k), v) }
   for (k, v) in months { macros.insert(k, v) }
+  let db = (:)
   for blk in blocks {
-    let head = lower(cp.slice(blk.start, calc.min(blk.start + 8, cp.len())).join(""))
+    let head = lower(cp.slice(blk.start, calc.min(blk.start + 9, cp.len())).join(""))
     if head.starts-with("@string") {
       let inner = cp.slice(blk.brace + 1, blk.end)
       let k = skip-ws(inner, 0)
       let s = k
-      while s < inner.len() and (inner.at(s).match(regex("\w")) != none) { s += 1 }
+      // BibTeX identifiers are broader than regex `\w`: hyphens and several
+      // punctuation characters are legal. The assignment delimiter, whitespace,
+      // and the enclosing block are the structural boundaries here.
+      while s < inner.len() and inner.at(s) != "=" and inner.at(s) not in ws { s += 1 }
       if s > k {
-        let name = lower(inner.slice(k, s).join(""))
+        let name = lower(inner.slice(k, s).join("").trim())
         let eq = skip-ws(inner, s)
         if eq < inner.len() and inner.at(eq) == "=" {
           let (val, _) = read-value(inner, eq + 1, macros)
           macros.insert(name, val)
         }
       }
+    } else if not (head.starts-with("@preamble") or head.starts-with("@comment")) {
+      let block = cp.slice(blk.start, calc.min(blk.end + 1, cp.len())).join("")
+      let r = parse-entry(block, macros)
+      if r != none { db.insert(r.key, r.entry) }
     }
-  }
-  // pass 2: entries
-  let db = (:)
-  for blk in blocks {
-    let head = lower(cp.slice(blk.start, calc.min(blk.start + 9, cp.len())).join(""))
-    if head.starts-with("@string") or head.starts-with("@preamble") or head.starts-with("@comment") { continue }
-    let block = cp.slice(blk.start, calc.min(blk.end + 1, cp.len())).join("")
-    let r = parse-entry(block, macros)
-    if r != none { db.insert(r.key, r.entry) }
   }
   db
 }
