@@ -8,28 +8,20 @@
 //   #import "@preview/faithful-acmart:0.1.0": *
 //   #show: acmart.with(format: "acmsmall", title: [...], ...)
 //
-// All public acmart formats are accepted (see _formats below): the single-column
+// All public acmart formats are accepted (resolved in parts/options.typ): the single-column
 // journals (manuscript/acmsmall/acmlarge), the two-column journal (acmtog), the
 // two-column proceedings (sigconf/sigplan/acmengage), obsolete siggraph/sigchi
 // aliases to sigconf, and bespoke sigchi-a (landscape) / acmcp (cover page).
 
-#import "formats/acmsmall.typ": acmsmall
-#import "formats/manuscript.typ": manuscript
-#import "formats/acmlarge.typ": acmlarge
-#import "formats/acmtog.typ": acmtog
-#import "formats/sigconf.typ": sigconf
-#import "formats/sigplan.typ": sigplan
-#import "formats/acmengage.typ": acmengage
-#import "formats/sigchi-a.typ": sigchia
-#import "formats/acmcp.typ": acmcp
 #import "formats/_base.typ": tp
 #import "parts/spacing.typ": comp, tex-skip
 #import "parts/headings.typ": render-heading
-#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received, make-badges, pub-date, andify, normalize-author
-#import "parts/metadata.typ": resolve-publication
+#import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received
+#import "parts/metadata.typ": resolve-metadata
+#import "parts/options.typ": resolve-options
+#import "parts/page-chrome.typ": make-page-chrome
 #import "parts/body.typ": apply-body, sidebar, marginfigure, margintable, fulltextwidth
 #import "parts/tables.typ": tabular, toprule, midrule, bottomrule
-#import "parts/strings.typ": resolve-language, lang-record
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
 #import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citeyear, bbl-citeauthor, bbl-bibliography, cite-style-state, tex-render-state
@@ -204,28 +196,6 @@
   }
 }
 
-#let _formats = (
-  manuscript: manuscript,
-  acmsmall: acmsmall,
-  acmlarge: acmlarge,
-  acmtog: acmtog,
-  sigconf: sigconf,
-  siggraph: sigconf,
-  sigchi: sigconf,
-  sigplan: sigplan,
-  acmengage: acmengage,
-  "sigchi-a": sigchia,
-  acmcp: acmcp,
-)
-
-#let _acmcp-article-types = (
-  "Research": (nr: 0, color: cmyk(100%, 10%, 0%, 10%)),
-  "Review": (nr: 1, color: cmyk(0%, 42%, 100%, 1%)),
-  "Discussion": (nr: 2, color: cmyk(20%, 0%, 100%, 19%)),
-  "Invited": (nr: 3, color: cmyk(55%, 100%, 0%, 15%)),
-  "Position": (nr: 4, color: cmyk(0%, 90%, 86%, 0%)),
-)
-
 #let acmart(
   format: "manuscript",
   title: none,
@@ -388,176 +358,34 @@
   font-size: auto,
   body,
 ) = {
-  assert(
-    format in _formats,
-    message: "faithful-acmart: unknown format: " + format,
-  )
-  // The format entry is a builder; the base font size (8pt..12pt) parameterizes
-  // the typography (it validates font-size and computes the size/baselineskip
-  // ladder — geometry is font-size-independent, acmart.dtx:3750). `auto` defers
-  // to the builder's own per-format default size.
-  let cfg = if font-size == auto {
-    (_formats.at(format))()
-  } else {
-    (_formats.at(format))(font-size: font-size)
-  }
+  let options = resolve-options((
+    format: format,
+    font-size: font-size,
+    draft: draft,
+    print-acm-reference: print-acm-reference,
+    nonacm: nonacm,
+    author-draft: author-draft,
+    timestamp: timestamp,
+    review: review,
+    print-folios: print-folios,
+    language: language,
+    bib-backend: bib-backend,
+    cite-style: cite-style,
+    acm-month: acm-month,
+    article-type: article-type,
+  ))
+  let cfg = options.cfg
+  let print-acm-reference = options.print-acm-reference
+  let timestamp = options.timestamp
+  let review = options.review
+  let print-folios = options.print-folios
 
-  // `draft` is recognized but has no faithful realization here: its sole effect
-  // in acmart is to pass `draft` to amsart/article, which only sets
-  // \overfullrule=5pt — a rule drawn beside overfull lines (acmart.dtx:2865).
-  // Typst has no overfull-hbox concept or API to draw such markers (it reports
-  // overflow as compiler warnings), and no custom-warning API to flag the gap at
-  // compile time. Rather than accept it silently (which would let the user think
-  // it did something), we reject it loudly with that rationale. Other options
-  // that are simply inert in acmsmall (balance/pbalance/natbib/authors-per-row/
-  // article-type/acmthm) genuinely produce identical output, so they stay
-  // documented no-ops in the signature above; `draft` is different only in that
-  // its non-default value is meant to be visible, and here it can't be.
-  assert(
-    draft == false,
-    message: "faithful-acmart: option `draft` has no effect in this Typst port, so it is "
-      + "rejected rather than silently ignored. In acmart `draft` only marks "
-      + "overfull lines with a rule (acmart.dtx:2865); Typst has no equivalent "
-      + "and instead reports overflow as compiler warnings. Remove `draft` to "
-      + "compile.",
-  )
-
-  // \settopmatter{printacmref} defaults true; nonacm flips it off unless the
-  // author forces it back on with print-acm-reference: true (acmart.dtx:2717).
-  // acmcp always forces it off (\@ACM@printacmreffalse, acmart.dtx:3006).
-  let print-acm-reference = if cfg.name == "acmcp" {
-    false
-  } else if print-acm-reference == auto {
-    not nonacm
-  } else {
-    print-acm-reference
-  }
-  // authordraft turns on timestamp + review (acmart.dtx:2819-2820); resolve those
-  // first so the downstream folio/line-number/footer logic sees the effective values.
-  let timestamp = timestamp or author-draft
-  let review = review or author-draft
-  // \settopmatter{printfolios} defaults true for manuscript/journal/acmcp and
-  // false for proceedings; review mode forces it on (acmart.dtx:5822-5828/2683).
-  let print-folios = if print-folios == auto {
-    cfg.kind != "proceedings"
-  } else { print-folios }
-  let print-folios = print-folios or review
-
-  if cfg.name == "acmcp" {
-    assert(article-type in _acmcp-article-types,
-      message: "faithful-acmart: Article Type must be Research, Review, Discussion, Invited, or Position")
-  }
-
-  // Resolve the language: main lang code (hyphenation) + translated fixed
-  // strings. Carried on cfg so every part (frontmatter, body captions, theorems
-  // via cfg-state) reads one resolved string set.
-  let lang = resolve-language(language)
-  let cfg = cfg + (strings: (
-    keywords: lang.keywords,
-    keywords_proceedings: lang.keywords_proceedings,
-    acks: lang.acks,
-    proof: lang.proof,
-    table: lang.table,
-  ), lang: lang.code, bib-backend: bib-backend)
-  assert(bib-backend in ("typst", "bibtex", "biblatex"),
-    message: "faithful-acmart: `bib-backend` must be \"typst\", \"bibtex\", or \"biblatex\".")
-  assert(cite-style in ("numeric", "author-year"),
-    message: "faithful-acmart: `cite-style` must be \"numeric\" or \"author-year\".")
-  assert(type(acm-month) == int and acm-month >= 1 and acm-month <= 12,
-    message: "faithful-acmart: `acm-month` must be an integer 1..12; got " + repr(acm-month) + ".")
   cite-style-state.update(cite-style)
   // Always (re)publish the field renderer so a custom `tex-render` from an earlier
   // acmart scope can't leak into a later one that leaves it at `auto`.
   tex-render-state.update(_ => if tex-render == auto { default-tex-render } else { tex-render })
 
-  // `translations` carries the secondary-language top matter, grouped by language:
-  //   translations: (french: (title: [...], abstract: [...], keywords: (...)))
-  // Validate each key is a supported language other than the main one, and each
-  // entry uses only known fields; then pivot into the per-field ordered lists the
-  // frontmatter renders (translated title/subtitle/keywords/abstract each live in a
-  // different block). Field order across all blocks follows `translations` insertion
-  // order (acmart's \selectlanguage sequence). english is always available as a key.
-  let main-lang = if lang.main != none { lang.main } else { "english" }
-  let _fields = ("title", "subtitle", "keywords", "abstract")
-  for (l, entry) in translations {
-    let _ = lang-record(l) // validate the language name
-    assert(l != main-lang, message: "faithful-acmart: `translations` includes the main "
-      + "language " + repr(l) + "; it is for OTHER languages (main is `language`).")
-    for k in entry.keys() {
-      assert(k in _fields, message: "faithful-acmart: `translations." + l + "` has unknown "
-        + "field " + repr(k) + "; expected any of " + repr(_fields) + ".")
-    }
-  }
-  let pick-translated(field) = translations.pairs()
-    .filter(p => field in p.at(1))
-    .map(p => (p.at(0), p.at(1).at(field)))
-  let translated-title = pick-translated("title")
-  let translated-subtitle = pick-translated("subtitle")
-  let translated-keywords = pick-translated("keywords")
-  let translated-abstract = pick-translated("abstract")
-
-  // \copyrightyear defaults to \@acmYear; it can't be a signature default because
-  // it references another parameter.
-  let copyright-year = if copyright-year != none { copyright-year } else { acm-year }
-  // Fill in optional author fields up front (see normalize-author).
-  let authors = authors.map(normalize-author)
-
-  // acmart publishes title, author, and keyword metadata through hyperref. Typst's
-  // native document metadata has no `subject` field (where LaTeX places CCS
-  // concepts), but the fields it does support should not be left blank. Document
-  // metadata authors/keywords must be strings; preserve rich content in the visible
-  // top matter while publishing the string-valued subset to the PDF metadata.
-  let document-authors = if anonymous {
-    ("Anonymous Author(s)",)
-  } else {
-    authors.map(a => a.name).filter(n => type(n) == str)
-  }
-  let document-keywords = if type(keywords) == array {
-    keywords.filter(k => type(k) == str)
-  } else if type(keywords) == str {
-    (keywords,)
-  } else {
-    ()
-  }
-  set document(title: title, author: document-authors, keywords: document-keywords)
-
-  // Resolve the journal record and DOI target once. Every page-chrome and
-  // front-matter path consumes these effective values instead of repeating a
-  // journal-table lookup or reconstructing the DOI URL.
-  let publication = resolve-publication(journal, doi)
-  let journal = publication.journal
-  let doi = publication.doi
-  // Six proceedings-style ACM journals force hyperref's screen colours in the
-  // class, even when the user did not pass the `screen` option.
-  let screen = screen or journal.screen
-
-  // \acmConference defaults to ACM's placeholder metadata in proceedings formats
-  // (acmart.cls:1548). It is not active for journal/manuscript output, where
-  // treating it as present would incorrectly switch the reference/footer wording.
-  let conference = if conference == auto {
-    if cfg.kind == "proceedings" {
-      (name: "ACM Conference", short: "Conference'17",
-       date: "July 2017", venue: "Washington, DC, USA")
-    } else {
-      none
-    }
-  } else {
-    conference
-  }
-
-  // \@acmBooktitle defaults to "Proceedings of <conference name> (<short>)" when
-  // not set explicitly, dropping the "(<short>)" when the name already is the
-  // short name (acmart.dtx:5059). Resolve it once here so every consumer (the ACM
-  // reference, the engage copyright line) sees the effective value.
-  let booktitle = if booktitle != none {
-    booktitle
-  } else if conference != none and conference.at("name", default: none) != none {
-    let nm = conference.name
-    let sh = conference.at("short", default: none)
-    if sh != none and sh != nm { [Proceedings of #nm (#sh)] } else { [Proceedings of #nm] }
-  }
-
-  let meta = (
+  let metadata = resolve-metadata(cfg, options.lang, (
     title: title,
     subtitle: subtitle,
     title-note: title-note,
@@ -566,11 +394,7 @@
     abstract: abstract,
     ccs: ccs,
     keywords: keywords,
-    strings: cfg.strings,
-    translated-title: translated-title,
-    translated-subtitle: translated-subtitle,
-    translated-keywords: translated-keywords,
-    translated-abstract: translated-abstract,
+    translations: translations,
     teaser: teaser,
     journal: journal,
     acm-volume: acm-volume,
@@ -586,8 +410,6 @@
     contributions: contributions,
     acmcp-logo: acmcp-logo,
     engage-metadata: engage-metadata,
-    article-type: article-type,
-    bibstrip: cfg.bibstrip,
     authors-per-row: authors-per-row,
     copyright: copyright,
     copyright-year: copyright-year,
@@ -604,247 +426,24 @@
     thanks: thanks,
     authors-addresses: authors-addresses,
     editors: editors,
-  )
+  ))
+  let meta = metadata.meta
+  let screen = screen or metadata.force-screen
+  // Typst has no native document subject field for CCS concepts; publish the
+  // string-valued title, author, and keyword subset that its PDF metadata supports.
+  set document(title: title, author: metadata.document.authors,
+    keywords: metadata.document.keywords)
 
-  let article-page(p) = {
-    if acm-article != none {
-      if print-folios [#acm-article:#p] else [#acm-article]
-    } else if print-folios [#p]
-  }
-  let journal-footer = {
-    if not nonacm and (journal.short != none or (cfg.name == "acmsmall" and conference != none)) {
-      let prefix = if journal.short != none { journal.short } else { [] }
-      let article = if acm-article != none or (cfg.name == "acmsmall" and conference != none) {
-        [, Article #if acm-article != none { acm-article }]
-      } else { [] }
-      [#prefix, Vol. #acm-volume, No. #acm-number#article. Publication date: #pub-date(meta).]
-    }
-  }
-  let manuscript-footer = if not nonacm [Manuscript submitted to ACM]
-  let conference-line = {
-    if cfg.name == "acmengage" {
-      // \@formatdoi is \url{...} (acmart.dtx:6204), so the head DOI is a live
-      // link, styled upright roman by acmengage's \urlstyle{rm}.
-      [EngageCSEdu.#if doi != none { text(font: cfg.fonts.body)[ #link(doi.url)[https:\/\/doi.org\/#doi.bare]] }]
-    } else if conference != none {
-      let short = conference.at("short", default: conference.at("name", default: none))
-      let date = conference.at("date", default: none)
-      let venue = conference.at("venue", default: none)
-      let parts = (short, date, venue).filter(x => x != none)
-      if parts.len() > 0 { parts.join(", ") }
-    }
-  }
-  let footer-row(l: none, c: none, r: none) = grid(
-    columns: (1fr, auto, 1fr),
-    align(left, l), align(center, c), align(right, r),
-  )
-  // Running footer. The ACM journal bibstrip sits on the OUTER edge (acmart
-  // fancyfoot[RO,LE]): right on odd pages, left on even; nonacm suppresses it
-  // (acmart.dtx:8198/8036). In timestamp/authordraft mode a draft timestamp sits
-  // on the INNER edge (fancyfoot[LO,RE], acmart.dtx:8119/8245), opposite the
-  // bibstrip. acmart's stamp is "<date> <HH>:<MM>. Page p of start--total."; Typst
-  // can't read the wall clock, so we print the compile date and omit the time.
-  let footer-content = context {
-    set text(font: cfg.fonts.body, size: cfg.size.footnotesize)
-    set par(leading: comp(cfg, sz: "footnotesize")) // multi-line footers on the footnotesize grid
-    // Folio values and odd/even parity follow the page COUNTER (seeded by
-    // \startPage), not the physical sheet index; the first-page dispatch is
-    // physical (the title page carries firstpagestyle wherever it starts).
-    let pageno = counter(page).get().first()
-    let odd = calc.odd(pageno)
-    let first-page = here().page() == 1
-    let bib = if cfg.name == "acmcp" {
-      if journal.short != none {
-        [#journal.name, Volume #acm-volume, Issue #acm-number#if acm-article != none [, Article #acm-article] (#pub-date(meta))#if doi != none { linebreak(); link(doi.url)[https:\/\/doi.org\/#doi.bare] }]
-      }
-    } else if cfg.name == "acmtog" and conference != none {
-      // acmtog's conference footer ends with a period (acmart.dtx:8064:
-      // "...\acmConference@venue.}"), unlike the running-head conference line.
-      [#conference-line.]
-    } else if cfg.name in ("acmsmall", "acmlarge", "acmtog") {
-      journal-footer
-    } else if cfg.name == "manuscript" {
-      manuscript-footer
-    }
-    let folio = if print-folios { [#pageno] }
-    if timestamp {
-      let total = counter(page).final().first()
-      let date = datetime.today().display("[year]-[month]-[day]")
-      // \@startPage defaults to 1 (acmart.dtx:6823).
-      let start = if start-page == none { 1 } else { start-page }
-      let ts = [#if submission-id != none { [Submission ID: #submission-id. ] }#date. Page #pageno of #{start}--#{total}.]
-      // manuscript page 1 appends the ACM slug to the stamp and keeps its outer
-      // \small folio (acmart.dtx:8240-8244); on later pages the plain stamp
-      // replaces the inner slug (acmart.dtx:8118). Proceedings keep their
-      // centered folio next to the inner stamp (acmart.dtx:8233/8238).
-      if cfg.name == "manuscript" {
-        let ts = if first-page and not nonacm [#ts#h(1em)Manuscript submitted to ACM] else { ts }
-        let folio = if first-page and folio != none { text(size: cfg.size.small, folio) }
-        if odd { footer-row(l: ts, r: folio) } else { footer-row(l: folio, r: ts) }
-      } else if cfg.kind == "proceedings" {
-        if odd { footer-row(l: ts, c: folio) } else { footer-row(c: folio, r: ts) }
-      } else if odd {
-        // journal [LO] stamp, [RO] bibstrip
-        grid(columns: (1fr, 1fr), align(left, ts), align(right, bib))
-      } else {
-        grid(columns: (1fr, 1fr), align(left, bib), align(right, ts))
-      }
-    } else if cfg.name == "acmcp" {
-      // the only format with a foot rule: \footrulewidth = 0.1pt (acmart.dtx:
-      // 8121/8249), \footruleskip (.3\normalbaselineskip) above the footer
-      // text INK — measured 8.35tp above the first baseline in LaTeX. place()
-      // keeps the rule out of the footer box so the descent math (single-line
-      // baseline + multi-line centering) is unaffected.
-      place(top + left, dy: -(8.35 * tp - cfg.size.footnotesize) - 0.1 * tp,
-        line(length: 100%, stroke: 0.1 * tp))
-      footer-row(r: bib)
-    } else if cfg.name == "manuscript" and first-page {
-      // manuscript's first-page folio is \small (acmart.dtx:8200), one step up
-      // from the footnotesize slug next to it.
-      let folio = if folio != none { text(size: cfg.size.small, folio) }
-      if odd { footer-row(l: bib, r: folio) } else { footer-row(l: folio, r: bib) }
-    } else if cfg.kind == "proceedings" {
-      footer-row(c: folio)
-    } else if bib != none {
-      if odd { align(right, bib) } else { align(left, bib) }
-    }
-  }
-
-  // Running head on continuation pages (page 1 uses no running head). acmsmall:
-  //   even: [LE] article:page        [RE] short authors
-  //   odd:  [LO] short title         [RO] article:page
-  // in sans footnotesize (\@headfootfont).
-  let st = if short-title == auto { title } else { short-title }
-  // \shortauthors default = the full author names, andified (acmart.dtx:5215);
-  // anonymous mode sets \shortauthors to "Anon." (acmart.dtx:5210/7966). Pass
-  // `short-authors:` to override (the acmart `\author[short]{full}` mechanism).
-  let sa = if anonymous {
-    // anonymous header is "Anon." plus the submission id when given (acmart.dtx:7967).
-    if submission-id != none [Anon. Submission Id: #submission-id] else [Anon.]
-  } else if short-authors == auto {
-    if authors.len() == 0 { none } else { andify(authors.map(a => a.name)) }
-  } else { short-authors }
-  let header-content = context {
-    // Page 1 (the physical title page) has no running head, but may carry
-    // artifact-evaluation badges (firstpagestyle: \@acmBadgeL/R).
-    if here().page() <= 1 {
-      if badges != none { return make-badges(cfg, badges) }
-      return
-    }
-    // Folio values and parity follow the page counter (\startPage-aware).
-    let p = counter(page).get().first()
-    // Running head font: \@headfootfont = \sffamily\footnotesize for every format
-    // EXCEPT manuscript, whose head carries no \@headfootfont and so prints in the
-    // document default (serif) at normalsize (acmart.dtx:8024 vs 7979).
-    let hf = if cfg.name == "manuscript" { (cfg.fonts.body, cfg.size.normalsize) } else { (cfg.fonts.sans, cfg.size.footnotesize) }
-    set text(font: hf.first(), size: hf.last())
-    let ap = article-page(p)
-    let odd = calc.odd(p)
-    let head = if cfg.name == "manuscript" {
-      if odd { grid(columns: (1fr, auto), align(left, st), align(right, if print-folios { [#p] })) }
-      else { grid(columns: (auto, 1fr), align(left, if print-folios { [#p] }), align(right, sa)) }
-    } else if cfg.name == "acmsmall" {
-      if odd { grid(columns: (1fr, auto), align(left, st), align(right, ap)) }
-      else { grid(columns: (auto, 1fr), align(left, ap), align(right, sa)) }
-    } else if cfg.name in ("acmlarge", "acmtog") {
-      // \shorttitle\quad\textbullet\quad\@acmArticlePage (acmart.dtx:8042-8056):
-      // a full 1em quad on each side of the bullet, not a word space.
-      if odd { align(right, [#st#h(1em)•#h(1em)#ap]) }
-      else { align(left, [#ap#h(1em)•#h(1em)#sa]) }
-    } else if cfg.kind == "proceedings" {
-      let conf = conference-line
-      // sigchi-a is one-sided (landscape, fixed wide left margin): every page uses
-      // the ODD proceedings head — shorttitle (left) + conference (right); the
-      // \@shortauthors (RE) line never appears (acmart.dtx:8093/8109). The other
-      // proceedings formats are two-sided and alternate authors/title by parity.
-      if odd or cfg.name == "sigchi-a" {
-        grid(columns: (1fr, 1fr), align(left, st), align(right, if not nonacm { conf }))
-      } else {
-        grid(columns: (1fr, 1fr), align(left, if not nonacm { conf }), align(right, sa))
-      }
-    } else {
-      none
-    }
-    // \fancyheadoffset[L]: extend the head leftward into the margin column
-    // (sigchi-a, acmart.dtx:8115) — the shorttitle starts over the margin notes.
-    if cfg.head.offset != 0pt { pad(left: -cfg.head.offset, head) } else { head }
-  }
-
-  // Light-grey diagonal watermark (draftwatermark: 0.5in, gray 0.9). authordraft
-  // stamps every page "Unpublished working draft." (acmart.dtx:3720-3726); sigchi-a
-  // (unless nonacm) stamps the legacy notice instead (acmart.dtx:3728-3736).
-  let watermark-text = if author-draft {
-    [Unpublished working draft.\ Not for distribution.]
-  } else if cfg.name == "sigchi-a" and not nonacm {
-    // \parbox{12em}{\centering Legacy document. \\ Not for publication in an ACM
-    // venue} (acmart.dtx:3733): "Legacy document." then the second line wraps in
-    // the 12em box, breaking before "ACM venue".
-    [Legacy document.\ Not for publication in an\ ACM venue]
-  }
-  let watermark = if watermark-text != none {
-    rotate(-45deg, reflow: false, text(size: 0.5in, fill: luma(90%))[
-      #set par(leading: 0.2em, justify: false)
-      #align(center, watermark-text)
-    ])
-  }
-
-  // acmcp rotated article-type label (\fancyhead[L], acmart.dtx:8253): a saturated
-  // article-colour box reading bottom-to-top, offset 46pt into the left margin
-  // (\fancyheadoffset[L]) so it sits at the page's left edge, level with the title.
-  // The vertical position carries a -0.2\textheight*(nr-2) shift per article type
-  // (Research nr=0 sits at the top margin; later types step down); only Research is
-  // exercised by the twin, and it lands at the top margin as measured in LaTeX.
-  let acmcp-label = if cfg.name == "acmcp" {
-    let article = _acmcp-article-types.at(article-type)
-    let textheight = cfg.paper.height - cfg.margin.top - cfg.margin.bottom
-    // Read bottom-to-top (\rotatebox{90}); reflow:true so the placed footprint is
-    // the rotated box and top+left anchors deterministically to the page corner.
-    // \colorbox{...}{\color{white}\strut <Type> Article} at the head's normalsize
-    // (9pt) in the document default family (serif for acmcp — no \sffamily), \fboxsep
-    // (3pt) all round; \strut gives the box a full line's height (so extra space
-    // perpendicular to the rotated text). top-edge/bottom-edge span the strut.
-    let lbl = rotate(-90deg, reflow: true, box(fill: article.color, inset: 3 * tp,
-      text(font: cfg.fonts.body, size: cfg.size.normalsize, fill: white,
-        top-edge: "ascender", bottom-edge: "descender")[#article-type Article]))
-    context place(top + left, dx: 0pt,
-      // Centre on the title (\fancyhead[L] level with the head); step later article
-      // types down by 0.2\textheight per nr (Research nr=0 sits at the top margin).
-      dy: cfg.margin.top - measure(lbl).height / 2 + 0.2 * textheight * article.nr,
-      lbl)
-  }
-
-  // `review`: acmart stamps a fixed red \scriptsize RULER in the margins — one
-  // number per UNSTRETCHED normalsize \baselineskip covering \textheight
-  // (\ACM@mk@linecount, acmart.dtx:7853-7928: ceil(th/bls)+1 numbers per box,
-  // measured 52/58 per page on manuscript/sigconf), numbered continuously
-  // across pages. Two-column formats and sigchi-a build a SECOND, continuing
-  // box on the right (\ACM@linecountR). The numbers are slots, not text lines:
-  // they advance across headings, floats, and whitespace. Measured anchors:
-  // first baseline at margin.top + 8.43tp; x = left margin − 26pt / right
-  // margin edge + 20pt (\put(-26,-22)/(20,-22) from the head corners).
-  let review-ruler = if review { context {
-    let th = cfg.paper.height - cfg.margin.top - cfg.margin.bottom
-    let bls = cfg.at("baselineskip-unstretched")
-    let n = calc.ceil(th / bls) + 1
-    let two-sided-ruler = cfg.columns == 2 or cfg.name == "sigchi-a"
-    let pg = here().page() - 1
-    let start = pg * (if two-sided-ruler { 2 * n } else { n }) + 1
-    // this page's physical left/right margins (inside/outside alternate)
-    let odd = calc.odd(here().page())
-    let ml = cfg.margin.at("left", default: if odd { cfg.margin.at("inside", default: 0pt) } else { cfg.margin.at("outside", default: 0pt) })
-    let mr = cfg.margin.at("right", default: if odd { cfg.margin.at("outside", default: 0pt) } else { cfg.margin.at("inside", default: 0pt) })
-    let ruler(first) = text(fill: rgb(255, 0, 0), size: cfg.size.scriptsize,
-      top-edge: 1em, bottom-edge: 0pt,
-      {
-        set par(leading: bls - cfg.size.scriptsize, justify: false)
-        range(first, first + n).map(str).join(linebreak())
-      })
-    let dy = cfg.margin.top + 8.43 * tp - cfg.size.scriptsize
-    place(top + left, dx: ml - 26 * tp, dy: dy, ruler(start))
-    if two-sided-ruler {
-      place(top + left, dx: cfg.paper.width - mr + 20 * tp, dy: dy, ruler(start + n))
-    }
-  } }
+  let chrome = make-page-chrome(cfg, meta, (
+    print-folios: print-folios,
+    timestamp: timestamp,
+    review: review,
+    short-title: short-title,
+    short-authors: short-authors,
+    badges: badges,
+    article-type: article-type,
+    article: options.article,
+  ))
 
   set page(
     width: cfg.paper.width,
@@ -862,13 +461,9 @@
     // baselineskip lower in both engines (measured 677.5/685.7 = body +
     // \footskip + n·bls on acmcp-test).
     footer-descent: cfg.foot.skip - cfg.size.footnotesize,
-    header: header-content,
-    footer: footer-content,
-    background: {
-      acmcp-label
-      if review-ruler != none { review-ruler }
-      if watermark != none { align(center + horizon, watermark) }
-    },
+    header: chrome.header,
+    footer: chrome.footer,
+    background: chrome.background,
   )
   // Exact inter-column gutter (\columnsep; acmart sets 24pt/2pc). Typst's page
   // `columns` otherwise defaults to a 4%-of-width gutter. A no-op for the
@@ -1010,7 +605,7 @@
       // matching LaTeX's zref feedback that butts the infobox bottom against the
       // frame bottom. acmcp is a single-page cover format, so keeping the framed
       // body in one grid cell is acceptable.
-      let article = _acmcp-article-types.at(article-type)
+      let article = options.article
       let tint = article.color.lighten(90%)
       let fbox = 3 * tp // \fboxsep
       let body-reduction = 6.5 * 12 * tp // \advance\hsize -6.5pc (acmart.dtx:5902)

@@ -8,12 +8,15 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 
 | file | role |
 |---|---|
-| `lib.typ` | public `acmart()` entry: page setup, global text/par rules, header/footer, document options (review/screen/anonymous/nonacm/print-ccs/print-folios + the full acmart option set, recognized-but-unimplemented ones asserted not silently dropped), wires up the parts; re-exports `theorem`/`lemma`/…/`proof` and the booktabs `tabular`/`toprule`/`midrule`/`bottomrule` |
+| `lib.typ` | public `acmart()` signature and orchestration: applies resolved page/global rules, wires up title/body rendering and citation state, and re-exports `theorem`/`lemma`/…/`proof` plus the booktabs helpers |
 | `formats/_base.typ` | shared font-size ladder (amsart `\@typesizes`) + `make-format()`, the dict constructor that fills format-independent constants. `tp = 72/72.27*1pt` (TeX→PS point conversion) lives here |
 | `formats/<name>.typ` | active format builders (acmsmall, manuscript, acmlarge, acmtog, sigconf, sigplan, acmengage, sigchi-a, acmcp): probed geometry + the format flags, all shared values from `make-format` |
 | `parts/spacing.typ` | `comp()` / `tex-skip()` — the TeX→Typst baseline-grid conversion used by every `leading` and vertical gap (see DESIGN.md) |
 | `parts/headings.typ` | section / subsection / run-in heading show rule |
 | `parts/frontmatter.typ` | title, authors+affiliations, abstract, CCS, keywords, ACM reference format, page-1 footnote stack |
+| `parts/options.typ` | format selection, option validation, and effective review/timestamp/folio/language state |
+| `parts/metadata.typ` | normalized authors, translations, conference/booktitle, journal/DOI, and PDF metadata fields |
+| `parts/page-chrome.typ` | running heads and footers, acmcp label, review ruler, and draft/legacy watermarks |
 | `parts/journals.typ` | the ACM journal table (key → name/short/issn) + `lookup-journal`, transcribed from acmart.dtx |
 | `parts/strings.typ` | localization for the `language` option: per-language fixed strings (keywords/acks/proof/table) + babel-name→Typst-lang map, transcribed from acmart.dtx |
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |
@@ -38,8 +41,8 @@ to the `sigconf` builder, because the bundled LaTeX class treats them as obsolet
 aliases. Each active `formats/<name>.typ` passes its probed geometry + the
 `\ifcase` flags (`columns`, `title-style`, `sec-fonts`, `bibstrip`,
 `secnumdepth`, the title/author/affiliation fonts). To add or audit one, run
-`tools/test.py probe --format <name>` and register the builder in `_formats` in
-`lib.typ`. Two-column is handled once in `lib.typ` (page columns + the
+`tools/test.py probe --format <name>` and register the builder in `formats` in
+`parts/options.typ`. Two-column is handled once in `lib.typ` (page columns + the
 spanning-title float); frontmatter/title rendering dispatches on
 `cfg.title-style`, and `headings.typ` reads `cfg.sec-fonts`.
 
