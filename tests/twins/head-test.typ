@@ -21,3 +21,10 @@ Two driven jocks help fax my big quiz.
 = Second Section
 Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal
 from every young wage earner.
+
+= Adjacent Headings
+== Directly Nested
+=== Immediately Run-In
+Body text follows the run-in subsubsection with no intervening paragraph, so
+the run-in sits flush at the text margin and each adjacent heading drops its
+before-skip.

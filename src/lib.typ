@@ -15,7 +15,7 @@
 
 #import "formats/_base.typ": tp
 #import "parts/spacing.typ": comp, tex-skip
-#import "parts/headings.typ": render-heading
+#import "parts/headings.typ": render-heading, _in-heading, _body-since-heading
 #import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-infobox, make-received
 #import "parts/metadata.typ": resolve-metadata
 #import "parts/options.typ": resolve-options
@@ -511,6 +511,11 @@
     if it.level == 1 and it.numbering != none { thm-counter.update(0) }
     render-heading(it, cfg)
   }
+  // Track whether ordinary body text has appeared since the last heading, for the
+  // kernel's `\if@nobreak` beforeskip suppression and the run-in's ambient indent
+  // (parts/headings.typ). Guarded by `_in-heading` so a heading's own number/title
+  // paragraph doesn't register as intervening body text.
+  show par: it => { context { if not _in-heading.get() { _body-since-heading.update(true) } }; it }
 
   // `screen`: colour hyperlinks (acmart ACMPurple for refs/cites, ACMDarkBlue
   // for URLs). Without it, links stay black as in print acmart.
@@ -555,7 +560,12 @@
   } else { it }
 
 
-  cfg-state.update(cfg) // publish config for theorem environments
+  // review/nonacm flip the class's list geometry to amsart's values (an upstream
+  // hook-ordering bug; see parts/body.typ). The proof environment's label
+  // separation follows the same flag (trivlist \labelsep 4pt vs amsart 5pt), so
+  // publish it on cfg for parts/theorems.typ.
+  let amsart-lists = review or nonacm
+  cfg-state.update(cfg + (amsart-lists: amsart-lists)) // publish config for theorem environments
   anon-state.update(anonymous) // publish anonymity for the acks environment
   if start-page != none {
     // \startPage seeds the page counter (acmart.dtx:6822-6825): folios, parity,
@@ -565,9 +575,7 @@
     counter(page).update(start-page)
   }
 
-  // review/nonacm flip the class's list geometry to amsart's values (an
-  // upstream hook-ordering bug the port replicates; see parts/body.typ).
-  apply-body(cfg, amsart-lists: review or nonacm, {
+  apply-body(cfg, amsart-lists: amsart-lists, {
     if meta.title != none {
       // Page-1 footnote stack (author notes / contact info / copyright). A
       // place(bottom, float) — full-width in one column, first-column-scoped in two

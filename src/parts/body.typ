@@ -128,6 +128,15 @@
   // generous \abovedisplayskip/\belowdisplayskip. Typst's native display math is
   // visually too tight, so wrap only block equations in TeX-like vertical space.
   set math.equation(numbering: "(1)")
+  // Deliberately NO trailing indent shim here (unlike lists/figures/quotes): a
+  // display equation is frequently a mid-paragraph continuation (the official ACM
+  // samples set text right after \end{equation} with no blank line, which LaTeX
+  // does NOT indent), and Typst cannot tell that apart from a blank-line-separated
+  // new paragraph (which LaTeX would indent) — a block equation always ends the
+  // paragraph either way. Auto-indenting would regress the common continuation
+  // case, so the port leaves post-equation paragraphs un-indented and users add an
+  // explicit indent where wanted. The below-gap is also measured from the ink bbox
+  // (descender leak) and amsart's short-display skips are unmodelled — see DESIGN.md.
   show math.equation.where(block: true): set block(
     above: tex-skip(cfg, cfg.medskip),
     below: tex-skip(cfg, cfg.medskip),
@@ -254,6 +263,12 @@
   show raw: it => {
     set text(font: cfg.fonts.mono, size: 1.25em)
     if it.block {
+      // Deliberately NO trailing indent shim (see the display-equation note above):
+      // like a display equation, a verbatim block often continues a paragraph with
+      // no blank line (LaTeX's \@doendpe then suppresses the next paragraph's
+      // indent), and Typst cannot distinguish that from the blank-line case LaTeX
+      // WOULD indent. Un-indenting matches the common continuation case and the
+      // official ACM samples (which add an explicit indent where wanted).
       block(above: tex-skip(cfg, cfg.smallskip), below: tex-skip(cfg, cfg.smallskip))[
         #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: 0pt)
         #it.lines.map(l => l.body).join(linebreak())

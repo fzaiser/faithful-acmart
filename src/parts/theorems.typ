@@ -47,16 +47,27 @@
 // \z@ / \noindent). Paragraphs after the first keep the ambient \parindent, as
 // in LaTeX (the global first-line-indent only skips the block's first one).
 // head-sep: 0.5em for the theorem styles (amsthm's \thmheadsep); the proof's
-// label-body gap is \labelsep = 5pt instead (trivlist \item, acmart.dtx:8757).
-#let thm-block(cfg, head, body, topsep: none, indent: auto, head-sep: 0.5em) = block(
-  above: tex-skip(cfg, if topsep == none { 0.5 * cfg.baselineskip } else { topsep }),
-  below: tex-skip(cfg, if topsep == none { 0.5 * cfg.baselineskip } else { topsep }),
-  width: 100%,
-)[
-  #h(if indent == auto { cfg.parindent } else { indent })
-  #head#h(head-sep)
-  #body
-]
+// label-body gap is \labelsep instead (trivlist \item, acmart.dtx:8757).
+//
+// amsthm restores the following paragraph's indentation (\@endpefalse), so — like
+// env-block in parts/body.typ — the block emits a trailing zero-height paragraph
+// (the h(parindent) shim) that makes the NEXT paragraph take its first-line
+// indent. The shim's `par(spacing: 0pt)` keeps it from adding vertical space; the
+// block owns the whole below-gap.
+#let thm-block(cfg, head, body, topsep: none, indent: auto, head-sep: 0.5em) = {
+  let gap = tex-skip(cfg, if topsep == none { 0.5 * cfg.baselineskip } else { topsep })
+  block(above: gap, below: 0pt, width: 100%)[
+    #h(if indent == auto { cfg.parindent } else { indent })
+    // Join the head and body directly (no markup newline, which would leak an
+    // interword space beyond `head-sep`): the gap after the head is exactly
+    // `head-sep`, matching amsthm's \thmheadsep / the trivlist \labelsep.
+    #head#h(head-sep)#body
+  ]
+  {
+    set par(spacing: gap)
+    h(cfg.parindent)
+  }
+}
 
 #let _theorem-env(default-name, kind) = (
   // `kind` picks the amsthm style ("plain" or "definition"); `title` overrides
@@ -124,9 +135,13 @@
     let name = if name != none { name } else { cfg.strings.proof }
     // proof's \topsep is a FIXED 6pt (+6pt stretch), acmart.dtx:8752 — not the
     // .5\baselineskip of the theorem styles (they only coincide at 10pt) — and
-    // its label-body gap is the trivlist \labelsep (5pt), not \thmheadsep.
+    // its label-body gap is the trivlist \labelsep, not \thmheadsep. That labelsep
+    // is 4pt in plain acmart (acmart's begin-document block) but 5pt when amsart's
+    // block wins (review/nonacm) — the same hook-ordering bug the list geometry
+    // models, so it tracks cfg.amsart-lists.
     thm-block(cfg, _head-font(cfg.thm.proof-head, add-punct(name)),
       [#body #h(1fr)#sym.square.stroked],
-      topsep: 6 * tp, indent: cfg.thm.proof-indent, head-sep: 5 * tp)
+      topsep: 6 * tp, indent: cfg.thm.proof-indent,
+      head-sep: (if cfg.amsart-lists { 5 } else { 4 }) * tp)
   }
 }
