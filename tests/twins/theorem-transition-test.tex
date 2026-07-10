@@ -1,0 +1,27 @@
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}\settopmatter{printacmref=false,printfolios=false}
+\begin{document}
+\thispagestyle{empty}
+\section{Numbered Section}
+\begin{theorem}
+The first numbered statement.
+\end{theorem}
+
+\section*{Unnumbered Interlude}
+\begin{theorem}
+The statement after an unnumbered section.
+\end{theorem}
+
+\begin{acks}
+The reviewers improved this test.
+\end{acks}
+\begin{theorem}
+The statement after acknowledgments.
+\end{theorem}
+
+\paragraph{Results:} A colon-terminated run-in heading does not gain a period.
+\paragraph{Consequences;} A semicolon-terminated run-in heading does not gain a period.
+\begin{proof}[Sketch,]
+A comma-terminated proof name does not gain a period.
+\end{proof}
+\end{document}

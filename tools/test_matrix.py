@@ -305,6 +305,10 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1,
         note="figure & table captions, theorems (plain/definition/proof+QED), lists",
     ),
+    "theorem-transition-test": Test(
+        kind="twin", pages=1, text_equal=True,
+        note="theorem numbering survives section-star/acks; add-punct honors ,;:",
+    ),
     "list-test": Test(
         kind="twin", pages=1,
         note="isolated itemize/enumerate/quote geometry under NONACM — the class's "

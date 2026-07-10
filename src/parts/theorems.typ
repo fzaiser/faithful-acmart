@@ -27,13 +27,15 @@
 // whatever heading numbering is currently active. Reading the pattern from the
 // nearest preceding heading (rather than using the bare integer) makes theorems
 // in an appendix print "A.5", not "1.5", tracking `set heading(numbering: "A.1")`.
-// Must be called inside a `context`. Returns `none` when there is no numbered
-// section yet (theorem before any heading, or unnumbered sections).
+// Must be called inside a `context`. Unnumbered headings do not change
+// \thesection in LaTeX, so skip them and retain the most recent numbered
+// level-one section. Returns `none` only when no numbered section exists yet.
 #let _section-number() = {
   let h = counter(heading).get()
   if h.len() == 0 { return none }
-  let prev = query(selector(heading).before(here()))
-  if prev.len() == 0 or prev.last().numbering == none { return none }
+  let prev = query(selector(heading.where(level: 1)).before(here()))
+    .filter(it => it.numbering != none)
+  if prev.len() == 0 { return none }
   numbering(prev.last().numbering, h.first())
 }
 

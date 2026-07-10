@@ -2,7 +2,10 @@
 // terminal punctuation without doubling an existing stop.
 
 #let ends-with-punct(c) = {
-  if type(c) == str { return c.trim().match(regex("[.!?]$")) != none }
+  // TeX's \@addpunct appends only when \spacefactor <= 1000. In the standard
+  // sfcode table, comma/semicolon/colon join sentence-ending .!? above that
+  // threshold, so none of these marks may acquire an extra full stop.
+  if type(c) == str { return c.trim().match(regex("[.!?,;:]$")) != none }
   if type(c) != content { return false }
   if c.has("text") { return ends-with-punct(c.text) }
   if c.has("body") { return ends-with-punct(c.body) }
