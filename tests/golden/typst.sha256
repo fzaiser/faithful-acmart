@@ -1,5 +1,6 @@
 # Tier 1 golden raster hashes — Typst 0.14.2 @ 150dpi
 # regenerate with: uv run python tools/test.py accept
+# poppler: 26.03.0
 acmcp-test 1 53d80845170ea2ff6a257826b67b7459cb6e867e40c7b9eca104ef35138d51d3
 acmengage-test 1 7b3bf145491306c448929cc0e511b0bda3f0db805c750c1d21d6d4753fad404e
 acmlarge-pages-test 1 001c9d6ee843c418c5808a06e67aec080588253dff9a14ac8141c2e0588f7d24

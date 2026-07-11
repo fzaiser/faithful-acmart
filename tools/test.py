@@ -115,6 +115,17 @@ def _pdf_memo(fn):
     return wrapped
 
 
+def poppler_version() -> str | None:
+    """Local Poppler version behind pdftotext/pdftoppm (one package, one version).
+
+    Both the raster goldens (pdftoppm) and the text residual digests (pdftotext)
+    ride on it, so recording a single number in the golden header covers both.
+    """
+    proc = subprocess.run(["pdftotext", "-v"], capture_output=True, text=True)
+    m = re.search(r"version\s+([\d.]+)", proc.stdout + proc.stderr)
+    return m.group(1) if m else None
+
+
 def page_count(pdf: Path) -> int:
     out = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True).stdout
     m = re.search(r"^Pages:\s+(\d+)", out, re.M)
@@ -1278,17 +1289,46 @@ def _golden_hashes() -> dict[str, list[str]]:
     return out
 
 
+_POPPLER_HEADER = "# poppler:"
+
+
 def write_golden() -> None:
     GOLDEN.mkdir(parents=True, exist_ok=True)
     hashes = _golden_hashes()
     lines = [
         f"# Tier 1 golden raster hashes — Typst {M.TYPST_VERSION} @ {M.GOLDEN_DPI}dpi",
         "# regenerate with: uv run python tools/test.py accept",
+        # Poppler renders the rasters and extracts the text residuals; record it so
+        # a divergent local version can be flagged as a possible cause of failure.
+        f"{_POPPLER_HEADER} {poppler_version() or 'unknown'}",
     ]
     for name in sorted(hashes):
         for i, h in enumerate(hashes[name], 1):
             lines.append(f"{name} {i} {h}")
     GOLDEN_FILE.write_text("\n".join(lines) + "\n")
+
+
+def read_golden_poppler() -> str | None:
+    """The Poppler version recorded when the goldens were last accepted, if any."""
+    if not GOLDEN_FILE.exists():
+        return None
+    for line in GOLDEN_FILE.read_text().splitlines():
+        if line.startswith(_POPPLER_HEADER):
+            return line[len(_POPPLER_HEADER):].strip()
+    return None
+
+
+def _poppler_mismatch_note() -> str | None:
+    """Diagnostic when the local Poppler differs from the golden's recorded one.
+
+    Per policy a version difference must not fail anything on its own; this is
+    only appended to gates that already failed, to name a likely cause.
+    """
+    recorded, local = read_golden_poppler(), poppler_version()
+    if recorded and local and recorded != local:
+        return (f"note: goldens were accepted under Poppler {recorded}, you have "
+                f"{local} — a rasterizer/extractor difference may explain this failure")
+    return None
 
 
 def read_golden() -> dict[str, dict[int, str]]:
@@ -1337,6 +1377,8 @@ def gate_golden() -> list[str]:
     if failures:
         failures.append(f"inspect changed pages in {DIFF.relative_to(ROOT)}/ , "
                         "then `test.py accept` if intended.")
+        if note := _poppler_mismatch_note():
+            failures.append(note)
     return failures
 
 
@@ -1553,6 +1595,8 @@ def gate_text(report: bool = False) -> list[str]:
         if not local and not report:
             print(f"ok   {name}")
         failures.extend(local)
+    if failures and (note := _poppler_mismatch_note()):
+        failures.append(note)
     return failures
 
 
