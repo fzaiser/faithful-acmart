@@ -1425,6 +1425,17 @@ ERROR_CASES: dict[str, tuple] = {
     "draft-option": ("draft: true,", "option `draft` has no effect"),
     "bad-journal": ('journal: "NOT-A-JOURNAL",', "unknown ACM journal code"),
     "bad-authors-per-row": ("authors-per-row: 2.5,", "`authors-per-row` must be a non-negative integer"),
+    "bad-format": ('format: "not-a-format",', "unknown format"),
+    "bad-bib-backend": ('bib-backend: "sqlite",', "`bib-backend` must be"),
+    "bad-cite-style": ('cite-style: "footnote",', "`cite-style` must be"),
+    "bad-acm-month": ("acm-month: 13,", "`acm-month` must be an integer 1..12"),
+    "bad-acmcp-article-type": (
+        'format: "acmcp", article-type: "Bogus", acmcp-logo: none,',
+        "Article Type must be Research",
+    ),
+    # acmcp with a valid article type but no journal logo: the cover infobox
+    # errors with an actionable message rather than a bare image(none) failure.
+    "missing-acmcp-logo": ('format: "acmcp",', "acmcp` cover format needs a journal logo"),
     "missing-affiliation-country": (
         'authors: ((name: "Ada Lovelace", affiliation: (institution: "Analytical Engine Institute")),),',
         "every author affiliation must include a nonempty `country`",

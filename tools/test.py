@@ -1525,11 +1525,13 @@ def gate_text(report: bool = False) -> list[str]:
 
 
 def _error_source(extra_arg: str, body: str = "= Body\nText.") -> str:
+    # Cases that exercise a bad/other format supply their own `format:` in the
+    # extra argument; omit the default acmsmall line then so it is not a duplicate.
+    format_line = "" if "format:" in extra_arg else '  format: "acmsmall",\n'
     return f"""#import "/src/lib.typ": *
 
 #show: acmart.with(
-  format: "acmsmall",
-  title: "Expected Error",
+{format_line}  title: "Expected Error",
   abstract: [A tiny document.],
   {extra_arg}
 )
