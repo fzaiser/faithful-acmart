@@ -78,6 +78,17 @@ METADATA_CROSS_EXEMPTIONS: dict[str, dict[str, str]] = {}
 # Only robust, renderer-agnostic invariants are gated. Right margin and line
 # count depend on cross-engine line-breaking, so metrics report them but does
 # not gate on them.
+#
+# Right-margin ablation (2026-07, single-column justified twins, per page):
+# |Δright| median 0.29pt, p90 1.40pt, MAX 11.50pt; only 94/110 pages agree
+# within 1pt and 103/110 within 2pt. The `right` metric is the gap to the single
+# rightmost glyph on the page, so it is set by whatever juts furthest right — and
+# on ~15% of pages that is a RAGGED element (a figure/caption, a display
+# equation, or a paragraph's short last line) that legitimately differs across
+# engines (worst: sample-* p4 L=32.5 vs T=44.0 = 11.5pt). Gating it would need a
+# ~16-entry allowance table that would itself mask real regressions, so the right
+# margin stays report-only. (`left` is gated because the text block's LEFT edge is
+# pinned by every full line, not a lone ragged glyph.)
 METRICS_TOLERANCE = {
     "left": 1.0,   # text-block left edge — true horizontal invariant, gated tightly
     "top": 4.5,    # first-content vertical position — loose: absorbs glyph-bbox

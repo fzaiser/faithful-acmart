@@ -4,7 +4,10 @@ The build & validation harness:
 
 - [`test.py`](test.py) — the one command runner (`build`, `check`, `accept`,
   `overlay`, `validate`, `probe`, `example`, `list`, `clean`, plus the
-  `metrics`/`linepitch` tuning views).
+  `metrics`/`linepitch` tuning views, the `sweep` format×size compile net, and
+  the on-demand `bib-oracle` that checks the pure-Typst `.bib` reader against the
+  real `bibtex` binary over the twins' `.bib` files and the well-formed mutation
+  corpus in [`../tests/bib-oracle/`](../tests/bib-oracle/)).
   Its LaTeX oracle stages the repository's ACM `.bbx`/`.cbx`/`.dbx`,
   biblatex-software files, BST, and audited `amsart.cls` beside the generated
   class. Nonzero TeX/BibTeX/Biber exits and unresolved rerun state are fatal, so

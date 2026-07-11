@@ -1,0 +1,40 @@
+% Well-formed .bib mutation corpus for `test.py bib-oracle`.
+% Every entry here MUST be input real bibtex accepts and parses: the Typst .bib
+% reader is byte-identical to bibtex on well-formed input and diverges only on
+% input bibtex rejects (crate-style \{ \} \" escaping), which must NOT appear
+% here. Each entry stresses a distinct reader path.
+@string{acm = "ACM"}
+@string{pub = acm # " Press"}
+
+@article{ws-collapse,
+  author = {Alan    Turing
+            and   Alonzo     Church},
+  title  = {Runs   of   spaces
+    and   line   breaks},
+  journal = pub,
+  year = {1936}
+}
+
+@book{nested-braces,
+  author = {Th{\'e}odore de {La Fontaine}},
+  title = {A {Nested {Brace}} Title with {\TeX}},
+  publisher = acm # " Books",
+  edition = {{Second}},
+  year = {2001}
+}
+
+@misc{quoted-and-concat,
+  title = "A quoted value with a {braced} span",
+  note = "Con" # "cat" # {enated},
+  howpublished = {Literal " quote and \{ brace \} inside braces},
+  year = {2020}
+}
+
+@inproceedings{names-and-ties,
+  author = {von der Berg, Jan and Maria de la Cruz and {The ACM}},
+  editor = {Smith, Jr., John},
+  title = {Ties and von Names},
+  booktitle = acm # " Symposium",
+  pages = {1--10},
+  year = {2019}
+}
