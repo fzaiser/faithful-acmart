@@ -23,12 +23,16 @@ missed.
 - **Validate against real LaTeX.** The harness is `tools/test.py` (run via
   `tools/venv/bin/python`), driven by the matrix in `tools/test_matrix.py`:
   `test.py build` (LaTeX refs + Typst PDFs), `test.py check`
-  (smoke/unit/golden/text/errors/hyperlinks/fonts/order/metrics), `test.py validate` (copyright modes +
-  options), then `test.py diff <stem> --pages <n>` when visual inspection is
-  needed. `test.py unit` runs the pure-Typst `tests/unit/*.typ` assertion tests
+  (smoke/sweep/unit/golden/source-data/text/errors/hyperlinks/fonts/structure/
+  order/outline/metrics + opt-in word-position and rule gates; `check --gates
+  <list>` runs a subset), `test.py validate` (copyright modes + options), then
+  `test.py overlay <stems>` or `test.py report <stems>` (side-by-side HTML)
+  when visual inspection is needed; `test.py bib-oracle` re-verifies the `.bib`
+  reader against real bibtex on demand. `test.py unit` runs the pure-Typst
+  `tests/unit/*.typ` assertion tests
   alone (no LaTeX) — they import a module and `#assert.eq` on its output (the
   `.bib` reader, `tests/unit/bibtex.typ`, is ported from the `biblatex` crate's
-  own unit tests). Output goes to `tests/out/{latex,typst,diff}` (gitignored). The harness
+  own unit tests). Output goes to `tests/out/` (gitignored). The harness
   builds LaTeX against the `acmart.cls` generated from the bundled `acmart/`
   (never the system install) and reruns pdflatex to stability — a single pass
   leaves acmart's `TotPages` unresolved and adds a spurious "Temporary page".
@@ -113,10 +117,13 @@ geometry. Modelled: `\titlenote`/`\subtitlenote`, `\thanks`,
 `\authorsaddresses`, `\received`, `acks`, `\anon`, `\grantsponsor`/`\grantnum`,
 `\editor`, `\part`, `\startPage`, teasers, badges, the review-mode margin
 ruler (fixed slots, both sides on two-column), per-size `heightrounded`
-geometry, the conference metadata (`conference`/`booktitle`/`isbn`), and the
+geometry, the conference metadata (`conference`/`booktitle`/`isbn`),
+`\noindentparagraph`, the natbib citation surface (numeric `\citet` with
+author text, postnote supplements, `cite-alt`/`cite-yearpar`/`short-cite`),
+amsart's widow/orphan prohibition (`text.costs`), and the
 opt-in booktabs `tabular`/`toprule`/`midrule`/`bottomrule` (rule separation via
 `parts/tables.typ`, a wrapper function — NOT a `show table` rule, which would
-recurse). The table row strut (`\@arstrut` = 0.7/0.3·`\baselineskip`, verified
+recurse; the box is `breakable: false` like a real `tabular`). The table row strut (`\@arstrut` = 0.7/0.3·`\baselineskip`, verified
 from `array.sty`+kernel `\strutbox`) is modelled in the cell text metrics by
 `body.typ`'s `show table` rule (`top-edge`/`bottom-edge`/`leading`), using the
 format's normalsize `\baselineskip` — so a table manually resized mid-document
