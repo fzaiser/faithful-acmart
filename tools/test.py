@@ -18,6 +18,7 @@ Commands
   sweep            compile a representative doc across every active format × base size (no LaTeX)
   accept           rebuild Typst PDFs and refresh the Tier 1 golden hashes
   overlay [stems]  per-twin vector <name>-overlay.pdf + <name>-side-by-side.pdf vs LaTeX (all twins, or given stems)
+  report [stems]   self-contained HTML LaTeX-vs-Typst page comparison (tests/out/report/); default: twins that failed the last check
   validate [names] copyright/option variants vs LaTeX, page-1 mismatch %
   probe            dump a format's ground-truth dimensions from the bundled class (--format)
   example          build the Typst example (template/main.typ)
@@ -66,6 +67,7 @@ from gates_layout import gate_metrics, gate_word_positions, gate_horizontal_rule
 from overlay import cmd_overlay
 from validate import gate_validate, cmd_validate
 from bib_oracle import cmd_bib_oracle
+from report import cmd_report, record_check_status
 
 
 # ---------------------------------------------------------------------------
@@ -227,11 +229,17 @@ def cmd_check(args) -> int:
     compiled = compile_all_typst()
 
     ok = True
+    gate_failures: dict[str, list[str]] = {}
     for slug, title, thunk in _check_gates(args, compiled):
         if selected is not None and slug not in selected:
             continue
         print(f"\n== {title} ==")
-        ok &= _run_gate(title, thunk())
+        failures = thunk()
+        gate_failures[slug] = failures
+        ok &= _run_gate(title, failures)
+    # Record which gates flagged which twin so `test.py report` (with no stems)
+    # can default to the failing twins. Written into tests/out/ (gitignored).
+    record_check_status(gate_failures)
     return 0 if ok else 1
 def cmd_accept(_args) -> int:
     print("Compiling Typst test PDFs…")
@@ -405,6 +413,12 @@ def main() -> int:
                        help="copyright/option variants vs LaTeX (page-1 mismatch pct)")
     v.add_argument("names", nargs="*", help="variant names (default: all)")
     v.set_defaults(fn=cmd_validate)
+
+    r = sub.add_parser("report",
+                       help="write a self-contained HTML LaTeX-vs-Typst comparison report")
+    r.add_argument("stems", nargs="*",
+                   help="twin stems (default: twins that failed the last check)")
+    r.set_defaults(fn=cmd_report)
 
     p = sub.add_parser("probe", help="dump a format's dimensions from the bundled class")
     p.add_argument("--format", default="acmsmall")

@@ -24,8 +24,16 @@ The build & validation harness:
   [`gates_semantic.py`](gates_semantic.py) (metadata/links/fonts/structure/order/outline),
   [`gates_layout.py`](gates_layout.py) (metrics/word-positions/rules),
   [`overlay.py`](overlay.py) (vector overlay/side-by-side),
-  [`validate.py`](validate.py) (copyright/option variants), and
+  [`validate.py`](validate.py) (copyright/option variants),
+  [`report.py`](report.py) (the `report` HTML comparison view), and
   [`bib_oracle.py`](bib_oracle.py) (the on-demand `.bib`-reader oracle).
+- `test.py report [<stem> …]` writes a self-contained
+  `tests/out/report/index.html` (with page PNGs alongside it) placing each twin's
+  LaTeX and Typst pages side by side, plus the vector overlay (Typst red / LaTeX
+  blue) as a third column where Ghostscript/qpdf are present, and heads each twin
+  with the gates that flagged it in the most recent `check`. With no stems it
+  defaults to the twins that failed that check. All output is under `tests/out/`
+  (gitignored); no baseline images are stored in git.
 - [`test_matrix.py`](test_matrix.py) — the test matrix and gate data (tests, text
   assertions, metric tolerances, expected errors, validation variants, the pinned
   Typst version, and the golden DPI).
