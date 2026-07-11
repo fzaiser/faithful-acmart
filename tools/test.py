@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import functools
 import hashlib
 import json
 import os
@@ -93,12 +94,34 @@ def typst_pdf(name: str) -> Path:
 # ---------------------------------------------------------------------------
 # PDF / raster helpers (Poppler)
 # ---------------------------------------------------------------------------
+# Per-run extraction memo: threaded through the `check` gates so each PDF is
+# parsed once (pdftotext / pikepdf / PyMuPDF are the run's dominant cost) instead
+# of once per gate. Keyed on path + mtime so a rebuilt PDF is never served stale.
+_EXTRACT_CACHE: dict[tuple, object] = {}
+
+
+def _pdf_memo(fn):
+    """Cache an extractor's result per (function, pdf path, mtime, extra args)."""
+    @functools.wraps(fn)
+    def wrapped(pdf, *args, **kwargs):
+        try:
+            stamp = Path(pdf).stat().st_mtime_ns
+        except OSError:
+            stamp = None
+        key = (fn.__name__, str(pdf), stamp, args, tuple(sorted(kwargs.items())))
+        if key not in _EXTRACT_CACHE:
+            _EXTRACT_CACHE[key] = fn(pdf, *args, **kwargs)
+        return _EXTRACT_CACHE[key]
+    return wrapped
+
+
 def page_count(pdf: Path) -> int:
     out = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True).stdout
     m = re.search(r"^Pages:\s+(\d+)", out, re.M)
     return int(m.group(1)) if m else -1
 
 
+@_pdf_memo
 def pdf_info(pdf: Path) -> dict[str, str]:
     """Poppler document-information fields as a simple name/value mapping."""
     proc = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True)
@@ -134,6 +157,7 @@ _WORD_RE = re.compile(
 )
 
 
+@_pdf_memo
 def words(pdf: Path) -> dict:
     """1-based page index -> {w, h, words:[(x0,y0,x1,y1,text), ...]} via pdftotext -bbox."""
     out = subprocess.run(
@@ -180,6 +204,7 @@ def page_metrics(page: dict) -> dict | None:
             "pitch": pitch, "pitches": grid}
 
 
+@_pdf_memo
 def pdf_text(pdf: Path, page: int | None = None) -> str:
     cmd = ["pdftotext"]
     if page is not None:
@@ -191,6 +216,7 @@ def pdf_text(pdf: Path, page: int | None = None) -> str:
     return proc.stdout
 
 
+@_pdf_memo
 def extract_uris(pdf: Path) -> Counter[str]:
     """External hyperlink annotation targets, preserving multiplicity."""
     try:
@@ -207,6 +233,7 @@ def extract_uris(pdf: Path) -> Counter[str]:
     return found
 
 
+@_pdf_memo
 def extract_internal_links(pdf: Path) -> dict:
     """Internal PDF link summary, normalized across named and direct destinations.
 
@@ -610,6 +637,11 @@ def gate_matrix_integrity(report: bool = False) -> list[str]:
                 failures.append(f"{name}: {kind} residual signature has no expected diff evidence")
     for orphan in sorted(set(M.EXPECTED_RESIDUALS) - set(TESTS)):
         failures.append(f"matrix: residual signature for unknown test {orphan}")
+    for orphan in sorted(set(M.METADATA_EXPECTATIONS) - set(TESTS)):
+        failures.append(f"matrix: metadata expectation for unknown test {orphan}")
+    for non_twin in sorted(name for name in M.METADATA_EXPECTATIONS
+                           if name in TESTS and TESTS[name].kind != "twin"):
+        failures.append(f"matrix: metadata expectation belongs to non-twin {non_twin}")
     for label, mapping in (("link", M.EXPECTED_LINK_DIFFS),
                            ("dash", M.EXPECTED_DASH_DIFFS),
                            ("metric", M.EXPECTED_METRIC_DIFFS)):
@@ -1552,7 +1584,7 @@ def gate_errors() -> list[str]:
         proc = subprocess.run(
             [str(TC), "compile", str(src), str(ERROR / f"{name}.pdf"),
              "--diagnostic-format", "short"],
-            capture_output=True, text=True,
+            capture_output=True, text=True, env={**os.environ, **TEST_CLOCK_ENV},
         )
         diagnostics = proc.stderr + proc.stdout
         if proc.returncode == 0:
@@ -1714,18 +1746,29 @@ def cmd_build(args) -> int:
     build_all_latex(jobs=args.jobs, force=args.force)
     print("Compiling Typst test PDFs…")
     compiled = compile_all_typst()
+    # Warnings fail the build, consistent with gate_smoke: a clean compile emits
+    # nothing on stderr, so any Typst warning here is a regression.
     bad = _compile_failures(compiled)
+    warned = [f"{name}: {stderr.strip()}" for name, (rc, stderr) in compiled.items()
+              if rc == 0 and "warning" in stderr.lower()]
     print("Building the Typst example…")
     example_rc, example_stderr = compile_typst(TEMPLATE, TYPST / "main.pdf")
     if example_stderr.strip():
         print(example_stderr.strip(), file=sys.stderr)
+    example_warn = example_rc == 0 and "warning" in example_stderr.lower()
     if bad:
         print("WARNING: Typst test sources failed to compile:", file=sys.stderr)
         for failure in bad:
             print(f"  - {failure}", file=sys.stderr)
+    if warned:
+        print("WARNING: Typst test sources emitted warnings:", file=sys.stderr)
+        for failure in warned:
+            print(f"  - {failure}", file=sys.stderr)
     if example_rc != 0:
         print(f"WARNING: Typst example failed to compile (rc={example_rc})", file=sys.stderr)
-    if bad or example_rc != 0:
+    elif example_warn:
+        print("WARNING: Typst example emitted warnings", file=sys.stderr)
+    if bad or warned or example_rc != 0 or example_warn:
         return 1
     print(f"\nBuilt {len(TESTS)} Typst PDFs + example into {TYPST.relative_to(ROOT)}/.")
     return 0
@@ -1833,6 +1876,7 @@ def _font_color(c: int) -> tuple[int, int, int]:
     return (q((c >> 16) & 255), q((c >> 8) & 255), q(c & 255))
 
 
+@_pdf_memo
 def font_bag(pdf: Path) -> Counter:
     """Multiset of (letter, family, bold, italic, size, colour) over every glyph.
     LETTERS only — punctuation and symbols sit at font boundaries / come from
@@ -2143,45 +2187,62 @@ def cmd_min_version(_args) -> int:
     return 1 if failures else 0
 
 
+def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
+    """Ordered (slug, tier title, thunk) for every `check` gate.
+
+    The slug is the stable name used by `--gates`; the thunk closes over the
+    already-built LaTeX refs / compiled Typst so a gate is invoked identically
+    whether the run is full or filtered.
+    """
+    return [
+        ("matrix-integrity", "Tier 0.1 (matrix integrity)", gate_matrix_integrity),
+        ("source-data",      "Tier 0.15 (source data)",     gate_source_data),
+        ("latex-oracle",     "Tier 0.25 (LaTeX oracle)",    gate_latex_oracle),
+        ("smoke",            "Tier 0 (smoke)",              lambda: gate_smoke(compiled)),
+        ("unit",             "Tier 0.5 (unit)",             gate_unit),
+        ("package",          "Tier 0.75 (package)",         gate_package),
+        ("golden",           "Tier 1 (golden)",             gate_golden),
+        ("text",             "Tier 1.5 (text)",             gate_text),
+        ("metadata",         "Tier 1.55 (metadata)",        gate_metadata),
+        ("errors",           "Tier 1.6 (expected errors)",  gate_errors),
+        ("links",            "Tier 1.7 (hyperlinks)",       gate_links),
+        ("validate",         "Tier 1.75 (validation variants)", lambda: gate_validate(args.jobs, args.force)),
+        ("fonts",            "Tier 1.8 (fonts)",            gate_fonts),
+        ("structure",        "Tier 1.85 (structure)",       gate_structure),
+        ("order",            "Tier 1.9 (order)",            gate_order),
+        ("metrics",          "Tier 2 (metrics)",            gate_metrics),
+    ]
+
+
+CHECK_GATE_SLUGS = [
+    "matrix-integrity", "source-data", "latex-oracle", "smoke", "unit",
+    "package", "golden", "text", "metadata", "errors", "links", "validate",
+    "fonts", "structure", "order", "metrics",
+]
+
+
 def cmd_check(args) -> int:
+    selected = None
+    if args.gates:
+        selected = [s.strip() for s in args.gates.split(",") if s.strip()]
+        unknown = [s for s in selected if s not in CHECK_GATE_SLUGS]
+        if unknown:
+            print("unknown gate(s): " + ", ".join(unknown), file=sys.stderr)
+            print("available: " + ", ".join(CHECK_GATE_SLUGS), file=sys.stderr)
+            return 2
+
+    _EXTRACT_CACHE.clear()
     print("Building LaTeX references…")
     build_all_latex(jobs=args.jobs, force=args.force)
     print("Compiling Typst test PDFs once…")
     compiled = compile_all_typst()
 
     ok = True
-    print("\n== Tier 0.1 (matrix integrity) ==")
-    ok &= _run_gate("Tier 0.1 (matrix integrity)", gate_matrix_integrity())
-    print("\n== Tier 0.15 (source data) ==")
-    ok &= _run_gate("Tier 0.15 (source data)", gate_source_data())
-    print("\n== Tier 0.25 (LaTeX oracle) ==")
-    ok &= _run_gate("Tier 0.25 (LaTeX oracle)", gate_latex_oracle())
-    print("\n== Tier 0 (smoke) ==")
-    ok &= _run_gate("Tier 0 (smoke)", gate_smoke(compiled))
-    print("\n== Tier 0.5 (unit) ==")
-    ok &= _run_gate("Tier 0.5 (unit)", gate_unit())
-    print("\n== Tier 0.75 (package) ==")
-    ok &= _run_gate("Tier 0.75 (package)", gate_package())
-    print("\n== Tier 1 (golden) ==")
-    ok &= _run_gate("Tier 1 (golden)", gate_golden())
-    print("\n== Tier 1.5 (text) ==")
-    ok &= _run_gate("Tier 1.5 (text)", gate_text())
-    print("\n== Tier 1.55 (metadata) ==")
-    ok &= _run_gate("Tier 1.55 (metadata)", gate_metadata())
-    print("\n== Tier 1.6 (expected errors) ==")
-    ok &= _run_gate("Tier 1.6 (expected errors)", gate_errors())
-    print("\n== Tier 1.7 (hyperlinks) ==")
-    ok &= _run_gate("Tier 1.7 (hyperlinks)", gate_links())
-    print("\n== Tier 1.75 (validation variants) ==")
-    ok &= _run_gate("Tier 1.75 (validation variants)", gate_validate(args.jobs, args.force))
-    print("\n== Tier 1.8 (fonts) ==")
-    ok &= _run_gate("Tier 1.8 (fonts)", gate_fonts())
-    print("\n== Tier 1.85 (structure) ==")
-    ok &= _run_gate("Tier 1.85 (structure)", gate_structure())
-    print("\n== Tier 1.9 (order) ==")
-    ok &= _run_gate("Tier 1.9 (order)", gate_order())
-    print("\n== Tier 2 (metrics) ==")
-    ok &= _run_gate("Tier 2 (metrics)", gate_metrics())
+    for slug, title, thunk in _check_gates(args, compiled):
+        if selected is not None and slug not in selected:
+            continue
+        print(f"\n== {title} ==")
+        ok &= _run_gate(title, thunk())
     return 0 if ok else 1
 
 
@@ -2621,8 +2682,12 @@ def main() -> int:
                            help="build and page-check selected matrix tests")
     smoke.add_argument("names", nargs="*", help="test names (default: all)")
     smoke.set_defaults(fn=cmd_smoke)
-    sub.add_parser("check", parents=[par],
-                   help="run all regression gates").set_defaults(fn=cmd_check)
+    check = sub.add_parser("check", parents=[par], help="run all regression gates")
+    check.add_argument(
+        "--gates", metavar="LIST",
+        help="run only these comma-separated gates (default: all). "
+             "Choices: " + ", ".join(CHECK_GATE_SLUGS))
+    check.set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
     sub.add_parser("unit", help="run pure-Typst unit tests (tests/unit/*.typ); no LaTeX").set_defaults(fn=cmd_unit)
     sub.add_parser("package", help="validate and compile the manifest-filtered package").set_defaults(fn=cmd_package)
