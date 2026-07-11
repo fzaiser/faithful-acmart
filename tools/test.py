@@ -801,6 +801,148 @@ def _typst_bib_data() -> dict[str, dict[str, str]]:
     }
 
 
+# --- Copyright / permission source-data oracle -----------------------------
+#
+# The first-page copyright block's permission paragraph and owner string for all
+# 16 \setcopyright modes, plus the Creative Commons name/version/URL tables, are
+# transcribed into src/parts/copyright.typ. These helpers reparse them out of the
+# bundled acmart.dtx and out of the Typst source so the gate can diff both — the
+# same parse-the-dtx-and-diff mechanism used for the journal choice table.
+
+def _fold_quotes(text: str) -> str:
+    return (text.replace("’", "'").replace("‘", "'")
+                .replace("“", '"').replace("”", '"'))
+
+
+def _normalize_dtx_copyright(text: str) -> str:
+    """Reduce a dtx \\ifcase arm to comparable plain text (TeX stripped)."""
+    text = re.sub(r"%.*", "", text)                 # drop label + line-cont comments
+    text = text.replace(r"\hspace*{.5pt}", "")      # thin-space slash kern
+    text = text.replace(r"\@", "")                  # sentence-spacing hint
+    text = text.replace("~", " ").replace(r"\&", "&")
+    return re.sub(r"\s+", " ", _fold_quotes(text)).strip()
+
+
+def _normalize_typst_copyright(value: str) -> str | None:
+    """Reduce a Typst `_mode(...)` argument (`none` or `[content]`) to plain text."""
+    if value == "none":
+        return None
+    inner = value.strip()[1:-1]                     # strip the [ ] content brackets
+    inner = inner.replace(r"\/", "/").replace(r"\@", "@").replace(r"\&", "&")
+    return re.sub(r"\s+", " ", _fold_quotes(inner)).strip()
+
+
+def _dtx_copyright_modes() -> list[str]:
+    """The authoritative ordered mode names from the \\define@choicekey list."""
+    source = (ACMART / "acmart.dtx").read_text()
+    match = re.search(r"\]\{none,%\s*(.*?)\}\{%", source, re.S)
+    body = re.sub(r"%", "", "none," + match.group(1))
+    return [token.strip() for token in body.split(",") if token.strip()]
+
+
+def _dtx_ifcase_arms(macro: str) -> list[str]:
+    """Split a `\\def\\<macro>{\\ifcase\\acm@copyrightmode ...}` into its arms."""
+    source = (ACMART / "acmart.dtx").read_text()
+    start = source.index(r"\ifcase\acm@copyrightmode\relax", source.index("\\def\\" + macro + "{"))
+    block = source[start:source.index(r"\fi}", start)]
+    block = block[len(r"\ifcase\acm@copyrightmode\relax"):]
+    return block.split(r"\or")
+
+
+def _latex_copyright_data() -> dict[str, object]:
+    modes = _dtx_copyright_modes()
+    owner_arms = _dtx_ifcase_arms("@copyrightowner")
+    perm_arms = _dtx_ifcase_arms("@copyrightpermission")
+    if not (len(modes) == len(owner_arms) == len(perm_arms)):
+        raise ValueError(
+            f"copyright parse desync: {len(modes)} modes, {len(owner_arms)} owner arms, "
+            f"{len(perm_arms)} permission arms")
+    owner = {m: _normalize_dtx_copyright(a) or None for m, a in zip(modes, owner_arms)}
+    permission = {m: _normalize_dtx_copyright(a) or None for m, a in zip(modes, perm_arms)}
+    # The `cc` permission arm is the badge/link machinery, compared via the CC tables.
+    permission["cc"] = None
+
+    source = (ACMART / "acmart.dtx").read_text()
+    cc_start = source.index(r"\or % CC")
+    cc_arm = source[cc_start:source.index(r"\fi}", cc_start)]
+    cc_names = dict(re.findall(r"\\IfEq\{\\ACM@cc@type\}\{([a-z0-9-]+)\}\{([^{}]*)\}", cc_arm))
+    version = re.search(r"\\IfEq\{\\ACM@cc@version\}\{4\.0\}\{([^{}]*)\}\{([^{}]*)\}", cc_arm)
+    zero_url = re.search(r"\\def\\ACM@CC@Url\{(https://[^}]*)\}", cc_arm).group(1)
+    lic_url = re.search(r"\\edef\\ACM@CC@Url\{(https://[^}]*)\}", cc_arm).group(1)
+    lic_url = lic_url.replace(r"\ACM@cc@type", "{type}").replace(r"\ACM@cc@version", "{version}")
+    return {
+        "modes": modes, "owner": owner, "permission": permission,
+        "cc-names": cc_names,
+        "cc-4.0": version.group(1), "cc-3.0": version.group(2),
+        "cc-zero-url": zero_url, "cc-lic-url": lic_url,
+    }
+
+
+def _typst_copyright_data() -> dict[str, object]:
+    source = (ROOT / "src" / "parts" / "copyright.typ").read_text()
+    start = source.index("#let _copyright-modes = (")
+    body = source[start:source.index("\n)", start)]
+    owner: dict[str, str | None] = {}
+    permission: dict[str, str | None] = {}
+    modes: list[str] = []
+    entry = re.compile(
+        r'^\s*(?:"([^"]+)"|([A-Za-z][\w-]*)): _mode\((none|\[.*\]), (none|\[.*\])\),\s*$', re.M)
+    declarations = len(re.findall(r"^\s*(?:\"[^\"]+\"|[A-Za-z][\w-]*): _mode\(", body, re.M))
+    for quoted, bare, perm, own in entry.findall(body):
+        key = quoted or bare
+        modes.append(key)
+        permission[key] = _normalize_typst_copyright(perm)
+        owner[key] = _normalize_typst_copyright(own)
+    if len(modes) != declarations:
+        raise ValueError(
+            f"parsed only {len(modes)} of {declarations} entries in _copyright-modes")
+
+    names_start = source.index("#let _cc-names = (")
+    names_body = source[names_start:source.index("\n)", names_start)]
+    cc_names = {
+        (quoted or bare): value
+        for quoted, bare, value in re.findall(
+            r'^\s*(?:"([^"]+)"|([\w-]+)):\s*"([^"]*)",\s*$', names_body, re.M)
+    }
+    statement = source[source.index("#let cc-statement"):]
+    version = re.search(
+        r'if cc-version == "4\.0" \{ "([^"]*)" \} else \{ "([^"]*)" \}', statement)
+    zero_url = re.search(
+        r'"(https://creativecommons\.org/publicdomain/zero/[^"]*)"', statement).group(1)
+    lic = re.search(
+        r'"(https://creativecommons\.org/licenses/)" \+ cc-type \+ "(/)" \+ cc-version',
+        statement)
+    return {
+        "modes": modes, "owner": owner, "permission": permission,
+        "cc-names": cc_names,
+        "cc-4.0": version.group(1), "cc-3.0": version.group(2),
+        "cc-zero-url": zero_url, "cc-lic-url": lic.group(1) + "{type}" + lic.group(2) + "{version}",
+    }
+
+
+def _compare_copyright_data(failures: list[str]) -> None:
+    expected = _latex_copyright_data()
+    actual = _typst_copyright_data()
+    if expected["modes"] != actual["modes"]:
+        failures.append(
+            "copyright modes: order/set differs from acmart.dtx\n"
+            f"    expected: {expected['modes']}\n"
+            f"    actual:   {actual['modes']}")
+    for field in ("permission", "owner"):
+        _compare_transcribed_mapping(
+            failures, f"copyright {field}", "acmart.dtx",
+            expected[field], actual[field])
+    _compare_transcribed_mapping(
+        failures, "copyright cc-names", "acmart.dtx",
+        expected["cc-names"], actual["cc-names"])
+    for key in ("cc-4.0", "cc-3.0", "cc-zero-url", "cc-lic-url"):
+        if expected[key] != actual[key]:
+            failures.append(
+                f"copyright {key}: differs from acmart.dtx\n"
+                f"    expected: {expected[key]!r}\n"
+                f"    actual:   {actual[key]!r}")
+
+
 def _compare_transcribed_mapping(
         failures: list[str], label: str, upstream: str,
         expected: dict[str, str], actual: dict[str, str]) -> None:
@@ -853,6 +995,11 @@ def gate_source_data(report: bool = False) -> list[str]:
     except (OSError, ValueError) as error:
         failures.append(f"bibliography source-data parser failed: {error}")
 
+    try:
+        _compare_copyright_data(failures)
+    except (OSError, ValueError, AttributeError) as error:
+        failures.append(f"copyright source-data parser failed: {error}")
+
     math_tables = (
         ("_math-sym", "math-symbols", True),
         ("_math-op-cw", "math-operators", True),
@@ -880,6 +1027,7 @@ def gate_source_data(report: bool = False) -> list[str]:
             f"ok   {len(actual)} journal records match acmart.dtx (PACMNET typo corrected); "
             f"{len(bib_actual['journal-macros'])} BST journal macros and "
             f"{len(bib_actual['journal-canon'])} canonical abbreviations match; "
+            f"16 copyright modes + CC tables match; "
             f"{len(math_tables)} math tables exhaustively tested")
     return failures
 

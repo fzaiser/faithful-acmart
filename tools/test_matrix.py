@@ -1418,6 +1418,13 @@ VARIANTS: dict[str, tuple[str, str, str]] = {
     "usgovmixed":     ("", r"\setcopyright{usgovmixed}",     '  copyright: "usgovmixed",\n'),
     "cc-by-nc-sa":    ("", "\\setcopyright{cc}\n\\setcctype{by-nc-sa}",
                        '  copyright: "cc", cc-type: "by-nc-sa",\n'),
+    # A non-CC "published under CC-BY" conference mode: no badge, its own
+    # permission paragraph + IW3C2 owner line (acmart.dtx:6187/6346).
+    "iw3c2w3":        ("", r"\setcopyright{iw3c2w3}",           '  copyright: "iw3c2w3",\n'),
+    # CC0: the public-domain badge + "CC0 1.0 Universal" special case, exercising
+    # the badge-image layout with the version-independent name/URL.
+    "cc-zero":        ("", "\\setcopyright{cc}\n\\setcctype{zero}",
+                       '  copyright: "cc", cc-type: "zero",\n'),
     "screen":    (",screen", r"\setcopyright{acmlicensed}", '  screen: true,\n'),
     "review":    (",review", r"\setcopyright{acmlicensed}", '  review: true,\n'),
     "anonymous": (",anonymous", r"\setcopyright{acmlicensed}", '  anonymous: true,\n'),
@@ -1441,6 +1448,8 @@ VARIANT_MISMATCH_MAX: dict[str, float] = {
     "usgov": 4.00,
     "usgovmixed": 4.50,
     "cc-by-nc-sa": 3.75,
+    "iw3c2w3": 4.50,
+    "cc-zero": 3.75,
     "screen": 4.75,
     "review": 5.00,
     "anonymous": 4.50,
