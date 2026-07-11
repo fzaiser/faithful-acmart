@@ -268,6 +268,14 @@ EXPECTED_LINK_DIFFS: dict[str, ExpectedLinkDiff] = {
     "sample-acmengage": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.engage-csedu.org/ontology", "https://doi.org/10.1145/1188913.1188915", "http://ccrma.stanford.edu/~jos/bayes/bayes.html"), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://creativecommons.org/licenses/by/4.0")),
 }
 
+# Legitimate section-bookmark differences vs LaTeX (Tier 1.95). Maps a twin to a
+# one-line reason. Empty by design: with numbered-section restriction, quote
+# folding, and LaTeX-depth capping, every twin's section outline currently agrees
+# (only frontmatter \addcontentsline bookmarks and deeper Typst levels differ,
+# both excluded by construction). An entry here says "this twin's section
+# bookmark titles legitimately diverge" — add one only with a verified reason.
+EXPECTED_OUTLINE_DIFFS: dict[str, str] = {}
+
 _DASH_EXTRACTION = "exact normalized dash residual caused by cross-engine extraction/reflow"
 EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
     "figure-heading-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),

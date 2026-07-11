@@ -325,6 +325,18 @@ def extract_internal_links(pdf: Path) -> dict:
     return {
         "count": len(links),
         "unique_targets": len({target for _, target in links}),
+        "pages": len(doc.pages),
+        # Multiset of resolved target page numbers (previously computed then
+        # discarded). Cross-engine equality against LaTeX is deliberately NOT
+        # gated: measured across the twin set the two engines' internal-link
+        # target-page multisets diverge broadly and legitimately — hyperref emits
+        # more internal links than Typst (section \autoref backrefs, author-year
+        # multi-\cite), and on multi-page docs pagination drifts (the documented
+        # \flushbottom/ragged-bottom difference). So a cross-engine comparison
+        # would need a per-twin exemption the size of the divergence; the outline
+        # gate owns cross-engine SECTION target pages (page-1 anchored), and this
+        # multiset instead feeds a Typst-side validity check (targets in range).
+        "target_pages": Counter(target[0] for _, target in links),
     }
 
 
@@ -657,7 +669,8 @@ def gate_matrix_integrity(report: bool = False) -> list[str]:
             failures.append(f"matrix: metadata {label} belongs to non-twin {non_twin}")
     for label, mapping in (("link", M.EXPECTED_LINK_DIFFS),
                            ("dash", M.EXPECTED_DASH_DIFFS),
-                           ("metric", M.EXPECTED_METRIC_DIFFS)):
+                           ("metric", M.EXPECTED_METRIC_DIFFS),
+                           ("outline", M.EXPECTED_OUTLINE_DIFFS)):
         for orphan in sorted(set(mapping) - set(TESTS)):
             failures.append(f"matrix: expected {label} residual for unknown test {orphan}")
         for non_twin in sorted(name for name in mapping if name in TESTS and TESTS[name].kind != "twin"):
@@ -1996,6 +2009,90 @@ def gate_horizontal_rules(report: bool = False) -> list[str]:
     return failures
 
 
+_SECTION_NUMBER = re.compile(r"^\d+(?:\.\d+)*\s")
+
+
+@_pdf_memo
+def outline(pdf: Path) -> list[tuple[int, str, int]]:
+    """PDF bookmarks as (level, normalized-title, target-page) via PyMuPDF."""
+    import fitz
+    doc = fitz.open(pdf)
+    try:
+        return [(lvl, re.sub(r"\s+", " ", title).strip(), page)
+                for lvl, title, page in doc.get_toc(simple=True)]
+    finally:
+        doc.close()
+
+
+def _numbered_sections(entries: list[tuple[int, str, int]]) -> list[tuple[str, int]]:
+    """(quote-folded title, page) for numbered-section bookmarks only.
+
+    Restricting to numbered sections drops the frontmatter/backmatter entries
+    acmart bookmarks via \\addcontentsline (Abstract, Synopsis, Acknowledgments,
+    References) that Typst — which bookmarks headings, not those blocks — has no
+    counterpart for. Quotes are folded because hyperref writes the raw TeX
+    ``...'' where Typst writes real quotation marks."""
+    def norm(title: str) -> str:
+        # hyperref writes raw TeX quote ligatures into bookmarks (``…'' / `…');
+        # fold them to plain quotes to meet Typst's real quotation marks.
+        title = title.replace("``", '"').replace("''", '"').replace("`", "'")
+        return _fold_quotes(title)
+    return [(norm(t), p) for _lvl, t, p in entries if _SECTION_NUMBER.match(t)]
+
+
+def gate_outline(report: bool = False) -> list[str]:
+    """Tier 1.95 — PDF bookmark (outline) parity vs LaTeX for every twin.
+
+    Compares the numbered-section bookmark sequence (title incl. its number, so
+    nesting depth is implied), capping Typst to LaTeX's own bookmark depth (Typst
+    bookmarks subsubsections/paragraphs that acmart's depth omits). Target PAGE is
+    checked only for page-1-anchored entries — later-page bookmark targets drift
+    with the documented multi-page page-fill difference. If LaTeX bookmarks any
+    numbered section, Typst must emit a non-empty outline (catches lost tagging)."""
+    try:
+        import fitz  # noqa: F401
+    except ImportError:
+        return ["Tier 1.95 (outline) requires PyMuPDF (run `uv sync`)"]
+    failures: list[str] = []
+    for name, t in TESTS.items():
+        if t.kind != "twin":
+            continue
+        lref, tpdf = latex_pdf(name, t), typst_pdf(name)
+        if not lref.exists() or not tpdf.exists():
+            failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
+            continue
+        lsec = _numbered_sections(outline(lref))
+        tout = outline(tpdf)
+        if not lsec:
+            continue
+        if not tout:
+            failures.append(f"{name}: LaTeX bookmarks {len(lsec)} section(s) but the "
+                            f"Typst PDF has no outline at all")
+            continue
+        depth = max(title.split(" ")[0].count(".") for title, _ in lsec)
+        tsec = [(title, page) for title, page in _numbered_sections(tout)
+                if title.split(" ")[0].count(".") <= depth]
+        exempt = M.EXPECTED_OUTLINE_DIFFS.get(name)
+        if [s[0] for s in lsec] != [s[0] for s in tsec]:
+            if exempt:
+                if report:
+                    print(f"diff  {name}: expected outline difference ({exempt})")
+                continue
+            failures.append(
+                f"{name}: section bookmark titles differ vs LaTeX\n"
+                f"    LaTeX: {[s[0] for s in lsec]}\n    Typst: {[s[0] for s in tsec]}")
+            continue
+        page1 = [(lt, lp, tp) for (lt, lp), (_tt, tp) in zip(lsec, tsec)
+                 if lp == 1 and tp != 1]
+        if page1:
+            failures.append(
+                f"{name}: section bookmark targets a page-1 section off page 1: "
+                + ", ".join(f"{lt!r} L=p{lp} T=p{tp}" for lt, lp, tp in page1))
+        elif report:
+            print(f"ok   {name}: {len(lsec)} section bookmark(s) match")
+    return failures
+
+
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
@@ -2112,6 +2209,13 @@ def gate_links(report: bool = False) -> list[str]:
             failures.append(
                 f"{name}: expected at least {t.min_internal_destinations} internal "
                 f"link destinations, found {ti['unique_targets']}")
+        # Every resolved internal-link target must land on a real page: a target
+        # page outside [1, pages] means a dangling/misresolved destination.
+        stray = sorted(p for p in ti["target_pages"] if not 1 <= p <= ti["pages"])
+        if stray:
+            failures.append(
+                f"{name}: internal links target out-of-range pages {stray} "
+                f"(document has {ti['pages']} pages)")
         elif report:
             print(f"ok   {name}: {ti['count']} internal links, "
                   f"{ti['unique_targets']} destination(s)")
@@ -2494,6 +2598,7 @@ def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
         ("fonts",            "Tier 1.8 (fonts)",            gate_fonts),
         ("structure",        "Tier 1.85 (structure)",       gate_structure),
         ("order",            "Tier 1.9 (order)",            gate_order),
+        ("outline",          "Tier 1.95 (outline)",         gate_outline),
         ("metrics",          "Tier 2 (metrics)",            gate_metrics),
         ("word-positions",   "Tier 2.5 (word positions)",   gate_word_positions),
         ("rules",            "Tier 2.6 (horizontal rules)", gate_horizontal_rules),
@@ -2503,7 +2608,7 @@ def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
 CHECK_GATE_SLUGS = [
     "matrix-integrity", "source-data", "latex-oracle", "smoke", "unit",
     "package", "golden", "text", "metadata", "errors", "links", "validate",
-    "fonts", "structure", "order", "metrics", "word-positions", "rules",
+    "fonts", "structure", "order", "outline", "metrics", "word-positions", "rules",
 ]
 
 
