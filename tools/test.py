@@ -1897,6 +1897,105 @@ def gate_word_positions(report: bool = False) -> list[str]:
     return failures
 
 
+@_pdf_memo
+def horizontal_rules(pdf: Path) -> dict[int, list[tuple]]:
+    """1-based page -> list of (thickness, colour, x_mid, x_width) horizontal rules.
+
+    A rule is a stroked line or a thin filled rectangle whose long axis is
+    horizontal. LaTeX draws booktabs/footnote rules as thin filled boxes and
+    strokes; Typst strokes them — both reduce to the same tuple, so the gate is
+    engine-neutral. Colour is quantised to a 1/16 grid to absorb CMYK rounding."""
+    import fitz
+    out: dict[int, list[tuple]] = {}
+    doc = fitz.open(pdf)
+    try:
+        for pno in range(doc.page_count):
+            rules: list[tuple] = []
+            for drawing in doc[pno].get_drawings():
+                if drawing["type"] not in ("s", "sf", "fs"):
+                    continue
+                width = drawing.get("width") or 0.0
+                colour = drawing.get("color") or (0.0, 0.0, 0.0)
+                colour_q = tuple(round(c * 16) / 16 for c in colour)
+                for item in drawing["items"]:
+                    if item[0] == "l":
+                        p1, p2 = item[1], item[2]
+                        if abs(p1.y - p2.y) < 0.4 and abs(p1.x - p2.x) > 2:
+                            rules.append((width, colour_q, (p1.x + p2.x) / 2, abs(p2.x - p1.x)))
+                    elif item[0] == "re":
+                        r = item[1]
+                        if r.height < 3 and r.width > 2:
+                            rules.append((r.height, colour_q, (r.x0 + r.x1) / 2, r.width))
+            if rules:
+                out[pno + 1] = rules
+    finally:
+        doc.close()
+    return out
+
+
+def _match_rules(lrules: list[tuple], trules: list[tuple]) -> tuple[list, list]:
+    """Bijectively pair rules by colour (exact), thickness/x-mid/x-width (toleranced).
+    Returns (LaTeX-only, Typst-only) rules that found no partner."""
+    used = [False] * len(trules)
+    unmatched_l = []
+    for a in lrules:
+        partner = -1
+        for j, b in enumerate(trules):
+            if used[j] or a[1] != b[1]:
+                continue
+            if (abs(a[0] - b[0]) <= M.RULE_THICKNESS_TOL
+                    and abs(a[2] - b[2]) <= M.RULE_XMID_TOL
+                    and abs(a[3] - b[3]) <= M.RULE_XWIDTH_TOL):
+                partner = j
+                break
+        if partner < 0:
+            unmatched_l.append(a)
+        else:
+            used[partner] = True
+    unmatched_t = [trules[j] for j in range(len(trules)) if not used[j]]
+    return unmatched_l, unmatched_t
+
+
+def _fmt_rule(r: tuple) -> str:
+    return f"(w={r[0]:.2f} rgb={r[1]} xmid={r[2]:.1f} xw={r[3]:.1f})"
+
+
+def gate_horizontal_rules(report: bool = False) -> list[str]:
+    """Tier 2.6 — horizontal-rule weight/colour/extent on opt-in (``rule_gate``)
+    twins. Each LaTeX rule must find a distinct Typst rule of matching colour,
+    thickness (±0.05pt), x-midpoint (±1.5pt) and x-width (±8pt), and vice versa.
+    Needs PyMuPDF."""
+    try:
+        import fitz  # noqa: F401
+    except ImportError:
+        return ["Tier 2.6 (rules) requires PyMuPDF (run `uv sync`)"]
+    failures: list[str] = []
+    for name, t in TESTS.items():
+        if t.kind != "twin" or not t.rule_gate:
+            continue
+        lref, tpdf = latex_pdf(name, t), typst_pdf(name)
+        if not lref.exists() or not tpdf.exists():
+            failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
+            continue
+        lrules, trules = horizontal_rules(lref), horizontal_rules(tpdf)
+        total = sum(len(v) for v in lrules.values())
+        if total == 0:
+            failures.append(f"{name}: rule_gate is set but LaTeX draws no horizontal rules")
+            continue
+        local: list[str] = []
+        for p in sorted(set(lrules) | set(trules)):
+            miss, extra = _match_rules(lrules.get(p, []), trules.get(p, []))
+            if miss or extra:
+                local.append(
+                    f"    p{p}: LaTeX-only {[_fmt_rule(r) for r in miss]}; "
+                    f"Typst-only {[_fmt_rule(r) for r in extra]}")
+        if local:
+            failures.append(f"{name}: horizontal rules differ vs LaTeX\n" + "\n".join(local))
+        elif report:
+            print(f"ok   {name}: {total} horizontal rule(s) match")
+    return failures
+
+
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
@@ -2397,13 +2496,14 @@ def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
         ("order",            "Tier 1.9 (order)",            gate_order),
         ("metrics",          "Tier 2 (metrics)",            gate_metrics),
         ("word-positions",   "Tier 2.5 (word positions)",   gate_word_positions),
+        ("rules",            "Tier 2.6 (horizontal rules)", gate_horizontal_rules),
     ]
 
 
 CHECK_GATE_SLUGS = [
     "matrix-integrity", "source-data", "latex-oracle", "smoke", "unit",
     "package", "golden", "text", "metadata", "errors", "links", "validate",
-    "fonts", "structure", "order", "metrics", "word-positions",
+    "fonts", "structure", "order", "metrics", "word-positions", "rules",
 ]
 
 

@@ -80,6 +80,22 @@ METRICS_TOLERANCE = {
     "height": 0.5,  # MediaBox page height — same
 }
 
+# Horizontal-rule gate (opt-in via Test.rule_gate). Each stroked/filled
+# horizontal rule the two engines draw is normalized to (thickness, colour,
+# x-midpoint, x-width) and bijectively matched per page. Vertical POSITION is
+# deliberately not gated: where a rule sits follows content flow, which golden /
+# metrics / word-position already own — this gate pins the rule's weight, colour,
+# and extent (booktabs \heavyrulewidth/\lightrulewidth, the footnote rule, the
+# acmcp foot rule). Thickness is matched with a 0.05pt tolerance rather than
+# rounded to a bucket, so a real weight difference (≥0.1pt, e.g. a swapped
+# heavy/light constant) is caught while sub-perceptual em-scaling noise (measured
+# 0.013pt on manuscript-stretch \cmidrules) is absorbed without a bucket-boundary
+# split.
+RULE_THICKNESS_TOL = 0.05  # pt — separates 0.45/0.72 weights, absorbs em-scale noise
+RULE_XMID_TOL = 1.5        # pt — a rule's horizontal centre is a tight invariant
+RULE_XWIDTH_TOL = 8.0      # pt — loose: absorbs cross-engine column-width jitter
+                           # (measured ≤6.8pt) while catching partial-vs-full rules
+
 # Per-word position gate (opt-in via Test.word_positions). Maximum tolerated
 # |Δx0| and, after subtracting each page's median vertical offset, |Δy0| over the
 # aligned word streams of the two engines. 1.25pt clears the measured floor on
@@ -366,6 +382,7 @@ class Test:
     metrics_page1_only: str = ""
     metrics_uniform_pitch: str = ""
     word_positions: str = ""
+    rule_gate: str = ""
     text_equal: bool | str | None = None
     expected_text_diffs: tuple[ExpectedTextDiff, ...] = ()
     text_assertions: tuple[Assertion, ...] = ()
@@ -389,6 +406,8 @@ class Test:
             raise ValueError("metrics_uniform_pitch only applies to twin tests")
         if self.word_positions and self.kind != "twin":
             raise ValueError("word_positions only applies to twin tests")
+        if self.rule_gate and self.kind != "twin":
+            raise ValueError("rule_gate only applies to twin tests")
         if self.min_internal_links < 0 or self.min_internal_destinations < 0:
             raise ValueError("minimum internal-link counts cannot be negative")
         if self.review_line_numbers and self.kind != "twin":
@@ -444,6 +463,13 @@ _FONT_SIZE_PITCH_METRICS = (
 _WORD_POSITIONS = (
     "Both engines break this fixture into the same lines, so per-word x/y positions "
     "align one-to-one and pin absolute placement (indent, centering, spacing)."
+)
+_RULE_BOOKTABS = "booktabs \\toprule/\\midrule/\\bottomrule weights and extent."
+_RULE_FOOTNOTE = "footnote rule weight and extent."
+_RULE_ACMCP_FOOT = "acmcp cover foot rule weight, colour, and extent."
+_RULE_REVIEW_SAMPLE = (
+    "review-mode sample: its tables and foot rule are drawn identically across "
+    "engines (the line-number margin ticks are not horizontal rules)."
 )
 _SIGCONF_BIBLATEX_PAGE_DIFF = (
     "Typst currently reflows the numeric BibLaTeX/software reference block to "
@@ -504,7 +530,7 @@ TESTS: dict[str, Test] = {
              "guards the post-figure paragraph-indent shim from leaking into headings.",
     ),
     "body2-test": Test(
-        kind="twin", pages=1,
+        kind="twin", pages=1, rule_gate=_RULE_BOOKTABS,
         note="figure & table captions, theorems (plain/definition/proof+QED), lists",
     ),
     # Not word_positions-opted: a theorem-body line sits ~6pt off the page's
@@ -527,7 +553,7 @@ TESTS: dict[str, Test] = {
              "apply (labelsep 4pt, leftmargini 24.5pt, nested 8.5pt).",
     ),
     "fn-test": Test(
-        kind="twin", pages=1, word_positions=_WORD_POSITIONS,
+        kind="twin", pages=1, word_positions=_WORD_POSITIONS, rule_gate=_RULE_FOOTNOTE,
         note="body footnotes + code/verbatim",
     ),
     "full-test": Test(
@@ -649,6 +675,7 @@ TESTS: dict[str, Test] = {
     ),
     "acmcp-test": Test(
         kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF, text_equal=False,
+        rule_gate=_RULE_ACMCP_FOOT,
         expected_text_diffs=(
             ExpectedTextDiff(
                 latex="Code and data links: https://example.com/data Keywords: datasets",
@@ -734,7 +761,7 @@ TESTS: dict[str, Test] = {
     ),
     "longtable-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
-        text_equal=True,
+        text_equal=True, rule_gate=_RULE_BOOKTABS,
         note="A booktabs `tabular` too tall for the page-1 remainder: LaTeX moves the "
              "single unbreakable box whole to page 2, and parts/tables.typ pins Typst's "
              "`tabular` non-breakable to match (both keep all rows on page 2).",
@@ -951,12 +978,12 @@ TESTS: dict[str, Test] = {
         note="French main language plus English translated title, abstract, and keywords.",
     ),
     "language-de-test": Test(
-        kind="twin", pages=1,
+        kind="twin", pages=1, rule_gate=_RULE_BOOKTABS,
         note="German `language=german`: keywordsname/acksname/proofname + tablename "
              "(\"Tabelle\") localized, figure label still \"Fig.\"",
     ),
     "language-es-test": Test(
-        kind="twin", pages=1,
+        kind="twin", pages=1, rule_gate=_RULE_BOOKTABS,
         note="Spanish `language=spanish`: keywordsname/acksname/proofname + tablename "
              "(\"Cuadro\") localized, figure label still \"Fig.\"",
     ),
@@ -1106,7 +1133,7 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmsmall-submission": Test(
         kind="twin", pages=10, review_line_numbers=True,
-        text_equal=False,
+        text_equal=False, rule_gate=_RULE_REVIEW_SAMPLE,
         expected_text_diffs=(
             ExpectedTextDiff(
                 latex="https://doi.org/XXXXXXX.XXXXXXX Introduction ACM's consolidated "
@@ -1358,7 +1385,7 @@ TESTS: dict[str, Test] = {
     ),
     "sample-acmcp": Test(
         kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
-        text_equal="bag",
+        text_equal="bag", rule_gate=_RULE_ACMCP_FOOT,
         note="upstream acmcp sample: JDS banner, cover infobox, and author contributions.",
     ),
     "sample-acmengage": Test(
