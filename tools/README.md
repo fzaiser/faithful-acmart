@@ -12,6 +12,20 @@ The build & validation harness:
   biblatex-software files, BST, and audited `amsart.cls` beside the generated
   class. Nonzero TeX/BibTeX/Biber exits and unresolved rerun state are fatal, so
   a system TeX Live update cannot silently redefine the reference output.
+  `test.py` itself is only the CLI: the machinery lives in focused sibling
+  modules it imports —
+  [`harness.py`](harness.py) (paths, clock, Typst compile, parallel map),
+  [`pdf_extract.py`](pdf_extract.py) (PDF readers + per-run cache),
+  [`latex_build.py`](latex_build.py) (reference builds + LaTeX oracle),
+  [`source_data.py`](source_data.py) (dtx/BST/copyright parsers + package gate),
+  [`gate_residuals.py`](gate_residuals.py) (shared expected-diff helpers),
+  [`gates_core.py`](gates_core.py) (matrix/smoke/golden/errors/unit/sweep),
+  [`gates_text.py`](gates_text.py) (text/bag gate),
+  [`gates_semantic.py`](gates_semantic.py) (metadata/links/fonts/structure/order/outline),
+  [`gates_layout.py`](gates_layout.py) (metrics/word-positions/rules),
+  [`overlay.py`](overlay.py) (vector overlay/side-by-side),
+  [`validate.py`](validate.py) (copyright/option variants), and
+  [`bib_oracle.py`](bib_oracle.py) (the on-demand `.bib`-reader oracle).
 - [`test_matrix.py`](test_matrix.py) — the test matrix and gate data (tests, text
   assertions, metric tolerances, expected errors, validation variants, the pinned
   Typst version, and the golden DPI).
