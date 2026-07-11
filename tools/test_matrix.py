@@ -48,6 +48,13 @@ METADATA_EXPECTATIONS: dict[str, dict[str, str]] = {
         "Author": "Anonymous Author(s)",
         "Keywords": "datasets, anonymity",
     },
+    # Multilingual path: the PDF metadata carries the MAIN-language (French) title
+    # and keywords, not the English translation, and the sole author's name.
+    "language-test": {
+        "Title": "Une note sur la complexité de calcul",
+        "Author": "Jean Dupont",
+        "Keywords": "complexité, algorithmes, calcul",
+    },
 }
 
 # Tier 2 gate tolerances (PDF points; both engines emit 1/72in big points).
@@ -168,6 +175,7 @@ class ResidualSignatures:
 # explicit: they are machine snapshots, while Test.expected_*_diff is reviewable
 # evidence and rationale.
 EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
+    "head-test": ResidualSignatures(text="e61c9d8eb269cb52ade4868fba91b818e0f3f792f0902c8e95e2454a72551a75", font="2671b03db39c20ed5865d5f0284006c62af694b45b74bbd62e229b0cf97bbc6b"),
     "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
     "manuscript-pages-test": ResidualSignatures(text="13857b6c3436762b1c09a161ad0ba212a0fc064b6c149ce01b1dc4ec95b82cfd"),
     "mathfields": ResidualSignatures(font="33b5c052b30812736e907581e38b04c1be363ec608e59cd34c8a13ce193f5170"),
@@ -235,12 +243,14 @@ EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
     "manuscript-pages-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "acmtog-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=3),
     "sigconf-authors-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "sigconf-authors-per-row-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "acmcp-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "biblatex-edge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "bib-all": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "notes-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "options-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
     "authorversion-conf-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "fontsize-sigconf-11-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-acmlarge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
     "sample-sigconf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=6),
     "sample-sigplan": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=15),
@@ -270,6 +280,7 @@ EXPECTED_METRIC_DIFFS: dict[str, tuple[MetricAllowance, ...]] = {
     "acmcp-test": (MetricAllowance(1, "top", 6.25),),
     "sigchi-a-test": (MetricAllowance(1, "left", 6.25),),
     "authorversion-conf-test": (MetricAllowance(1, "top", 5.0),),
+    "fontsize-sigconf-11-test": (MetricAllowance(1, "top", 6.5),),
     "sample-acmsmall": (MetricAllowance(8, "left", 1.25),),
     "sample-sigplan": (MetricAllowance(1, "top", 5.25),),
     "sample-acmsmall-conf": (MetricAllowance(8, "left", 1.25),),
@@ -437,7 +448,28 @@ TESTS: dict[str, Test] = {
     ),
     "head-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_UNIFORM_PITCH_METRICS,
-        note="section / subsection / subsubsection / paragraph (run-in) headings",
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="A Part Division A Part Division This run-in part heading",
+                typst="A Part Division This run-in part heading",
+                cause=AcceptedTypstBehavior(
+                    "acmart typesets a \\part title TWICE: \\ACM@NRadjust re-runs the "
+                    "level-9 section format through hyperref's \\Sectionformat hook "
+                    "(acmart.dtx:8304/8381), an upstream display-heading quirk (confirmed "
+                    "on a minimal acmart doc). The port renders the \\part title once."),
+            ),
+        ),
+        expected_font_diffs=(
+            ExpectedFontDiff(
+                latex="A Part Division A Part Division",
+                typst="A Part Division",
+                cause=AcceptedTypstBehavior(
+                    "One extra copy of the \\part heading glyphs is present in LaTeX only "
+                    "(the acmart.dtx:8304 double-typesetting quirk)."),
+            ),
+        ),
+        note="section / subsection / subsubsection / paragraph (run-in) headings, plus "
+             "\\part (a level-9 display heading acmart renders twice; see the diffs).",
     ),
     "figure-heading-test": Test(
         kind="twin", pages=1,
@@ -566,7 +598,12 @@ TESTS: dict[str, Test] = {
     ),
     "sigconf-authors-test": Test(
         kind="twin", pages=1,
-        note="Conference author grid with a centered partial final row.",
+        note="Conference author grid with a centered partial final row (auto 3-per-row).",
+    ),
+    "sigconf-authors-per-row-test": Test(
+        kind="twin", pages=1,
+        note="Conference author grid with an EXPLICIT authorsperrow=2 (5 authors => "
+             "2 + 2 + 1); sibling of sigconf-authors-test's default auto layout.",
     ),
     "sigplan-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
@@ -654,6 +691,20 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
         text_equal=True,
         note="Base font-size option `12pt`.",
+    ),
+    "fontsize-sigconf-11-test": Test(
+        kind="twin", pages=1, text_equal="bag", expected_metrics_diff=_TITLE_METRICS_DIFF,
+        note="sigconf (two-column proceedings) at the NON-DEFAULT 11pt base: the "
+             "proceedings heading ladder is a distinct scaling axis from the "
+             "single-column acmsmall fontsize twins. Two-column extraction reorders, "
+             "so text is word-bag gated.",
+    ),
+    "longtable-test": Test(
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
+        text_equal=True,
+        note="A booktabs `tabular` too tall for the page-1 remainder: LaTeX moves the "
+             "single unbreakable box whole to page 2, and parts/tables.typ pins Typst's "
+             "`tabular` non-breakable to match (both keep all rows on page 2).",
     ),
     "bib-test": Test(
         kind="smoke", pages=1,
@@ -1304,6 +1355,13 @@ TESTS: dict[str, Test] = {
     ),
     "draft-test": Test(
         kind="smoke", pages=1, golden_exempt=_DRAFT_GOLDEN_EXEMPT,
+        text_assertions=(
+            # The inner-edge timestamp footer prints "Submission ID: <id>. <date>.
+            # Page N of M." — the id and the folio prose are stable; only the
+            # compile date between them is non-deterministic (hence golden-exempt).
+            Assertion(engine="typst", text="Submission ID: 123-A56-BU3"),
+            Assertion(engine="typst", text="Page 1 of"),
+        ),
         note="author-draft timestamp mode; non-deterministic compile-only smoke.",
     ),
     "urlbreak-test": Test(

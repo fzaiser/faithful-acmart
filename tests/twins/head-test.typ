@@ -1,4 +1,4 @@
-#import "/src/lib.typ": acmart, noindentparagraph
+#import "/src/lib.typ": acmart, noindentparagraph, part
 #show: acmart.with(format: "acmsmall", nonacm: true)
 
 = Introduction
@@ -20,6 +20,10 @@ Two driven jocks help fax my big quiz.
 
 #noindentparagraph[A margin run-in]
 This no-indent run-in heading sits flush at the text margin with no trailing dot.
+
+#part[A Part Division]
+This run-in part heading precedes the second section. Five quacking zephyrs jolt
+my wax bed. The job requires extra pluck and zeal from every young wage earner.
 
 = Second Section
 Five quacking zephyrs jolt my wax bed. The job requires extra pluck and zeal

@@ -110,7 +110,13 @@
     }
   }
 
-  std.table(
+  // A LaTeX `tabular` is a single box that never splits across a page/column
+  // boundary — if it does not fit it moves whole to the next page. Typst tables
+  // break across regions by default, so pin the box to LaTeX semantics with a
+  // non-breakable wrapper. (Multi-page data belongs in `longtable`, which acmart
+  // does not style; a floated `tabular` inside `figure` likewise never breaks.)
+  // The wrapper keeps figure()'s table-kind detection (verified: "Table N").
+  block(breakable: false, spacing: 0pt, std.table(
     ..args,
     inset: (x, y) => {
       let base = inset-at(x, y)
@@ -120,5 +126,5 @@
         bottom: base.bottom + (if y in above-bottom { aboverulesep } else { 0pt }),
       )
     },
-  )
+  ))
 }

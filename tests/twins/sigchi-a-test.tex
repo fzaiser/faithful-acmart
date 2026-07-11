@@ -110,11 +110,30 @@ possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus aute
 quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet, ut et
 voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum.
 
+\begin{margintable}
+\begin{tabular}{ll}
+\toprule
+Key & Value \\
+\midrule
+One & first \\
+Two & second \\
+\bottomrule
+\end{tabular}
+\caption{A margin table caption.}
+\end{margintable}
+
 \begin{figure}[h]
 \centering
 \rule{6cm}{1.5cm}
 \caption{A sigchi-a caption, set bold at the small size, long enough that it
 wraps onto a second line for the typography comparison.}
 \end{figure}
+
+\begin{figure*}[h]
+\centering
+\rule{\fulltextwidth}{1cm}
+\caption{A full-text-width figure spanning the text plus the margin column via
+\texttt{fulltextwidth}.}
+\end{figure*}
 
 \end{document}

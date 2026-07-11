@@ -3,7 +3,7 @@
 // AUTHOR(S)" with a second "SUBMISSION ID: <id>" line (acmart.dtx:5190-5193,
 // uppercased by the journal strip's \MakeUppercase), and the contact-info
 // footnote is suppressed.
-#import "/src/lib.typ": acmart
+#import "/src/lib.typ": acmart, anon
 
 #show: acmart.with(
   format: "acmsmall",
@@ -28,4 +28,6 @@
 
 = Introduction
 This document checks the anonymized author strip, the suppressed contact-info
-footnote, and the anonymized ACM reference block.
+footnote, and the anonymized ACM reference block. This work was carried out at
+#anon[the Institute for Clarity in Documentation], whose name the anonymous
+option replaces with the ACM-Orange substitute.

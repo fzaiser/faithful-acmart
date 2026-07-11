@@ -2,6 +2,10 @@
 
 #import "/src/parts/tables.typ": tabular, midrule, bottomrule, aboverulesep, belowrulesep
 
+// `tabular` wraps its std.table in a non-breakable block (LaTeX tabulars never
+// split across a page); the underlying table element is the block's body.
+#let inner(t) = t.body
+
 #let custom-inset = (x: 3pt, y: 2pt)
 #let custom-stroke = 0.7pt
 #let grid = tabular(
@@ -14,7 +18,7 @@
   bottomrule(),
 )
 
-#let fields = grid.fields()
+#let fields = inner(grid).fields()
 #assert.eq(repr(fields.stroke), repr(custom-stroke))
 #let inset = fields.inset
 
@@ -37,6 +41,6 @@
   [B],
   table.hline(y: 1),
 )
-#assert.eq(positioned.fields().at("inset")(1, 1), (
+#assert.eq(inner(positioned).fields().at("inset")(1, 1), (
   left: 1pt, right: 0pt, top: 1pt + belowrulesep, bottom: 0pt,
 ))
