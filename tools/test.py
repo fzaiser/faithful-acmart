@@ -15,6 +15,7 @@ Commands
   smoke [names]    build and page-check selected matrix tests (default: all)
   check            run all regression gates (smoke / unit / golden / text / errors / metrics)
   unit             run the pure-Typst unit tests in tests/unit/*.typ (no LaTeX needed)
+  sweep            compile a representative doc across every active format × base size (no LaTeX)
   accept           rebuild Typst PDFs and refresh the Tier 1 golden hashes
   overlay [stems]  per-twin vector <name>-overlay.pdf + <name>-side-by-side.pdf vs LaTeX (all twins, or given stems)
   validate [names] copyright/option variants vs LaTeX, page-1 mismatch %
@@ -2009,6 +2010,66 @@ def gate_horizontal_rules(report: bool = False) -> list[str]:
     return failures
 
 
+# A single representative document (title + author + abstract + section + list +
+# table + inline/display math + footnote) rendered across every format×size in
+# the sweep. `{extra}` injects per-format required options (acmcp's logo).
+_SWEEP_DOC = '''#import "/src/lib.typ": acmart
+#show: acmart.with(
+  format: "{fmt}",
+  font-size: {size}pt,
+{extra}  title: "Format Sweep",
+  authors: (
+    (name: "Ben Trovato", email: "trovato@corporation.com",
+     affiliation: (institution: "Institute for Clarity", city: "Dublin", country: "USA")),
+  ),
+  abstract: [A short abstract used to exercise the frontmatter across formats.],
+  keywords: ("datasets", "typesetting"),
+)
+
+= Introduction
+Body text with an inline formula $a + b = c$ and a footnote.#footnote[A note.]
+A display equation follows:
+$ sum_(i = 0)^n x_i = y $
+
+- first item
+- second item
+
+#table(columns: 2, [Head A], [Head B], [1], [2])
+'''
+
+_SWEEP_EXTRA = {
+    "acmcp": '  acmcp-logo: image("/src/assets/acm-jdslogo.png"),\n',
+}
+
+
+def gate_format_sweep(report: bool = False) -> list[str]:
+    """Tier 0.8 — compile one representative document across every active
+    format × allowed base size (45 combos), failing on any error or warning.
+    No goldens: this is a cheap breadth net for the size-ladder / per-format
+    geometry paths the single-size twins don't each visit."""
+    combos = [(fmt, size) for fmt in M.ACTIVE_FORMATS for size in M.SWEEP_FONT_SIZES]
+    # tc pins --root at the repo, so the source must live under it (not /tmp).
+    sweep_dir = OUT / "sweep"
+    sweep_dir.mkdir(parents=True, exist_ok=True)
+
+    def compile_combo(combo: tuple[str, int]) -> tuple[tuple[str, int], tuple[int, str]]:
+        fmt, size = combo
+        source = _SWEEP_DOC.format(fmt=fmt, size=size, extra=_SWEEP_EXTRA.get(fmt, ""))
+        src = sweep_dir / f"{fmt}-{size}.typ"
+        src.write_text(source)
+        return combo, compile_typst(src, sweep_dir / f"{fmt}-{size}.pdf")
+
+    failures: list[str] = []
+    for (fmt, size), (rc, stderr) in _pmap(compile_combo, combos, default_jobs()):
+        if rc != 0:
+            failures.append(f"{fmt} @ {size}pt: compile failed (rc={rc})\n{stderr.strip()}")
+        elif "warning" in stderr.lower():
+            failures.append(f"{fmt} @ {size}pt: Typst emitted warnings:\n{stderr.strip()}")
+        elif report:
+            print(f"ok   {fmt} @ {size}pt")
+    return failures
+
+
 _SECTION_NUMBER = re.compile(r"^\d+(?:\.\d+)*\s")
 
 
@@ -2523,6 +2584,13 @@ def cmd_unit(_args) -> int:
     return 1 if failures else 0
 
 
+def cmd_sweep(_args) -> int:
+    failures = gate_format_sweep(report=True)
+    for failure in failures:
+        print(failure, file=sys.stderr)
+    return 1 if failures else 0
+
+
 def cmd_structure(_args) -> int:
     failures = gate_structure(report=True)
     for failure in failures:
@@ -2589,6 +2657,7 @@ def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
         ("smoke",            "Tier 0 (smoke)",              lambda: gate_smoke(compiled)),
         ("unit",             "Tier 0.5 (unit)",             gate_unit),
         ("package",          "Tier 0.75 (package)",         gate_package),
+        ("format-sweep",     "Tier 0.8 (format×size sweep)", gate_format_sweep),
         ("golden",           "Tier 1 (golden)",             gate_golden),
         ("text",             "Tier 1.5 (text)",             gate_text),
         ("metadata",         "Tier 1.55 (metadata)",        gate_metadata),
@@ -2607,8 +2676,9 @@ def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
 
 CHECK_GATE_SLUGS = [
     "matrix-integrity", "source-data", "latex-oracle", "smoke", "unit",
-    "package", "golden", "text", "metadata", "errors", "links", "validate",
-    "fonts", "structure", "order", "outline", "metrics", "word-positions", "rules",
+    "package", "format-sweep", "golden", "text", "metadata", "errors", "links",
+    "validate", "fonts", "structure", "order", "outline", "metrics",
+    "word-positions", "rules",
 ]
 
 
@@ -3107,6 +3177,7 @@ def main() -> int:
         "source-data",
         help="compare transcribed tables with acmart.dtx and ACM-Reference-Format.bst",
     ).set_defaults(fn=cmd_source_data)
+    sub.add_parser("sweep", help="compile the representative doc across every format×size").set_defaults(fn=cmd_sweep)
     sub.add_parser("structure", help="report tagged-PDF semantic checks").set_defaults(fn=cmd_structure)
     sub.add_parser("order", help="report the Tier 1.9 per-chunk reading-order check").set_defaults(fn=cmd_order)
 

@@ -30,6 +30,17 @@ MIN_TYPST_VERSION = "0.12.0"
 # Raster resolution (dpi) for the Tier 1 page-hash snapshots.
 GOLDEN_DPI = 150
 
+# The nine active (non-alias) acmart formats and the base font sizes acmart
+# accepts (acmart.dtx:3063). The format×size compile sweep renders one small
+# representative document across every combination (45), asserting a clean,
+# warning-free compile — a cheap regression net for size-ladder / geometry code
+# paths that the twins (each at one size) don't individually visit.
+ACTIVE_FORMATS = (
+    "manuscript", "acmsmall", "acmlarge", "acmtog", "sigconf",
+    "sigplan", "acmengage", "sigchi-a", "acmcp",
+)
+SWEEP_FONT_SIZES = (8, 9, 10, 11, 12)
+
 # PDF document-information fields emitted by Typst's native `document` metadata.
 # acmart also sets PDF Subject from CCS concepts, but Typst currently exposes no
 # document-level subject field, so that one intentional engine limitation is not
