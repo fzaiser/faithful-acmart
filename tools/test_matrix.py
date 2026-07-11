@@ -57,6 +57,12 @@ METADATA_EXPECTATIONS: dict[str, dict[str, str]] = {
     },
 }
 
+# Cross-engine semantic-metadata exemptions (Tier 1.55). Each entry maps a twin
+# to {field: reason} where LaTeX populates the field but Typst legitimately
+# diverges. Follows the house rule: a set-but-passing exemption fails. acmart
+# emits only /Title cross-engine and it matches everywhere, so this is empty.
+METADATA_CROSS_EXEMPTIONS: dict[str, dict[str, str]] = {}
+
 # Tier 2 gate tolerances (PDF points; both engines emit 1/72in big points).
 # Only robust, renderer-agnostic invariants are gated. Right margin and line
 # count depend on cross-engine line-breaking, so metrics report them but does
@@ -70,6 +76,8 @@ METRICS_TOLERANCE = {
                         # whose lines break identically across engines (so the per-line
                         # pitch sequences align). Catches one mis-spaced line that the
                         # median absorbs; skipped when line counts diverge.
+    "width": 0.5,   # MediaBox page width — a true cross-engine invariant, gated tightly
+    "height": 0.5,  # MediaBox page height — same
 }
 
 

@@ -648,11 +648,13 @@ def gate_matrix_integrity(report: bool = False) -> list[str]:
                 failures.append(f"{name}: {kind} residual signature has no expected diff evidence")
     for orphan in sorted(set(M.EXPECTED_RESIDUALS) - set(TESTS)):
         failures.append(f"matrix: residual signature for unknown test {orphan}")
-    for orphan in sorted(set(M.METADATA_EXPECTATIONS) - set(TESTS)):
-        failures.append(f"matrix: metadata expectation for unknown test {orphan}")
-    for non_twin in sorted(name for name in M.METADATA_EXPECTATIONS
-                           if name in TESTS and TESTS[name].kind != "twin"):
-        failures.append(f"matrix: metadata expectation belongs to non-twin {non_twin}")
+    for label, table in (("expectation", M.METADATA_EXPECTATIONS),
+                         ("cross-engine exemption", M.METADATA_CROSS_EXEMPTIONS)):
+        for orphan in sorted(set(table) - set(TESTS)):
+            failures.append(f"matrix: metadata {label} for unknown test {orphan}")
+        for non_twin in sorted(name for name in table
+                               if name in TESTS and TESTS[name].kind != "twin"):
+            failures.append(f"matrix: metadata {label} belongs to non-twin {non_twin}")
     for label, mapping in (("link", M.EXPECTED_LINK_DIFFS),
                            ("dash", M.EXPECTED_DASH_DIFFS),
                            ("metric", M.EXPECTED_METRIC_DIFFS)):
@@ -670,7 +672,8 @@ def gate_matrix_integrity(report: bool = False) -> list[str]:
         if len(keys) != len(set(keys)):
             failures.append(f"{name}: duplicate metric allowance page/key")
         for item in allowances:
-            if item.page < 1 or item.key not in ("left", "top", "pitch", "line_pitch"):
+            if item.page < 1 or item.key not in (
+                    "left", "top", "pitch", "line_pitch", "width", "height"):
                 failures.append(f"{name}: invalid metric allowance {item!r}")
             if item.max_delta <= 0:
                 failures.append(f"{name}: nonpositive metric allowance {item!r}")
@@ -1641,8 +1644,25 @@ def gate_errors() -> list[str]:
     return failures
 
 
+# Semantic document-info fields worth cross-checking against LaTeX. Producer /
+# Creator / CreationDate carry engine identity, so they are deliberately excluded.
+# acmart's hyperref setup emits only /Title (and a CCS /Subject we don't mirror),
+# never /Author or /Keywords — so LaTeX is an oracle for a field only when it
+# populates it; where it doesn't, the METADATA_EXPECTATIONS anchors pin Typst.
+_CROSS_METADATA_FIELDS = ("Title", "Author", "Keywords")
+
+
+def _meta_norm(value: str | None) -> str:
+    return (value or "").strip()
+
+
 def gate_metadata(report: bool = False) -> list[str]:
-    """Tier 1.55 — PDF metadata populated by the acmart show rule."""
+    """Tier 1.55 — PDF metadata populated by the acmart show rule.
+
+    Anchored twins keep exact expected Title/Author/Keywords; every twin also has
+    its semantic fields cross-checked against its LaTeX twin wherever LaTeX
+    provides a value.
+    """
     failures: list[str] = []
     for name, expected in M.METADATA_EXPECTATIONS.items():
         pdf = typst_pdf(name)
@@ -1656,6 +1676,35 @@ def gate_metadata(report: bool = False) -> list[str]:
                     f"{name}: PDF {field} metadata is {actual.get(field)!r}, expected {value!r}")
         if report and not any(f.startswith(name + ":") for f in failures):
             print(f"ok   {name}: title/author/keywords metadata")
+
+    for name, t in TESTS.items():
+        if t.kind != "twin":
+            continue
+        lref, tpdf = latex_pdf(name, t), typst_pdf(name)
+        if not lref.exists() or not tpdf.exists():
+            failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
+            continue
+        li, ti = pdf_info(lref), pdf_info(tpdf)
+        exempt = M.METADATA_CROSS_EXEMPTIONS.get(name, {})
+        for field, reason in exempt.items():
+            lv, tv = _meta_norm(li.get(field)), _meta_norm(ti.get(field))
+            if not lv or lv == tv:
+                failures.append(
+                    f"{name}: metadata {field} exemption set but LaTeX/Typst do not "
+                    f"differ ({reason})")
+        for field in _CROSS_METADATA_FIELDS:
+            if field in exempt:
+                continue
+            lv = _meta_norm(li.get(field))
+            if not lv:  # acmart gave no oracle for this field
+                continue
+            tv = _meta_norm(ti.get(field))
+            if lv != tv:
+                failures.append(
+                    f"{name}: PDF {field} differs from LaTeX\n"
+                    f"    LaTeX: {lv!r}\n    Typst: {tv!r}")
+        if report:
+            print(f"cross {name}: semantic metadata vs LaTeX")
     return failures
 
 
@@ -1688,6 +1737,7 @@ def gate_metrics(report: bool = False) -> list[str]:
             failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
             continue
         lm, tm = _metrics_for(lref), _metrics_for(tpdf)
+        lw, tw = words(lref), words(tpdf)  # cached; carries per-page MediaBox size
         pages = [1] if t.metrics_page1_only else sorted(set(lm) & set(tm))
         gated = [("left", tol["left"], "left margin"), ("top", tol["top"], "top margin")]
         if t.metrics_uniform_pitch:
@@ -1729,6 +1779,13 @@ def gate_metrics(report: bool = False) -> list[str]:
                 d = abs(a[key] - b[key])
                 if d > lim:
                     observed[(p, key)] = d
+            # Cross-engine page geometry: MediaBox width/height must agree tightly.
+            lpg, tpg = lw.get(p), tw.get(p)
+            if lpg and tpg:
+                for dim, key in (("w", "width"), ("h", "height")):
+                    d = abs(lpg[dim] - tpg[dim])
+                    if d > tol[key]:
+                        observed[(p, key)] = d
             # Per-line pitch: only when the line-break structure matches (aligned
             # pitch sequences); otherwise the median pitch above is the gate.
             if lpd and lpd[1] and lpd[0] > tol["line_pitch"]:
@@ -1921,8 +1978,10 @@ def _font_color(c: int) -> tuple[int, int, int]:
 
 
 @_pdf_memo
-def font_bag(pdf: Path) -> Counter:
-    """Multiset of (letter, family, bold, italic, size, colour) over every glyph.
+def _font_scan(pdf: Path) -> tuple[Counter, dict]:
+    """Multiset of (letter, family, bold, italic, size, colour) over every glyph,
+    plus the first (1-based) page each such key appears on for failure localization.
+
     LETTERS only — punctuation and symbols sit at font boundaries / come from
     divergent symbol fonts, so their family is noise. Mono SIZE is dropped: LaTeX's
     zi4 and our bundled Inconsolata are scaled differently, so the nominal size is
@@ -1932,8 +1991,9 @@ def font_bag(pdf: Path) -> Counter:
     mathematical-italic glyphs slanted, just like LaTeX's separate italic math font)."""
     import fitz
     counts: Counter = Counter()
+    first_page: dict = {}
     with fitz.open(pdf) as doc:
-        for page in doc:
+        for pageno, page in enumerate(doc, 1):
             for block in page.get_text("dict")["blocks"]:
                 for line in block.get("lines", []):
                     for span in line["spans"]:
@@ -1945,8 +2005,15 @@ def font_bag(pdf: Path) -> Counter:
                         for ch in unicodedata.normalize("NFKC", span["text"]):
                             ch = CHAR_FOLD.get(ch, ch)
                             if unicodedata.category(ch).startswith("L"):
-                                counts[(ch,) + key] += 1
-    return counts
+                                full = (ch,) + key
+                                counts[full] += 1
+                                first_page.setdefault(full, pageno)
+    return counts, first_page
+
+
+def font_bag(pdf: Path) -> Counter:
+    """Per-letter font multiset (see _font_scan)."""
+    return _font_scan(pdf)[0]
 
 
 def gate_fonts(report: bool = False) -> list[str]:
@@ -1967,7 +2034,13 @@ def gate_fonts(report: bool = False) -> list[str]:
             continue
         expected_failures = _check_expected_font_diffs(
             name, t, pdf_text(lref), pdf_text(tpdf)) if t.expected_font_diffs else []
-        miss, extra = (lb := font_bag(lref)) - (tb := font_bag(tpdf)), tb - lb
+        (lb, lfp), (tb, tfp) = _font_scan(lref), _font_scan(tpdf)
+        miss, extra = lb - tb, tb - lb
+        # Annotate each residual key with the first page it occurs on (LaTeX page
+        # for LaTeX-only keys, Typst page for Typst-only) so a one-letter family
+        # diff names where to look.
+        show = lambda residual, fp: {
+            k: (n, f"p{fp.get(k, '?')}") for k, n in list(residual.items())[:8]}
         if t.expected_font_diffs:
             failures.extend(expected_failures)
             actual = _residual_digest(miss, extra)
@@ -1977,15 +2050,15 @@ def gate_fonts(report: bool = False) -> list[str]:
             elif actual != expected:
                 failures.append(
                     f"{name}: font residual changed (expected {expected}, got {actual})\n"
-                    f"    only in LaTeX: {dict(list(miss.items())[:8])}\n"
-                    f"    only in Typst: {dict(list(extra.items())[:8])}")
+                    f"    only in LaTeX: {show(miss, lfp)}\n"
+                    f"    only in Typst: {show(extra, tfp)}")
             elif report:
                 print(f"diff  {name}: exact expected font residual {actual[:12]}")
         elif miss or extra:
             failures.append(
-                f"{name}: per-letter fonts differ (PyMuPDF; key = char,family,bold,italic,size,colour)\n"
-                f"    only in LaTeX: {dict(list(miss.items())[:8])}\n"
-                f"    only in Typst: {dict(list(extra.items())[:8])}")
+                f"{name}: per-letter fonts differ (PyMuPDF; key = char,family,bold,italic,size,colour; count,firstpage)\n"
+                f"    only in LaTeX: {show(miss, lfp)}\n"
+                f"    only in Typst: {show(extra, tfp)}")
         elif report:
             print(f"ok   {name}: fonts match")
     return failures
