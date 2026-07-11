@@ -1829,6 +1829,74 @@ def gate_metrics(report: bool = False) -> list[str]:
     return failures
 
 
+def _align_words(lwords: list, twords: list) -> list[tuple[float, float, str]]:
+    """Pair the two engines' word streams and return (dx, dy, text) per match.
+
+    Alignment is difflib's longest-matching-block over the word TEXT (autojunk
+    off, so common short words are not dropped). Only positionally-aligned
+    matches are returned; words that one engine split differently (ligature or
+    hyphenation segmentation) simply don't match and are ignored by construction
+    — so this gate measures placement, never text coverage (the char/word bags
+    own that). dy is signed; the caller removes the page's median dy to cancel the
+    engines' constant first-baseline-convention offset.
+    """
+    lt = [w[4] for w in lwords]
+    tt = [w[4] for w in twords]
+    matcher = difflib.SequenceMatcher(a=lt, b=tt, autojunk=False)
+    matched: list[tuple[float, float, str]] = []
+    for i1, j1, size in matcher.get_matching_blocks():
+        for k in range(size):
+            lw, tw = lwords[i1 + k], twords[j1 + k]
+            matched.append((lw[0] - tw[0], lw[1] - tw[1], lw[4]))
+    return matched
+
+
+def gate_word_positions(report: bool = False) -> list[str]:
+    """Tier 2.5 — per-word placement on opt-in (``word_positions``) twins.
+
+    For each opted-in twin whose two engines break into the same lines, align the
+    word streams per page and gate max |Δx0| and max |Δy0−median(Δy0)| against
+    ``WORD_POSITION_TOLERANCE``. Subtracting the per-page median Δy cancels the
+    engines' constant top-baseline offset (Tier 2 'top' owns that gross value), so
+    what survives is a lost indent/centering or a single mis-spaced line."""
+    tol = M.WORD_POSITION_TOLERANCE
+    failures: list[str] = []
+    for name, t in TESTS.items():
+        if t.kind != "twin" or not t.word_positions:
+            continue
+        lref, tpdf = latex_pdf(name, t), typst_pdf(name)
+        if not lref.exists() or not tpdf.exists():
+            failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
+            continue
+        lw, tw = words(lref), words(tpdf)
+        pages = sorted(set(lw) & set(tw))
+        worst = {"dx": (0.0, ""), "dy": (0.0, "")}
+        matched_total = 0
+        for p in pages:
+            m = _align_words(lw[p]["words"], tw[p]["words"])
+            if not m:
+                continue
+            matched_total += len(m)
+            median_dy = statistics.median(dy for _, dy, _ in m)
+            for dx, dy, text in m:
+                adx, ady = abs(dx), abs(dy - median_dy)
+                if adx > worst["dx"][0]:
+                    worst["dx"] = (adx, f"p{p} {text!r}")
+                if ady > worst["dy"][0]:
+                    worst["dy"] = (ady, f"p{p} {text!r}")
+        if matched_total == 0:
+            failures.append(f"{name}: no words aligned for the position gate")
+            continue
+        over = [f"{axis} Δ={delta:.2f}pt at {where} (tol {tol})"
+                for axis, (delta, where) in worst.items() if delta > tol]
+        if over:
+            failures.append(f"{name}: word positions drifted vs LaTeX\n    " + "\n    ".join(over))
+        elif report:
+            print(f"ok   {name}: {matched_total} words within "
+                  f"Δx {worst['dx'][0]:.2f}pt / Δy {worst['dy'][0]:.2f}pt")
+    return failures
+
+
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
@@ -2328,13 +2396,14 @@ def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
         ("structure",        "Tier 1.85 (structure)",       gate_structure),
         ("order",            "Tier 1.9 (order)",            gate_order),
         ("metrics",          "Tier 2 (metrics)",            gate_metrics),
+        ("word-positions",   "Tier 2.5 (word positions)",   gate_word_positions),
     ]
 
 
 CHECK_GATE_SLUGS = [
     "matrix-integrity", "source-data", "latex-oracle", "smoke", "unit",
     "package", "golden", "text", "metadata", "errors", "links", "validate",
-    "fonts", "structure", "order", "metrics",
+    "fonts", "structure", "order", "metrics", "word-positions",
 ]
 
 

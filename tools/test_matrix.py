@@ -80,6 +80,14 @@ METRICS_TOLERANCE = {
     "height": 0.5,  # MediaBox page height — same
 }
 
+# Per-word position gate (opt-in via Test.word_positions). Maximum tolerated
+# |Δx0| and, after subtracting each page's median vertical offset, |Δy0| over the
+# aligned word streams of the two engines. 1.25pt clears the measured floor on
+# every opted-in fixture (worst observed: fontsize-12 Δx 1.21pt, fn-test Δy
+# 0.65pt) while a lost indent/centering (≥ a space width) or a mis-spaced line
+# (≥ half a baseline) blows straight past it.
+WORD_POSITION_TOLERANCE = 1.25
+
 
 @dataclass(frozen=True)
 class Assertion:
@@ -357,6 +365,7 @@ class Test:
     golden_exempt: str = ""
     metrics_page1_only: str = ""
     metrics_uniform_pitch: str = ""
+    word_positions: str = ""
     text_equal: bool | str | None = None
     expected_text_diffs: tuple[ExpectedTextDiff, ...] = ()
     text_assertions: tuple[Assertion, ...] = ()
@@ -378,6 +387,8 @@ class Test:
             raise ValueError("metrics_page1_only only applies to twin tests")
         if self.metrics_uniform_pitch and self.kind != "twin":
             raise ValueError("metrics_uniform_pitch only applies to twin tests")
+        if self.word_positions and self.kind != "twin":
+            raise ValueError("word_positions only applies to twin tests")
         if self.min_internal_links < 0 or self.min_internal_destinations < 0:
             raise ValueError("minimum internal-link counts cannot be negative")
         if self.review_line_numbers and self.kind != "twin":
@@ -430,6 +441,10 @@ _FONT_SIZE_PITCH_METRICS = (
     "Fixture isolates base font-size changes while keeping a single baseline grid, "
     "so pitch is gated."
 )
+_WORD_POSITIONS = (
+    "Both engines break this fixture into the same lines, so per-word x/y positions "
+    "align one-to-one and pin absolute placement (indent, centering, spacing)."
+)
 _SIGCONF_BIBLATEX_PAGE_DIFF = (
     "Typst currently reflows the numeric BibLaTeX/software reference block to "
     "seven pages while LaTeX fits six."
@@ -449,6 +464,10 @@ _AUTHORDRAFT_GOLDEN_EXEMPT = (
 #
 # Order is the run/report order. Twins come first, then smoke-only docs.
 TESTS: dict[str, Test] = {
+    # Not word_positions-opted: Typst and TeX pack this justified paragraph with
+    # slightly different line breaks (a word wraps a line early/late, measured Δx
+    # up to 379pt), an accepted engine difference; the uniform-pitch metric gate
+    # still pins its baseline grid.
     "body-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_UNIFORM_PITCH_METRICS,
         text_equal=True,
@@ -488,6 +507,9 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1,
         note="figure & table captions, theorems (plain/definition/proof+QED), lists",
     ),
+    # Not word_positions-opted: a theorem-body line sits ~6pt off the page's
+    # median vertical offset (the known amsthm head/indent gap, DESIGN.md), so the
+    # per-word residual-y check would flag an already-documented approximation.
     "theorem-transition-test": Test(
         kind="twin", pages=1, text_equal=True,
         note="theorem numbering survives section-star/acks; add-punct honors ,;:",
@@ -505,7 +527,7 @@ TESTS: dict[str, Test] = {
              "apply (labelsep 4pt, leftmargini 24.5pt, nested 8.5pt).",
     ),
     "fn-test": Test(
-        kind="twin", pages=1,
+        kind="twin", pages=1, word_positions=_WORD_POSITIONS,
         note="body footnotes + code/verbatim",
     ),
     "full-test": Test(
@@ -681,15 +703,18 @@ TESTS: dict[str, Test] = {
     ),
     "fontsize-8-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
-        text_equal=True,
+        word_positions=_WORD_POSITIONS, text_equal=True,
         note="Base font-size option `8pt`: amsart \\@typesizes ladder + "
              "baselineskip-derived heading/skip scaling. Body is on one grid, so pitch is gated.",
     ),
     "fontsize-9-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
-        text_equal=True,
+        word_positions=_WORD_POSITIONS, text_equal=True,
         note="Base font-size option `9pt`.",
     ),
+    # fontsize-11-test is NOT word_positions-opted: the "LaTeX" logo in its body
+    # wraps to a different line than LaTeX (measured Δx up to 366pt), an accepted
+    # engine line-break difference the per-word gate cannot absorb.
     "fontsize-11-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
         text_equal=True,
@@ -697,7 +722,7 @@ TESTS: dict[str, Test] = {
     ),
     "fontsize-12-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
-        text_equal=True,
+        word_positions=_WORD_POSITIONS, text_equal=True,
         note="Base font-size option `12pt`.",
     ),
     "fontsize-sigconf-11-test": Test(
