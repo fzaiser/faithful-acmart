@@ -1010,7 +1010,7 @@
 // in the FIRST column beneath the spanning title box; in one column they are
 // contiguous with the head. The leading weak skip collapses at a column top.
 #let make-title-body(cfg, meta) = {
-  let abstract-name = if cfg.name == "acmengage" { "Synopsis" } else { "Abstract" }
+  let abstract-name = if cfg.name == "acmengage" { "Synopsis" } else { cfg.strings.abstract }
 
   if cfg.name == "acmengage" {
     engage-metadata-block(cfg, meta.engage-metadata)

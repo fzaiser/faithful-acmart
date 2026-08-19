@@ -106,6 +106,7 @@
     acks: lang.acks,
     proof: lang.proof,
     table: lang.table,
+    abstract: lang.abstract,
   ), lang: lang.code, bib-backend: bib-backend)
 
   assert(bib-backend in ("typst", "bibtex", "biblatex"),
