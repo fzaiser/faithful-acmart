@@ -633,25 +633,37 @@
 // --- Shared title-head pieces (used by both the journal and the conference head;
 // the only difference between those heads is centering + the author layout). ---
 
+// The title font's cap height (needs context). The title block hangs its first
+// line from the cap top, so every title-line pitch is derived from this.
+#let title-cap-height(cfg) = {
+  let tf = cfg.title-font
+  measure(text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size),
+    top-edge: "cap-height", bottom-edge: "baseline")[X]).height
+}
+
 // The title block: \@titlefont per format, with cap-height top-edge so the (tall)
 // first line's cap-top sits at the top margin, matching LaTeX \topskip for a first
-// line taller than \topskip. \@translatedtitle adds each secondary title as a new
-// \par in the title font (acmart.dtx:3374/6994), one baselineskip below.
-#let title-block(cfg, meta, mark) = {
+// line taller than \topskip. That top edge makes every line box only cap-height
+// tall, so the leading must be bls − cap-height (not the usual bls − size) for
+// wrapped lines to keep the title \baselineskip pitch. \@translatedtitle adds each
+// secondary title as a new \par in the title font (acmart.dtx:3374/6994), one
+// baselineskip below — the same pitch, hence the same paragraph spacing.
+#let title-block(cfg, meta, mark) = context {
   let tf = cfg.title-font
+  let lead = cfg.bls.at(tf.size) - title-cap-height(cfg)
   // acmcp narrows the title box by 6pc (\@mktitle@i \advance\hsize -6pc,
   // acmart.dtx:6988) so it clears the top-right cover infobox; auto width (natural,
   // unchanged) elsewhere.
   block(spacing: 0pt, width: if cfg.title-width-reduction != 0pt { 100% - cfg.title-width-reduction } else { auto })[
-    #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), top-edge: "cap-height")
-    #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: tf.size), spacing: comp(cfg, sz: tf.size))
+    #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size),
+      top-edge: "cap-height", bottom-edge: "baseline")
+    #set par(justify: false, first-line-indent: 0pt, leading: lead, spacing: lead)
     // tagged-par so the title is its own <P> chunk, not fused into the author
     // head's <Span>. Translated titles are already separate paragraphs (parbreak)
     // and tag separately on their own.
     #tagged-par[#meta.title#if mark != none { super(mark) }]
     #for (l, t) in meta.translated-title {
       parbreak()
-      v(0.51em, weak: true)
       text(lang: lang-record(l).code, t)
     }
   ]
@@ -918,8 +930,7 @@
   // The rule title's geometry needs the title font's real cap height and
   // descender (the title block anchors at cap height, and the material after
   // the box hangs from the box BOTTOM = last baseline + descender).
-  let title-text(s) = text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size), s)
-  let cap-h = measure(text(top-edge: "cap-height", bottom-edge: "baseline", title-text[X])).height
+  let cap-h = title-cap-height(cfg)
   let last-size = if meta.subtitle != none { cfg.subtitle-font.size } else { tf.size }
   let desc = measure(text(size: cfg.size.at(last-size), top-edge: "baseline", bottom-edge: "descender")[gjpqy]).height
   pad(left: 5 * 12 * tp, { // \leftskip5pc

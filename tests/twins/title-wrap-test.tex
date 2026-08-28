@@ -1,0 +1,39 @@
+%% title-wrap-test — a title long enough to wrap (LaTeX twin of title-wrap-test.typ).
+%% Every line of a multi-line title sits one title \baselineskip below the previous one.
+%% The port hangs the first line from its cap top, so its leading has to be derived from the cap height rather than the font size.
+\documentclass[acmsmall]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmJournal{JACM}
+\acmVolume{37}
+\acmNumber{4}
+\acmArticle{111}
+\acmMonth{8}
+
+\begin{document}
+
+\title{Wrapped Titles Should Keep Their Baselineskip on Every Line: Typographic Notes on Descenders Above Capitals}
+
+\author{Ben Trovato}
+\email{trovato@corporation.com}
+\affiliation{%
+  \institution{Institute for Clarity in Documentation}
+  \city{Dublin}
+  \state{Ohio}
+  \country{USA}}
+
+\renewcommand{\shortauthors}{Trovato}
+
+\begin{abstract}
+  A title that wraps onto a second line must keep the title font's baselineskip between its lines, or the descenders of one line collide with the capitals of the next.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+The body only needs to exist so that the page has a first section below the title block.
+
+\end{document}

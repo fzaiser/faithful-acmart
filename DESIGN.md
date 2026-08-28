@@ -100,7 +100,11 @@ set par(leading: baselineskip - font-size)   // => baseline pitch == baselineski
 LaTeX). The **title** uses `top-edge: "cap-height"` so its tall first line's cap-top
 sits at the top margin (TeX's `\topskip` for a first line taller than `\topskip`) —
 **matched to output**, verified with `tools/test.py linepitch` (pitch 11.94 vs
-11.95pt; first baseline 92.07pt exact).
+11.95pt; first baseline 92.07pt exact). Because that top edge makes every title
+line box only cap-height tall, the title's leading and paragraph spacing are
+`bls(title) − cap-height` (measured in context), not `bls − size`: wrapped title
+lines and `\translatedtitle` paragraphs then sit exactly one title `\baselineskip`
+apart (`tests/twins/title-wrap-test`, `sample-sigconf-i13n`).
 
 ### Heading / block vertical spacing (line-box compensation)
 `\@startsection` places a heading `\baselineskip + beforeskip` below the previous

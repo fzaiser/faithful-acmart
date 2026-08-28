@@ -338,6 +338,7 @@ class MetricAllowance:
 
 EXPECTED_METRIC_DIFFS: dict[str, tuple[MetricAllowance, ...]] = {
     "sigplan-test": (MetricAllowance(1, "top", 5.25),),
+    "title-wrap-sigplan-test": (MetricAllowance(1, "top", 5.25),),
     "acmengage-test": (MetricAllowance(1, "top", 5.25),),
     "acmcp-test": (MetricAllowance(1, "top", 6.25),),
     "sigchi-a-test": (MetricAllowance(1, "left", 6.25),),
@@ -594,6 +595,16 @@ TESTS: dict[str, Test] = {
     "title-test": Test(
         kind="twin", pages=1,
         note="frontmatter in isolation: title block, author fields, abstract, CCS, keywords",
+    ),
+    "title-wrap-test": Test(
+        kind="twin", pages=1,
+        note="two-line acmsmall title: wrapped title lines keep the title baselineskip "
+             "(cap-height top edge needs bls - cap-height leading)",
+    ),
+    "title-wrap-sigplan-test": Test(
+        kind="twin", pages=1, expected_metrics_diff=_TITLE_METRICS_DIFF,
+        note="two-line sigplan \\Huge serif-bold title: the largest title font, where a "
+             "leading error shows as descender/capital collisions",
     ),
     "manuscript-test": Test(
         kind="twin", pages=1,

@@ -1,0 +1,35 @@
+%% title-wrap-sigplan-test — a wrapping \Huge serif-bold sigplan title (LaTeX twin of title-wrap-sigplan-test.typ).
+%% The largest title font shows a leading error most clearly: descenders of the first line collide with capitals of the second.
+\documentclass[sigplan]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmMonth{6}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmISBN{978-1-4503-XXXX-X/2018/06}
+\acmConference[Conference'17]{Proceedings of ACM Conference}{June 2018}{Washington, DC, USA}
+\acmBooktitle{Proceedings of ACM Conference (Conference'17)}
+
+\begin{document}
+
+\title{Wrapped Titles Keep the Baselineskip on Each Line: Typographic Notes on Descenders Above Capitals}
+
+\author{Ben Trovato}
+\email{trovato@corporation.com}
+\affiliation{%
+  \institution{Institute for Clarity in Documentation}
+  \city{Dublin}
+  \state{Ohio}
+  \country{USA}}
+
+\begin{abstract}
+  A title that wraps onto a second line must keep the title font's baselineskip between its lines, or the descenders of one line collide with the capitals of the next.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+The body only needs to exist so that the page has a first section below the title block.
+
+\end{document}
