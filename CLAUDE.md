@@ -1,12 +1,7 @@
 # CLAUDE.md — guidance for AI assistants working in this repo
 
 A Typst port of the LaTeX **acmart** class. Goal: idiomatic Typst that renders as
-close as possible to LaTeX + acmart. All public formats are accepted
-(single-column journals manuscript/acmsmall/acmlarge, two-column journal acmtog,
-two-column proceedings sigconf/sigplan/acmengage, best-effort sigchi-a/acmcp);
-obsolete `siggraph` and `sigchi` are aliases to `sigconf`, matching bundled
-LaTeX. Active formats are data dicts in [`src/formats/`](src/formats/) built by
-`make-format()` in `_base.typ`. The upstream spec being matched is in
+close as possible to LaTeX + acmart. The upstream spec being matched is in
 [`acmart/`](acmart/) (`acmart.dtx`); read it when matching behaviour.
 
 Full detail: [DESIGN.md](DESIGN.md) (architecture + Typst-vs-LaTeX modeling), the
@@ -21,27 +16,15 @@ missed.
   --ignore-system-fonts`). System Libertinus is often feature-stripped (no small
   caps/ligatures/kerning) and silently degrades output.
 - **Validate against real LaTeX.** The harness is `tools/test.py` (run via
-  `tools/venv/bin/python`), driven by the matrix in `tools/test_matrix.py`:
-  `test.py build` (LaTeX refs + Typst PDFs), `test.py check`
-  (smoke/sweep/unit/golden/source-data/text/errors/hyperlinks/fonts/structure/
-  order/outline/metrics + opt-in word-position and rule gates; `check --gates
-  <list>` runs a subset), `test.py validate` (copyright modes + options), then
-  `test.py overlay <stems>` or `test.py report <stems>` (side-by-side HTML)
-  when visual inspection is needed; `test.py bib-oracle` re-verifies the `.bib`
-  reader against real bibtex on demand. `test.py unit` runs the pure-Typst
-  `tests/unit/*.typ` assertion tests
-  alone (no LaTeX) — they import a module and `#assert.eq` on its output (the
-  `.bib` reader, `tests/unit/bibtex.typ`, is ported from the `biblatex` crate's
-  own unit tests). Output goes to `tests/out/` (gitignored). The harness
-  builds LaTeX against the `acmart.cls` generated from the bundled `acmart/`
-  (never the system install) and reruns pdflatex to stability — a single pass
-  leaves acmart's `TotPages` unresolved and adds a spurious "Temporary page".
+  `tools/venv/bin/python`; `--help` lists the commands, `check --help` the
+  gates), driven by the matrix in `tools/test_matrix.py`. Output goes to
+  `tests/out/` (gitignored). The harness builds LaTeX against the `acmart.cls`
+  generated from the bundled `acmart/` (never the system install) and reruns
+  pdflatex to stability — a single pass leaves acmart's `TotPages` unresolved
+  and adds a spurious "Temporary page".
 - **Tests are matched pairs:** `tests/twins/NAME.tex` (LaTeX) vs
   `tests/twins/NAME.typ` (ours), identical content, diffed page-by-page.
-  Typst-only docs (smoke tests + the upstream-ref port) live in
-  `tests/typst-only/`; the harness picks the directory from each test's `kind`
-  (`Test.subdir` in `test_matrix.py`). Register new tests in
-  `tools/test_matrix.py`.
+  Register new tests in `tools/test_matrix.py`.
 - **Make twins match at the source, not in the comparison.** When a twin's LaTeX
   and Typst output differ, prefer making the two *actually* agree — fix the
   fixture (e.g. a titleless body-only `.tex` re-asserts `\thispagestyle{empty}`,
@@ -53,24 +36,15 @@ missed.
   char bag on *every* twin — and the char bag is deliberately minimal (NFKC + drop
   dashes + fold quote/star + drop whitespace; numbers/dashes delegated to the word
   bag, folios to the fixtures). Whatever difference survives a gate is real: fix
-  it, or document it with validated `expected_text_diffs` fragments whose cause
-  is `ExtractionArtifact("...")` or `TypstTranslation("...")` — don't expand the
-  normalization. Font and order exemptions likewise live in validated
-  `expected_font_diffs` / `expected_order_diffs` entries. Link mismatches live in
-  `expected_link_diff`; the link gate always runs and fails if the field does not
-  match reality. Page-count and metric mismatches use
-  `expected_page_count_diff` / `expected_metrics_diff`; metric scope and stricter
-  pitch opt-ins use reason strings (`metrics_page1_only`,
-  `metrics_uniform_pitch`); golden opt-outs use `golden_exempt`. Avoid adding new
-  bare skip booleans.
+  it, or document it with a validated `expected_*` entry on `Test` (its
+  docstring in `test_matrix.py` lists each field and the cause types) — don't
+  expand the normalization. Avoid adding new bare skip booleans.
   When asked *why* a normalization step is needed,
   verify the mechanism (ablate it; read both `pdftotext` dumps) before answering —
   in this codebase the plausible explanation was wrong more than once.
 - **Keep it idiomatic.** When touching code, apply the simplification checklist in
-  [`src/README.md`](src/README.md) ("Idioms / simplifications") — resolve defaults
-  in the signature, don't guard/`str()` bare values rendered into content (`none`
-  is empty content), assemble content rather than concatenating strings, and
-  centralize optional-field access. The golden gate must stay byte-identical.
+  [`src/README.md`](src/README.md) ("Idioms / simplifications"). The golden gate
+  must stay byte-identical.
 
 ## Gotchas — easy to get wrong, verified against LaTeX (don't re-break)
 
@@ -99,41 +73,12 @@ missed.
 
 ## Not done yet
 
-All public formats are accepted, but with accepted approximations: two-column
-vertical fill (`\flushbottom`) and last-column balancing are unreplicable in
-Typst (ragged-bottom columns); `sigchi-a` models the rule title, author grid,
-margin-column running head, bold-small captions, watermark, AND the
-sidebar/marginfigure/margintable margin notes + `fulltextwidth()`, but does not
-move *footnotes* into the margin and a margin note's vertical anchor can sit
-~1-2 lines off before a display heading; `acmcp`'s cover infobox is top-aligned
-with the body rather than `zref`-positioned against the frame bottom (the body
-tint, foot rule, and right-margin infobox layout otherwise match). Its keywords,
-contributions, code/data link, and author contact info are in the cover infobox,
-while normal contact/copyright footnotes are suppressed. Also outstanding:
-math-font fidelity; continuation-page first baselines sit 1em (not
-`\topskip` = 10pt) below the top margin (~1pt on 9pt bases); wrapped numbered
-section titles don't hang (`\@hangfrom`); `quotation` (3pc) and `description`
-geometry. Modelled: `\titlenote`/`\subtitlenote`, `\thanks`,
-`\authorsaddresses`, `\received`, `acks`, `\anon`, `\grantsponsor`/`\grantnum`,
-`\editor`, `\part`, `\startPage`, teasers, badges, the review-mode margin
-ruler (fixed slots, both sides on two-column), per-size `heightrounded`
-geometry, the conference metadata (`conference`/`booktitle`/`isbn`),
-`\noindentparagraph`, the natbib citation surface (numeric `\citet` with
-author text, postnote supplements, `cite-alt`/`cite-yearpar`/`short-cite`),
-amsart's widow/orphan prohibition (`text.costs`), and the
-opt-in booktabs `tabular`/`toprule`/`midrule`/`bottomrule` (rule separation via
-`parts/tables.typ`, a wrapper function — NOT a `show table` rule, which would
-recurse; the box is `breakable: false` like a real `tabular`). The table row strut (`\@arstrut` = 0.7/0.3·`\baselineskip`, verified
-from `array.sty`+kernel `\strutbox`) is modelled in the cell text metrics by
-`body.typ`'s `show table` rule (`top-edge`/`bottom-edge`/`leading`), using the
-format's normalsize `\baselineskip` — so a table manually resized mid-document
-uses normalsize's strut (consistent with the doc's normalsize leading model). See
-DESIGN.md "Deliberate approximations" / "Known limitations" for the full list.
-Author *line grouping* follows acmart's exact structural rule (an
-affiliation-less author andifies onto the next; affiliations are never compared —
-`group-authors`), and the contact-info *field order* matches acmart's
-source-declaration order (email/affiliation replayed in the author dict's key
-order, `contact-line`), guarded by the Tier 1.9 order gate.
+Accepted approximations and open gaps (ragged-bottom pages, `sigchi-a` margin
+footnotes, math-font fidelity, `\@hangfrom`, `quotation`/`description` geometry,
+…) are catalogued in DESIGN.md "Known limitations / not done" — read it before
+"fixing" one of them, and record new ones there. The modelled-feature inventory
+is the code plus the README, not this file. One don't-re-break: booktabs
+`tabular` is a wrapper function, NOT a `show table` rule (that recurses).
 
 ## Git workflow
 
