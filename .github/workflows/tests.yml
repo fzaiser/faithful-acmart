@@ -40,7 +40,8 @@ jobs:
           typst-version: 0.14.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8
+        # setup-uv publishes no floating major tag beyond v7; pin the release SHA.
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
 
@@ -51,7 +52,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Install Typst package checker
-        run: cargo install --git https://github.com/typst/package-check --locked
+        run: cargo install --git https://github.com/typst/package-check --rev 50eb19311fde --locked
 
       - name: Run regression suite
         run: uv run --frozen python tools/test.py check

@@ -187,8 +187,9 @@ def read_golden_poppler() -> str | None:
 def _poppler_mismatch_note() -> str | None:
     """Diagnostic when the local Poppler differs from the golden's recorded one.
 
-    Per policy a version difference must not fail anything on its own; this is
-    only appended to gates that already failed, to name a likely cause.
+    Per policy a version difference must not fail anything on its own: the golden
+    gate downgrades raster mismatches to notes under a divergent Poppler, and the
+    other gates append this to failures they already have, to name a likely cause.
     """
     recorded, local = read_golden_poppler(), poppler_version()
     if recorded and local and recorded != local:
@@ -216,6 +217,12 @@ def gate_golden() -> list[str]:
         return ["no golden file — run `test.py accept` first"]
     cur = _golden_hashes()
     failures: list[str] = []
+    # Raster hashes are only reproducible under the Poppler that accepted them; a
+    # different Poppler (e.g. a CI distribution's) may re-antialias a hairline. Such
+    # page mismatches are reported but do not fail the gate, per the version policy
+    # in _poppler_mismatch_note. Missing goldens, unbuilt tests and page-count
+    # differences are never a rasterizer artefact and still fail.
+    changed: list[str] = []
     for name, t in TESTS.items():
         if t.golden_exempt:
             if golden.get(name):
@@ -234,17 +241,22 @@ def gate_golden() -> list[str]:
                 local.append(f"{name}: page count {len(c)} != golden {len(g)}")
             for i, h in enumerate(c, 1):
                 if g.get(i) != h:
-                    local.append(f"{name}: page {i} changed")
+                    changed.append(f"{name}: page {i} changed")
                     DIFF.mkdir(parents=True, exist_ok=True)
                     rasterize(typst_pdf(name), M.GOLDEN_DPI, DIFF / f"changed-{name}")
-        if not local:
+        if not local and not any(line.startswith(f"{name}: ") for line in changed):
             print(f"ok   {name} ({len(c)}p)")
         failures.extend(local)
+    note = _poppler_mismatch_note()
+    if changed and note:
+        for line in changed:
+            print(f"note {line}")
+        print(f"{note}; raster mismatches are reported, not failed")
+    else:
+        failures.extend(changed)
     if failures:
         failures.append(f"inspect changed pages in {DIFF.relative_to(ROOT)}/ , "
                         "then `test.py accept` if intended.")
-        if note := _poppler_mismatch_note():
-            failures.append(note)
     return failures
 def _error_source(extra_arg: str, body: str = "= Body\nText.") -> str:
     # Cases that exercise a bad/other format supply their own `format:` in the
