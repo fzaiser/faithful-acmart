@@ -378,11 +378,11 @@
   propto: "prop", ll: "lt.double", gg: "gt.double",
   to: "arrow.r", rightarrow: "arrow.r", Rightarrow: "arrow.r.double", leftarrow: "arrow.l",
   Leftarrow: "arrow.l.double", leftrightarrow: "arrow.l.r", mapsto: "arrow.r.bar",
-  infty: "infinity", partial: "diff", nabla: "nabla", forall: "forall", exists: "exists",
+  infty: "infinity", partial: "partial", nabla: "nabla", forall: "forall", exists: "exists",
   neg: "not", "in": "in", notin: "in.not", ni: "in.rev", subset: "subset",
   subseteq: "subset.eq", supset: "supset", supseteq: "supset.eq", emptyset: "emptyset",
   varnothing: "nothing", perp: "perp", parallel: "parallel", angle: "angle", ell: "ell",
-  hbar: "planck.reduce", aleph: "aleph", prime: "prime", dag: "dagger", ddag: "dagger.double",
+  hbar: "planck", aleph: "aleph", prime: "prime", dag: "dagger", ddag: "dagger.double",
   ldots: "dots.h", dots: "dots.h", cdots: "dots.c",
   sum: "sum", prod: "product", int: "integral",
 )

@@ -240,7 +240,7 @@
     #set par(
       justify: justify,
       leading: lead,
-      first-line-indent: if indent == 0pt { 0pt } else { (amount: indent, all: false) },
+      first-line-indent: indent,
       spacing: lead,
     )
     #if chunk { tagged-par(body) } else { body }
@@ -865,7 +865,7 @@
   // Center each row on its own (acmart centers every row), so a short final row
   // sits centered rather than left-aligned. Rows are \lineskip (1pc) apart. The
   // conference box keeps the ambient body first-line indent (\parindent).
-  let fli = (amount: cfg.parindent, all: false)
+  let fli = cfg.parindent
   stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..chunk-rows(groups, n).map(row => align(center, grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,

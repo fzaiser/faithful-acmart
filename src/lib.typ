@@ -514,7 +514,7 @@
 
   set par(
     leading: comp(cfg), // intra-paragraph: baseline pitch = baselineskip
-    first-line-indent: (amount: cfg.parindent, all: false),
+    first-line-indent: cfg.parindent,
     spacing: tex-skip(cfg, cfg.parskip), // inter-paragraph = parskip (0) above one baselineskip step
     justify: true,
   )

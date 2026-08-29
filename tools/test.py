@@ -401,7 +401,7 @@ def main() -> int:
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
     sub.add_parser("unit", help="run pure-Typst unit tests (tests/unit/*.typ); no LaTeX").set_defaults(fn=cmd_unit)
     sub.add_parser("package", help="validate and compile the manifest-filtered package").set_defaults(fn=cmd_package)
-    sub.add_parser("min-version", help="compile compatibility fixtures under Typst 0.12.0").set_defaults(fn=cmd_min_version)
+    sub.add_parser("min-version", help=f"compile compatibility fixtures under the manifest minimum, Typst {M.MIN_TYPST_VERSION}").set_defaults(fn=cmd_min_version)
 
     o = sub.add_parser("overlay",
                        help="per-twin vector overlay + side-by-side PDFs vs LaTeX")

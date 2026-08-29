@@ -36,7 +36,7 @@ those rules were applied here so future releases don't have to re-derive them.
 |---|---|
 | `name` / `version` | `faithful-acmart` / `0.1.0` |
 | `entrypoint` | `src/lib.typ` |
-| `compiler` | `0.12.0` (min for `std.*` + `set par.line(...)`; 0.14+ adds PDF tags) |
+| `compiler` | `0.14.0` (stable math-symbol names for the `.bib` TeX layer; PDF tags) |
 | `license` | `MIT AND MIT-0` (+ `LICENSE`, `template/LICENSE`) |
 | `description` | `Every ACM paper format, matching LaTeX acmart.` |
 | `categories` / `disciplines` | `["paper"]` / `["computer-science"]` |

@@ -227,14 +227,12 @@ Some differences come from Typst and LaTeX being different layout engines:
 - `sigchi-a` does not move footnotes into the margin.
 - The `"typst"` bibliography backend is convenient, but less faithful than the
   default `"bibtex"` backend.
-- PDF accessibility tags are emitted only with Typst 0.14+; visual output works from
-  Typst 0.12.
 
 For the detailed design rationale and validation notes, see [`DESIGN.md`](https://github.com/fzaiser/faithful-acmart/blob/main/DESIGN.md).
 
 ## Requirements
 
-- Typst 0.12 or newer.
+- Typst 0.14 or newer.
 - The fonts listed in [Fonts](#fonts).
 
 ## License and trademarks
