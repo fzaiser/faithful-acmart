@@ -1017,13 +1017,21 @@
   ]
 }
 
+// \abstractname for an abstract in `language` (a supported name, or none for the
+// monolingual default): babel's per-language name — except acmengage's "Synopsis",
+// which acmart sets at class load and re-applies only inside \captionsenglish
+// (acmart.dtx:3298-3313), so under acmengage a non-English main language, or a
+// non-English translated abstract, still gets the babel name.
+#let abstract-name(cfg, language) = {
+  if cfg.name == "acmengage" and language in (none, "english") { return "Synopsis" }
+  if language == none { cfg.strings.abstract } else { lang-record(language).abstract }
+}
+
 // In-column top matter: abstract / CCS / keywords / ACM reference format. In
 // two-column formats these follow \@printtopmatter (acmart.dtx:6665) and so flow
 // in the FIRST column beneath the spanning title box; in one column they are
 // contiguous with the head. The leading weak skip collapses at a column top.
 #let make-title-body(cfg, meta) = {
-  let abstract-name = if cfg.name == "acmengage" { "Synopsis" } else { "Abstract" }
-
   if cfg.name == "acmengage" {
     engage-metadata-block(cfg, meta.engage-metadata)
   }
@@ -1037,14 +1045,12 @@
     heading(numbering: none, outlined: false)[#name]
     fm-block(cfg, body, indent: cfg.parindent, sz: "normalsize")
   }
-  if meta.abstract != none { render-abstract(abstract-name, meta.abstract) }
+  if meta.abstract != none { render-abstract(abstract-name(cfg, cfg.strings.main), meta.abstract) }
   // Translated abstracts: each is another block in its own language, right after the
-  // main one; proceedings repeat the abstract heading per language. Each translated
-  // abstract is headed by its own language's \abstractname (babel: Résumé /
-  // Zusammenfassung / Resumen / …), not the English one.
+  // main one; proceedings repeat the abstract heading per language, each headed by
+  // that language's \abstractname.
   for (l, ab) in meta.translated-abstract {
-    let rec = lang-record(l)
-    render-abstract(rec.at("abstract", default: abstract-name), text(lang: rec.code, ab))
+    render-abstract(abstract-name(cfg, l), text(lang: lang-record(l).code, ab))
   }
 
   // --- CCS Concepts (suppressed by \settopmatter{printccs=false}) ---

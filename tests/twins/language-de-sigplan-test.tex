@@ -1,0 +1,49 @@
+%% language-de-sigplan-test — German proceedings paper (acmart `language=german` on sigplan).
+%% Proceedings formats print the abstract heading (\abstractname → "Zusammenfassung") that journal formats omit, and every format heads the bibliography with \refname ("Literatur"); both come from babel.
+%% Also covers \keywordsname ("Schlagwörter"), \proofname ("Beweis") and \acksname ("Danksagungen").
+%% Twin of language-de-sigplan-test.typ.
+\documentclass[sigplan,language=german]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmMonth{6}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmISBN{978-1-4503-XXXX-X/2018/06}
+\acmConference[Conference'17]{Proceedings of ACM Conference}{June 2018}{Washington, DC, USA}
+\acmBooktitle{Proceedings of ACM Conference (Conference'17)}
+
+\begin{document}
+
+\title{Eine Notiz über Berechnungskomplexität}
+
+\author{Hans Müller}
+\email{mueller@example.de}
+\affiliation{%
+  \institution{Forschungsinstitut}
+  \city{Berlin}
+  \country{Germany}}
+
+\begin{abstract}
+  Eine kurze Notiz auf Deutsch, um die lokalisierten Überschriften eines Tagungsbeitrags zu prüfen.
+\end{abstract}
+
+\keywords{Komplexität, Algorithmen, Berechnung}
+
+\maketitle
+
+\section{Einleitung}
+Dieses Dokument prüft die lokalisierten Zeichenketten eines Tagungsbeitrags: die Überschrift der Zusammenfassung, die Schlagwörter, den Beweis, die Danksagung und die Überschrift des Literaturverzeichnisses~\cite{Cohen07}.
+
+\begin{proof}
+Ein kurzer Beweis, der mit einem QED-Quadrat endet.
+\end{proof}
+
+\begin{acks}
+Wir danken den Gutachtern.
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{sample-base}
+
+\end{document}

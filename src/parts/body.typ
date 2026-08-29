@@ -279,9 +279,10 @@
   }
 
   // Bibliography (fires only on the "typst" backend): Typst's built-in ACM CSL,
-  // footnotesize (8pt), "References". The faithful default is the "bibtex" backend (the
-  // ACM-Reference-Format.bst port); "typst" is the CSL approximation.
-  set bibliography(style: "association-for-computing-machinery", title: [References])
+  // footnotesize (8pt), headed by \refname in the document language. The faithful
+  // default is the "bibtex" backend (the ACM-Reference-Format.bst port); "typst" is
+  // the CSL approximation.
+  set bibliography(style: "association-for-computing-machinery", title: cfg.strings.references)
   show bibliography: set text(size: cfg.size.footnotesize)
   show bibliography: set par(leading: comp(cfg, sz: "footnotesize"))
 

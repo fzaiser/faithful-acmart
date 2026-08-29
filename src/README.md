@@ -18,7 +18,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/metadata.typ` | normalized authors, translations, conference/booktitle, journal/DOI, and PDF metadata fields |
 | `parts/page-chrome.typ` | running heads and footers, acmcp label, review ruler, and draft/legacy watermarks |
 | `parts/journals.typ` | the ACM journal table (key → name/short/issn) + `lookup-journal`, transcribed from acmart.dtx |
-| `parts/strings.typ` | localization for the `language` option: per-language fixed strings (keywords/acks/proof/table) + babel-name→Typst-lang map, transcribed from acmart.dtx |
+| `parts/strings.typ` | localization for the `language` option: per-language fixed strings (keywords/acks/proof/table/abstract/references) + babel-name→Typst-lang map, transcribed from acmart.dtx |
 | `parts/copyright.typ` | permission text + © owner per copyright mode (incl. Creative Commons), transcribed from acmart.dtx |
 | `parts/body.typ` | captions, lists, table defaults, code, footnotes, bibliography integration |
 | `parts/tables.typ` | booktabs `tabular` wrapper (drop-in for `table`, adds `\aboverulesep`/`\belowrulesep` rule separation) + `toprule`/`midrule`/`bottomrule` helpers; the cell-strut inset is shared with `body.typ`'s `set table` |

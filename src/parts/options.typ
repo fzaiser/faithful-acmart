@@ -97,16 +97,10 @@
     acmcp-article-types.at(article-type)
   }
 
-  // Carry one resolved language and fixed-string set on cfg so all downstream
-  // modules read identical values.
+  // Carry the resolved language record (every fixed string, plus `code` and `main`)
+  // on cfg so all downstream modules read identical values.
   let lang = resolve-language(data.language)
-  let cfg = cfg + (strings: (
-    keywords: lang.keywords,
-    keywords_proceedings: lang.keywords_proceedings,
-    acks: lang.acks,
-    proof: lang.proof,
-    table: lang.table,
-  ), lang: lang.code, bib-backend: bib-backend)
+  let cfg = cfg + (strings: lang, lang: lang.code, bib-backend: bib-backend)
 
   assert(bib-backend in ("typst", "bibtex", "biblatex"),
     message: "faithful-acmart: `bib-backend` must be \"typst\", \"bibtex\", or \"biblatex\".")

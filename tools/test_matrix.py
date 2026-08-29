@@ -278,6 +278,7 @@ EXPECTED_LINK_DIFFS: dict[str, ExpectedLinkDiff] = {
     "sample-acmlarge": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1145/1057270.1057278"), extra=("http://ccrma.stanford.edu/~jos/bayes/bayes.html",)),
     "sample-sigconf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
     "sample-sigplan": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.acm.org/publications/proceedings-template",), extra=("https://doi.org/10.48550/arXiv.1403.1349", "https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1007/3-540-65193-4_29", "https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1109/ICWS.2004.64", "https://doi.org/10.1109/ICWS.2004.64", "https://doi.org/10.1137/080734467", "https://doi.org/10.945/woot07-S422", "https://doi.org/10.1145/90417.90738")),
+    "language-de-sigplan-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/10.1145/1219092.1219093",)),
     "sample-acmsmall-submission": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
     "sample-acmsmall-conf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
     "sample-acmtog": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
@@ -324,6 +325,8 @@ EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
     "sample-sigconf-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=8),
     "sample-acmcp": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "sample-acmengage": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=8),
+    "language-de-sigplan-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=2),
+    "acmengage-de-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=2),
 }
 
 
@@ -340,6 +343,8 @@ EXPECTED_METRIC_DIFFS: dict[str, tuple[MetricAllowance, ...]] = {
     "sigplan-test": (MetricAllowance(1, "top", 5.25),),
     "title-wrap-sigplan-test": (MetricAllowance(1, "top", 5.25),),
     "acmengage-test": (MetricAllowance(1, "top", 5.25),),
+    "acmengage-de-test": (MetricAllowance(1, "top", 5.25),),
+    "language-de-sigplan-test": (MetricAllowance(1, "top", 5.25),),
     "acmcp-test": (MetricAllowance(1, "top", 6.25),),
     "sigchi-a-test": (MetricAllowance(1, "left", 6.25),),
     "authorversion-conf-test": (MetricAllowance(1, "top", 5.0),),
@@ -1027,6 +1032,17 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1, rule_gate=_RULE_BOOKTABS,
         note="Spanish `language=spanish`: keywordsname/acksname/proofname + tablename "
              "(\"Cuadro\") localized, figure label still \"Fig.\"",
+    ),
+    "language-de-sigplan-test": Test(
+        kind="twin", pages=1, expected_metrics_diff=_TITLE_METRICS_DIFF,
+        note="German on a proceedings format: the abstract heading (\"Zusammenfassung\", "
+             "journals print none) and the bibliography heading (\"Literatur\") come from "
+             "babel; plus keywordsname/proofname/acksname",
+    ),
+    "acmengage-de-test": Test(
+        kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
+        note="acmengage under a German main language: babel's \"Zusammenfassung\" "
+             "heads the abstract, not acmengage's \"Synopsis\"",
     ),
     # Full twins of the bundled acmart samples (acmart/samples/*.tex).
     # Each has a matched .tex/.typ pair in tests/twins/; assets (sample-base.bib,

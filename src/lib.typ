@@ -180,7 +180,8 @@
       // Forward the `arguments` value verbatim: it remembers where it was constructed,
       // so a RELATIVE path resolves against the user's file, not this package. `title`
       // is re-attached only when set, so `auto` still defers to body.typ's `set
-      // bibliography(title: [References])`. Passes single/array paths + full/style too.
+      // bibliography(title: …)` (\refname in the document language). Passes
+      // single/array paths + full/style too.
       if title == auto { std.bibliography(..args) } else { std.bibliography(..args, title: title) }
     } else {
       // The bibtex/biblatex engines read the .bib with our own parser, deep inside the
@@ -192,7 +193,7 @@
       //   • one positional STRING -> thread `args` (title already peeled); RELATIVE OK.
       //   • one positional ARRAY of paths (Typst's native multi-file form) -> must
       //     index, so every entry must be project-absolute.
-      let title = if title == auto { [References] } else { title }
+      let title = if title == auto { cfg.strings.references } else { title }
       let path = args.pos().first()
       if type(path) == str {
         _acm-bibliography(args, title: title)
