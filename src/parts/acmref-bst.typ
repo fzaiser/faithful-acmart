@@ -4,7 +4,7 @@
 
 #import "bib-data.typ": journal-canon
 #import "tex.typ": purify, change-case
-#import "acmref-common.typ": render, ends-punct, V, it, fld, has, fV, articleno-of, is-others, join-names, dashify, von-last, year-value
+#import "acmref-common.typ": render, ends-punct, V, it, fld, has, fV, articleno-of, is-others, join-names, dashify, von-last, year-value, nolinkurl
 
 // ACM journal.canon.abbrev: map a full journal name to its canonical abbreviation
 #let canon-abbrev(j) = journal-canon.at(j, default: j)
@@ -349,7 +349,9 @@
   if has(e, "eprint") { items.push(format-eprint(e)) }
   if has(e, "doi") {
     let bare = strip-doi(fld(e, "doi"))
-    items.push(link("https://doi.org/" + bare)[doi:#bare])
+    // output.doi: \href{https://doi.org/X}{doi:\nolinkurl{X}} — the prefix keeps the
+    // text font, only the DOI takes the \urlstyle font.
+    items.push(link("https://doi.org/" + bare)[doi:#nolinkurl(bare)])
   }
   // output.url: print url when no doi, OR when the per-entry `distinctURL` field
   // is present and not "0" (the .bst's `distinctURL empty.or.zero not`).

@@ -1,6 +1,15 @@
 // Shared ACM bibliography rendering primitives.
 
 #import "tex.typ": tex-to-content
+#import "theorems.typ": cfg-state
+
+// \nolinkurl: URL text inside an \href whose display text is not the URL itself
+// (the .bst's `doi:\nolinkurl{...}`). Takes the format's \urlstyle font like a
+// bare \url would; plain text when rendering outside the template.
+#let nolinkurl(s) = {
+  let cfg = cfg-state.get()
+  if cfg != none and cfg.urlstyle-sans { text(font: cfg.fonts.sans, s) } else { s }
+}
 
 // ---- render seam ----------------------------------------------------------
 // Field values flow through the formatter as RAW TeX (BibTeX-style); the single

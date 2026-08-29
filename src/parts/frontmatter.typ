@@ -27,7 +27,8 @@
 
 // acmart renders the DOI as \url{https://doi.org/<doi>} (a live link). `doi` is the
 // resolved record (meta.doi, with `.url` and `.bare`); callers guard on `meta.doi != none`.
-#let doi-link(doi) = link(doi.url)[https:\/\/doi.org\/#doi.bare]
+// \@formatdoi = \url{https://doi.org/...} (acmart.dtx:6204): the body is the URL.
+#let doi-link(doi) = link(doi.url)[#doi.url]
 
 // Match LaTeX \@textsuperscript marks. Typst's super() scales its body further;
 // the Dingbats-style envelope needs less inner scaling than text glyph marks.

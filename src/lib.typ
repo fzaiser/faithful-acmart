@@ -536,12 +536,18 @@
   // `screen`: colour hyperlinks (acmart ACMPurple for refs/cites, ACMDarkBlue
   // for URLs). Without it, links stay black as in print acmart.
   let acm-dark-blue = cmyk(100%, 58%, 0%, 21%)
-  let colorize = (dest, body) => {
-    // \urlstyle{sf} (sigplan/sigchi-a, acmart.dtx:3623): URL links set in sans.
-    // \urlstyle only restyles \url; \href display text (the mailto author emails)
-    // keeps the ambient font, so exclude mailto: targets from the sans switch.
-    let is-url = type(dest) == str and not dest.starts-with("mailto:")
-    let body = if cfg.urlstyle-sans and is-url { text(font: cfg.fonts.sans, body) } else { body }
+  // `it` is the link element (its `dest`/`body` decide the styling); `body` is what
+  // to render — `it` itself, or `it` under a nested string show rule.
+  let colorize = (it, body) => {
+    let dest = it.dest
+    // \urlstyle{sf} (sigplan/sigchi-a, acmart.dtx:3623) restyles only \url /
+    // \nolinkurl text, i.e. a link whose body IS its URL (Typst's auto body, or an
+    // interpolated `link(u)[#u]`). \href display text — author emails, `doi:`
+    // prefixes, arXiv ids, prose — keeps the ambient font; the bibliography's
+    // \nolinkurl parts opt in explicitly (acmref-common.typ `nolinkurl`).
+    let is-url-text = (type(dest) == str and not dest.starts-with("mailto:")
+      and it.body.has("text") and it.body.text == dest)
+    let body = if cfg.urlstyle-sans and is-url-text { text(font: cfg.fonts.sans, body) } else { body }
     if screen {
       text(fill: if type(dest) == str { acm-dark-blue } else { acm-purple }, body)
     } else { body }
@@ -553,11 +559,11 @@
   // non-breaking hyphen, visually identical) to forbid those breaks, while `/`
   // and `.` stay breakable, exactly as acmart's `urlbreakonhyphens=false`.
   show link: it => if url-break-on-hyphens {
-    colorize(it.dest, it)
+    colorize(it, it)
   } else {
     // Transform `it` in place (a nested string show rule); reconstructing a
     // `link` element here would re-trigger this rule and recurse.
-    colorize(it.dest, { show "-": "\u{2011}"; it })
+    colorize(it, { show "-": "\u{2011}"; it })
   }
 
   // Route bare `@key` (Typst syntax, a `ref` element — not shadowable) through the
