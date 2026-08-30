@@ -51,7 +51,7 @@ Or import the package in an existing document:
 )
 
 = Introduction
-Write normal Typst. Cite with @key and finish with a bibliography.
+Write normal Typst. Cite with @Cohen:1996:EAE and finish with a bibliography.
 
 #bibliography("refs.bib")
 ```
@@ -82,7 +82,7 @@ typst compile --font-path <font-folder> main.typ
 In the Typst web app, upload the font files into the project. Libertinus is available
 from the [Libertinus releases](https://github.com/alerque/libertinus/releases);
 `Inconsolatazi4` ships with TeX Live's `inconsolata` package. The project repository
-also mirrors both families in [`fonts/`](https://github.com/fzaiser/faithful-acmart/tree/main/fonts).
+also mirrors both families in [`fonts/`](fonts/).
 
 ## Formats
 
@@ -150,7 +150,7 @@ The default bibliography backend is `"bibtex"`, a pure-Typst implementation of
 ACM's `ACM-Reference-Format.bst`. Use normal Typst citation syntax:
 
 ```typst
-Prior work includes @Cohen:1996:EAE and #cite(<Li:2008:PUC>, <Smith:2020>).
+Prior work includes @Cohen:1996:EAE and #cite(<Li:2008:PUC>, <Hollis:1999:VBD>).
 #cite-text(<Cohen:1996:EAE>) gives a textual citation.
 
 #bibliography("refs.bib")
@@ -228,7 +228,7 @@ Some differences come from Typst and LaTeX being different layout engines:
 - The `"typst"` bibliography backend is convenient, but less faithful than the
   default `"bibtex"` backend.
 
-For the detailed design rationale and validation notes, see [`DESIGN.md`](https://github.com/fzaiser/faithful-acmart/blob/main/DESIGN.md).
+For the detailed design rationale and validation notes, see [`DESIGN.md`](DESIGN.md).
 
 ## Requirements
 
@@ -253,4 +253,4 @@ also the test suite: every format is diffed against real LaTeX acmart output.
 ## Contributing
 
 Development setup, validation, and repository internals are documented in
-[`CONTRIBUTING.md`](https://github.com/fzaiser/faithful-acmart/blob/main/CONTRIBUTING.md).
+[`CONTRIBUTING.md`](CONTRIBUTING.md).

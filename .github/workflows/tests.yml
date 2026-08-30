@@ -75,3 +75,22 @@ jobs:
 
       - name: Compile compatibility fixtures
         run: python3 tools/test.py min-version
+
+  current-typst:
+    name: Current Typst compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      # The golden gates stay pinned to 0.14.2; this job only smoke-compiles
+      # on whatever release users currently install, for early warning.
+      - name: Install latest Typst
+        uses: typst-community/setup-typst@v5
+        with:
+          typst-version: latest
+
+      - name: Compile compatibility fixtures
+        run: python3 tools/test.py compat

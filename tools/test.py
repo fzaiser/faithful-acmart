@@ -146,22 +146,28 @@ def cmd_source_data(_args) -> int:
     for failure in failures:
         print(failure, file=sys.stderr)
     return 1 if failures else 0
-def cmd_package(_args) -> int:
-    failures = gate_package(report=True)
+def cmd_package(args) -> int:
+    failures = gate_package(report=True, out_dir=args.out)
     for failure in failures:
         print(failure, file=sys.stderr)
     return 1 if failures else 0
 def cmd_min_version(_args) -> int:
-    """Compile a representative subset under the manifest's minimum Typst."""
+    """Compile the compatibility fixtures under the manifest's minimum Typst."""
+    return _compat(expect=M.MIN_TYPST_VERSION)
+def cmd_compat(_args) -> int:
+    """Compile the compatibility fixtures under whatever Typst is on PATH."""
+    return _compat(expect=None)
+def _compat(expect: str | None) -> int:
     proc = subprocess.run([str(TC), "--version"], capture_output=True, text=True)
     match = re.search(r"\b(\d+\.\d+\.\d+)\b", proc.stdout + proc.stderr)
     actual = match.group(1) if match else None
-    if proc.returncode != 0 or actual != M.MIN_TYPST_VERSION:
+    if proc.returncode != 0 or actual is None or (expect is not None and actual != expect):
         print(
-            f"minimum-version job requires Typst {M.MIN_TYPST_VERSION}, found {actual!r}",
+            f"compatibility job requires Typst {expect or '(any version)'}, found {actual!r}",
             file=sys.stderr,
         )
         return 1
+    print(f"compiling compatibility fixtures under Typst {actual}")
     sources = (
         TESTS_DIR / "typst-only" / "defaults-test.typ",
         TESTS_DIR / "typst-only" / "proceedings-defaults-test.typ",
@@ -399,8 +405,14 @@ def main() -> int:
     check.set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
     sub.add_parser("unit", help="run pure-Typst unit tests (tests/unit/*.typ); no LaTeX").set_defaults(fn=cmd_unit)
-    sub.add_parser("package", help="validate and compile the manifest-filtered package").set_defaults(fn=cmd_package)
+    pkg = sub.add_parser("package", help="validate and compile the manifest-filtered package")
+    pkg.add_argument(
+        "--out", type=Path, metavar="DIR",
+        help="on a passing run, also write the staged release bundle to DIR "
+             "(e.g. <packages checkout>/packages/preview/faithful-acmart/<version>)")
+    pkg.set_defaults(fn=cmd_package)
     sub.add_parser("min-version", help=f"compile compatibility fixtures under the manifest minimum, Typst {M.MIN_TYPST_VERSION}").set_defaults(fn=cmd_min_version)
+    sub.add_parser("compat", help="compile compatibility fixtures under the Typst on PATH (any version)").set_defaults(fn=cmd_compat)
 
     o = sub.add_parser("overlay",
                        help="per-twin vector overlay + side-by-side PDFs vs LaTeX")

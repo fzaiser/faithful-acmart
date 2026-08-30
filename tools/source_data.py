@@ -419,34 +419,102 @@ def _package_files() -> list[Path]:
     )
 
 
-def _release_readme(text: str, version: str) -> str:
-    """Pin repository links in the release copy without changing GitHub's README."""
-    repository = "https://github.com/fzaiser/faithful-acmart"
-    for view in ("blob", "tree"):
-        text = text.replace(
-            f"{repository}/{view}/main/",
-            f"{repository}/{view}/v{version}/",
-        )
+_MD_LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
+_IMAGE_SUFFIXES = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
+
+
+def _relative_link_targets(text: str) -> list[str]:
+    """Markdown link targets that are repository paths (no URLs, no pure anchors)."""
+    return [
+        target for target in (m.group(1) for m in _MD_LINK_RE.finditer(text))
+        if ":" not in target and not target.startswith("#")
+    ]
+
+
+def _split_markdown(text: str) -> tuple[str, str]:
+    """(prose, code): fenced-block lines and inline code spans go to `code`.
+
+    The staging rewrite and the reference checks treat the two differently, so
+    the gate needs the split even though it is a line-based approximation of
+    CommonMark, not a parse.
+    """
+    prose_lines: list[str] = []
+    code_parts: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        if line.lstrip().startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            code_parts.append(line)
+        else:
+            code_parts.extend(re.findall(r"`+[^`]+`+", line))
+            prose_lines.append(re.sub(r"`+[^`]+`+", " ", line))
+    return "\n".join(prose_lines), "\n".join(code_parts)
+
+
+def _is_shipped(target: str, rels: set[str]) -> bool:
+    path = target.partition("#")[0].rstrip("/")
+    return path in rels or any(rel.startswith(path + "/") for rel in rels)
+
+
+def _release_readme(text: str, manifest: dict, rels: set[str]) -> str:
+    """Pin the relative links whose targets do not ship to the release tag.
+
+    The repository README links relatively throughout; in the release copy,
+    links into the bundle stay relative and everything else becomes an
+    immutable tag URL — raw.githubusercontent.com for images, so they render
+    on Typst Universe.
+    """
+    package = manifest["package"]
+    repository = package["repository"]
+    tag = f"v{package['version']}"
+    for target in sorted(set(_relative_link_targets(text))):
+        if _is_shipped(target, rels):
+            continue
+        path, _, fragment = target.partition("#")
+        path = path.rstrip("/")
+        if Path(path).suffix.lower() in _IMAGE_SUFFIXES:
+            host = repository.replace("github.com", "raw.githubusercontent.com")
+            url = f"{host}/{tag}/{path}"
+        else:
+            view = "tree" if (ROOT / path).is_dir() else "blob"
+            url = f"{repository}/{view}/{tag}/{path}"
+        if fragment:
+            url += f"#{fragment}"
+        text = text.replace(f"]({target})", f"]({url})")
     return text
 
 
 def _stage_package(package_dir: Path) -> list[str]:
+    manifest = _package_manifest()
     selected = _package_files()
-    version = _package_manifest()["package"]["version"]
-    rels: list[str] = []
-    for source in selected:
-        rel = source.relative_to(ROOT)
+    rels = [p.relative_to(ROOT).as_posix() for p in selected]
+    for source, rel in zip(selected, rels):
         destination = package_dir / rel
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
-        if rel.as_posix() == "README.md":
-            destination.write_text(_release_readme(destination.read_text(), version))
-        rels.append(rel.as_posix())
+    readme = package_dir / "README.md"
+    readme.write_text(_release_readme(readme.read_text(), manifest, set(rels)))
     return rels
 
 
-def gate_package(report: bool = False) -> list[str]:
-    """Manifest allowlist, fresh-package compile, and official offline lint."""
+def _compile_against_packages(main: Path, package_root: Path) -> subprocess.CompletedProcess:
+    """Compile a document that imports the staged bundle from `package_root`."""
+    return subprocess.run(
+        ["typst", "compile", str(main), str(main.with_name("out.pdf")),
+         "--package-path", str(package_root), "--root", str(main.parent),
+         "--font-path", str(ROOT / "fonts"), "--ignore-system-fonts"],
+        capture_output=True, text=True, env={**os.environ, **TEST_CLOCK_ENV},
+    )
+
+
+def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]:
+    """Manifest allowlist, fresh-package compile, and official offline lint.
+
+    With `out_dir`, a passing run additionally writes the staged bundle there,
+    ready to commit into a typst/packages checkout.
+    """
     failures: list[str] = []
     manifest = _package_manifest()
     package = manifest["package"]
@@ -478,30 +546,110 @@ def gate_package(report: bool = False) -> list[str]:
         source_readme = (ROOT / "README.md").read_text()
         staged_readme = (package_dir / "README.md").read_text()
         release_tag = f"v{package['version']}"
-        repository = "https://github.com/fzaiser/faithful-acmart"
-        main_prefixes = tuple(f"{repository}/{view}/main/" for view in ("blob", "tree"))
-        tag_prefixes = tuple(
-            f"{repository}/{view}/{release_tag}/" for view in ("blob", "tree"))
-        if not any(prefix in source_readme for prefix in main_prefixes):
-            failures.append("repository README must link to the live main branch")
-        if (any(prefix in staged_readme for prefix in main_prefixes)
-                or not any(prefix in staged_readme for prefix in tag_prefixes)):
+        repository = package["repository"]
+        broken = sorted({
+            target for target in _relative_link_targets(source_readme)
+            if not (ROOT / target.partition("#")[0].rstrip("/")).exists()
+        })
+        if broken:
+            failures.append("README links to missing paths: " + ", ".join(broken))
+        if any(f"{repository}/{view}/main/" in source_readme for view in ("blob", "tree")):
             failures.append(
-                f"staged README did not rewrite main-branch links to {release_tag}")
+                "repository README must use relative links, not main-branch URLs")
+        # The staging rewrite parses only plain inline `](target)` links; a titled,
+        # angle-bracketed, or reference-style link would silently escape it.
+        sloppy = [m.group(0) for m in re.finditer(r"\]\([^)]*\s[^)]*\)", source_readme)]
+        if re.search(r"(?m)^ {0,3}\[(?!\^)[^\]]+\]:", source_readme):
+            sloppy.append("a reference-style link definition")
+        if sloppy:
+            failures.append(
+                "README links the staging rewrite cannot parse — use plain inline "
+                "](target) links without titles: " + ", ".join(sloppy))
+        prose, code = _split_markdown(source_readme)
+        if "](" in code:
+            failures.append(
+                "README has ](…) inside a code span or fence; the staging rewrite "
+                "cannot tell it from a link, so reword that code")
+        headings = re.findall(r"(?m)^#{1,6} +(.+?)\s*$", prose)
+        slugs = {re.sub(r" +", "-", re.sub(r"[^\w\- ]", "", h.lower())) for h in headings}
+        missing_anchors = sorted({
+            target for target in re.findall(r"\]\((#[^)\s]+)\)", source_readme)
+            if target[1:] not in slugs
+        })
+        if missing_anchors:
+            failures.append(
+                "README anchor links to missing headings: " + ", ".join(missing_anchors))
+        unshipped = sorted({
+            target for target in _relative_link_targets(staged_readme)
+            if not _is_shipped(target, set(rels))
+        })
+        if unshipped:
+            failures.append(
+                f"staged README links to unshipped paths (expected {release_tag} URLs): "
+                + ", ".join(unshipped))
+
+        # Every token starting `@preview/` must read exactly `name:version` for
+        # this package. Whole-token matching is what makes a typo'd name, a
+        # missing colon, a short `:0.1`, or a suffixed/garbled version fail
+        # instead of slipping past. Prose may close its sentence right after
+        # the token; in code spans, fences, and the template the token is part
+        # of a command or import, so nothing may follow it.
+        token_re = re.compile(r"@preview/[^\s\"'`)\]]*")
+        exact = rf"@preview/{re.escape(package['name'])}:{re.escape(package['version'])}"
+        strict_ref = re.compile(exact + r"\Z")
+        prose_ref = re.compile(exact + r"[.,;:]?\Z")
+        scans = [(prose, prose_ref), (code, strict_ref)] + [
+            (path.read_text(), strict_ref)
+            for path in sorted((ROOT / "template").glob("*.typ"))]
+        tokens = [m.group(0) for text, _ in scans for m in token_re.finditer(text)]
+        bad = sorted({m.group(0) for text, pattern in scans
+                      for m in token_re.finditer(text) if not pattern.match(m.group(0))})
+        if bad or not tokens:
+            failures.append(
+                f"README/template must reference @preview/{package['name']}:"
+                f"{package['version']} only, found: " + (", ".join(bad) or "no references"))
 
         project = root / "project"
         shutil.copytree(package_dir / "template", project)
-        output = project / "out.pdf"
-        compile_proc = subprocess.run(
-            ["typst", "compile", str(project / "main.typ"), str(output),
-             "--package-path", str(package_root), "--root", str(project),
-             "--font-path", str(ROOT / "fonts"), "--ignore-system-fonts"],
-            capture_output=True, text=True, env={**os.environ, **TEST_CLOCK_ENV},
-        )
-        if compile_proc.returncode != 0 or not output.exists():
+        compile_proc = _compile_against_packages(project / "main.typ", package_root)
+        if compile_proc.returncode != 0 or not (project / "out.pdf").exists():
             failures.append(
                 "fresh staged package failed to compile:\n" +
                 (compile_proc.stderr + compile_proc.stdout).strip())
+
+        fences = re.findall(r"^```typst\n(.*?)^```$", source_readme, re.M | re.S)
+        # CommonMark also accepts indented, longer, or tilde fences; those would
+        # silently skip compilation, so require the one canonical form.
+        loose_fences = re.findall(r"(?mi)^ {0,3}(?:`{3,}|~{3,})[ \t]*typst\b", source_readme)
+        if len(loose_fences) != len(fences):
+            failures.append(
+                f"README has {len(loose_fences)} typst fences but only {len(fences)} in "
+                "the canonical form the gate compiles (```typst at column 0)")
+        if not fences:
+            failures.append("README has no ```typst example to compile")
+        # Fragment examples (no import of their own) are compiled under the
+        # quick-start context: the package import plus a minimal show rule.
+        preamble = (
+            f'#import "@preview/{package["name"]}:{package["version"]}": *\n'
+            "#show: acmart.with(\n"
+            '  title: "README Example",\n'
+            "  acm-year: 2018,\n"
+            "  acm-month: 8,\n"
+            '  authors: ((name: "Ada Lovelace", email: "ada@example.org",\n'
+            '    affiliation: (institution: "Analytical Engine Institute", country: "UK")),),\n'
+            ")\n"
+        )
+        for index, fence in enumerate(fences, start=1):
+            example = root / f"readme-example-{index}"
+            example.mkdir()
+            shutil.copy2(package_dir / "template" / "refs.bib", example / "refs.bib")
+            source = fence if "#import" in fence else preamble + fence
+            (example / "main.typ").write_text(source)
+            fence_proc = _compile_against_packages(example / "main.typ", package_root)
+            if fence_proc.returncode != 0:
+                failures.append(
+                    f"README ```typst example {index} failed to compile:\n" +
+                    (fence_proc.stderr + fence_proc.stdout).strip())
 
         checker = shutil.which("typst-package-check")
         if checker is None:
@@ -531,6 +679,21 @@ def gate_package(report: bool = False) -> list[str]:
                     (check_proc.stderr + "\n" + "\n".join(
                         f"{d.get('code', d.get('kind'))}: {d.get('message')}" for d in unexpected
                     )).strip())
+
+        if out_dir is not None and not failures:
+            out_dir = out_dir.resolve()
+            if out_dir.is_relative_to(ROOT):
+                failures.append(
+                    f"--out must point outside the repository; a bundle under {ROOT} "
+                    "would be picked up as package source by the next run")
+            elif out_dir.exists() and (not out_dir.is_dir() or any(out_dir.iterdir())):
+                failures.append(f"{out_dir} exists and is not an empty directory")
+            else:
+                shutil.copytree(package_dir, out_dir, dirs_exist_ok=True)
+                if report:
+                    print(f"staged the release bundle in {out_dir}")
     if report and not failures:
-        print(f"ok   {len(rels)} shipped files; fresh template compile; offline package lint")
+        print(
+            f"ok   {len(rels)} shipped files; fresh template compile; "
+            f"{len(fences)} README examples; offline package lint")
     return failures

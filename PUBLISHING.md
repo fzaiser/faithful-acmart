@@ -84,6 +84,13 @@ ln -sfn "$PWD" "$HOME/Library/Application Support/typst/packages/preview/faithfu
 typst init @preview/faithful-acmart:0.1.0
 ```
 
+The symlink sits in the `preview` namespace deliberately, so that `typst init` and the
+template's literal `@preview` import can be tested unchanged (`@local` could not
+exercise either). The flip side: Typst searches the data directory before the package
+cache, so once this version is published the symlink **shadows the released copy** for
+every document on this machine. Remove it after testing, and suspect it first if local
+output ever disagrees with what users see.
+
 ## Pre-submission checklist
 
 ```sh
@@ -95,8 +102,9 @@ tools/tc compile --format png --pages 1 --ppi 250 template/main.typ thumbnail.pn
 #    optional: oxipng -o4 --strip safe thumbnail.png
 
 # 3. The regression harness assembles the manifest-filtered bundle, asserts an
-#    allowlist, compiles a fresh template project from it, and runs the official
-#    linter offline:
+#    allowlist, checks the README's links and @preview versions, compiles a fresh
+#    template project plus every README ```typst example from it, and runs the
+#    official linter offline:
 tools/venv/bin/python tools/test.py package
 
 # 4. To install/update the official linter (needs rustc >= 1.85.1)
@@ -117,13 +125,17 @@ in `LICENSE` / `template/LICENSE`.
    cd packages && git sparse-checkout init
    git sparse-checkout set packages/preview/faithful-acmart
    git remote add upstream git@github.com:typst/packages
+   git config remote.upstream.partialclonefilter tree:0
    git checkout main
    ```
-2. Create `packages/preview/faithful-acmart/<version>/` and copy the **shipped** files
-   there — do not copy `.git` (no submodules), and drop everything in the exclude list.
-   In the copied `README.md` only, rewrite GitHub `/main/` links to `/v<version>/`.
-   Keep this repository's README on `main`; `tools/test.py package` applies the same
-   release-only rewrite to the staged bundle before compiling and linting it.
+2. Assemble the submission with the harness. It stages the shipped files, rewrites the
+   README's relative links to unshipped files to the `v<version>` tag, and writes the
+   bundle only after every package check passes (note the doubled `packages/`):
+   ```sh
+   tools/venv/bin/python tools/test.py package \
+     --out <packages checkout>/packages/preview/faithful-acmart/<version>
+   ```
+   Never copy a `.git` directory into the checkout; submodules are not accepted.
 3. Commit and open a PR. First-time authors get extra review; after merge + CI it can
    take ~30 min to appear on Universe. Published versions are permanent.
 
@@ -131,16 +143,17 @@ in `LICENSE` / `template/LICENSE`.
 
 1. Bump `version` in `typst.toml`.
 2. Update `template/main.typ`'s import to `@preview/faithful-acmart:<new-version>` and
-   any literal package version numbers in `README.md`. Leave the repository README's
-   cross-repo GitHub links on `main`; rewrite them only in the release copy.
+   the version numbers in `README.md` — `test.py package` fails on any `@preview`
+   import that disagrees with the manifest.
 3. Re-point the local symlink (above) to the new version.
 4. Regenerate `thumbnail.png` if the output changed.
 5. Tag the release commit in the main repo and push the tag before assembling the
    release copy: `git tag -a v<new-version> <commit> -m "faithful-acmart <new-version>"`
    then `git push origin v<new-version>`.
-6. Copy the shipped files into a **new** `packages/preview/faithful-acmart/<new-version>/`
-   directory (never edit an already-published version) and open a PR. The updater should
-   be the same author as the previous version, or the previous author is consulted.
+6. Assemble a **new** `packages/preview/faithful-acmart/<new-version>/` directory with
+   `test.py package --out` (never edit an already-published version) and open a PR.
+   The updater should be the same author as the previous version, or the previous
+   author is consulted.
 
 ## Gotchas (learned the hard way)
 
@@ -149,14 +162,17 @@ in `LICENSE` / `template/LICENSE`.
 - **`MIT AND MIT-0`** requires *both* `LICENSE` (MIT) and `template/LICENSE` (MIT-0) to
   be present and the split noted in the README.
 - **The thumbnail is auto-excluded** and must not be `image()`'d anywhere in the package.
-- **There are two README contexts.** The repository's `README.md` is also the GitHub
-  landing page, so its links to `DESIGN.md`, `CONTRIBUTING.md`, and `fonts/` must track
-  `main`. Those files are excluded from the downloaded package, so the copy submitted
-  to `typst/packages` must instead point at the immutable release tag
-  (`…/blob/v<version>/DESIGN.md`, `…/tree/v<version>/fonts`). Never commit that rewrite
-  back to the development README. Create and push the tag before assembling the release
-  copy; otherwise its links will 404. The package staging gate performs this rewrite in
-  its temporary copy and then lets `typst-package-check` reject any remaining default-
-  branch links.
+- **There are two README contexts.** The repository's `README.md` uses relative links
+  throughout — they work on GitHub, in editors, and in forks. Staging keeps each link
+  whose target ships and rewrites the rest to the immutable release tag
+  (`…/blob/v<version>/DESIGN.md`, `…/tree/v<version>/fonts`; images go to
+  `raw.githubusercontent.com` so they render on Universe). Never commit that rewrite
+  back to the development README, and never write absolute `…/main/…` links there: the
+  package gate rejects them, verifies every relative link's target exists, and compiles
+  each fenced `typst` example in the README against the staged bundle. The gate parses
+  only the canonical forms — plain inline `](target)` links (no titles, no reference
+  style) and column-0 ` ```typst ` fences — and fails on anything else rather than
+  letting it slip past the rewrite. Create and push the tag before submitting the
+  staged copy; otherwise its links 404.
 - **Community tooling:** `typst-package-check` (lint), `tytanic` (tests), `typship`
   (install/submit).
