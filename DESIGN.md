@@ -412,9 +412,18 @@ mistaken for faithfulness bugs.
   (acmart.dtx:6988). The infobox and tinted body are a two-cell grid: the body cell
   stays top-aligned, while the infobox cell is bottom-aligned so its bottom lands on
   the frame bottom, matching acmart's two-pass `zref` adjustment (acmart.dtx:6733)
-  without a magic vertical offset. The code/data URL wraps where LaTeX overflows
-  (one word-bag token splits). Normal contact/copyright footnotes and keyword top
+  without a magic vertical offset. Normal contact/copyright footnotes and keyword top
   matter are suppressed, as in LaTeX.
+  The infobox measure is only 5pc — narrower than the code/data URL and than several
+  of the contact-block email addresses — so the two paragraph breakers part ways on
+  those unbreakable runs: TeX keeps the run on the current line and lets the box go
+  overfull, Typst starts a new line. The content is the same either way, but the wrap
+  points differ (the code/data URL splits into different word-bag tokens), and an
+  acmcp page is only 486pt wide, so LaTeX's overflow can push a glyph clean off the
+  page, where text extraction drops it. Both engines typeset all eight `;` separators
+  of the upstream sample's contact block, but two of LaTeX's land at or past x=486 and
+  survive extraction only if the reference PDF's MediaBox is widened first (the
+  extractor reads six). Don't "fix" the port to match that count.
 - **Conference Huge title** sits ~4–5pt off from LaTeX (glyph-bbox overshoot): we pin the
   cap-top to the top margin (the faithful `\topskip` model), whereas LaTeX places the
   baseline. Imperceptible; the sigplan twin marks its Tier-2 top check report-only.

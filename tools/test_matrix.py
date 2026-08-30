@@ -247,7 +247,7 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "sample-sigconf-authordraft": ResidualSignatures(text="57a4481083f7716ddac8aa384c515bbb498a2281fce9d957465ad5347493f50d", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="60dc257e9cf74ed07717c50f0c7fe929397c3f5cd416bc28ed529e0c6f95890c"),
     "sample-acmsmall-biblatex": ResidualSignatures(text="92a70243730412d508ba78837840e05ffee4b632be406778fe2261b017cc6df4", font="49aeb0090f34955cfe4955eb61ec3205d5316489e0e531efc5b177d41a4d0312", order="06838db4fff42bd54f758c0a5cae5701f23098e6576c58f0a1d6c24a368758b5"),
     "sample-sigconf-biblatex": ResidualSignatures(text="7f1f8f05af6984e9254fef2c1f79dd32a26c12d351162b040216671262a9c62e", font="331464ac0b75d83068122c1a2016d6e6e77733b7111debd67a0e13bcbb89a919", order="e05fdb9a10feff979fed0ce72291eaccc755f16d3d214ceaa35153a19bdc49f9"),
-    "sample-acmcp": ResidualSignatures(text="7fbdf3172bc5ee4838deba73a9af927db17fa8d5dc77d187ac61ae0873565ca1"),
+    "sample-acmcp": ResidualSignatures(text="a9a95ef15c40d9c28beacacdc681edc7c834fcae0aba217e4764495993a5ac9e"),
     "sample-acmengage": ResidualSignatures(order="e1375d589c6da53376f20ce6acd938b50f3b317e20333dd6ab48744b32034f58"),
 }
 
@@ -1532,6 +1532,13 @@ TESTS: dict[str, Test] = {
                     "the contact line overfills the narrow acmcp measure, so LaTeX "
                     "draws its trailing \";\" past the MediaBox and extraction drops "
                     "it (widening the MediaBox brings it back)"),
+            ),
+            ExpectedTextDiff(
+                latex="Hekla, Iceland, jsmith@affiliation.org Julius P. Kumquat,",
+                typst="Hekla, Iceland, jsmith@affiliation.org; Julius P. Kumquat,",
+                cause=ExtractionArtifact(
+                    "the same overfull contact line: this \";\" also lands past the "
+                    "MediaBox in LaTeX and is dropped by extraction"),
             ),
         ),
         note="upstream acmcp sample: JDS banner, cover infobox, and author contributions.",

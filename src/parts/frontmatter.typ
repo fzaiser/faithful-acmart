@@ -343,25 +343,6 @@
   parts.join(", ")
 }
 
-#let acmcp-contact-lines(authors) = {
-  let contacts = authors.map(contact-line)
-  if contacts.len() <= 1 { return contacts.join("") }
-  let out = []
-  for (i, c) in contacts.enumerate() {
-    if i > 0 {
-      let prev = authors.at(i - 1)
-      let cur = authors.at(i)
-      // acmart's acmcp infobox replays \addresses after the title block has
-      // processed corresponding-author marks. In the bundled sample this leaves
-      // the separator before the final corresponding author unprinted.
-      let omit-final-corresponding-sep = i == contacts.len() - 1 and cur.corresponding and not prev.corresponding
-      out += if omit-final-corresponding-sep { [ ] } else { [; ] }
-    }
-    out += c
-  }
-  out
-}
-
 // authordraft stamps the page-1 copyright block with a black large-bold notice
 // overlaying the (greyed) copyright text (acmart.dtx:6606-6610). place() gives it
 // zero size, so the copyright lines flow behind it. \raisebox{-2ex} lowers the
@@ -598,7 +579,8 @@
       if meta.anonymous {
         [#label Anonymous Author(s).]
       } else {
-        [#label #acmcp-contact-lines(meta.authors).]
+        let contacts = meta.authors.map(contact-line).join("; ")
+        [#label #contacts.]
       }
     }
   ]
