@@ -3,8 +3,8 @@
 The two engines are asymmetric and we lean into it: Typst PDFs are *tagged*, so
 their structure tree gives logical chunks (the title, each author line, the
 contact-info block, the CCS list, ...) with their tokens in *logical* reading
-order. LaTeX references are *flat* (untagged) — pdftotext gives only a single
-physical-reading-order token stream.
+order. LaTeX references are *flat* (untagged) — the extractor gives only a single
+token stream in content-stream order.
 
 So this is a TREE-vs-FLAT comparison. We don't need LaTeX to be tagged: the Typst
 tree tells us what the logical groups are and what order their tokens belong in;
@@ -19,7 +19,7 @@ Two things the global word/char bags (tools/test.py) can't see, but this can:
 
 Crucially, INTER-chunk order is NOT checked: Typst emits footnote/contact chunks
 first in the tree even though they render at the page bottom, so tag-tree order
-disagrees with pdftotext reading order by design. Only the order WITHIN each
+disagrees with the flat stream's order by design. Only the order WITHIN each
 chunk is gated; the chunk is matched as a sub-sequence of the stream, so other
 content may interpose between its tokens (robust to reflow, unlike bigrams).
 
@@ -31,11 +31,11 @@ extraction cleanup.
 from __future__ import annotations
 
 import re
-import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
 
+from pdf_extract import pdf_text
 from pdf_text_tokens import tokenize
 
 
@@ -111,13 +111,13 @@ _BLOCK_BREAK = {"Note", "Caption", "Figure", "Table", "Formula"}
 
 # Generated marker labels (footnote/endnote marks, list bullets/numbers) — like a
 # heading number or page folio, layout not content, and extracted inconsistently:
-# the rendered superscript mark has no space before it, so pdftotext glues it to
+# the rendered superscript mark has no space before it, so the extractor glues it to
 # the preceding word ("footnote1") while the structure tree keeps it a separate
 # Lbl element. Dropped from chunk text so that asymmetry isn't read as disorder.
 _DROP = {"Lbl"}
 
 # Auto-generated heading numbering ("1", "2.3") — a layout label, not content,
-# that pdftotext extracts in an unstable position (like a page folio); stripped
+# that the flat stream carries in an unstable position (like a page folio); stripped
 # from heading chunks so the order check sees only the title words.
 _HEADING = {"H", "H1", "H2", "H3", "H4", "H5", "H6"}
 _NUMBERING = re.compile(r"^\d+(\.\d+)*$")
@@ -248,10 +248,8 @@ def _page_index(pdf, elem) -> int:
 
 # --- LaTeX side: flat reading-order token stream ---------------------------
 def latex_stream(pdf_path: Path) -> list[str]:
-    out = subprocess.run(
-        ["pdftotext", str(pdf_path), "-"], capture_output=True, text=True
-    ).stdout
-    return tokenize(out)
+    """The untagged LaTeX PDF as one flat token stream, in content-stream order."""
+    return tokenize(pdf_text(pdf_path))
 
 
 # --- intra-chunk order check (LCS alignment) -------------------------------
@@ -318,14 +316,14 @@ def _reconcile_boundaries(chunk: list[str], window: list[str]) -> list[str]:
 
     Word boundaries are unrecoverable from the tag tree: a line break renders no
     space and drops the hyphenation hyphen, so consecutive marked-content runs
-    abut ("Group"+"Hekla" -> "GroupHekla", "USA"+email -> "USAemail"). pdftotext
-    splits them. A chunk token that is ABSENT from the window but equals a
+    abut ("Group"+"Hekla" -> "GroupHekla", "USA"+email -> "USAemail"). The flat
+    stream splits them. A chunk token that is ABSENT from the window but equals a
     concatenation of consecutive window tokens (greedy longest-prefix over the
     window vocabulary) is replaced by those tokens. This is the "sub-token prefix"
     rule, done at word granularity — so unlike a char-level match it neither
     re-flags content reorders the bags already own nor reacts to a single stray
     char. The inverse also happens: URL/ISBN fragments and letter-spaced words can
-    be separate structure-tree tokens but one pdftotext token ("4"+"555" vs
+    be separate structure-tree tokens but one stream token ("4"+"555" vs
     "4555", "l e v e l" vs "level"). Merge those consecutive chunk tokens to the
     stream token before the split pass. Its payoff: an email glued onto an
     affiliation line is un-glued, and a line-broken identifier is not mistaken for

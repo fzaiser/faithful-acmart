@@ -5,13 +5,12 @@ page-1 raster mismatch percentage against the matrix thresholds."""
 
 from __future__ import annotations
 
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import test_matrix as M
 from harness import LATEX, TYPST, DIFF, OUT, ROOT, compile_typst, _pmap
+from pdf_extract import raster_array
 from latex_build import latex_build, ref_is_fresh, ensure_class
 
 
@@ -68,12 +67,7 @@ def _validate_variant_results(
     DIFF.mkdir(parents=True, exist_ok=True)
 
     def render(pdf: Path):
-        with tempfile.TemporaryDirectory() as td:
-            out = Path(td) / "p"
-            subprocess.run(["pdftoppm", "-r", "150", "-f", "1", "-l", "1", "-png",
-                            str(pdf), str(out)], check=True, capture_output=True)
-            f = sorted(Path(td).glob("p*.png"))[0]
-            return np.asarray(Image.open(f).convert("RGB"))
+        return raster_array(pdf, 1, 150)
 
     def mismatch(a, b):
         ga, gb = a.mean(axis=2), b.mean(axis=2)

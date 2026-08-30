@@ -40,7 +40,7 @@ missed.
   docstring in `test_matrix.py` lists each field and the cause types) — don't
   expand the normalization. Avoid adding new bare skip booleans.
   When asked *why* a normalization step is needed,
-  verify the mechanism (ablate it; read both `pdftotext` dumps) before answering —
+  verify the mechanism (ablate it; read both `test.py text` dumps) before answering —
   in this codebase the plausible explanation was wrong more than once.
 - **Keep it idiomatic.** When touching code, apply the simplification checklist in
   [`src/README.md`](src/README.md) ("Idioms / simplifications"). The golden gate
@@ -62,7 +62,7 @@ missed.
   `test.py probe` re-dumps these from the bundled class — don't hardcode the
   article values.
 - **Section titles are MIXED CASE**, not uppercased (author *names* are uppercased
-  — different thing). pdftotext is misleading here; check rendered pixels.
+  — different thing). Extracted text is misleading here; check rendered pixels.
 - **Flushbottom-like fill is unreplicable.** acmsmall does NOT call `\flushbottom`
   (only acmtog/sigconf… do); the fill comes from acmart setting `\@textbottom` to
   `\vskip 0pt \@plus 1pt` (`acmart.dtx:3936`), so *full* pages stretch the rubber

@@ -111,10 +111,6 @@ def gate_outline(report: bool = False) -> list[str]:
     checked only for page-1-anchored entries — later-page bookmark targets drift
     with the documented multi-page page-fill difference. If LaTeX bookmarks any
     numbered section, Typst must emit a non-empty outline (catches lost tagging)."""
-    try:
-        import fitz  # noqa: F401
-    except ImportError:
-        return ["Tier 1.95 (outline) requires PyMuPDF (run `uv sync`)"]
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
@@ -223,12 +219,8 @@ def gate_links(report: bool = False) -> list[str]:
     return failures
 def gate_fonts(report: bool = False) -> list[str]:
     """Tier 1.8 — per-letter font gate. Every alphabetic character must match LaTeX
-    in family/weight/italic/size/colour. Needs PyMuPDF; twins with
-    ``expected_font_diffs`` evidence may carry a known mismatch."""
-    try:
-        import fitz  # noqa: F401
-    except ImportError:
-        return ["Tier 1.8 (fonts) requires PyMuPDF (run `uv sync`)"]
+    in family/weight/italic/size/colour. Twins with ``expected_font_diffs``
+    evidence may carry a known mismatch."""
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
@@ -321,7 +313,7 @@ def gate_order(report: bool = False) -> list[str]:
                 print(f"diff  {name}: exact expected order residual {actual[:12]}")
         elif bad:
             lines = [f"{name}: {len(bad)} chunk(s) out of order vs LaTeX "
-                     f"(structure-tree order vs flat stream; read both pdftotext dumps)"]
+                     f"(structure-tree order vs flat stream; read both `test.py text` dumps)"]
             for role, toks, r in bad[:4]:
                 lines.append(f"    <{role}> disorder={r['disorder']}/{r['present']}: "
                              f"{' '.join(toks)[:70]!r}")

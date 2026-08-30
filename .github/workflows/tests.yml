@@ -26,9 +26,6 @@ jobs:
           # patterns for the twins that pass acmart's `language` option.
           sudo apt-get install -y --no-install-recommends \
             biber \
-            ghostscript \
-            poppler-utils \
-            qpdf \
             texlive-bibtex-extra \
             texlive-extra-utils \
             texlive-fonts-extra \

@@ -14,7 +14,6 @@ from test_matrix import TESTS
 from pdf_text_tokens import normalize, bag_coverage, char_bag, dash_bag
 from harness import latex_pdf, typst_pdf
 from pdf_extract import pdf_text
-from gates_core import _poppler_mismatch_note
 from gate_residuals import (
     _check_expected_text_diffs, _residual_digest, _expected_residual,
     _assertion_targets,
@@ -72,7 +71,7 @@ def gate_text(report: bool = False) -> list[str]:
         # Universal char-bag tripwire on top of the above: every twin's content
         # must match as an exact character multiset (order-, line-break-, number-
         # and scheme-independent), unless it carries expected_text_diffs evidence
-        # for a known content difference or a pdftotext extraction artifact.
+        # for a known content difference or an extraction artifact.
         ca = char_bag(lraw, review_line_numbers=t.review_line_numbers)
         cb = char_bag(traw, review_line_numbers=t.review_line_numbers)
         cm, ce = ca - cb, cb - ca
@@ -89,7 +88,7 @@ def gate_text(report: bool = False) -> list[str]:
                 print(f"diff  {name}: exact expected char residual {actual[:12]}")
         elif cm or ce:
             local.append(
-                f"{name}: char bags differ (read both pdftotext dumps to locate)\n"
+                f"{name}: char bags differ (read both `test.py text` dumps to locate)\n"
                 f"    only in LaTeX: {dict(cm)}\n    only in Typst: {dict(ce)}")
         else:
             if report:
@@ -137,6 +136,4 @@ def gate_text(report: bool = False) -> list[str]:
         if not local and not report:
             print(f"ok   {name}")
         failures.extend(local)
-    if failures and (note := _poppler_mismatch_note()):
-        failures.append(note)
     return failures

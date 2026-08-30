@@ -521,7 +521,7 @@ the article metadata extraction phase, and to ensure consistency in the spelling
 of the section heading.
 
 Authors should not prepare this section as a numbered or unnumbered
-#raw("\\section"); please use the "#raw("acks")" environment.
+`\section`; please use the "`acks`" environment.
 
 = Appendices
 
@@ -541,7 +541,7 @@ identification method.
 Papers may be written in languages other than English or include titles,
 subtitles, keywords and abstracts in different languages (as a rule, a paper in
 a language other than English should include an English title and an English
-abstract). Use "#raw("language=...")" for every language used in the paper. The
+abstract). Use #raw("language=...") for every language used in the paper. The
 last language indicated is the main language of the paper. For example, a French
 paper with additional titles and abstracts in English and German may start with
 the following command

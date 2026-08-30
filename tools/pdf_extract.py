@@ -1,8 +1,12 @@
 """PDF extraction utilities and the per-run extraction cache.
 
-Every reader is memoized on (path, mtime) via ``_pdf_memo`` so each PDF is parsed
-once per ``check`` run (Poppler / pikepdf / PyMuPDF are the run's dominant cost).
-Pure reading — no gating logic lives here."""
+Text, rasters, word geometry and document metadata all come from PyMuPDF, whose
+version the uv lockfile pins, so every machine extracts identically; pikepdf reads
+the object-level structure (links, tags). Both are imported inside the readers that
+need them, so the Typst-only commands (``min-version`` runs on a bare Python in CI)
+start without the uv environment. Every reader is memoized on (path, mtime) via
+``_pdf_memo`` so each PDF is parsed once per ``check`` run. Pure reading — no gating
+logic lives here."""
 
 from __future__ import annotations
 
@@ -10,8 +14,6 @@ import functools
 import hashlib
 import re
 import statistics
-import subprocess
-import tempfile
 import unicodedata
 from collections import Counter
 from pathlib import Path
@@ -19,12 +21,9 @@ from pathlib import Path
 from pdf_text_tokens import CHAR_FOLD
 
 
-# ---------------------------------------------------------------------------
-# PDF / raster helpers (Poppler)
-# ---------------------------------------------------------------------------
 # Per-run extraction memo: threaded through the `check` gates so each PDF is
-# parsed once (pdftotext / pikepdf / PyMuPDF are the run's dominant cost) instead
-# of once per gate. Keyed on path + mtime so a rebuilt PDF is never served stale.
+# parsed once (PDF parsing is the run's dominant cost) instead of once per gate.
+# Keyed on path + mtime so a rebuilt PDF is never served stale.
 _EXTRACT_CACHE: dict[tuple, object] = {}
 
 
@@ -43,77 +42,136 @@ def _pdf_memo(fn):
     return wrapped
 
 
-def poppler_version() -> str | None:
-    """Local Poppler version behind pdftotext/pdftoppm (one package, one version).
+# ---------------------------------------------------------------------------
+# Text, rasters, word geometry, metadata (PyMuPDF)
+# ---------------------------------------------------------------------------
+def extractor_version() -> str:
+    """The PyMuPDF/MuPDF pair behind every text, raster and metadata read.
 
-    Both the raster goldens (pdftoppm) and the text residual digests (pdftotext)
-    ride on it, so recording a single number in the golden header covers both.
+    Raster hashes and text residual digests are reproducible only under the same
+    extractor, so the golden header records it and the matrix gate pins it.
     """
-    proc = subprocess.run(["pdftotext", "-v"], capture_output=True, text=True)
-    m = re.search(r"version\s+([\d.]+)", proc.stdout + proc.stderr)
-    return m.group(1) if m else None
+    import fitz
+    return f"pymupdf {fitz.VersionBind} (mupdf {fitz.VersionFitz})"
 
 
 def page_count(pdf: Path) -> int:
-    out = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True).stdout
-    m = re.search(r"^Pages:\s+(\d+)", out, re.M)
-    return int(m.group(1)) if m else -1
+    import fitz
+    try:
+        with fitz.open(pdf) as doc:
+            return doc.page_count
+    except RuntimeError:  # PyMuPDF's missing-file and bad-data errors
+        return -1
+
+
+_INFO_FIELDS = {
+    "title": "Title", "author": "Author", "subject": "Subject", "keywords": "Keywords",
+    "creator": "Creator", "producer": "Producer",
+    "creationDate": "CreationDate", "modDate": "ModDate",
+}
 
 
 @_pdf_memo
 def pdf_info(pdf: Path) -> dict[str, str]:
-    """Poppler document-information fields as a simple name/value mapping."""
-    proc = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True)
-    if proc.returncode != 0:
+    """Document-information fields that are set, keyed by their PDF /Info names."""
+    import fitz
+    try:
+        with fitz.open(pdf) as doc:
+            meta = doc.metadata or {}
+    except RuntimeError:
         return {}
-    return {
-        key.strip(): value.strip()
-        for line in proc.stdout.splitlines()
-        if ":" in line
-        for key, value in (line.split(":", 1),)
-    }
+    return {label: meta[key] for key, label in _INFO_FIELDS.items() if meta.get(key)}
+
+
+def _pixmap(page, dpi: int, gray: bool = False):
+    import fitz
+    return page.get_pixmap(dpi=dpi, colorspace=fitz.csGRAY if gray else fitz.csRGB)
 
 
 def rasterize(pdf: Path, dpi: int, prefix: Path) -> list[Path]:
-    subprocess.run(
-        ["pdftoppm", "-r", str(dpi), "-png", str(pdf), str(prefix)],
-        check=True, capture_output=True,
-    )
-    return sorted(prefix.parent.glob(prefix.name + "-*.png"))
+    """Render every page to ``<prefix>-<n>.png``; the paths come back in page order."""
+    import fitz
+    prefix.parent.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    with fitz.open(pdf) as doc:
+        width = len(str(doc.page_count))
+        for n, page in enumerate(doc, 1):
+            path = prefix.with_name(f"{prefix.name}-{n:0{width}d}.png")
+            _pixmap(page, dpi).save(str(path))
+            paths.append(path)
+    return paths
+
+
+def raster_array(pdf: Path, page: int, dpi: int, *, gray: bool = False):
+    """One page's pixels as a numpy array: (h, w, 3) RGB, or (h, w) when gray."""
+    import fitz
+    import numpy as np
+    with fitz.open(pdf) as doc:
+        pix = _pixmap(doc[page - 1], dpi, gray)
+    arr = np.frombuffer(pix.samples, np.uint8)
+    return arr.reshape(pix.h, pix.w) if gray else arr.reshape(pix.h, pix.w, pix.n)
 
 
 def page_hashes(pdf: Path, dpi: int) -> list[str]:
-    # Own temp dir per call: pdftoppm pads page numbers by total page count, so a
-    # shared dir would let a previous PDF's PNGs leak into this one's glob.
-    with tempfile.TemporaryDirectory() as td:
-        pngs = rasterize(pdf, dpi, Path(td) / "ras")
-        return [hashlib.sha256(p.read_bytes()).hexdigest() for p in pngs]
+    """SHA-256 of each page's rendered pixels (size + raw samples, no PNG encoding)."""
+    import fitz
+    hashes: list[str] = []
+    with fitz.open(pdf) as doc:
+        for page in doc:
+            pix = _pixmap(page, dpi)
+            digest = hashlib.sha256(f"{pix.w}x{pix.h}x{pix.n}:".encode())
+            digest.update(pix.samples)
+            hashes.append(digest.hexdigest())
+    return hashes
 
 
-_PAGE_RE = re.compile(r'<page width="([\d.]+)" height="([\d.]+)"')
-_WORD_RE = re.compile(
-    r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</word>'
-)
+def _word(run: list[dict]) -> tuple:
+    return (
+        min(c["bbox"][0] for c in run), min(c["bbox"][1] for c in run),
+        max(c["bbox"][2] for c in run), max(c["bbox"][3] for c in run),
+        "".join(c["c"] for c in run), run[0]["origin"][1],
+    )
 
 
 @_pdf_memo
 def words(pdf: Path) -> dict:
-    """1-based page index -> {w, h, words:[(x0,y0,x1,y1,text), ...]} via pdftotext -bbox."""
-    out = subprocess.run(
-        ["pdftotext", "-bbox", str(pdf), "-"], capture_output=True, text=True
-    ).stdout
+    """1-based page -> {w, h, words: [(x0, y0, x1, y1, text, baseline), ...],
+    baselines: [one dominant baseline per text line]}.
+
+    A word is a whitespace-free run of one text line sharing one baseline, in
+    content-stream order; its box is the union of its glyph boxes and ``baseline``
+    is that baseline's y. A baseline shift ends the word, so a superscript footnote
+    mark is not glued to the word after it (their baselines differ, and the mark
+    would otherwise lend its raised baseline to the whole word).
+    """
+    import fitz
     pages: dict = {}
-    n = 0
-    for line in out.splitlines():
-        pm = _PAGE_RE.search(line)
-        if pm:
-            n += 1
-            pages[n] = {"w": float(pm.group(1)), "h": float(pm.group(2)), "words": []}
-            continue
-        wm = _WORD_RE.search(line)
-        if wm and n:
-            x0, y0, x1, y1 = (float(v) for v in wm.groups()[:4])
-            pages[n]["words"].append((x0, y0, x1, y1, wm.group(5)))
+    with fitz.open(pdf) as doc:
+        for n, page in enumerate(doc, 1):
+            ws: list[tuple] = []
+            baselines: list[float] = []
+            for block in page.get_text("rawdict")["blocks"]:
+                for line in block.get("lines", []):
+                    chars = [c for span in line["spans"] for c in span["chars"]]
+                    if not chars:
+                        continue
+                    # The line's baseline is the one most of its glyphs sit on; a
+                    # raised footnote mark or superscript does not make a line.
+                    baselines.append(Counter(
+                        round(c["origin"][1], 2) for c in chars).most_common(1)[0][0])
+                    run: list[dict] = []
+                    for char in chars + [{"c": " "}]:
+                        if char["c"].isspace():
+                            if run:
+                                ws.append(_word(run))
+                            run = []
+                        elif run and abs(char["origin"][1] - run[0]["origin"][1]) > 0.1:
+                            ws.append(_word(run))
+                            run = [char]
+                        else:
+                            run.append(char)
+            pages[n] = {"w": page.rect.width, "h": page.rect.height,
+                        "words": ws, "baselines": baselines}
     return pages
 
 
@@ -124,14 +182,14 @@ def page_metrics(page: dict) -> dict | None:
         return None
     left = min(w[0] for w in ws)
     right = page["w"] - max(w[2] for w in ws)
-    top = min(w[1] for w in ws)
-    # Cluster word tops into lines: a new line starts when the gap exceeds 2pt.
-    ys = sorted(w[1] for w in ws)
-    line_tops = [ys[0]]
+    # Cluster the text lines' baselines: a new line starts when the gap exceeds 2pt
+    # (a hanging section number and its title are separate line objects on one baseline).
+    ys = sorted(page["baselines"])
+    baselines = [ys[0]]
     for y in ys[1:]:
-        if y - line_tops[-1] > 2.0:
-            line_tops.append(y)
-    gaps = [b - a for a, b in zip(line_tops, line_tops[1:])]
+        if y - baselines[-1] > 2.0:
+            baselines.append(y)
+    gaps = [b - a for a, b in zip(baselines, baselines[1:])]
     pitch = statistics.median(gaps) if gaps else 0.0
     # Per-line text pitches: drop page-spanning gaps (the last body line -> page
     # footer is a ~400pt jump, not a baseline pitch). Heading skips (~1.5-2x the
@@ -139,21 +197,18 @@ def page_metrics(page: dict) -> dict | None:
     # way can be compared pitch-for-pitch, catching a single mis-spaced line that
     # the median hides.
     grid = [g for g in gaps if g <= 3 * pitch] if pitch else []
-    return {"left": left, "right": right, "top": top, "lines": len(line_tops),
+    return {"left": left, "right": right, "top": baselines[0], "lines": len(baselines),
             "pitch": pitch, "pitches": grid}
 
 
 @_pdf_memo
 def pdf_text(pdf: Path, page: int | None = None) -> str:
-    cmd = ["pdftotext"]
-    if page is not None:
-        cmd += ["-f", str(page), "-l", str(page)]
-    cmd += [str(pdf), "-"]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or f"pdftotext failed for {pdf}")
-    return proc.stdout
-
+    """Plain text in content-stream order, a form feed closing every page (the
+    layout-number stripping in ``pdf_text_tokens`` keys on that page break)."""
+    import fitz
+    with fitz.open(pdf) as doc:
+        pages = [doc[page - 1]] if page is not None else list(doc)
+        return "".join(p.get_text("text") + "\f" for p in pages)
 
 @_pdf_memo
 def extract_uris(pdf: Path) -> Counter[str]:
@@ -311,7 +366,7 @@ def outline(pdf: Path) -> list[tuple[int, str, int]]:
     finally:
         doc.close()
 # --- Tier 1.8: per-letter font/size/colour gate (PyMuPDF) ---
-# pdftotext sees only characters; this catches a letter rendered in the wrong font
+# The text gates see only characters; this catches a letter rendered in the wrong font
 # family, weight, size, or colour — e.g. sigchi-a body that should be sans (acmart's
 # \sffamily document default) but came out serif, or an author block a step too small.
 def _font_role(font: str) -> str:

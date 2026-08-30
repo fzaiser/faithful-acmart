@@ -5,22 +5,16 @@ Per-twin ``<name>-overlay.pdf`` (Typst red over LaTeX blue) and
 
 from __future__ import annotations
 
-import re
 import subprocess
 import tempfile
 from pathlib import Path
 
 from test_matrix import TESTS
 from harness import ROOT, LATEX, DIFF, typst_pdf, default_jobs, _pmap
+from pdf_extract import page_count
 
 
 # --- Vector recolor-overlay primitives (gs + qpdf + pdfjam, no rasterization) ---
-
-def _page_count(pdf: Path) -> int:
-    out = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True).stdout
-    m = re.search(r"(?m)^Pages:\s*(\d+)", out)
-    return int(m.group(1)) if m else 0
-
 
 def _qpdf(argv: list[str]) -> None:
     # qpdf exits 3 on warnings (e.g. a recovered xref); only treat worse as fatal.
@@ -111,7 +105,7 @@ def cmd_overlay(args) -> int:
                 return None
             ov = _vector_overlay(name, ref, ours, tmp, DIFF / f"{name}-overlay.pdf")
             sd = _vector_sidebyside(name, ref, ours, tmp, DIFF / f"{name}-side-by-side.pdf")
-            print(f"{name:>20}: {ov.name} ({_page_count(ov)}p), {sd.name} ({_page_count(sd)}p)")
+            print(f"{name:>20}: {ov.name} ({page_count(ov)}p), {sd.name} ({page_count(sd)}p)")
             return name
 
         results = [r for r in _pmap(process, stems, default_jobs()) if r]

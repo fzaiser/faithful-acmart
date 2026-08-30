@@ -144,8 +144,8 @@ def _align_words(lwords: list, twords: list) -> list[tuple[float, float, str]]:
     matches are returned; words that one engine split differently (ligature or
     hyphenation segmentation) simply don't match and are ignored by construction
     — so this gate measures placement, never text coverage (the char/word bags
-    own that). dy is signed; the caller removes the page's median dy to cancel the
-    engines' constant first-baseline-convention offset.
+    own that). dy is the signed baseline difference; the caller removes the page's
+    median dy so Tier 2 'top' keeps ownership of the gross first-baseline offset.
     """
     lt = [w[4] for w in lwords]
     tt = [w[4] for w in twords]
@@ -154,7 +154,7 @@ def _align_words(lwords: list, twords: list) -> list[tuple[float, float, str]]:
     for i1, j1, size in matcher.get_matching_blocks():
         for k in range(size):
             lw, tw = lwords[i1 + k], twords[j1 + k]
-            matched.append((lw[0] - tw[0], lw[1] - tw[1], lw[4]))
+            matched.append((lw[0] - tw[0], lw[5] - tw[5], lw[4]))
     return matched
 
 
@@ -162,9 +162,9 @@ def gate_word_positions(report: bool = False) -> list[str]:
     """Tier 2.5 — per-word placement on opt-in (``word_positions``) twins.
 
     For each opted-in twin whose two engines break into the same lines, align the
-    word streams per page and gate max |Δx0| and max |Δy0−median(Δy0)| against
-    ``WORD_POSITION_TOLERANCE``. Subtracting the per-page median Δy cancels the
-    engines' constant top-baseline offset (Tier 2 'top' owns that gross value), so
+    word streams per page and gate max |Δx0| and max |Δy−median(Δy)| (y = the
+    baseline) against ``WORD_POSITION_TOLERANCE``. Subtracting the per-page median
+    Δy cancels the engines' first-baseline offset (Tier 2 'top' owns that value), so
     what survives is a lost indent/centering or a single mis-spaced line."""
     tol = M.WORD_POSITION_TOLERANCE
     failures: list[str] = []
@@ -232,12 +232,7 @@ def _fmt_rule(r: tuple) -> str:
 def gate_horizontal_rules(report: bool = False) -> list[str]:
     """Tier 2.6 — horizontal-rule weight/colour/extent on opt-in (``rule_gate``)
     twins. Each LaTeX rule must find a distinct Typst rule of matching colour,
-    thickness (±0.05pt), x-midpoint (±1.5pt) and x-width (±8pt), and vice versa.
-    Needs PyMuPDF."""
-    try:
-        import fitz  # noqa: F401
-    except ImportError:
-        return ["Tier 2.6 (rules) requires PyMuPDF (run `uv sync`)"]
+    thickness (±0.05pt), x-midpoint (±1.5pt) and x-width (±8pt), and vice versa."""
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin" or not t.rule_gate:

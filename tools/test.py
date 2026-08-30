@@ -28,11 +28,14 @@ Commands
   structure        report tagged-PDF roles, language, and image alternatives
   source-data      compare transcribed tables with bundled acmart.dtx and ACM-Reference-Format.bst
   linepitch FILE   measure baseline pitch / first-line position in a PDF (--dpi, --page)
+  text FILE        print a PDF's extracted text exactly as the text gates see it (--page)
   bib-oracle       compare the pure-Typst .bib reader with real bibtex on well-formed input (on-demand)
 
-External tools required: Typst, TeX Live (pdflatex, bibtex, pdfjam), Poppler
-(pdftoppm, pdftotext, pdfinfo), qpdf, and — for the `overlay` command —
-Ghostscript (gs). All generated output lives under tests/out/ (gitignored).
+External tools required: Typst and TeX Live (pdflatex, bibtex, biber), plus
+qpdf, pdfjam and Ghostscript (gs) for the `overlay` command and the report's
+overlay column. PDF reading (text, rasters, geometry, metadata, structure) is
+done in Python by the uv-pinned PyMuPDF and pikepdf, so every machine extracts
+identically. All generated output lives under tests/out/ (gitignored).
 """
 
 from __future__ import annotations
@@ -51,7 +54,7 @@ from harness import (
     ROOT, TOOLS, TESTS_DIR, OUT, TYPST, LATEX, GOLDEN_FILE, TC, TEMPLATE,
     compile_typst, compile_all_typst, _compile_failures, default_jobs,
 )
-from pdf_extract import _EXTRACT_CACHE
+from pdf_extract import _EXTRACT_CACHE, pdf_text, raster_array
 from latex_build import build_all_latex, latex_build, gate_latex_oracle
 from source_data import gate_source_data, gate_package
 from gates_core import (
@@ -332,17 +335,13 @@ def cmd_order(_args) -> int:
     for f in failures:
         print(f)
     return 1 if failures else 0
+def cmd_text(args) -> int:
+    sys.stdout.write(pdf_text(Path(args.pdf), page=args.page))
+    return 0
 def cmd_linepitch(args) -> int:
     import numpy as np
-    from PIL import Image
 
-    with tempfile.TemporaryDirectory() as td:
-        tmp = Path(td)
-        subprocess.run(["pdftoppm", "-r", str(args.dpi), "-f", str(args.page),
-                        "-l", str(args.page), "-png", args.pdf, str(tmp / "p")],
-                       check=True, capture_output=True)
-        png = sorted(tmp.glob("p*.png"))[0]
-        img = np.asarray(Image.open(png).convert("L"), dtype=np.float32)
+    img = raster_array(Path(args.pdf), args.page, args.dpi, gray=True).astype(np.float32)
 
     ink = (img < 128).sum(axis=1)
     rows = ink > (0.002 * img.shape[1])
@@ -442,6 +441,11 @@ def main() -> int:
     lp.add_argument("--dpi", type=int, default=300)
     lp.add_argument("--page", type=int, default=1)
     lp.set_defaults(fn=cmd_linepitch)
+
+    tx = sub.add_parser("text", help="print a PDF's extracted text exactly as the text gates see it")
+    tx.add_argument("pdf")
+    tx.add_argument("--page", type=int, help="1-based page (default: the whole document)")
+    tx.set_defaults(fn=cmd_text)
 
     args = ap.parse_args()
     return args.fn(args)

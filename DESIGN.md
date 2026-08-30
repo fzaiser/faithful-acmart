@@ -341,7 +341,7 @@ mistaken for faithfulness bugs.
   moot (Typst numbers natively).
 - `, Article N` comma is emitted unconditionally (every reachable call site is
   post-`new.block`).
-- **Caveat:** the `\LaTeX`/`\TeX` logos extract as `LATEX` under pdftotext, so
+- **Caveat:** the `\LaTeX`/`\TeX` logos extract as `LATEX` in extracted text, so
   logo-bearing entries don't char-match; the twins avoid them (the text is correct — a
   glyph-extraction artifact).
 
@@ -535,7 +535,7 @@ and the review-mode line-number ruler (≥20 standalone numbers) — via
 `_drop_layout_numbers` in [`pdf_text_tokens.py`](tools/pdf_text_tokens.py), shared by
 the sequence, word-bag, and char-bag gates. Section numbers are **kept**: they are
 content and match in both engines. (LaTeX typesets the number in its own `\@hangfrom`
-box, so Poppler reads it on its own line, while Typst reads it inline with the title —
+box, so it extracts on its own line, while Typst's extracts inline with the title —
 a line-break difference the order-independent bags and whitespace-collapsing sequence
 gate absorb.) An earlier version dropped *every* standalone-number line, which swept
 section numbers up too and forced the heading to keep an over-wide gap so its number

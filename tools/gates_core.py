@@ -19,7 +19,7 @@ from harness import (
     ROOT, TESTS_DIR, OUT, ERROR, GOLDEN, GOLDEN_FILE, DIFF, TC,
     TEST_CLOCK_ENV, latex_pdf, typst_pdf, compile_typst, default_jobs, _pmap,
 )
-from pdf_extract import page_count, page_hashes, rasterize, poppler_version
+from pdf_extract import page_count, page_hashes, rasterize, extractor_version
 
 
 def gate_matrix_integrity(report: bool = False) -> list[str]:
@@ -101,6 +101,13 @@ def gate_matrix_integrity(report: bool = False) -> list[str]:
     if proc.returncode != 0 or actual_version != M.TYPST_VERSION:
         failures.append(
             f"matrix: Typst version is {actual_version!r}, golden header pins {M.TYPST_VERSION!r}")
+    recorded = read_golden_extractor()
+    if recorded is None:
+        failures.append("matrix: golden header records no PDF extractor (run `test.py accept`)")
+    elif recorded != extractor_version():
+        failures.append(
+            f"matrix: PDF extractor is {extractor_version()!r}, golden header pins "
+            f"{recorded!r} (run `uv sync`)")
     if report and not failures:
         print(f"ok   {len(matrix_twins)} twins + {len(matrix_smokes)} smokes; Typst {actual_version}")
     return failures
@@ -155,7 +162,7 @@ def _golden_hashes() -> dict[str, list[str]]:
     return out
 
 
-_POPPLER_HEADER = "# poppler:"
+_EXTRACTOR_HEADER = "# extractor:"
 
 
 def write_golden() -> None:
@@ -164,9 +171,7 @@ def write_golden() -> None:
     lines = [
         f"# Tier 1 golden raster hashes — Typst {M.TYPST_VERSION} @ {M.GOLDEN_DPI}dpi",
         "# regenerate with: uv run python tools/test.py accept",
-        # Poppler renders the rasters and extracts the text residuals; record it so
-        # a divergent local version can be flagged as a possible cause of failure.
-        f"{_POPPLER_HEADER} {poppler_version() or 'unknown'}",
+        f"{_EXTRACTOR_HEADER} {extractor_version()}",
     ]
     for name in sorted(hashes):
         for i, h in enumerate(hashes[name], 1):
@@ -174,27 +179,13 @@ def write_golden() -> None:
     GOLDEN_FILE.write_text("\n".join(lines) + "\n")
 
 
-def read_golden_poppler() -> str | None:
-    """The Poppler version recorded when the goldens were last accepted, if any."""
+def read_golden_extractor() -> str | None:
+    """The PDF extractor recorded when the goldens were last accepted, if any."""
     if not GOLDEN_FILE.exists():
         return None
     for line in GOLDEN_FILE.read_text().splitlines():
-        if line.startswith(_POPPLER_HEADER):
-            return line[len(_POPPLER_HEADER):].strip()
-    return None
-
-
-def _poppler_mismatch_note() -> str | None:
-    """Diagnostic when the local Poppler differs from the golden's recorded one.
-
-    Per policy a version difference must not fail anything on its own: the golden
-    gate downgrades raster mismatches to notes under a divergent Poppler, and the
-    other gates append this to failures they already have, to name a likely cause.
-    """
-    recorded, local = read_golden_poppler(), poppler_version()
-    if recorded and local and recorded != local:
-        return (f"note: goldens were accepted under Poppler {recorded}, you have "
-                f"{local} — a rasterizer/extractor difference may explain this failure")
+        if line.startswith(_EXTRACTOR_HEADER):
+            return line[len(_EXTRACTOR_HEADER):].strip()
     return None
 
 
@@ -217,12 +208,6 @@ def gate_golden() -> list[str]:
         return ["no golden file — run `test.py accept` first"]
     cur = _golden_hashes()
     failures: list[str] = []
-    # Raster hashes are only reproducible under the Poppler that accepted them; a
-    # different Poppler (e.g. a CI distribution's) may re-antialias a hairline. Such
-    # page mismatches are reported but do not fail the gate, per the version policy
-    # in _poppler_mismatch_note. Missing goldens, unbuilt tests and page-count
-    # differences are never a rasterizer artefact and still fail.
-    changed: list[str] = []
     for name, t in TESTS.items():
         if t.golden_exempt:
             if golden.get(name):
@@ -241,19 +226,12 @@ def gate_golden() -> list[str]:
                 local.append(f"{name}: page count {len(c)} != golden {len(g)}")
             for i, h in enumerate(c, 1):
                 if g.get(i) != h:
-                    changed.append(f"{name}: page {i} changed")
+                    local.append(f"{name}: page {i} changed")
                     DIFF.mkdir(parents=True, exist_ok=True)
                     rasterize(typst_pdf(name), M.GOLDEN_DPI, DIFF / f"changed-{name}")
-        if not local and not any(line.startswith(f"{name}: ") for line in changed):
+        if not local:
             print(f"ok   {name} ({len(c)}p)")
         failures.extend(local)
-    note = _poppler_mismatch_note()
-    if changed and note:
-        for line in changed:
-            print(f"note {line}")
-        print(f"{note}; raster mismatches are reported, not failed")
-    else:
-        failures.extend(changed)
     if failures:
         failures.append(f"inspect changed pages in {DIFF.relative_to(ROOT)}/ , "
                         "then `test.py accept` if intended.")
@@ -358,7 +336,7 @@ def gate_format_sweep(report: bool = False) -> list[str]:
 def gate_unit(report: bool = False) -> list[str]:
     """Tier 0.5 — pure-Typst unit tests (tests/unit/*.typ). These import a module
     and assert on its output via #assert.eq, so a failure aborts the compile with
-    a diagnostic. No LaTeX/pdftotext involved — they test parsing/logic directly.
+    a diagnostic. No LaTeX or text extraction involved — they test parsing/logic directly.
     """
     failures: list[str] = []
     unit_dir = TESTS_DIR / "unit"

@@ -15,7 +15,8 @@ Test kinds
             matched twins don't cover.
 
 The Tier 1 goldens are captured with `TYPST_VERSION` + the bundled fonts at
-`GOLDEN_DPI`; bumping Typst means regenerating them (`tools/test.py accept`).
+`GOLDEN_DPI`, rendered by the uv-pinned PyMuPDF (recorded in the golden header);
+bumping either means regenerating them (`tools/test.py accept`).
 """
 
 from __future__ import annotations
@@ -91,8 +92,8 @@ METADATA_CROSS_EXEMPTIONS: dict[str, dict[str, str]] = {}
 # pinned by every full line, not a lone ragged glyph.)
 METRICS_TOLERANCE = {
     "left": 1.0,   # text-block left edge — true horizontal invariant, gated tightly
-    "top": 4.5,    # first-content vertical position — loose: absorbs glyph-bbox
-                   # ascent conventions and title-page variance, still catches gross shifts
+    "top": 4.5,    # first baseline — loose: absorbs title-page variance, still
+                   # catches gross shifts
     "pitch": 0.6,  # median baseline-to-baseline pitch — gated only with metrics_uniform_pitch
     "line_pitch": 0.8,  # max single-line pitch deviation — gated with metrics_uniform_pitch
                         # whose lines break identically across engines (so the per-line
@@ -119,7 +120,7 @@ RULE_XWIDTH_TOL = 8.0      # pt — loose: absorbs cross-engine column-width jit
                            # (measured ≤6.8pt) while catching partial-vs-full rules
 
 # Per-word position gate (opt-in via Test.word_positions). Maximum tolerated
-# |Δx0| and, after subtracting each page's median vertical offset, |Δy0| over the
+# |Δx0| and, after subtracting each page's median vertical offset, |Δbaseline| over the
 # aligned word streams of the two engines. 1.25pt clears the measured floor on
 # every opted-in fixture (worst observed: fontsize-12 Δx 1.21pt, fn-test Δy
 # 0.65pt) while a lost indent/centering (≥ a space width) or a mis-spaced line
@@ -233,19 +234,20 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
     "manuscript-pages-test": ResidualSignatures(text="13857b6c3436762b1c09a161ad0ba212a0fc064b6c149ce01b1dc4ec95b82cfd"),
     "mathfields": ResidualSignatures(font="33b5c052b30812736e907581e38b04c1be363ec608e59cd34c8a13ce193f5170"),
-    "sample-acmsmall": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="b011bb574b0c3e6332e072a3cf7268d88ac0e06d7416674ed7e2a03b8e784142"),
-    "sample-manuscript": ResidualSignatures(text="f9f44935ab0a5d44f5a8d01a24eae936e5c438469863fb7b1147be60ec8c8b2b", font="ba2c719c2aa71bf411ef3fa382d5365f3b4ab49c2f8f7ccb4ca175b689f95a43", order="457f10d3f56df13ff4baff3612fe22eada818355eee6dcfe4c5154de5d9dee74"),
-    "sample-acmlarge": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="c32956ff5fef018c73b6d9b5f9084c8653cb892302fd05884ff6f7a53506f95e"),
-    "sample-sigconf": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="da3fad63db3dd04dfedfaf2d5eb1fb23c583708920c465d37d5e913d8ef36e86"),
-    "sample-sigplan": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="a0309711e0b0b330619cfff07196b1745a9e57d37ec75136e28fbb21804a3b9c", order="2d25d7956168f03ea10393c2f996cf32ed0895f7c56704510fde7665358cdb2b"),
-    "sample-acmsmall-submission": ResidualSignatures(text="05be43ea4c0c8fc81a09a46798912baad17a3435f87e97cb80c878bc0e2568ed", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="33160f565094321d629e06954ac6ddcc79817d22be972d4ef949a4983b19fb99"),
-    "sample-acmsmall-conf": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
-    "sample-acmtog": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="99003eab1044dc98b50f27a2e1cbc5a03e58413cd714e1318bd76ce7a4250922"),
-    "sample-acmtog-conf": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="ac32e5ff5c93cf0d09c0e1321fa82f286ca07119223b60c96fa53b4644dbe6d4"),
-    "sample-sigconf-i13n": ResidualSignatures(text="5c7c9f3ced0152d04d7ad50851796d00830d091c131f82f6cb3c8d47cf3a4905", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="d3c9c50f4594efe40103a7db9e56117878bc6399a13653dd6eb25c8b2e7aae14"),
-    "sample-sigconf-authordraft": ResidualSignatures(text="3321920016639ea933b9c80491c647cb8ce4f5792b813a2774f5af2902941cf5", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="5e7664bcc6fd86d84a63ee11df1e2d86c6a650bf7181fb107743053292711289"),
-    "sample-acmsmall-biblatex": ResidualSignatures(text="5a6d00df8ca31bf0749a95d1a044429c6892ada636dac526b75e92df6f6ed961", font="49aeb0090f34955cfe4955eb61ec3205d5316489e0e531efc5b177d41a4d0312", order="325dd262a0d7815097013690111f9d8452db63d9960cc95fb7a902c22c9b0867"),
-    "sample-sigconf-biblatex": ResidualSignatures(text="314ea015168ec50ce6b645fecc148d93820ff6964468897a8d096c0a555200b9", font="331464ac0b75d83068122c1a2016d6e6e77733b7111debd67a0e13bcbb89a919", order="202add8013355fa3d61b8a1ebfa99845cab8bb6a9edf0303679e5002a45ac2be"),
+    "sample-acmsmall": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="63571ea7fe48d9b439a405c7ab3b1bb383ec9e93d839d63c4816959c5db469bf"),
+    "sample-manuscript": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="ba2c719c2aa71bf411ef3fa382d5365f3b4ab49c2f8f7ccb4ca175b689f95a43", order="e35efb9f0fc720f589914f355ead6d5f4bf9923e8fdf8c24afa14bd20788d0f1"),
+    "sample-acmlarge": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="ab2b7cfc16363f6aa1f2e001aaeccd215a572de06a1cbcb05976a7810d8856f1"),
+    "sample-sigconf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="367f4243c72b390a5969a6cddf713e2a9849004ae4d886298a7ef0812c4e8618"),
+    "sample-sigplan": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="a0309711e0b0b330619cfff07196b1745a9e57d37ec75136e28fbb21804a3b9c", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmsmall-submission": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmsmall-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmtog": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmtog-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-sigconf-i13n": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="7670c039210868e04d5111c1c53fb3399558e09f012b1796727a07961be107fe"),
+    "sample-sigconf-authordraft": ResidualSignatures(text="38625e5eb0953293ca57140b887b1997514152f5dbec2775709a09bd21b4ab90", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="60dc257e9cf74ed07717c50f0c7fe929397c3f5cd416bc28ed529e0c6f95890c"),
+    "sample-acmsmall-biblatex": ResidualSignatures(text="92a70243730412d508ba78837840e05ffee4b632be406778fe2261b017cc6df4", font="49aeb0090f34955cfe4955eb61ec3205d5316489e0e531efc5b177d41a4d0312", order="06838db4fff42bd54f758c0a5cae5701f23098e6576c58f0a1d6c24a368758b5"),
+    "sample-sigconf-biblatex": ResidualSignatures(text="7f1f8f05af6984e9254fef2c1f79dd32a26c12d351162b040216671262a9c62e", font="331464ac0b75d83068122c1a2016d6e6e77733b7111debd67a0e13bcbb89a919", order="e05fdb9a10feff979fed0ce72291eaccc755f16d3d214ceaa35153a19bdc49f9"),
+    "sample-acmcp": ResidualSignatures(text="7fbdf3172bc5ee4838deba73a9af927db17fa8d5dc77d187ac61ae0873565ca1"),
     "sample-acmengage": ResidualSignatures(order="e1375d589c6da53376f20ce6acd938b50f3b317e20333dd6ab48744b32034f58"),
 }
 
@@ -303,30 +305,24 @@ _DASH_EXTRACTION = "exact normalized dash residual caused by cross-engine extrac
 EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
     "figure-heading-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "list-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
-    "manuscript-pages-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
-    "acmtog-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=3),
-    "sigconf-authors-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
-    "sigconf-authors-per-row-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "acmtog-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=2),
     "acmcp-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "biblatex-edge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
-    "bib-all": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "notes-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "options-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
-    "authorversion-conf-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "fontsize-sigconf-11-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
-    "sample-acmlarge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
-    "sample-sigconf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=6),
-    "sample-sigplan": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=15),
-    "sample-acmtog": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=7),
-    "sample-acmtog-conf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=8),
-    "sample-sigconf-i13n": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=7),
-    "sample-sigconf-authordraft": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=6),
-    "sample-acmsmall-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=3),
-    "sample-sigconf-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=8),
+    "sample-acmsmall": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
+    "sample-manuscript": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=3),
+    "sample-acmlarge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=3),
+    "sample-sigconf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "sample-sigplan": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
+    "sample-acmsmall-submission": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
+    "sample-acmsmall-conf": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
+    "sample-sigconf-i13n": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=2),
+    "sample-sigconf-authordraft": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "sample-acmsmall-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
+    "sample-sigconf-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
     "sample-acmcp": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
-    "sample-acmengage": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=8),
-    "language-de-sigplan-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=2),
-    "acmengage-de-test": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=2),
 }
 
 
@@ -340,23 +336,12 @@ class MetricAllowance:
 
 
 EXPECTED_METRIC_DIFFS: dict[str, tuple[MetricAllowance, ...]] = {
-    "sigplan-test": (MetricAllowance(1, "top", 5.25),),
-    "title-wrap-sigplan-test": (MetricAllowance(1, "top", 5.25),),
-    "acmengage-test": (MetricAllowance(1, "top", 5.25),),
-    "acmengage-de-test": (MetricAllowance(1, "top", 5.25),),
-    "language-de-sigplan-test": (MetricAllowance(1, "top", 5.25),),
-    "acmcp-test": (MetricAllowance(1, "top", 6.25),),
     "sigchi-a-test": (MetricAllowance(1, "left", 6.25),),
-    "authorversion-conf-test": (MetricAllowance(1, "top", 5.0),),
-    "fontsize-sigconf-11-test": (MetricAllowance(1, "top", 6.5),),
     "sample-acmsmall": (MetricAllowance(8, "left", 1.25),),
-    "sample-sigplan": (MetricAllowance(1, "top", 5.25),),
     "sample-acmsmall-conf": (MetricAllowance(8, "left", 1.25),),
     "sample-acmtog": (MetricAllowance(2, "left", 1.25),),
     "sample-sigconf-i13n": (MetricAllowance(3, "left", 1.25),),
     "sample-acmsmall-biblatex": (MetricAllowance(8, "left", 1.25),),
-    "sample-acmcp": (MetricAllowance(1, "left", 1.75),),
-    "sample-acmengage": (MetricAllowance(1, "top", 5.25),),
 }
 
 
@@ -470,13 +455,16 @@ _FULL_SAMPLE_FONT_EVIDENCE = (
     ),
 )
 
-_TITLE_METRICS_DIFF = (
-    "Title-heavy format geometry has known bbox drift; focused geometry twins own "
-    "the exact body metrics."
+_STACKED_SCRIPT_TEXT_EVIDENCE = (
+    ExpectedTextDiff(
+        latex="Used in business Ψ2 1 1 in 40,000 Unexplained usage",
+        typst="Used in business Ψ21 1 in 40,000 Unexplained usage",
+        cause=ExtractionArtifact(
+            "the stacked scripts of the Ψ²₁ table cell: PyMuPDF reads LaTeX's "
+            "superscript and subscript as two runs separated by a gap, Typst's as one"),
+    ),
 )
-_COVER_METRICS_DIFF = (
-    "Cover/sidebar formats do not expose a stable body-block metric rectangle."
-)
+
 _LANDSCAPE_METRICS_DIFF = (
     "Landscape extended-abstract geometry is covered by page parity, text, links, "
     "and goldens instead of the generic portrait metric gate."
@@ -607,7 +595,7 @@ TESTS: dict[str, Test] = {
              "(cap-height top edge needs bls - cap-height leading)",
     ),
     "title-wrap-sigplan-test": Test(
-        kind="twin", pages=1, expected_metrics_diff=_TITLE_METRICS_DIFF,
+        kind="twin", pages=1,
         note="two-line sigplan \\Huge serif-bold title: the largest title font, where a "
              "leading error shows as descender/capital collisions",
     ),
@@ -708,19 +696,18 @@ TESTS: dict[str, Test] = {
              "2 + 2 + 1); sibling of sigconf-authors-test's default auto layout.",
     ),
     "sigplan-test": Test(
-        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
-        expected_metrics_diff=_TITLE_METRICS_DIFF, text_equal="bag",
+        kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE, text_equal="bag",
         note="format=sigplan: 10pt proceedings variant + the sigplan style overrides "
              "(1./a. enum labels, bold zero-indent theorem heads with upright notes, "
              "italic noindent proof, bold-label captions). Metrics are report-only for "
              "title bbox drift; two-column flow reorders, so text is word-bag gated.",
     ),
     "acmengage-test": Test(
-        kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
+        kind="twin", pages=1,
         note="format=acmengage: 10pt sigconf variant with Engage copyright metadata.",
     ),
     "acmcp-test": Test(
-        kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF, text_equal=False,
+        kind="twin", pages=1, text_equal=False,
         rule_gate=_RULE_ACMCP_FOOT,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -799,7 +786,7 @@ TESTS: dict[str, Test] = {
         note="Base font-size option `12pt`.",
     ),
     "fontsize-sigconf-11-test": Test(
-        kind="twin", pages=1, text_equal="bag", expected_metrics_diff=_TITLE_METRICS_DIFF,
+        kind="twin", pages=1, text_equal="bag",
         note="sigconf (two-column proceedings) at the NON-DEFAULT 11pt base: the "
              "proceedings heading ladder is a distinct scaling axis from the "
              "single-column acmsmall fontsize twins. Two-column extraction reorders, "
@@ -955,18 +942,18 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1,
         expected_font_diffs=(
             ExpectedFontDiff(
-                latex="Bounds of 𝑂 (𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞.",
-                typst="Bounds of 𝑂(𝑛 log 𝑛) with 𝛼 + 𝛽 ≤ 𝛾 and 𝜇 → ∞.",
+                latex="Bounds of 𝑂(𝑛log𝑛) with 𝛼+ 𝛽≤𝛾and 𝜇→∞.",
+                typst="Bounds of 𝑂(𝑛log 𝑛) with 𝛼+ 𝛽≤𝛾 and 𝜇→∞.",
                 cause=AcceptedTypstBehavior("Typst math operators render with the math font instead of LaTeX's text-roman operator font"),
             ),
             ExpectedFontDiff(
-                latex="Products 𝑎𝑏 and tensor indices 𝑥𝑖 𝑗 with 2𝑛 terms.",
+                latex="Products 𝑎𝑏and tensor indices 𝑥𝑖𝑗with 2𝑛terms.",
                 typst="Products 𝑎𝑏 and tensor indices 𝑥𝑖𝑗 with 2𝑛 terms.",
                 cause=AcceptedTypstBehavior("inline math script glyphs render 0.5pt larger than LaTeX"),
             ),
             ExpectedFontDiff(
-                latex="On 𝑛2 bounds for 𝑎 ⊕ 𝑏 with 𝑥 2𝑛 ≤ 𝑦.",
-                typst="On 𝑛2 bounds for 𝑎 ⊕ 𝑏 with 𝑥 2𝑛 ≤ 𝑦.",
+                latex="On 𝑛 2 bounds for 𝑎⊕𝑏with 𝑥2𝑛≤𝑦.",
+                typst="On 𝑛 2 bounds for 𝑎⊕𝑏 with 𝑥2𝑛≤𝑦.",
                 cause=AcceptedTypstBehavior("inline math fraction/script glyphs render 0.5pt larger than LaTeX"),
             ),
         ),
@@ -995,7 +982,6 @@ TESTS: dict[str, Test] = {
     ),
     "authorversion-conf-test": Test(
         kind="twin", pages=1, text_equal="bag",
-        expected_metrics_diff=_TITLE_METRICS_DIFF,
         text_assertions=(
             Assertion(engine="both", text="Conference'17, Washington, DC, USA"),
             Assertion(engine="both",
@@ -1034,13 +1020,13 @@ TESTS: dict[str, Test] = {
              "(\"Cuadro\") localized, figure label still \"Fig.\"",
     ),
     "language-de-sigplan-test": Test(
-        kind="twin", pages=1, expected_metrics_diff=_TITLE_METRICS_DIFF,
+        kind="twin", pages=1,
         note="German on a proceedings format: the abstract heading (\"Zusammenfassung\", "
              "journals print none) and the bibliography heading (\"Literatur\") come from "
              "babel; plus keywordsname/proofname/acksname",
     ),
     "acmengage-de-test": Test(
-        kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
+        kind="twin", pages=1,
         note="acmengage under a German main language: babel's \"Zusammenfassung\" "
              "heads the abstract, not acmengage's \"Synopsis\"",
     ),
@@ -1054,24 +1040,41 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                cause=ExtractionArtifact("author-note marker extraction"),
+                cause=ExtractionArtifact(
+                    "LaTeX draws the author-note star tight against the following "
+                    "\"and\", so the extracted stream has no space there"),
             ),
             ExpectedTextDiff(
-                latex="centered horizontally- is produced by the equation environment",
-                typst="centered horizontally -is produced by the equation environment",
-                cause=ExtractionArtifact("display-equation hyphen extraction"),
+                latex="centered horizontally— is produced by the equation environment",
+                typst="centered horizontally —is produced by the equation environment",
+                cause=ExtractionArtifact(
+                    "the em dash sits at a line break, and each engine breaks on the "
+                    "other side of it: LaTeX keeps it with the preceding word, Typst "
+                    "with the following one"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="and follow it with another numbered equation: ∫ π +2 ∞ ∑ xi = f i=0 (2)",
-                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 0 f (2)",
-                cause=ExtractionArtifact("display-math token-order extraction"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="a doctoral dissertation [9], a master's thesis: [4]",
+                typst="a doctoral J. ACM, Vol. 37, No. 4, Article 111. Publication "
+                      "date: August 2018. 111:8 Trovato et al. dissertation [9]",
+                cause=ExtractionArtifact(
+                    "the citation-guide paragraph is split by a page break, so the "
+                    "running head lands inside its token span at a different word in "
+                    "each engine; the chunk window then loses the paragraph's tail"),
             ),
         ),
         note="full twin of the upstream acmsmall sample.",
@@ -1081,19 +1084,33 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                cause=ExtractionArtifact("author-note marker extraction"),
+                cause=ExtractionArtifact(
+                    "LaTeX draws the author-note star tight against the following "
+                    "\"and\", so the extracted stream has no space there"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="and follow it with another numbered equation: (1) n→∞ ∫ π +2 xi = f (2)",
-                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 f (2)",
-                cause=ExtractionArtifact("display-math token-order extraction"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="from αto ω, available in LATEX [25]",
+                typst="from α to ω, available in LATEX [25]",
+                cause=ExtractionArtifact(
+                    "an inline formula is its own chunk, so the paragraph chunk keeps "
+                    "the surrounding words only; LaTeX's stream glues α onto the "
+                    "following word (\"αto\"), leaving the paragraph's \"to\" with no "
+                    "match in place"),
             ),
         ),
         note="upstream manuscript sample (manuscript,screen,review + proceedings "
@@ -1104,24 +1121,34 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                cause=ExtractionArtifact("author-note marker extraction"),
-            ),
-            ExpectedTextDiff(
-                latex="doi:10.1007/3540-09237-4 [19] Lars Hörmander",
-                typst="doi:10.1007/3-540-09237-4 [19] Lars Hörmander",
-                cause=ExtractionArtifact("wrapped DOI extraction"),
+                cause=ExtractionArtifact(
+                    "LaTeX draws the author-note star tight against the following "
+                    "\"and\", so the extracted stream has no space there"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="and follow it with another numbered equation: ∞ ∑ ∫ π +2 xi = i=0 f (2)",
-                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 0 f (2)",
-                cause=ExtractionArtifact("display-math token-order extraction"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="(Case 2) Proc. ACM Meas. Anal. Comput. Syst., Vol. 37, No. 4, "
+                      "Article 111. Publication date: August 2018. 111:8 • Trovato "
+                      "et al. [27] and [26]",
+                typst="111:8 • Trovato et al. and (Case 2) [27] and [26]",
+                cause=ExtractionArtifact(
+                    "the citation-guide paragraph is split by a page break, so the "
+                    "running head lands inside its token span at a different word in "
+                    "each engine; the chunk window then loses the paragraph's tail"),
             ),
         ),
         note="upstream acmlarge sample (wide single-column journal, POMACS).",
@@ -1129,61 +1156,42 @@ TESTS: dict[str, Test] = {
     "sample-sigconf": Test(
         kind="twin", pages=6,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="Name of the Title Is Hope Ben Trovato* G.K.M. Tobin✉* "
-                      "trovato@corporation.com",
-                typst="Name of the Title Is Hope Ben Trovato* ✉ G.K.M. Tobin * "
-                      "trovato@corporation.com",
-                cause=ExtractionArtifact("author-note marker extraction"),
-            ),
-            # (The former "wrapped video URL extraction" diff is gone: with the
-            # bibliography hanging indent now matching natbib's \bibhang, the
-            # reference reflows exactly as LaTeX and the video URL + docid + [28]
-            # cite extract identically in both engines.)
-        ),
+        expected_text_diffs=_STACKED_SCRIPT_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Comments "
-                      "Author For tables",
-                typst="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Your figures "
-                      "should contain a caption",
-                cause=ExtractionArtifact("figure/table stream interleave"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="an anthology or The Name of the Title Is Hope Conference "
+                      "acronym 'XX, June 03-05, 2018, Woodstock, NY compilation [13]",
+                typst="an anthology or compilation [13] followed by the same example",
+                cause=ExtractionArtifact(
+                    "the citation-guide paragraph is split by a page break, so the "
+                    "running head lands inside its token span at a different word in "
+                    "each engine; the chunk window then loses the paragraph's tail"),
             ),
         ),
         note="upstream sigconf sample: two-column proceedings with author grid and teaser figure.",
     ),
     "sample-sigplan": Test(
-        kind="twin", pages=7, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
+        kind="twin", pages=7,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="Name of the Title Is Hope Ben Trovato* G.K.M. Tobin✉* "
-                      "trovato@corporation.com",
-                typst="Name of the Title Is Hope Ben Trovato* ✉ G.K.M. Tobin * "
-                      "trovato@corporation.com",
-                cause=ExtractionArtifact("author-note marker extraction"),
-            ),
-            ExpectedTextDiff(
-                latex="A clear and well-documented LAT X document is presented as E "
-                      "an article",
-                typst="A clear and well-documented LATEX document is pre sented as "
-                      "an article",
-                cause=ExtractionArtifact("LaTeX logo extraction"),
-            ),
-        ),
+        expected_text_diffs=_STACKED_SCRIPT_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="If your figure contains third-party material, you must clearly "
-                      "identify it as such, as shown in the example below. Math Equations",
-                typst="If your figure contains third-party material, you must clearly "
-                      "identify it as such, as shown in the example below. Your figures "
-                      "should contain a caption",
-                cause=ExtractionArtifact("figure/math stream interleave"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
             ),
         ),
         note="upstream sigplan sample (two-column SIGPLAN proceedings, 10pt).",
@@ -1193,25 +1201,23 @@ TESTS: dict[str, Test] = {
         text_equal=False, rule_gate=_RULE_REVIEW_SAMPLE,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="https://doi.org/XXXXXXX.XXXXXXX Introduction ACM's consolidated "
-                      "article template",
-                typst="https://doi.org/XXXXXXX.XXXXXXX ACM's consolidated article template",
-                cause=ExtractionArtifact("anonymous-review heading extraction"),
-            ),
-            ExpectedTextDiff(
-                latex="centered horizontally- is produced by the equation environment",
-                typst="centered horizontally -is produced by the equation environment",
-                cause=ExtractionArtifact("display-equation hyphen extraction"),
+                latex="centered horizontally— is produced by the equation environment",
+                typst="centered horizontally —is produced by the equation environment",
+                cause=ExtractionArtifact(
+                    "the em dash sits at a line break, and each engine breaks on the "
+                    "other side of it: LaTeX keeps it with the preceding word, Typst "
+                    "with the following one"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="Figure captions are placed below the figure. J. ACM, Vol. 37, "
-                      "No. 4, Article 111. Publication date: August 2018",
-                typst="Figure captions are placed below the figure. Every figure should "
-                      "also have a figure description",
-                cause=ExtractionArtifact("review-line figure-caption interleave"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
             ),
         ),
         note="upstream acmsmall double-anonymous review sample "
@@ -1222,21 +1228,24 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                cause=ExtractionArtifact("author-note marker extraction"),
+                cause=ExtractionArtifact(
+                    "LaTeX draws the author-note star tight against the following "
+                    "\"and\", so the extracted stream has no space there"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="Now, we’ll enter an unnumbered equation: ∞ ∑︁ 𝑥 +1 𝑖=0 "
-                      "and follow it with another numbered equation: ∫ 𝜋 +2",
-                typst="Now, we’ll enter an unnumbered equation: ∞ ∑𝑥 + 1 𝑖=0 "
-                      "and follow it with another numbered equation: ∞ 𝜋+2 ∑",
-                cause=ExtractionArtifact("display-math token-order extraction"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
             ),
         ),
         note="upstream acmsmall-for-a-conference sample (acmsmall journal format "
@@ -1247,24 +1256,24 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                cause=ExtractionArtifact("author-note marker extraction"),
+                cause=ExtractionArtifact(
+                    "LaTeX draws the author-note star tight against the following "
+                    "\"and\", so the extracted stream has no space there"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                # LaTeX's pdftotext reads the run-in subsubsection "9.1.1" (with the
-                # "111:3" running head) before the inline-equation text, whereas Typst
-                # emits the whole "9.1.1 Subsubsection…" run-in chunk in tag order (the
-                # preceding "(See next section)." paragraph extracts after it) — the
-                # same run-in/running-head interleave.
-                latex="9.1.1 • 111:3 how this equation",
-                typst="9.1.1 Subsubsection. This is a subsubsection.",
-                cause=ExtractionArtifact("run-in heading / running-head interleave"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
             ),
         ),
         note="upstream acmtog sample (two-column TOG journal). Uses the author-year "
@@ -1275,23 +1284,24 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                cause=ExtractionArtifact("author-note marker extraction"),
+                cause=ExtractionArtifact(
+                    "LaTeX draws the author-note star tight against the following "
+                    "\"and\", so the extracted stream has no space there"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Comments "
-                      "Author For tables",
-                typst="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Your figures "
-                      "should contain a caption",
-                cause=ExtractionArtifact("figure/teaser stream interleave"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
             ),
         ),
         note="upstream acmtog-for-a-conference sample (acmtog two-column with "
@@ -1300,25 +1310,25 @@ TESTS: dict[str, Test] = {
     "sample-sigconf-i13n": Test(
         kind="twin", pages=7, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="El nombre del título es esperanza Ben Trovato* G.K.M. Tobin✉* "
-                      "trovato@corporation.com",
-                typst="El nombre del título es esperanza Ben Trovato* ✉ G.K.M. "
-                      "Tobin * trovato@corporation.com",
-                cause=ExtractionArtifact("translated-title author-note marker extraction"),
-            ),
-        ),
+        expected_text_diffs=_STACKED_SCRIPT_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. The “Teaser "
-                      "Figure”",
-                typst="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Your figures "
-                      "should contain a caption",
-                cause=ExtractionArtifact("translated sample figure/teaser interleave"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="language=french, language=german, language=spanish, "
+                      "language=english]{acmart}",
+                typst="language=english, language=german, language=french]{acmart}",
+                cause=ExtractionArtifact(
+                    "the sample prints two \\documentclass listings whose tokens are "
+                    "identical bar the order of the language options, so the chunk "
+                    "window vote maps the second listing onto the first"),
             ),
         ),
         note="upstream sigconf internationalization sample: \\translatedtitle + "
@@ -1332,22 +1342,41 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="Name of the Title Is Hope Ben Trovato* Lars Thørväld Valerie "
-                      "Béranger G.K.M. Tobin✉*",
-                typst="Name of the Title Is Hope Ben Trovato* ✉* G.K.M. Tobin "
-                      "trovato@corporation.com",
-                cause=ExtractionArtifact("authordraft author-stream extraction"),
+                latex="2026-07-01 12:00. Page 2 of 1-6.",
+                typst="2026-07-01. Page 2 of 1-6.",
+                cause=AcceptedTypstBehavior(
+                    "Typst has no wall-clock access, so the timestamp footer prints the "
+                    "compile date without the HH:MM time (DESIGN.md)."),
+            ),
+            ExpectedTextDiff(
+                latex="Page 1 of 1-6. Unpublished working draft.",
+                typst="Page 1 of 1-6. 1 Unpublished working draft.",
+                cause=TypstBug(
+                    "Typst prints a centred page folio on every authordraft page; "
+                    "acmart's authordraft foot carries only the timestamp banner"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Un pu Figure 2",
-                typst="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Your figures "
-                      "should contain a caption",
-                cause=ExtractionArtifact("authordraft line-number figure interleave"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="Page 4 of 1-6. Unpublished working draft. Not for distribution. "
+                      "The Name of the Title Is Hope Conference acronym 'XX, June "
+                      "03-05, 2018, Woodstock, NY compilation [13]",
+                typst="an anthology or compilation [13] followed by the same example",
+                cause=ExtractionArtifact(
+                    "the citation-guide paragraph is split by a page break, so the "
+                    "draft footer and running head land inside its token span; the "
+                    "chunk window then loses the paragraph's tail and the fallback "
+                    "whole-stream alignment matches stray digits of the line-number "
+                    "ruler"),
             ),
         ),
         note="upstream sigconf authordraft sample: draft watermark, line numbers, timestamp.",
@@ -1357,26 +1386,53 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="BEN TROVATO* and G.K.M. TOBIN✉* , Institute for Clarity in "
+                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN *, Institute for Clarity in "
+                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
                       "Documentation, USA",
-                cause=ExtractionArtifact("author-note marker extraction"),
+                cause=ExtractionArtifact(
+                    "LaTeX draws the author-note star tight against the following "
+                    "\"and\", so the extracted stream has no space there"),
             ),
             ExpectedTextDiff(
-                latex="world wide web resource [Ablamowicz and Fauser 2007; "
-                      "Poker-Edge.Com 2006; Thornburg 2001]",
-                typst="world wide web resource [Ablamowicz and Fauser 2007; "
-                      "PokerEdge.Com 2006; Thornburg 2001]",
-                cause=ExtractionArtifact("software URL punctuation extraction"),
+                latex="an enumerated journal article [S. Cohen et al. 2007], a "
+                      "reference to an entire issue [J. Cohen 1996]",
+                typst="an enumerated journal article [Cohen, Nutt, et al. 2007], a "
+                      "reference to an entire issue [Cohen 1996]",
+                cause=TypstBug(
+                    "two entries share the surname Cohen: biblatex disambiguates them "
+                    "with the authors' given-name initials, the port instead widens "
+                    "the author list"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="and follow it with another numbered equation: ∫ π +2 ∞ ∑ xi = f i=0 (2)",
-                typst="and follow it with another numbered equation: ∞ π+2 ∑ xi = ∫ i=0 0 f (2)",
-                cause=ExtractionArtifact("display-math token-order extraction"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="4. doi:10.1145/105 7270.1057278.",
+                typst="4. doi:10.1145/1057270.1057278.",
+                cause=ExtractionArtifact(
+                    "reference URLs and DOIs wrap at a different character in each "
+                    "engine, so the flat stream chops the identifier where the tagged "
+                    "chunk does not and the split piece cannot be re-joined"),
+            ),
+            ExpectedOrderDiff(
+                latex="an enumerated journal article [S. Cohen et al. 2007], a "
+                      "reference to an entire issue [J. Cohen 1996]",
+                typst="an enumerated journal article [Cohen, Nutt, et al. 2007], a "
+                      "reference to an entire issue [Cohen 1996]",
+                cause=TypstBug(
+                    "author-year BibLaTeX cite labels are not name-disambiguated: "
+                    "LaTeX distinguishes the two Cohens by given-name initial and "
+                    "truncates to \"S. Cohen et al.\", we spell out a second surname "
+                    "instead"),
             ),
         ),
         text_assertions=(
@@ -1408,23 +1464,55 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="Name of the Title Is Hope Ben Trovato* G.K.M. Tobin✉* "
-                      "trovato@corporation.com",
-                typst="Name of the Title Is Hope Ben Trovato* ✉ G.K.M. Tobin * "
-                      "trovato@corporation.com",
-                cause=ExtractionArtifact("author-note marker extraction"),
+                latex="ACM, New York, NY, USA, 6 pages.",
+                typst="ACM, New York, NY, USA, 7 pages.",
+                cause=AcceptedTypstBehavior(
+                    "the dense software reference block reflows to a seventh Typst "
+                    "page (DESIGN.md), which also puts that page's running head into "
+                    "the char residual"),
+            ),
+            ExpectedTextDiff(
+                latex="[15] Ian Editor, (Ed.) 2007. The title of book one.",
+                typst="[15] Ed. by Ian Editor. 2007. The title of book one.",
+                cause=TypstBug(
+                    "for a book with an editor and no author, biblatex puts the editor "
+                    "in the author slot as \"Ian Editor, (Ed.)\"; the port keeps it in "
+                    "the byeditor slot"),
+            ),
+            ExpectedTextDiff(
+                latex="Andrew McCallum. UMass citation field extraction dataset.",
+                typst="Andrew McCallum. 2013. UMass citation field extraction dataset.",
+                cause=TypstBug(
+                    "the port prints a year for this dataset entry, which biblatex "
+                    "suppresses in favour of the retrieval date alone"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. 12.1 The "
-                      "“Teaser Figure”",
-                typst="If your figure contains thirdparty material, you must clearly "
-                      "identify it as such, as shown in the example below. Your figures "
-                      "should contain a caption",
-                cause=ExtractionArtifact("BibLaTeX figure/teaser stream interleave"),
+                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                cause=ExtractionArtifact(
+                    "display-math limits before the operator: TeX draws the sum's "
+                    "limits as their own boxes ahead of the ∑ glyph, so the flat "
+                    "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="visit=swh:1:snp:2a 6c348c53eb77d458f24c9cbcecaf92e3c45615",
+                typst="visit=swh:1:snp:2a6c348c53eb77d 458f24c9cbcecaf92e3c45615",
+                cause=ExtractionArtifact(
+                    "the software-artifact SWHIDs wrap at a different character in "
+                    "each engine, so the flat stream chops the identifier where the "
+                    "tagged chunk does not and the split piece cannot be re-joined"),
+            ),
+            ExpectedOrderDiff(
+                latex="[15] Ian Editor, (Ed.) 2007. The title of book one.",
+                typst="[15] Ed. by Ian Editor. 2007. The title of book one.",
+                cause=TypstBug(
+                    "numeric BibLaTeX leads an editor-only @inbook with \"Ed. by "
+                    "<name>.\"; acmnumeric.bbx leads with the name list followed by "
+                    "\", (Ed.)\", the form our blx-editor-block already produces for "
+                    "other numeric drivers"),
             ),
         ),
         text_assertions=(
@@ -1441,21 +1529,34 @@ TESTS: dict[str, Test] = {
         note="upstream sigconf-biblatex sample with numeric software artifact cites; page parity is open.",
     ),
     "sample-acmcp": Test(
-        kind="twin", pages=1, expected_metrics_diff=_COVER_METRICS_DIFF,
+        kind="twin", pages=1,
         text_equal="bag", rule_gate=_RULE_ACMCP_FOOT,
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="Ben Trovato, trovato@corporation.com G.K.M. Tobin,",
+                typst="Ben Trovato, trovato@corporation.com; G.K.M. Tobin,",
+                cause=ExtractionArtifact(
+                    "the contact line overfills the narrow acmcp measure, so LaTeX "
+                    "draws its trailing \";\" past the MediaBox and extraction drops "
+                    "it (widening the MediaBox brings it back)"),
+            ),
+        ),
         note="upstream acmcp sample: JDS banner, cover infobox, and author contributions.",
     ),
     "sample-acmengage": Test(
-        kind="twin", pages=3, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
+        kind="twin", pages=3,
         text_equal="bag",
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
-                      "https://doi.org/XXXXXXX.XXXXXXX Author Three",
-                typst="ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM "
-                      "https://doi.org/XXXXXXX.XXXXXXX be based on at least one "
-                      "evidenced-based teaching",
-                cause=ExtractionArtifact("Engage metadata/sidebar stream interleave"),
+                latex="https://doi.org/XXXXXXX.XXXXXXX known to broaden participation",
+                typst="https://doi.org/XXXXXXX.XXXXXXX be based on at least one "
+                      "evidenced-based teaching practice",
+                cause=ExtractionArtifact(
+                    "the copyright block interleaves with the body sentence at a "
+                    "different word in each engine, and its ISBN is one unbroken run "
+                    "in the tag tree (Typst writes soft hyphens there) against "
+                    "hyphen-separated components in the flat stream, so the "
+                    "per-character split of that run cannot align"),
             ),
         ),
         note="upstream acmengage sample: EngageCSEdu layout, synopsis, metadata, and CC license.",

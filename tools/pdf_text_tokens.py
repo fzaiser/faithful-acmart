@@ -1,7 +1,8 @@
 """Shared PDF text normalization/tokenization for the regression harness.
 
-The input is Poppler extraction text, not source text. The goal is to remove
-layout/extraction noise while keeping real words visible to the gates.
+The input is PyMuPDF extraction text (content-stream order, a form feed closing
+every page), not source text. The goal is to remove layout/extraction noise while
+keeping real words visible to the gates.
 """
 
 from __future__ import annotations
@@ -23,25 +24,31 @@ CHAR_FOLD = {
     "∙": "•",
 }
 
-_REPLACE = {
+# Folded only after the line-break-hyphen joins below have run: an en/em dash is
+# never a hyphenation break, so healing one would delete real content.
+_DASH_FOLD = {
     "‐": "-",
     "‑": "-",
     "‒": "-",
     "–": "-",
     "—": "-",
     "−": "-",
-    **CHAR_FOLD,
 }
 
+_SOFT_HYPHEN = "­"
 _EDGE_PUNCT = ".,;:!?()[]{}\"'*•-/"
 _DROP_DASHES = str.maketrans("", "", "­‐‑‒–—−-")
 _URL_SCHEME = re.compile(r"https?\s*:\s*/\s*/")
 _EOL_HYPHEN = re.compile(r"[­‐‑-]\s*\n\s*")
 _WORD_HYPHEN_SPACE = re.compile(r"([^\W\d_]{2,})[­‐‑-]\s+([^\W\d_]{2,})", re.UNICODE)
 _STANDALONE_NUMBER_LINE = re.compile(r"(?m)^\s*\d+\s*$")
-_PAGE_FOLIO_LINE = re.compile(r"(?m)^[^\S\r\n]*\d+[^\S\r\n]*(?=\r?\n\s*\f|\f|\Z)")
 _URLISH_TLD = re.compile(r"(?i)^[\w.-]+\.(?:com|org|edu|net|gov|io|cfm|pdf|html?)\b")
 _URL_COMPONENT = re.compile(r"[\w]+", re.UNICODE)
+
+# The review-mode line-number ruler is emitted as one uninterrupted block of bare
+# number lines per page (a running head drawn between two margin numbers can split
+# it in two); nothing else in a document produces a run this long.
+_MIN_RULER_RUN = 20
 
 
 def _split_fragile_component(token: str) -> list[str]:
@@ -58,45 +65,55 @@ def _is_variation_selector(ch: str) -> bool:
 def _clean(text: str) -> str:
     text = unicodedata.normalize("NFKC", text)
     text = "".join(ch for ch in text if not _is_variation_selector(ch))
-    for old, new in _REPLACE.items():
+    for old, new in CHAR_FOLD.items():
         text = text.replace(old, new)
     return text
 
 
-def _without_standalone_number_lines(text: str) -> str:
-    return _STANDALONE_NUMBER_LINE.sub(" ", text.replace("\f", "\n"))
-
-
-def _without_page_folio_lines(text: str) -> str:
-    return _PAGE_FOLIO_LINE.sub(" ", text)
+def _fold_dashes(text: str) -> str:
+    for old, new in _DASH_FOLD.items():
+        text = text.replace(old, new)
+    return text
 
 
 def _without_review_line_number_lines(text: str) -> str:
-    if len(_STANDALONE_NUMBER_LINE.findall(text.replace("\f", "\n"))) < 20:
-        return text
-    return _without_standalone_number_lines(text)
+    """Blank the review ruler: runs of at least ``_MIN_RULER_RUN`` bare number lines.
+
+    Only runs, never isolated number lines — a LaTeX section number sits on its own
+    extracted line (see ``_drop_layout_numbers``) and must survive.
+    """
+    lines = text.replace("\f", "\n").split("\n")
+    numbered = [_STANDALONE_NUMBER_LINE.fullmatch(line) is not None for line in lines]
+    out = list(lines)
+    start = None
+    for i in range(len(lines) + 1):
+        if i < len(lines) and numbered[i]:
+            start = i if start is None else start
+            continue
+        if start is not None and i - start >= _MIN_RULER_RUN:
+            out[start:i] = [" "] * (i - start)
+        start = None
+    return "\n".join(out)
 
 
 def _drop_layout_numbers(text: str, *, review_line_numbers: bool = False) -> str:
-    """Drop numbers that are LAYOUT chrome, not content: page folios (a number line
-    right before a page break) and the review-mode line-number ruler (>=20
-    standalone numbers). SECTION numbers are deliberately KEPT — they are content,
-    they appear in both engines, and they match: LaTeX typesets the number in its
-    own \\@hangfrom box so Poppler reads it on its own line while Typst reads it
-    inline with the title, but that is only a line-break difference the order-
-    independent bags and the whitespace-collapsing `normalize` absorb. (Dropping
-    every standalone-number line, as this once did, instead swept section numbers
-    up too, which forced the heading to keep an over-wide gap so its number would
-    land on its own extracted line — see DESIGN.md.)"""
-    text = _without_page_folio_lines(text)
+    """Blank the review-mode line-number ruler — the only run of numbers in a document
+    that is layout chrome rather than content.
+
+    Every other bare number line stays, because both engines put the same ones there:
+
+    - SECTION numbers. LaTeX typesets the number in its own \\@hangfrom box, so
+      PyMuPDF reads it on its own line while Typst reads it inline with the title.
+      That is a line-break difference only, which the order-independent bags and the
+      whitespace-collapsing ``normalize`` absorb. Sweeping them up instead forces the
+      heading to keep an over-wide gap so its number lands on its own extracted line
+      — see DESIGN.md.
+    - PAGE FOLIOS. PyMuPDF emits them beside the running head at the top of the page
+      (page 1, whose folio sits in the footer, is the exception), so no "last line of
+      the page" rule reaches them consistently. They agree between the engines, so
+      they are compared like any other text.
+    """
     return _without_review_line_number_lines(text) if review_line_numbers else text
-
-
-def normalize(text: str, *, review_line_numbers: bool = False) -> str:
-    """Collapse Poppler text for exact text assertions."""
-    text = _drop_layout_numbers(
-        _clean(text), review_line_numbers=review_line_numbers).replace("­", "")
-    return re.sub(r"\s+", " ", text).strip()
 
 
 def _looks_urlish(piece: str) -> bool:
@@ -108,34 +125,74 @@ def _looks_urlish(piece: str) -> bool:
     )
 
 
+def _healed_word(text: str, start: int, end: int, core: str) -> str:
+    """The whitespace-delimited word the match sits in, with its break healed.
+
+    The urlish test has to see exactly the word being joined: a wider window would
+    make the verdict depend on where the extractor happened to break the line.
+    """
+    left = start
+    while left > 0 and not text[left - 1].isspace():
+        left -= 1
+    right = end
+    while right < len(text) and not text[right].isspace():
+        right += 1
+    return text[left:start] + core + text[end:right]
+
+
 def _join_eol_hyphen(match: re.Match, text: str) -> str:
-    """Drop ordinary line-break hyphenation, keep URL-looking path hyphens."""
+    """Drop a line-break hyphen, keep a URL path hyphen that happens to end a line.
+
+    A soft hyphen is unconditionally a hyphenation point (Typst writes U+00AD there
+    and a real hyphen as U+002D), so it never survives the join.
+    """
+    if match.group().startswith(_SOFT_HYPHEN):
+        return ""
     start, end = match.span()
-    before = re.split(r"\s+", text[max(0, start - 80):start])[-1]
-    after = re.split(r"\s+", text[end:end + 80])[0]
-    context = text[max(0, start - 120):min(len(text), end + 120)]
-    return "-" if _looks_urlish(context) else ""
+    return "-" if _looks_urlish(_healed_word(text, start, end, "-")) else ""
 
 
 def _join_word_hyphen_space(match: re.Match, text: str) -> str:
-    """Join Poppler's same-line rendering of a line-break hyphen.
+    """Join a line-break hyphen that PyMuPDF rendered inside a line.
 
-    Some LaTeX discretionary/source hyphens extract as ``synop- sis`` rather
-    than ``synop-\nsis``. This is the same layout artifact as an EOL hyphen; keep
-    real URL hyphens when the surrounding text is URL-looking.
+    PyMuPDF inserts a space where a glyph gap is wide, so some breaks extract as
+    ``synop- sis`` rather than ``synop-\\nsis``. Same layout artifact as an EOL
+    hyphen; the same urlish exemption keeps real URL hyphens.
     """
     start, end = match.span()
-    context = text[max(0, start - 120):min(len(text), end + 120)]
-    return match.group(1) + ("-" if _looks_urlish(context) else "") + match.group(2)
+    joined = match.group(1) + match.group(2)
+    if match.group()[len(match.group(1))] == _SOFT_HYPHEN:
+        return joined
+    core = match.group(1) + "-" + match.group(2)
+    return core if _looks_urlish(_healed_word(text, start, end, core)) else joined
+
+
+def _heal_line_breaks(text: str) -> str:
+    """Undo the word splits the layout introduced: hyphenated line breaks and the
+    soft hyphens Typst leaves behind. Shared by ``normalize`` and the token pipeline
+    so a fragment and a bag see the same words."""
+    text = _EOL_HYPHEN.sub(lambda m: _join_eol_hyphen(m, text), text)
+    text = _WORD_HYPHEN_SPACE.sub(lambda m: _join_word_hyphen_space(m, text), text)
+    return text.replace(_SOFT_HYPHEN, "")
+
+
+def normalize(text: str, *, review_line_numbers: bool = False) -> str:
+    """Collapse extracted text for exact text assertions and expected-diff fragments.
+
+    Fragments are written as running prose, so the line breaks the layout happened to
+    choose must not show through: ``_heal_line_breaks`` rejoins the hyphenated ones.
+    URL schemes survive here (only the token pipeline strips them) so an assertion can
+    quote a link the way the source writes it.
+    """
+    text = _fold_dashes(_heal_line_breaks(_drop_layout_numbers(
+        _clean(text), review_line_numbers=review_line_numbers)))
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _prepare_for_tokens(raw: str, *, review_line_numbers: bool = False) -> str:
     text = _URL_SCHEME.sub("", _drop_layout_numbers(
         _clean(raw), review_line_numbers=review_line_numbers))
-    text = _EOL_HYPHEN.sub(lambda m: _join_eol_hyphen(m, text), text)
-    text = _WORD_HYPHEN_SPACE.sub(lambda m: _join_word_hyphen_space(m, text), text)
-    text = text.replace("­", "")
-    return re.sub(r"\s+", " ", text).strip()
+    return re.sub(r"\s+", " ", _fold_dashes(_heal_line_breaks(text))).strip()
 
 
 def _url_tokens(piece: str) -> list[str]:

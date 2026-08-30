@@ -1,7 +1,7 @@
 """Self-contained HTML failure/comparison report.
 
 ``test.py report [<stem> ...]`` rasterizes each requested twin's LaTeX and Typst
-PDFs page by page (reusing the harness's pdftoppm rasterizer), lays them out side
+PDFs page by page (reusing the harness's PyMuPDF rasterizer), lays them out side
 by side with the vector recolour overlay (Typst red over LaTeX blue) as a third
 column where Ghostscript/qpdf are available, and heads each twin with the gates
 that flagged it in the most recent ``check`` run. Everything is written into
