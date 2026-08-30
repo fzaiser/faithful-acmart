@@ -327,7 +327,11 @@
   // prints "<date> <HH>:<MM>. Page p of start--total."; Typst has no wall-clock
   // access, so we print the compile date (datetime.today) and omit the time.
   timestamp: false,
-  author-draft: false,    // authordraft = timestamp + review + draft watermark/overlay
+  // authordraft = timestamp + review mode + draft watermark/overlay. It raises
+  // those switches directly (acmart.dtx:2819-2820) rather than through the
+  // `review` option, so unlike an explicit `review` it leaves folios at the
+  // format default.
+  author-draft: false,
   submission-id: none,    // \acmSubmissionID — shown in the timestamp + anon. header
   start-page: none,       // \startPage — seeds the page counter (folios, timestamp range)
   // \thanks — content or array of contents; printed as unlabeled paragraphs at

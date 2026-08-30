@@ -81,7 +81,13 @@
     print-acm-reference
   }
 
-  // authordraft implies timestamp and review; review in turn forces folios.
+  // authordraft implies timestamp and review mode, but it raises the switches
+  // DIRECTLY (acmart.dtx:2819-2820) instead of going through the `review` key
+  // handler — so it never picks up that handler's
+  // \AtBeginDocument{\@ACM@printfoliostrue} (acmart.dtx:2683). Only an explicit
+  // `review` forces folios on (and it wins over an explicit `print-folios:
+  // false`, because the hook runs at \begin{document}); under `author-draft`
+  // alone the format's own default stands.
   let timestamp = timestamp or author-draft
   let review = review or author-draft
   let print-folios = if print-folios == auto {
@@ -89,7 +95,7 @@
   } else {
     print-folios
   }
-  let print-folios = print-folios or review
+  let print-folios = print-folios or data.review
 
   let article = if cfg.name == "acmcp" {
     assert(article-type in acmcp-article-types,

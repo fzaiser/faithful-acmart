@@ -244,7 +244,7 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "sample-acmtog": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-acmtog-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-sigconf-i13n": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="7670c039210868e04d5111c1c53fb3399558e09f012b1796727a07961be107fe"),
-    "sample-sigconf-authordraft": ResidualSignatures(text="38625e5eb0953293ca57140b887b1997514152f5dbec2775709a09bd21b4ab90", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="60dc257e9cf74ed07717c50f0c7fe929397c3f5cd416bc28ed529e0c6f95890c"),
+    "sample-sigconf-authordraft": ResidualSignatures(text="57a4481083f7716ddac8aa384c515bbb498a2281fce9d957465ad5347493f50d", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="60dc257e9cf74ed07717c50f0c7fe929397c3f5cd416bc28ed529e0c6f95890c"),
     "sample-acmsmall-biblatex": ResidualSignatures(text="92a70243730412d508ba78837840e05ffee4b632be406778fe2261b017cc6df4", font="49aeb0090f34955cfe4955eb61ec3205d5316489e0e531efc5b177d41a4d0312", order="06838db4fff42bd54f758c0a5cae5701f23098e6576c58f0a1d6c24a368758b5"),
     "sample-sigconf-biblatex": ResidualSignatures(text="7f1f8f05af6984e9254fef2c1f79dd32a26c12d351162b040216671262a9c62e", font="331464ac0b75d83068122c1a2016d6e6e77733b7111debd67a0e13bcbb89a919", order="e05fdb9a10feff979fed0ce72291eaccc755f16d3d214ceaa35153a19bdc49f9"),
     "sample-acmcp": ResidualSignatures(text="7fbdf3172bc5ee4838deba73a9af927db17fa8d5dc77d187ac61ae0873565ca1"),
@@ -1347,13 +1347,6 @@ TESTS: dict[str, Test] = {
                 cause=AcceptedTypstBehavior(
                     "Typst has no wall-clock access, so the timestamp footer prints the "
                     "compile date without the HH:MM time (DESIGN.md)."),
-            ),
-            ExpectedTextDiff(
-                latex="Page 1 of 1-6. Unpublished working draft.",
-                typst="Page 1 of 1-6. 1 Unpublished working draft.",
-                cause=TypstBug(
-                    "Typst prints a centred page folio on every authordraft page; "
-                    "acmart's authordraft foot carries only the timestamp banner"),
             ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
