@@ -589,6 +589,18 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1,
         note="frontmatter in isolation: title block, author fields, abstract, CCS, keywords",
     ),
+    "ccs-xml-test": Test(
+        kind="twin", pages=1,
+        note="CCS concepts pasted as the ACM CCS tool's <ccs2012> XML; the LaTeX twin "
+             "typesets the equivalent \\ccsdesc lines (interleaved repeated area, "
+             "500/300/default-100 styling, area-only repeat ending the list in ';')",
+    ),
+    "ccs-forms-test": Test(
+        kind="smoke", pages=1,
+        note="a document rendered from the ACM tool's paste in a raw block; the "
+             "\\ccsdesc-over-XML precedence shows as the bold specific in the golden "
+             "(parse-ccs asserts: tests/unit/frontmatter.typ; rejections: ERROR_CASES)",
+    ),
     "title-wrap-test": Test(
         kind="twin", pages=1,
         note="two-line acmsmall title: wrapped title lines keep the title baselineskip "
@@ -1647,6 +1659,15 @@ ERROR_CASES: dict[str, tuple] = {
     "bad-bib-backend": ('bib-backend: "sqlite",', "`bib-backend` must be"),
     "bad-cite-style": ('cite-style: "footnote",', "`cite-style` must be"),
     "bad-acm-month": ("acm-month: 13,", "`acm-month` must be an integer 1..12"),
+    "ccs-malformed-ccsdesc": (
+        'ccs: "\\\\ccsdesc[500]{Ok~Fine} \\\\ccsdesc[x]{Bad~Thing}",',
+        "1 of 2 \\ccsdesc uses in `ccs` are malformed",
+    ),
+    "ccs-neither-form": (
+        'ccs: "no concepts here",',
+        "must contain \\ccsdesc lines or exactly one <ccs2012> element",
+    ),
+    "ccs-bad-type": ("ccs: 5,", "`ccs` must be an array"),
     "bad-acmcp-article-type": (
         'format: "acmcp", article-type: "Bogus", acmcp-logo: none,',
         "Article Type must be Research",

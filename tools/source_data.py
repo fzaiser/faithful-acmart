@@ -431,6 +431,9 @@ def _relative_link_targets(text: str) -> list[str]:
     ]
 
 
+_FENCE_RE = re.compile(r"(`{3,}|~{3,})(.*)")
+
+
 def _split_markdown(text: str) -> tuple[str, str]:
     """(prose, code): fenced-block lines and inline code spans go to `code`.
 
@@ -440,16 +443,25 @@ def _split_markdown(text: str) -> tuple[str, str]:
     """
     prose_lines: list[str] = []
     code_parts: list[str] = []
-    in_fence = False
+    fence = None  # (char, length) of the open fence
     for line in text.splitlines():
-        if line.lstrip().startswith(("```", "~~~")):
-            in_fence = not in_fence
+        m = _FENCE_RE.fullmatch(line.strip())
+        if fence is not None:
+            # Only a fence of the same character, at least as long, and with
+            # nothing after it closes the block (CommonMark); a shorter fence
+            # line is content, so a ```` block may embed ``` lines (the
+            # README's raw-block `ccs` example does).
+            if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
+                    and not m.group(2).strip()):
+                fence = None
+            else:
+                code_parts.append(line)
             continue
-        if in_fence:
-            code_parts.append(line)
-        else:
-            code_parts.extend(re.findall(r"`+[^`]+`+", line))
-            prose_lines.append(re.sub(r"`+[^`]+`+", " ", line))
+        if m:
+            fence = (m.group(1)[0], len(m.group(1)))
+            continue
+        code_parts.extend(re.findall(r"`+[^`]+`+", line))
+        prose_lines.append(re.sub(r"`+[^`]+`+", " ", line))
     return "\n".join(prose_lines), "\n".join(code_parts)
 
 

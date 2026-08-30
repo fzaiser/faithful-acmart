@@ -1,6 +1,6 @@
 // Normalize document and publication metadata before rendering consumes it.
 
-#import "frontmatter.typ": normalize-author
+#import "frontmatter.typ": normalize-author, parse-ccs
 #import "journals.typ": lookup-journal
 #import "strings.typ": lang-record
 
@@ -100,7 +100,7 @@
       subtitle-note: data.subtitle-note,
       authors: authors,
       abstract: data.abstract,
-      ccs: data.ccs,
+      ccs: parse-ccs(data.ccs),
       keywords: data.keywords,
       translated-title: translated.title,
       translated-subtitle: translated.subtitle,

@@ -171,6 +171,8 @@ def _compat(expect: str | None) -> int:
     sources = (
         TESTS_DIR / "typst-only" / "defaults-test.typ",
         TESTS_DIR / "typst-only" / "proceedings-defaults-test.typ",
+        TESTS_DIR / "typst-only" / "ccs-forms-test.typ",
+        TESTS_DIR / "unit" / "frontmatter.typ",
         TESTS_DIR / "twins" / "title-test.typ",
         TESTS_DIR / "twins" / "body2-test.typ",
         TESTS_DIR / "twins" / "biblatex-driver-test.typ",

@@ -169,6 +169,78 @@
   groups
 }
 
+// Normalize the `ccs` option into a list of (significance, area, specific)
+// tuples, or none when there are no concepts (LaTeX omits the CCS section when
+// \@concepts is empty). Besides the tuple list itself, accepts the ACM CCS
+// tool's output (https://dl.acm.org/ccs) pasted verbatim as a string or inside
+// a raw block (where backslashes need no escaping): the \ccsdesc lines are
+// parsed when present — they are what LaTeX typesets, the CCSXML environment
+// being a comment (acmart.dtx:5951) — otherwise the <ccs2012> XML element.
+#let parse-ccs(ccs) = {
+  if ccs == none { return none }
+  let src = if type(ccs) == str { ccs } else if type(ccs) == content {
+    // A raw block, possibly wrapped in a content block (`[  ```…```  ]`).
+    let r = if ccs.func() == raw { ccs } else if ccs.has("children") {
+      ccs.children.find(c => c.func() == raw)
+    }
+    if r != none { r.text }
+  }
+  if src == none {
+    assert(type(ccs) == array,
+      message: "faithful-acmart: `ccs` must be an array of (significance, area, "
+        + "concept) tuples or the ACM CCS tool's output as a string/raw block, got "
+        + repr(ccs))
+    return if ccs.len() == 0 { none } else { ccs }
+  }
+  // \ccsdesc[sig]{Area~Specific}: sig defaults to 100, the specific may be
+  // absent; like \ccsdesc@parse (acmart.dtx:5988), anything after a second "~"
+  // is dropped.
+  let concept(sig, desc) = {
+    assert(sig == none or sig.trim().match(regex("^[0-9]+$")) != none,
+      message: "faithful-acmart: non-numeric CCS significance " + repr(sig))
+    let parts = desc.split("~")
+    let spec = parts.at(1, default: "").trim()
+    (if sig == none { 100 } else { int(sig.trim()) },
+     parts.first().trim(),
+     if spec == "" { none } else { spec })
+  }
+  // Every \ccsdesc use must parse; a malformed one (non-numeric significance,
+  // a brace inside the argument) is rejected rather than silently dropped —
+  // partial acceptance would also silently demote the documented \ccsdesc
+  // precedence to the XML.
+  let uses = src.matches(regex("\\\\ccsdesc\\b")).len()
+  let descs = src.matches(regex("\\\\ccsdesc\\b\\s*(?:\\[\\s*([0-9]+)\\s*\\])?\\s*\\{([^{}]*)\\}"))
+  if uses > 0 {
+    assert(descs.len() == uses,
+      message: "faithful-acmart: " + str(uses - descs.len()) + " of " + str(uses)
+        + " \\ccsdesc uses in `ccs` are malformed; expected "
+        + "\\ccsdesc[significance]{Area~Specific} with a numeric significance "
+        + "and no braces in the argument.")
+    return descs.map(m => concept(m.captures.first(), m.captures.at(1)))
+  }
+  let roots = src.matches(regex("(?s)<ccs2012>.*?</ccs2012>"))
+  assert(roots.len() == 1,
+    message: "faithful-acmart: a `ccs` string must contain \\ccsdesc lines or exactly "
+      + "one <ccs2012> element (found " + str(roots.len()) + "); paste the ACM CCS "
+      + "tool's output (https://dl.acm.org/ccs).")
+  let text-of(node) = node.children.fold("", (acc, c) => if type(c) == str { acc + c } else { acc })
+  let concepts = ()
+  for c in xml(bytes(roots.first().text)).first().children {
+    if type(c) != dictionary or c.tag != "concept" { continue }
+    let field(tag) = {
+      let n = c.children.find(k => type(k) == dictionary and k.tag == tag)
+      if n != none { text-of(n) }
+    }
+    let desc = field("concept_desc")
+    assert(desc != none and desc.trim() != "",
+      message: "faithful-acmart: <concept> in `ccs` lacks a <concept_desc>")
+    concepts.push(concept(field("concept_significance"), desc))
+  }
+  assert(concepts.len() > 0,
+    message: "faithful-acmart: the <ccs2012> element in `ccs` has no <concept> entries")
+  concepts
+}
+
 // CCS concepts: group by area (preserving order), style specifics by
 // significance (>=500 bold, >=300 italic, else roman), join with "; ",
 // bullet + bold area + arrow per group, trailing period. Input: list of
@@ -177,6 +249,7 @@
   // preserve area order
   let areas = ()
   let by-area = (:)
+  let all-specific = true
   for entry in ccs {
     assert(type(entry) == array and entry.len() >= 2,
       message: "each ccs-concepts entry must be a (significance, area, specific?) tuple, got " + repr(entry))
@@ -189,6 +262,8 @@
     }
     if spec != none and spec != "" {
       by-area.at(area).push((sig: sig, spec: spec))
+    } else {
+      all-specific = false
     }
   }
   let style-spec(s) = {
@@ -200,7 +275,8 @@
   // are joined by "; " too. The closing "." only prints when the @concepts counter
   // reaches zero, which happens iff EVERY concept carries a specific (each specific
   // decrements the counter that every \ccsdesc call incremented, acmart.dtx:5989-6006);
-  // any area-only concept — trailing or not — leaves the list ending in "; " instead.
+  // any area-only concept — even an invisible repeat of an area already shown —
+  // leaves the list ending in "; " instead.
   for (i, area) in areas.enumerate() {
     if i > 0 { [; ] }
     [• #strong(area)]
@@ -210,7 +286,7 @@
       specs.map(style-spec).join("; ")
     }
   }
-  if areas.all(area => by-area.at(area).len() > 0) { [.] } else { [;] }
+  if all-specific { [.] } else { [;] }
 }
 
 // Wrap inline content as an explicit paragraph so Typst's PDF tagger emits it as

@@ -132,7 +132,24 @@ note content shares one footnote mark across authors, like LaTeX's
 multiple affiliations.
 
 CCS entries are `(significance, area, concept)`: significance `500` or higher prints
-bold, `300` or higher prints italic, and lower values print roman.
+bold, `300` or higher prints italic, and lower values print roman. Alternatively,
+paste the [ACM CCS tool](https://dl.acm.org/ccs)'s output verbatim as `ccs`, most
+conveniently in a raw block, where backslashes stay literal (a string works too,
+but needs every `\` doubled):
+
+````typ
+ccs: ```
+\begin{CCSXML}
+<ccs2012>…</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Software and its engineering~Virtual machines}
+```
+````
+
+From a paste, the `\ccsdesc` lines are used when present — they are what LaTeX
+typesets, the CCSXML environment being a comment there — otherwise the
+`<ccs2012>` XML is read.
 
 Supported `copyright` values include `acmcopyright`, `acmlicensed`,
 `rightsretained`, `usgov`, `usgovmixed`, `cagov`, `cagovmixed`,

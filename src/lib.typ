@@ -230,6 +230,10 @@
   // acmart replays \email/\affiliation in source order (see normalize-author).
   authors: (),
   abstract: none,
+  // CCS concepts: an array of (significance, area, concept) tuples, or the ACM
+  // CCS tool's output (https://dl.acm.org/ccs) pasted verbatim as a string or a
+  // raw block (backslashes stay literal there). From a paste, the \ccsdesc lines
+  // are used when present — they are what LaTeX typesets — else the CCSXML.
   ccs: none,
   keywords: none,
   teaser: none,
