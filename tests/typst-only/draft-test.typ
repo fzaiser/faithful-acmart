@@ -1,8 +1,8 @@
-// draft-test — timestamp / author-draft mode (compile-only smoke test).
+// draft-test — timestamp / author-draft mode smoke test.
 //
-// No golden hash and no LaTeX twin: author-draft's timestamp footer embeds the
-// compile date (datetime.today), so the rendered output changes day to day and
-// can't be hash-pinned (manifest: golden = false, metrics = false). This guards
+// No LaTeX twin. The timestamp footer prints the compile date (datetime.today),
+// which the harness's pinned clock makes deterministic, so the page is
+// golden-hashed like any other test. This guards
 // that the author-draft code paths keep compiling warning-free — the draft
 // watermark, the copyright-block overlay + greying, the inner-edge timestamp
 // footer (with submission id) coexisting with the journal bibstrip, and the

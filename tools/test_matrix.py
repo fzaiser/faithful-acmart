@@ -502,13 +502,6 @@ _SIGCONF_BIBLATEX_PAGE_DIFF = (
 _ALIAS_GOLDEN_EXEMPT = (
     "Compile-only alias smoke; sigconf-test owns the rendered layout golden."
 )
-_DRAFT_GOLDEN_EXEMPT = (
-    "The rendered PDF embeds the compile date, so it is intentionally non-deterministic."
-)
-_AUTHORDRAFT_GOLDEN_EXEMPT = (
-    "Authordraft embeds a compile timestamp in the margin, so it is intentionally "
-    "non-deterministic."
-)
 
 # --- The test matrix -------------------------------------------------------
 #
@@ -1349,7 +1342,6 @@ TESTS: dict[str, Test] = {
     ),
     "sample-sigconf-authordraft": Test(
         kind="twin", pages=6,
-        golden_exempt=_AUTHORDRAFT_GOLDEN_EXEMPT,
         review_line_numbers=True,
         text_equal=False,
         expected_text_diffs=(
@@ -1584,15 +1576,15 @@ TESTS: dict[str, Test] = {
              "LaTeX class). Typst-only alias compile check (see siggraph-test).",
     ),
     "draft-test": Test(
-        kind="smoke", pages=1, golden_exempt=_DRAFT_GOLDEN_EXEMPT,
+        kind="smoke", pages=1,
         text_assertions=(
             # The inner-edge timestamp footer prints "Submission ID: <id>. <date>.
-            # Page N of M." — the id and the folio prose are stable; only the
-            # compile date between them is non-deterministic (hence golden-exempt).
+            # Page N of M." — assert the id and the folio prose around the pinned
+            # compile date.
             Assertion(engine="typst", text="Submission ID: 123-A56-BU3"),
             Assertion(engine="typst", text="Page 1 of"),
         ),
-        note="author-draft timestamp mode; non-deterministic compile-only smoke.",
+        note="author-draft timestamp mode smoke.",
     ),
     "urlbreak-test": Test(
         kind="smoke", pages=1,
