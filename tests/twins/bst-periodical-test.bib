@@ -1,0 +1,10 @@
+% The .bst's periodical/unpublished/article blocks that open with the date: each
+% piece of format.journal.volume.number.day.month.year (bst:1718) carries its own
+% leading space, and TeX swallows the one that lands right behind \newblock. The
+% entries are kept to one line each so the gap is measurable per word.
+@periodical{PerBare, title = {A bare periodical}, organization = {Bare Society}, year = 2001}
+@periodical{PerVolNum, title = {A periodical with two numbers}, organization = {Vn Society}, volume = {7}, number = {2}, year = 2002}
+@periodical{PerBang, title = {A periodical that ends in a bang!}, organization = {Bang Society}, year = 2003}
+@periodical{PerJournal, title = {A periodical with a journal}, journal = {J. Periodicals}, organization = {J Society}, volume = {9}, year = 2004}
+@unpublished{UnpDraft, author = {Cy Author}, title = {An unpublished draft}, note = {In preparation}, month = mar, year = 2005}
+@article{ArtNoJournal, author = {Dot Author}, title = {An article with no journal}, volume = {5}, number = {1}, year = 2006}

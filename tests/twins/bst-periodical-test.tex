@@ -1,0 +1,19 @@
+%% bst-periodical-test - the .bst blocks that open with a parenthesized date.
+\documentclass[acmsmall,nonacm]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\citestyle{acmauthoryear}
+\begin{document}
+\thispagestyle{empty}% titleless body-only fixture: re-assert empty.
+
+\section{Periodicals}
+A date that opens its block sits one space behind the title \citep{PerBare}, and so does a volume \citep{PerVolNum,PerJournal}.
+
+A title of its own punctuation keeps it \citep{PerBang}.
+
+The same block opens an unpublished draft \citep{UnpDraft} and a journal-less article \citep{ArtNoJournal}.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{bst-periodical-test}
+
+\end{document}

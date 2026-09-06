@@ -218,7 +218,10 @@
 // the caller has already set output.state to after.block, i.e. `lead: true`), then
 // an unconditional " (day month year)" with the format.year fallback. day precedes
 // the month (bst:520). Always returns a value — format.year always emits something.
-#let format-day-month-year(e, lead: true) = {
+// `space` is the space the .bst writes ahead of the parenthesis (bst:538). TeX
+// swallows it where the piece opens a block — the space run right behind
+// \newblock — so a caller that starts one asks for it to be left out.
+#let format-day-month-year(e, lead: true, space: true) = {
   let art = articleno-of(e)
   let art-pre = if art != none {
     (if lead { ", " } else { "" }) + "Article " + strip-articleno(art)
@@ -227,7 +230,8 @@
     if has(e, "day") { fld(e, "day") + " " + render(fld(e, "month")) + " " }
     else { render(fld(e, "month")) + " " }
   } else { "" }
-  (c: art-pre + " (" + dm + format-year-str(e) + ")", p: false)
+  let gap = if space or art-pre != "" { " " } else { "" }
+  (c: art-pre + gap + "(" + dm + format-year-str(e) + ")", p: false)
 }
 // "N pages" when articleno present (numpages, or reduced from pages)
 #let format-articleno-numpages(e) = {
@@ -240,17 +244,21 @@
 #let format-journal-block(e) = {
   let jname = if has(e, "journal") { it(render(canon-abbrev(fld(e, "journal")))) } else { none }
   let vn = if has(e, "volume") and has(e, "number") {
-    " " + fld(e, "volume") + ", " + fld(e, "number")
+    fld(e, "volume") + ", " + fld(e, "number")
   } else if has(e, "volume") {
-    " " + fld(e, "volume")
+    fld(e, "volume")
   } else if has(e, "number") {
-    " " + fld(e, "number")
+    fld(e, "number")
   } else { none }
-  let dmy = if e.entry-type != "inproceedings" { format-day-month-year(e) } else { none }
+  // the block's own pieces are spaced apart; only the one that opens it is not
+  let opens = jname == none and vn == none
+  let dmy = if e.entry-type != "inproceedings" {
+    format-day-month-year(e, space: not opens)
+  } else { none }
   if jname == none and vn == none and dmy == none { return none }
   let c = []
   if jname != none { c = c + jname }
-  if vn != none { c = c + vn }
+  if vn != none { c = c + (if jname == none { [] } else { " " }) + vn }
   if dmy != none { c = c + dmy.c }
   (c: c, p: false)
 }
@@ -583,7 +591,7 @@
     em = nblock(em)
     em = out(em, format-title(e))          // plain title (not emphasized)
     em = nsentence(em)
-    let ymd = format-day-month-year(e, lead: false)
+    let ymd = format-day-month-year(e, lead: false, space: false)
     if ymd != none { em = out(em, ymd) }
     em = out(em, format-page-count(e))
     // note is required for @unpublished and emitted by the shared trailing block

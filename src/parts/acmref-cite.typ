@@ -147,12 +147,7 @@
 // here falls to author.key.label, with no editor and no organization step.
 // `full: true` is natbib's spelled-out label, which calc.label (bst:2074) builds
 // from one chain for every type at all.
-#let manual-like-types = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
-
-// calc.basic.label's type dispatch: which field supplies the .bst citation label.
-// `full: true` is the disambiguation label (all names spelled out via format-lab-names-full).
 #let bst-lab-label(e, full: false) = {
-  let t = e.entry-type
   let names-fn = if full { format-lab-names-full } else { format-lab-names }
   let au = if bst-has(e, "author") { names-fn(e.names.author) }
   let ed = if bst-has(e, "editor") { names-fn(e.names.editor) }
@@ -162,12 +157,16 @@
   // author.key.label &co. fall back to cite$[0:3] when nothing else is present (bst:1968)
   let ck = e.at("cite-key", default: "")
   let key3 = ck.clusters().slice(0, calc.min(3, ck.clusters().len())).join()
+  let t = e.entry-type
   if t in ("book", "inbook", "article") { pick((au, ed, key, key3)) }
-  else if t in ("proceedings", "periodical", "collection") { pick((ed, org, key, key3)) }
-  else if t in manual-like-types { pick((au, ed, org, key, key3)) }
+  else if t in ("proceedings", "periodical") { pick((ed, org, key, key3)) }
+  else if t == "manual" { pick((au, ed, org, key, key3)) }
   else { pick((au, key, key3)) }
 }
 
+// biblatex.def:459 declares the `citetitle` format `cite:label` falls back to:
+// emphasized, quoted for the same types whose `title` is quoted (:461), plain
+// for the three supplement types (:464).
 #let blx-citetitle-format(e) = {
   let t = e.entry-type
   if t in ("article", "inbook", "incollection", "inproceedings", "conference",

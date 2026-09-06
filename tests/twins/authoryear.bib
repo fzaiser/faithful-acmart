@@ -42,3 +42,13 @@
 % Organization-only proceedings: editor.organization.sort dispatch (sorts by the
 % organization name, ahead of "Smith"); the org is both the sort key and the label.
 @proceedings{OrgProc, organization={IEEE Task Force}, title={Org-only proceedings}, year={2020}, publisher={IEEE}, address={NY}}
+
+% calc.basic.label (bst:2032) dispatches on the LITERAL type$, so the .bst's own
+% formatter aliases -- online/dataset -> manual, collection -> proceedings -- do
+% not reach the label: those fall to author.key.label, whose last resort is the
+% first three characters of the citation key. Verified against real bibtex.
+@online{OnlOrg, title={An online with an organization}, organization={Online Society}, year={2001}}
+@collection{ColEd, title={A collection with an editor}, editor={Eve Editor}, publisher={C Press}, year={2002}}
+@manual{ManOrg, title={A manual with an organization}, organization={Manual Society}, year={2003}}
+@online{WebKey, title={An online with an organization and a key}, organization={Web Society}, key={Webkey}, year={2004}}
+@dataset{DatEd, title={A dataset with an editor}, editor={Dan Editor}, year={2005}}

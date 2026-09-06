@@ -1436,6 +1436,30 @@ TESTS: dict[str, Test] = {
         ),
         note="the same fixtures under acmnumeric, whose event guard skips an addon-only event.",
     ),
+    "bst-periodical-test": Test(
+        kind="twin", pages=1, text_equal=True,
+        text_assertions=(
+            # the date opens its block: one space behind the title, not two
+            Assertion(engine="both", text="Bare Society 2001. A bare periodical. (2001)."),
+            Assertion(engine="both", text="Vn Society 2002. A periodical with two numbers. "
+                      "7, 2 (2002)."),
+            # add.period$ leaves a title's own ! or ? alone
+            Assertion(engine="both", text="Bang Society 2003. A periodical that ends in a bang! "
+                      "(2003)."),
+            # with a journal in front of it the date keeps its space, as any other
+            # piece of the block does
+            Assertion(engine="both", text="J Society 2004. A periodical with a journal. "
+                      "J. Periodicals 9 (2004)."),
+            # the same block opens an unpublished draft and a journal-less article
+            Assertion(engine="both", text="Cy Author. 2005. An unpublished draft. (March 2005). "
+                      "In preparation."),
+            Assertion(engine="both", text="Dot Author. 2006. An article with no journal. "
+                      "5, 1 (2006)."),
+        ),
+        note="the .bst blocks that open with a parenthesized date; the periodical driver's "
+             "shape family. Text gates normalize whitespace, so the single space itself is "
+             "pinned by the raster golden.",
+    ),
     "biblatex-label-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(
@@ -1759,6 +1783,19 @@ TESTS: dict[str, Test] = {
             # final name/title sort — only presort grouping still assigns a/b.
             Assertion(engine="both", text="2020b"),
             Assertion(engine="both", text="IEEE Task Force"),        # editor.organization.sort label
+            # calc.basic.label dispatches on the literal type$: the .bst's own
+            # formatter aliases never reach it, so an @online or @dataset gets
+            # neither its organization nor its editor — just the key prefix
+            Assertion(engine="both", text="[Onl 2001; Col 2002; Dat 2005]"),
+            # …while a literal @manual does take the organization, and an explicit
+            # key outranks it
+            Assertion(engine="both", text="[Manual Society 2003]"),
+            Assertion(engine="both", text="[Webkey 2004]"),
+            # the rendering dispatch is a separate thing and still follows the
+            # aliases: the online entry is bodied like a manual, organization first
+            Assertion(engine="both", text="Online Society 2001. An online with an organization. "
+                      "Online Society."),
+            Assertion(engine="both", text="Eve Editor (Ed.). 2002. A collection with an editor."),
         ),
     ),
     "mathfields": Test(
