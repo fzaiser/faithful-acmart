@@ -2,11 +2,11 @@
 
 #import "bibtex.typ": read-bib, parse-bib, parse-names
 #import "tex.typ": tex-to-string
-#import "acmref-common.typ": fld, has, is-others, von-last, year-value, it
+#import "acmref-common.typ": fld, has, is-others, von-last, it
 // the .bst reads a "??" value as a missing one, which decides both its citation
 // label and the year that label carries; biblatex prints such a value instead
 #import "acmref-bst.typ": handle, sort-key, has as bst-has, year-value as bst-year-value
-#import "acmref-biblatex.typ": blx-handle, blx-biber-datamodel, blx-sort-key, blx-np-lengths
+#import "acmref-biblatex.typ": blx-handle, blx-biber-datamodel, blx-sort-key, blx-np-lengths, blx-label-year
 #import "acmref-blxnames.typ": name-list, disambiguate, list-label, list-context, list-namehash, list-punct-initial
 #import "../formats/_base.typ": tp
 
@@ -182,7 +182,10 @@
 // global count (biber's seen_nametitledateparts), so an intervening entry does
 // not split a group.
 #let blx-extras(db, order, contexts) = {
-  let group = k => contexts.at(k) + "\u{0}" + year-value(db.at(k)).c
+  let group = k => {
+    let y = blx-label-year(db.at(k))
+    contexts.at(k) + "\u{0}" + (if y == none { "n.d." } else { y })
+  }
   let counts = (:)
   for k in order { counts.insert(group(k), counts.at(group(k), default: 0) + 1) }
   let seen = (:)
@@ -191,7 +194,10 @@
     let g = group(k)
     if counts.at(g) == 1 { res.insert(k, ""); continue }
     seen.insert(g, seen.at(g, default: 0) + 1)
-    res.insert(k, str.from-unicode(96 + seen.at(g)))
+    let letter = str.from-unicode(96 + seen.at(g))
+    // A year takes the letter bare ("2010a"); the `nodate` label date takes it
+    // parenthesized ("N.d.(a)"), in the cite label as well as the entry.
+    res.insert(k, if blx-label-year(db.at(k)) == none { "(" + letter + ")" } else { letter })
   }
   res
 }
@@ -274,7 +280,14 @@
 // an entry biber resolved to \literal{nodate} (biblatex.def:1391) shows the
 // `nodate` string (english.lbx:389) mid-sentence, and so uncapitalized, where
 // the .bst backend shows ACM's own "[n. d.]".
-#let cite-year(p, k) = year-value(p.db.at(k)).c
+// The year a cite prints. The BibLaTeX cite styles have no ACM `year` bibmacro:
+// an entry biber resolved to \literal{nodate} (biblatex.def:1391) shows the
+// `nodate` string (english.lbx:389) mid-sentence, and so uncapitalized, where
+// the .bst backend shows ACM's own "[n. d.]".
+#let cite-year(p, k) = {
+  if p.fmt == "biblatex" { let y = blx-label-year(p.db.at(k)); if y == none { "n.d." } else { y } }
+  else { bst-year-value(p.db.at(k), nodate: "[n.\u{2009}d.]").c }
+}
 #let cite-label(p, k) = p.labels.at(k).text
 // biblatex's \bibinitperiod is \adddot, and its punctuation tracker drops that
 // dot when punctuation already stands in front of it. An initial that is nothing

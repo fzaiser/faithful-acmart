@@ -75,39 +75,202 @@
   "3": "Mar.", "03": "Mar.", mar: "Mar.", march: "Mar.",
   "4": "Apr.", "04": "Apr.", apr: "Apr.", april: "Apr.",
   "5": "May", "05": "May", may: "May",
-  "6": "Jun.", "06": "Jun.", jun: "Jun.", june: "Jun.",
+  "6": "June", "06": "June", jun: "June", june: "June",
   "7": "July", "07": "July", jul: "July", july: "July",
   "8": "Aug.", "08": "Aug.", aug: "Aug.", august: "Aug.",
   "9": "Sept.", "09": "Sept.", sep: "Sept.", sept: "Sept.", september: "Sept.",
   "10": "Oct.", oct: "Oct.", october: "Oct.",
   "11": "Nov.", nov: "Nov.", november: "Nov.",
   "12": "Dec.", dec: "Dec.", december: "Dec.",
+  // EDTF season months, which biber accepts in the month position
+  "21": "Spr.", "22": "Sum.", "23": "Aut.", "24": "Win.",
 )
 #let blx-month(raw) = {
   let parts = raw.replace(".", "").split(regex("[\\s,/-]+")).filter(p => p != "")
   let k = if parts.len() > 0 { lower(parts.first()) } else { lower(raw.replace(".", "")) }
   blx-months.at(k, default: raw)
 }
+// A `day` FIELD is not part of the date: biber's driver sourcemap nulls it
+// (biblatex.def:1341), so only a `date` field can carry day precision.
+//
+// And a `date` OUTRANKS the legacy fields component by component: biber parses
+// it and overwrites `year` and `month` with what it found, warning as it goes,
+// so a legacy field only survives where the date says nothing. A range fills the
+// end parts too, and an empty half — "2025-05-06/" — is an open end.
+// Biber's date grammar is EDTF-flavoured, and more than a plain YYYY[-MM[-DD]]:
+// an uncertainty ("2005?") or approximation ("2005~") marker is accepted and
+// leaves no visible trace, trailing unspecified digits stand for the span they
+// cover ("200X" IS 2000-2009), and months 21-24 are the seasons. A day is
+// checked against the real calendar, leap years included — "2005-02-29" is
+// rejected where "2004-02-29" is not. Anything biber rejects leaves the entry as
+// undated as one with no date field, so nothing is materialized from it and
+// inheritance flows past it.
+#let blx-no-date-parts = (
+  year: none, month: none, day: none,
+  end-year: none, end-month: none, end-day: none, span: false,
+)
+#let blx-days-in-month(year, month) = {
+  let year = calc.abs(year)
+  let leap = calc.rem(year, 4) == 0 and (calc.rem(year, 100) != 0 or calc.rem(year, 400) == 0)
+  if month == 2 and leap { 29 } else { (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31).at(month - 1) }
+}
+// One half of a date. EXACTLY ONE trailing marker is allowed — "?" uncertain,
+// "~" approximate, "%" both — and it leaves no trace; two of them ("2005??") are
+// invalid and reject the value. Unspecified digits stand for the span they
+// cover, whether trailing in the year ("200X" is 1990-1999's neighbour decade),
+// in the month ("2005-XX" is January to December) or in the day ("2005-05-XX" is
+// the first to the last of May). A day is checked against the real calendar.
+#let blx-iso-parts(raw) = {
+  let t = raw.trim()
+  if t.ends-with(regex("[?~%]")) { t = t.slice(0, -1) }
+  if t.ends-with(regex("[?~%]")) { return blx-no-date-parts }
+  let span = (y, m, d, ey, em, ed) => (
+    year: y, month: m, day: d, end-year: ey, end-month: em, end-day: ed, span: true,
+  )
+  let plain = (y, m, d) => (
+    year: y, month: m, day: d, end-year: none, end-month: none, end-day: none, span: false,
+  )
+  let unspecified = t.match(regex("^(-?\d{1,3})(X+)$"))
+  if unspecified != none {
+    let head = unspecified.captures.at(0)
+    let xs = unspecified.captures.at(1)
+    if head.len() + xs.len() != 4 { return blx-no-date-parts }
+    return span(head + "0" * xs.len(), none, none, head + "9" * xs.len(), none, none)
+  }
+  if t.match(regex("^-?\d{4}$")) != none { return plain(t, none, none) }
+  let mx = t.match(regex("^(-?\d{4})-XX$"))
+  if mx != none {
+    let y = mx.captures.at(0)
+    return span(y, "01", none, y, "12", none)
+  }
+  let ym = t.match(regex("^(-?\d{4})-(0[1-9]|1[0-2]|2[1-4])$"))
+  if ym != none { return plain(ym.captures.at(0), ym.captures.at(1), none) }
+  let dx = t.match(regex("^(-?\d{4})-(0[1-9]|1[0-2])-XX$"))
+  if dx != none {
+    let y = dx.captures.at(0)
+    let m = dx.captures.at(1)
+    return span(y, m, "01", y, m, str(blx-days-in-month(int(y), int(m))))
+  }
+  let ymd = t.match(regex("^(-?\d{4})-(0[1-9]|1[0-2])-(\d{2})$"))
+  if ymd != none {
+    let y = ymd.captures.at(0)
+    let m = ymd.captures.at(1)
+    let d = ymd.captures.at(2)
+    if int(d) >= 1 and int(d) <= blx-days-in-month(int(y), int(m)) { return plain(y, m, d) }
+  }
+  blx-no-date-parts
+}
 #let blx-date-parts(e) = {
-  let raw = if has(e, "date") { fld(e, "date") } else { "" }
-  let y = if has(e, "year") { fld(e, "year") }
-    else if raw.len() >= 4 { raw.slice(0, 4) }
-    else { none }
-  let m = if has(e, "month") { fld(e, "month") }
-    else if raw.len() >= 7 and raw.slice(4, 5) == "-" { raw.slice(5, 7) }
-    else { none }
-  let d = if has(e, "day") { fld(e, "day") }
-    else if raw.len() >= 10 and raw.slice(7, 8) == "-" { raw.slice(8, 10) }
-    else { none }
-  (year: y, month: m, day: d)
+  let raw = if has(e, "date") { fld(e, "date").trim() } else { "" }
+  let halves = raw.split("/")
+  let iso = t => if halves.len() > 2 { blx-no-date-parts } else { blx-iso-parts(t) }
+  let legacy = name => if has(e, name) { fld(e, name) } else { none }
+  let head = halves.first().trim()
+  let start = iso(head)
+  let tail = if halves.len() > 1 { halves.at(1).trim() } else { none }
+  let far = if tail != none { iso(tail) } else { blx-no-date-parts }
+  // A malformed START rejects the whole value, where a malformed END — or one
+  // that is a span of its own — only costs the range: what biber could read of
+  // the start stands alone. An EMPTY second half is the open end.
+  let rejected = (head != "" and start.year == none) or halves.len() > 2
+  let open-end = not rejected and tail == "" and start.year != none
+  let use-end = not rejected and tail != none and tail != "" and far.year != none and not far.span
+  let ranged = not rejected and (open-end or use-end or start.span)
+  // an open START ("/2025-05-06") parses on the strength of its end alone
+  let parsed = not rejected and (start.year != none or use-end)
+  if not parsed {
+    // No date of its own: every component is a field, whether the entry carried
+    // it as a legacy `year`/`month` or inherited the parts biber materialized —
+    // an empty one is the sentinel for an end (or a start) that is unknown.
+    return (
+      year: legacy("year"), month: legacy("month"), day: legacy("day"),
+      end-year: legacy("endyear"), end-month: legacy("endmonth"), end-day: legacy("endday"),
+      open: legacy("endyearunknown") != none,
+      start-open: legacy("year") == none and legacy("endyear") != none,
+      ranged: legacy("endyear") != none or legacy("endyearunknown") != none,
+      parsed: false,
+    )
+  }
+  // The legacy fields fill the start in as they fill in any other component, so
+  // they answer the open-start question too: "/2026-06-14" beside year = 1999 is
+  // the range 1999-2026, not an open one, and biber writes that year rather than
+  // the empty field an unanswered start leaves.
+  let year = if start.year != none { start.year } else { legacy("year") }
+  let end = if use-end { far } else { blx-no-date-parts }
+  (
+    year: year,
+    month: if start.month != none { start.month } else { legacy("month") },
+    day: start.day,
+    // …and a single value can be a span of its own: "200X" is the decade it
+    // names, and it outranks whatever stands on the other side of the slash
+    end-year: if start.span { start.end-year } else { end.year },
+    end-month: if start.span { start.end-month } else { end.month },
+    end-day: if start.span { start.end-day } else { end.day },
+    open: open-end,
+    // …and the mirror image: "/2025-05-06" is a range whose start nothing
+    // supplies, which biber records as an EMPTY `year` field beside the end parts
+    start-open: ranged and year == none and end.year != none,
+    ranged: ranged,
+    parsed: true,
+  )
 }
-#let blx-printdate(e, suffix: "", month-ok: true) = {
-  let p = blx-date-parts(e)
-  if p.year == none { return "[n. d.]" + suffix }
-  if month-ok and p.month != none {
-    blx-month(p.month) + " " + p.year + suffix
-  } else { p.year + suffix }
+// A year prints without the zeros that pad it in the source and with a real
+// MINUS SIGN where it is negative — "-0100" prints as "\u{2212}100". A cite label
+// keeps the padding it was given ("0100"), and ACM's numeric `year` macro prints
+// the digits alone, unsigned.
+#let blx-year-digits(y) = {
+  if y == none { return none }
+  let digits = y.trim("-", at: start).trim("0", at: start)
+  if digits == "" { "0" } else { digits }
 }
+#let blx-year-text(y) = {
+  if y == none { return none }
+  let shown = blx-year-digits(y)
+  if y.starts-with("-") { "\u{2212}" + shown } else { shown }
+}
+#let blx-year-label(y) = if y == none { none } else { y.replace("-", "\u{2212}") }
+// One end of a date, at whatever precision it was given: a comma goes in only
+// behind a day ("June 14, 2026", but "June 2026").
+#let blx-date-piece(m, d, y) = {
+  let c = if m != none { blx-month(m) } else { "" }
+  if d != none {
+    let day = d.trim(regex("^0+"))
+    c += (if c != "" { " " } else { "" }) + (if day == "" { "0" } else { day })
+  }
+  if y != none { c += (if d != none { ", " } else if c != "" { " " } else { "" }) + blx-year-text(y) }
+  c
+}
+// \printdate — the date at its own precision, and *nothing at all* when the
+// entry has none. The two visible stand-ins for a missing date are the `year`
+// and `date+extradate` bibmacros below, never this one.
+// A range prints both ends around an en dash, each end dropping what it shares
+// with the other: the START gives up a year both ends carry, and the END gives
+// up a month the start already named ("Jan. 2-Mar. 4, 2024", "Jan. 2-2, 2024").
+// An open end is the dash with nothing behind it.
+// The range rendering itself, over a set of components: each end drops what it
+// shares with the other, and an open end is the dash with nothing behind it.
+#let blx-render-date(p) = {
+  if p.start-open {
+    // only the YEAR is unknown: a month the legacy fields still name is printed,
+    // and the space that would have carried the year stays with it
+    let head = blx-date-piece(p.month, p.day, none)
+    let tail = blx-date-piece(p.end-month, p.end-day, p.end-year)
+    return head + (if head == "" { "" } else { " " }) + "\u{2013}" + tail
+  }
+  if p.year == none { return "" }
+  let start-with = y => blx-date-piece(p.month, p.day, y)
+  if p.open { return start-with(p.year) + "\u{2013}" }
+  if p.end-year == none { return start-with(p.year) }
+  let same-year = p.end-year == p.year
+  let end-month = if same-year and p.end-month == p.month { none } else { p.end-month }
+  let end = blx-date-piece(end-month, p.end-day, p.end-year)
+  // a negative end needs a space of its own, or its minus would run into the dash
+  let gap = if p.end-year != none and p.end-year.starts-with("-") { " " } else { "" }
+  start-with(if same-year { none } else { p.year }) + "\u{2013}" + gap + end
+}
+#let blx-printdate(e) = blx-render-date(blx-date-parts(e))
+// The label year a cite prints: the two ends collapse when they share it, and an
+// open end keeps its dash ("[Open 2025-]", "[Year 2020-2022]").
 #let blx-print-full-date(e) = {
   let p = blx-date-parts(e)
   if p.year == none { return "[n. d.]" }
@@ -123,7 +286,7 @@
   // ACM's bundled author-year style prints month+year in ordinary label dates;
   // a day appears only in drivers that explicitly use BibLaTeX's full date
   // macro (notably patents).
-  (c: blx-printdate(e, suffix: suffix, month-ok: full), p: false)
+  (c: blx-printdate(e) + suffix, p: false)
 }
 #let blx-date-if-month(e) = {
   let p = blx-date-parts(e)
@@ -131,7 +294,7 @@
 }
 #let blx-date-parens(e) = {
   let p = blx-date-parts(e)
-  if p.year != none { (c: "(" + blx-printdate(e, month-ok: p.month != none) + ")", p: false) } else { none }
+  if p.year != none { (c: "(" + blx-printdate(e) + ")", p: false) } else { none }
 }
 #let blx-eprint-date(e) = {
   if not has(e, "eprint") { return blx-date-if-month(e) }
@@ -151,6 +314,53 @@
   let shown = if style == "numeric" and sentence { blx-sentence-case(raw) } else { raw }
   (c: render(shown), p: blx-ends-punct(shown))
 }
+#let blx-label-year(e) = {
+  let p = blx-date-parts(e)
+  let y = blx-year-label(p.year)
+  let ey = blx-year-label(p.end-year)
+  if p.start-open { return "\u{2013}" + ey }
+  if y == none { return none }
+  if p.open { return y + "\u{2013}" }
+  // …and the same space a negative end needs behind the range dash
+  if ey != none and ey != y {
+    return y + "\u{2013}" + (if p.end-year.starts-with("-") { " " } else { "" }) + ey
+  }
+  y
+}
+// \usebibmacro{date} (acmnumeric.bbx:77) is \printtext[parens]{\printdate}: the
+// parentheses are printed even when the date inside them comes out empty, so an
+// undated entry whose driver reaches this macro shows a bare "()".
+#let blx-date-macro(e) = (c: "(" + blx-printdate(e) + ")", p: false)
+// \usebibmacro{date-ifmonth} (acmnumeric.bbx:212) gates that on the month alone.
+#let blx-date-ifmonth(e) = if blx-date-parts(e).month != none { blx-date-macro(e) } else { none }
+// ACM's own `year` bibmacro (acmnumeric.bbx:71 / acmauthoryear.bbx:91): the bare
+// year field, or the literal "[n. d.]" — whose trailing period the punctuation
+// tracker sees, so no block separator follows it.
+#let blx-year-macro(e) = {
+  let p = blx-date-parts(e)
+  // an unknown start leaves that field EMPTY, and this macro prints the field —
+  // so nothing is printed, and the lead's own separator stands, where an entry
+  // with no date at all prints the "[n. d.]" stand-in below
+  if p.start-open { return (c: "", p: true) }
+  if p.year == none { (c: "[n. d.]", p: true) } else { (c: blx-year-digits(p.year), p: false) }
+}
+// authoryear.bbx's `date+extradate` (:58), with acmauthoryear.bbx:871 stripping
+// its parentheses. When the entry has no date at all biber resolves labeldate to
+// \literal{nodate} (biblatex.def:1391) and this prints biblatex's `nodate` string
+// (english.lbx:389), capitalized here at the start of a reference entry. The
+// extradate letter arrives already parenthesized for that case (blx-extras).
+#let blx-labeldate(e, suffix: "") = {
+  let d = blx-printdate(e)
+  if d == "" { (c: "N.d." + suffix, p: suffix == "") } else { (c: d + suffix, p: false) }
+}
+// The date a driver's name lead prints: ACM's `year` macro under acmnumeric,
+// the label date under acmauthoryear (which has no `year` macro in its drivers).
+#let blx-lead-date(e, style: "numeric", suffix: "") = {
+  if style == "author-year" { blx-labeldate(e, suffix: suffix) } else { blx-year-macro(e) }
+}
+
+// The punctuation buffer counts a comma, semicolon or colon as punctuation just
+// as it counts a stop: a unit ending in one takes no separator of its own.
 #let blx-booktitle(e, with-in: false, style: "numeric") = {
   if not has(e, "booktitle") { return none }
   let c = it(render(fld(e, "booktitle")))
@@ -292,6 +502,35 @@
   if has(e, "month") { raw.push("(" + blx-printdate(e) + ")") }
   if parts.len() == 0 { none } else { (c: parts.join(", "), p: blx-ends-punct(raw.join(", "))) }
 }
+#let blx-field-date(e, name) = {
+  if not has(e, name) { return "" }
+  let halves = fld(e, name).trim().split("/")
+  if halves.len() > 2 { return "" }
+  let head = halves.first().trim()
+  let start = blx-iso-parts(head)
+  // the same halves rules as the entry's own date: a malformed START rejects the
+  // value, a malformed or span END costs only the range
+  if head != "" and start.year == none { return "" }
+  let tail = if halves.len() > 1 { halves.at(1).trim() } else { none }
+  let far = if tail != none and tail != "" { blx-iso-parts(tail) } else { blx-no-date-parts }
+  let use-end = tail != none and tail != "" and far.year != none and not far.span
+  let open-end = tail == "" and start.year != none
+  if start.year == none and far.year == none { return "" }
+  blx-render-date((
+    year: start.year, month: start.month, day: start.day,
+    end-year: if start.span { start.end-year } else if use-end { far.year } else { none },
+    end-month: if start.span { start.end-month } else if use-end { far.month } else { none },
+    end-day: if start.span { start.end-day } else if use-end { far.day } else { none },
+    open: open-end,
+    start-open: start.year == none and far.year != none,
+  ))
+}
+
+
+// \newunit then \usebibmacro{chapter+pages}: a chapter opens that unit, so the
+// pending block break stands ahead of it ("Boston. Chap. Nine, 71-100"), while
+// pages alone leave the break pending until \bibpagespunct overrides it with its
+// own comma ("Bern, 5-9"). Returned as the list of values the driver blocks over.
 #let blx-publisher-pages(e) = {
   let pub = blx-publisher-location-date(e)
   let pg = blx-chapter-pages(e)
@@ -614,9 +853,21 @@
 
 #let blx-fill-date-fields(e) = {
   let p = blx-date-parts(e)
-  if p.year != none and not has(e, "year") { e.fields.insert("year", p.year) }
-  if p.month != none and not has(e, "month") { e.fields.insert("month", p.month) }
-  if p.day != none and not has(e, "day") { e.fields.insert("day", p.day) }
+  if not p.parsed { return e }
+  // EVERY component, ends included: an entry whose own date is a single year has
+  // no end, and the empty fields saying so are what keep a grandparent's range
+  // from reaching past it. An end that is genuinely unknown is a state of its
+  // own — biber's \true{enddateunknown} — and travels as its own marker, since
+  // an empty `endyear` alone cannot tell "no end" from "end unknown".
+  for (name, value) in (
+    ("year", p.year), ("month", p.month), ("day", p.day),
+    ("endyear", p.end-year), ("endmonth", p.end-month), ("endday", p.end-day),
+  ) {
+    e.fields.insert(name, if value == none { "" } else { value })
+  }
+  // the marker is a component like any other: present and empty where this date
+  // has no open end, so a parent's marker cannot be inherited over it
+  e.fields.insert("endyearunknown", if p.open { "1" } else { "" })
   e
 }
 

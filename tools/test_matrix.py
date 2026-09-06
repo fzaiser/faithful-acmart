@@ -1079,6 +1079,64 @@ TESTS: dict[str, Test] = {
         note="the same fixtures under acmnumeric, which inherits useprefix=true "
              "from trad-standard.bbx and files a prefixed name under its prefix.",
     ),
+    "biblatex-dates-test": Test(
+        kind="twin", pages=1, text_equal=True,
+        text_assertions=(
+            # the markers leave no trace, an unspecified digit IS its span, and a
+            # month past twelve is a season
+            Assertion(engine="both", text="Ann Query. 2005. An uncertain year. (2005)."),
+            Assertion(engine="both", text="Bob Tilde. 2005. An approximate year. (2005)."),
+            Assertion(engine="both", text="Cy Ex. 2000–2009. An unspecified digit. (2000–2009)."),
+            Assertion(engine="both", text="Dot Season. Spr. 2005. A season month. (Spr. 2005)."),
+            # a day outside its month is no date, a leap day is, and a malformed
+            # endpoint leaves the start rather than opening the range
+            Assertion(engine="both", text="Hal Feb. June 7, 1975. “A day that is not in that "
+                      "month.”"),
+            Assertion(engine="both", text="Jon Leap. Feb. 29, 2004. “A day that is.”"),
+            Assertion(engine="both", text="Kim End. 2005. “A malformed endpoint.”"),
+            # exactly one marker is read and left behind; two reject the value
+            Assertion(engine="both", text="Eli Pct. 2005. A percent marker. (2005)."),
+            Assertion(engine="both", text="Dot Double. 1999. A doubled marker. (1999)."),
+            # an unspecified month or day is the span it covers
+            Assertion(engine="both", text="Fay MonthX. Jan.–Dec. 2005. An unspecified month. "
+                      "(Jan.–Dec. 2005)."),
+            Assertion(engine="both", text="Gus DayX. May 1–31, 2005. An unspecified day. "
+                      "(May 1–31, 2005)."),
+            # a malformed START rejects the value; a span on each side keeps the
+            # start's own, and a span at the end costs only the range
+            Assertion(engine="both", text="Hal Start. Mar. 1999. A malformed start."),
+            Assertion(engine="both", text="Ivy Span. 1990–1999. A span on each side. (1990–1999)."),
+            Assertion(engine="both", text="Jon XEnd. 2005. A span at the end. (2005)."),
+            # a negative year prints with a minus and without its padding, while
+            # the LABEL keeps the padding it was given
+            Assertion(engine="both", text="Ann Neg. −100. A negative year. (−100)."),
+            Assertion(engine="both", text="Fay Early. 100. An early year, zero-padded. (100)."),
+            Assertion(engine="both", text="Bob Range. −100– −50. A negative range. (−100– −50)."),
+            Assertion(engine="both", text="Cy Cross. −50–50. A range across the era. (−50–50)."),
+            Assertion(engine="both", text="[Neg −0100]"),
+            Assertion(engine="both", text="[Early 0100]"),
+            Assertion(engine="both", text="[Cross −0050–0050; Range −0100– −0050]"),
+        ),
+        note="the date forms biber reads beyond YYYY-MM-DD, and the ones it rejects.",
+    ),
+    "biblatex-dates-numeric-test": Test(
+        kind="twin", pages=1, text_equal=True,
+        text_assertions=(
+            # the numeric lead is the start year alone; the span lives in the
+            # parenthesized date
+            Assertion(engine="both", text="Cy Ex. 2000. An unspecified digit. (2000–2009)."),
+            Assertion(engine="both", text="Dot Season. 2005. A season month. (Spr. 2005)."),
+            Assertion(engine="both", text="Jon Leap. 2004. A day that is."),
+            Assertion(engine="both", text="Fay MonthX. 2005. An unspecified month. "
+                      "(Jan.–Dec. 2005)."),
+            Assertion(engine="both", text="Ivy Span. 1990. A span on each side. (1990–1999)."),
+            Assertion(engine="both", text="Hal Start. 1999. A malformed start. (Mar. 1999)."),
+            # the numeric lead prints the digits alone, unsigned
+            Assertion(engine="both", text="Ann Neg. 100. A negative year. (−100)."),
+            Assertion(engine="both", text="Cy Cross. 50. A range across the era. (−50–50)."),
+        ),
+        note="the same fixtures under acmnumeric, whose lead prints the start year alone.",
+    ),
     "bib-all": Test(
         kind="twin", pages=1,
         note="BST backend sweep over ACM-Reference-Format entry types; text and links are gated.",

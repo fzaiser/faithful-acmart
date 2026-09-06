@@ -1,0 +1,16 @@
+#import "/src/lib.typ": *
+#show: acmart.with(format: "acmsmall", nonacm: true, bib-backend: "biblatex", cite-style: "numeric")
+
+#heading(numbering: none, level: 1)[Reading]
+An uncertainty marker and an approximation marker are read and leave no trace of themselves #cite("EdQ", "EdT").
+An unspecified digit is the span it names #cite("EdX"), and a month past twelve is a season #cite("EdS").
+
+#heading(numbering: none, level: 1)[Rejecting]
+A day that is not in its month is no date at all, so the entry inherits its parent's #cite("CaFeb29") -- a leap day, which is in its month, is kept #cite("CaLeap").
+A malformed endpoint leaves the start biber could read, rather than opening the range #cite("CaBadEnd").
+One marker is read and left behind #cite("EdPct"), where two of them reject the whole value and the legacy fields answer #cite("EdDouble").
+An unspecified month or day is the span it covers #cite("EdMonthX", "EdDayX").
+A malformed start rejects the value outright #cite("RgBadStart"), a span on each side keeps the start's own #cite("RgXX"), and a span at the end costs only the range #cite("RgXEnd").
+A year may be negative, and prints with a minus sign and without the zeros that padded it #cite("NgYear") -- a label keeps that padding #cite("PsEarly"), and a range across the era keeps both signs #cite("NgRange", "NgCross").
+
+#bibliography("/tests/twins/biblatex-dates-test.bib")

@@ -1,0 +1,21 @@
+% Fixtures for the date forms biber accepts beyond a plain YYYY-MM-DD, and for
+% the ones it rejects. Every expected string was read off real biber.
+@misc{EdQ,  author = {Ann Query},  title = {An uncertain year}, date = {2005?}}
+@misc{EdT,  author = {Bob Tilde},  title = {An approximate year}, date = {2005~}}
+@misc{EdX,  author = {Cy Ex},      title = {An unspecified digit}, date = {200X}}
+@misc{EdS,  author = {Dot Season}, title = {A season month}, date = {2005-21}}
+@proceedings{DtParent, title = {A dated parent}, editor = {Dee Day}, date = {1975-06-07}, publisher = {Dt Press}, address = {Oslo}}
+@inproceedings{CaFeb29,  crossref = {DtParent}, title = {A day that is not in that month}, author = {Hal Feb}, pages = {3--4}, date = {2005-02-29}}
+@inproceedings{CaLeap,   crossref = {DtParent}, title = {A day that is}, author = {Jon Leap}, pages = {7--8}, date = {2004-02-29}}
+@inproceedings{CaBadEnd, crossref = {DtParent}, title = {A malformed endpoint}, author = {Kim End}, pages = {9--10}, date = {2005/2006junk}}
+@misc{EdDouble, author = {Dot Double}, title = {A doubled marker}, date = {2005??}, year = {1999}}
+@misc{EdPct,    author = {Eli Pct},    title = {A percent marker}, date = {2005%}, year = {1999}}
+@misc{EdMonthX, author = {Fay MonthX}, title = {An unspecified month}, date = {2005-XX}}
+@misc{EdDayX,   author = {Gus DayX},   title = {An unspecified day}, date = {2005-05-XX}}
+@misc{RgBadStart, author = {Hal Start}, title = {A malformed start}, date = {2005junk/2006}, year = {1999}, month = {3}}
+@misc{RgXX,   author = {Ivy Span}, title = {A span on each side}, date = {199X/200X}}
+@misc{RgXEnd, author = {Jon XEnd}, title = {A span at the end}, date = {2005/201X}}
+@misc{NgYear,  author = {Ann Neg},   title = {A negative year}, date = {-0100}}
+@misc{NgRange, author = {Bob Range}, title = {A negative range}, date = {-0100/-0050}}
+@misc{NgCross, author = {Cy Cross},  title = {A range across the era}, date = {-0050/0050}}
+@misc{PsEarly, author = {Fay Early}, title = {An early year, zero-padded}, date = {0100}}
