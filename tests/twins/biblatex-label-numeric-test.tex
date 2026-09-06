@@ -1,0 +1,31 @@
+%% biblatex-label-test - the explicit `label` field, under acmnumeric.
+\documentclass[acmsmall,nonacm,natbib=false]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmnumeric,
+  ]{biblatex}
+\addbibresource{biblatex-label-test.bib}
+\begin{document}
+\thispagestyle{empty}
+
+\section*{Labels}
+\cite{LbPlain}: an explicit label stands in for the name, and the title follows it as it always would.
+
+\cite{LbShort}: the label outranks a short title, which then prints nowhere at all.
+
+\cite{LbNamed}: a name outranks the label in turn, and the label prints nowhere.
+
+\cite{LbThesis}: the label is plain where the title beside it is quoted.
+
+\cite{LbEchoA,LbEchoB}: two entries sharing a label take no letters --- an extradate letter counts the title.
+
+\cite{LbMisc}: a driver that leads with something other than a name prints no label, but cites by one.
+
+\section*{Textual cites}
+\textcite{LbPlain}, \textcite{LbShort}, \textcite{LbNamed}, \textcite{LbThesis}, and \textcite{LbMisc}.
+
+\printbibliography
+
+\end{document}

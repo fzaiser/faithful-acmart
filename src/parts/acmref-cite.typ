@@ -133,11 +133,23 @@
 }
 #let pick(arr) = { let r = arr.find(x => x != none); if r == none { "" } else { r } }
 // \DeclareLabeltitle (biblatex.def:1406): shorttitle, then title, then maintitle.
-#let label-title(e, quoted: false) = if has(e, "title") {
-  let t = tex-to-string(fld(e, "title"))
+#let labeltitle-field(e) = {
+  let names = ("shorttitle", "title", "maintitle").filter(n => has(e, n))
+  if names.len() == 0 { none } else { names.first() }
+}
+#let label-title(e, quoted: false) = {
+  let name = labeltitle-field(e)
+  if name == none { return none }
+  let t = tex-to-string(fld(e, name))
   if quoted { "\u{201C}" + t + "\u{201D}" } else { t }
 }
-// Entry types the .bst / biblatex treat as "manual-like" for label + title dispatch.
+// calc.basic.label's type dispatch (bst:2032): which field supplies the .bst
+// citation label. BibTeX's type$ sees the LITERAL entry type, so the .bst's
+// formatter aliases (collection -> proceedings, online/software/preprint/… ->
+// manual, bst:2568) do not reach this dispatch: every type but the six named
+// here falls to author.key.label, with no editor and no organization step.
+// `full: true` is natbib's spelled-out label, which calc.label (bst:2074) builds
+// from one chain for every type at all.
 #let manual-like-types = ("manual", "online", "game", "video", "artifactsoftware", "artifactdataset", "software", "softwareversion", "softwaremodule", "codefragment", "dataset", "preprint")
 
 // calc.basic.label's type dispatch: which field supplies the .bst citation label.
@@ -159,10 +171,25 @@
   else { pick((au, key, key3)) }
 }
 
+#let blx-citetitle-format(e) = {
+  let t = e.entry-type
+  if t in ("article", "inbook", "incollection", "inproceedings", "conference",
+           "patent", "thesis", "mastersthesis", "phdthesis", "unpublished") { "quoted" }
+  else if t in ("suppbook", "suppcollection", "suppperiodical") { "plain" }
+  else { "emph" }
+}
+// BibLaTeX's `cite:label`, taking the already-disambiguated name list (`none`
+// when the entry has no labelname at all). Unlike the .bst's
+// author.key.organization.label it never falls back to a corporate name: with no
+// labelname it prints the labeltitle, for every entry type alike.
+// Only acmauthoryear's `cite:label` (authoryear.cbx:52) has a `label` step, and
+// it prints the field plainly — the citetitle format applies to the title alone.
+// acmnumeric's textual cite (numeric.cbx:26) goes straight from the labelname to
+// the labeltitle, so an explicit label never shows there.
 #let blx-lab-label(e, names, style) = pick((
   names,
-  label-title(e, quoted: e.entry-type in
-    ("article", "inproceedings", "conference", "presentation", "incollection")),
+  if style == "author-year" and has(e, "label") { tex-to-string(fld(e, "label")) },
+  label-title(e, quoted: blx-citetitle-format(e) == "quoted"),
   if has(e, "key") { tex-to-string(fld(e, "key")) },
 ))
 
@@ -177,7 +204,8 @@
 }
 
 #let blx-label-title-italic(e, style) = {
-  blx-label-people(e) == none and has(e, "title")
+  if style == "author-year" and has(e, "label") { return false }
+  blx-label-people(e) == none and labeltitle-field(e) != none and blx-citetitle-format(e) == "emph"
 }
 
 // \natexlab a/b/c suffixes: a..z over consecutive (label, year)-equal entries in
@@ -263,13 +291,16 @@
       text: blx-lab-label(e, if named { list-label(by-key.at(k), dis.at(k), useprefix: useprefix) }, style),
       italic: blx-label-title-italic(e, style),
       named: named,
+      // …and whether that label opens with a generated, punctuation-only initial
+      punct-initial: named and list-punct-initial(by-key.at(k), dis.at(k), useprefix: useprefix),
     ))
     // what authoryear-comp compresses consecutive cites on
     hashes.insert(k, if named { list-namehash(by-key.at(k), dis.at(k)) } else { "\u{0}" + k })
     // \DeclareExtradateContext is labelname, else labeltitle; an entry with
     // neither is never lettered, so give it a context nothing can share.
+    let lt = labeltitle-field(e)
     contexts.insert(k, if named { "n\u{0}" + list-context(by-key.at(k), dis.at(k)) }
-      else if has(e, "title") { "t\u{0}" + str.normalize(tex-to-string(fld(e, "title")), form: "nfc") }
+      else if lt != none { "t\u{0}" + str.normalize(tex-to-string(fld(e, lt)), form: "nfc") }
       else { "k\u{0}" + k })
   }
   (labels: labels, hashes: hashes, extras: blx-extras(db, order, contexts))
@@ -324,9 +355,11 @@
 // nothing precedes it — first in a citation — and loses it behind the "; " an
 // earlier entry left. An initial with a letter in it re-arms the tracker and
 // keeps its period wherever it sits.
-#let cite-label-content(p, k) = {
+#let cite-label-content(p, k, first: true) = {
   let label = p.labels.at(k)
-  if label.italic { it(label.text) } else { label.text }
+  let generated = label.at("punct-initial", default: false)
+  let text = if first or not generated { label.text } else { label.text.replace(".", "", count: 1) }
+  if label.italic { it(text) } else { text }
 }
 
 // ---- cite -> reference-list hyperlinks -------------------------------------
@@ -349,7 +382,7 @@
     // natbib compresses on the printed label; authoryear-comp compresses on
     // biber's namehash, which separates entries whose labels coincide.
     let lbl = if "hashes" in p { p.hashes.at(k) } else { cite-label(p, k) }
-    let shown = cite-label-content(p, k)
+    let shown = cite-label-content(p, k, first: lgroups.len() == 0)
     let yr = (base: cite-year(p, k), suf: p.extras.at(k, default: ""))
     if lgroups.len() > 0 and lgroups.at(-1).label == lbl { lgroups.at(-1).years.push(yr) }
     else { lgroups.push((label: lbl, shown: shown, years: (yr,), key: k)) }
@@ -360,7 +393,10 @@
       if ybits.len() > 0 and ybits.at(-1).base == y.base { ybits.at(-1).sufs.push(y.suf) }
       else { ybits.push((base: y.base, sufs: (y.suf,))) }
     }
-    ybits.map(b => b.base + b.sufs.join(",")).join(", ")
+    // \bibrangedash carries an infinite penalty, so a year RANGE never breaks
+    // across lines the way a bare en dash otherwise would; the ", " between
+    // years stays ordinary breakable glue.
+    ybits.map(b => box(b.base + b.sufs.join(","))).join(", ")
   }
   // link each author group to its first entry (hyperref anchors the whole citation)
   let years = g => render-years(g.years)

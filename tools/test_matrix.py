@@ -1079,6 +1079,62 @@ TESTS: dict[str, Test] = {
         note="the same fixtures under acmnumeric, which inherits useprefix=true "
              "from trad-standard.bbx and files a prefixed name under its prefix.",
     ),
+    "biblatex-label-test": Test(
+        kind="twin", pages=1, text_equal=True,
+        text_assertions=(
+            # the label stands where the name would, in the lead and in the cite
+            # label alike, and the title family behind it is left untouched
+            Assertion(engine="both", text="Project Atlas. 2038. A report carrying an explicit "
+                      "label. Tech. rep. Atlas Institute."),
+            Assertion(engine="both", text="[Project Atlas 2038]"),
+            # it outranks a short title, which then prints nowhere
+            Assertion(engine="both", text="Project Beta. 2039. A report with a label and a short "
+                      "title. Tech. rep. Beta Institute."),
+            Assertion(engine="both", kind="absent", text="Short beta"),
+            # a name outranks the label, which then prints nowhere
+            Assertion(engine="both", text="Ada Marker. 2040. A named report with a label."),
+            Assertion(engine="both", text="[Marker 2040]"),
+            Assertion(engine="both", kind="absent", text="Project Gamma"),
+            # the label has no field format of its own, so it prints plainly even
+            # where the title beside it is quoted
+            Assertion(engine="both", text="Project Delta. 2041. “A thesis carrying a label.” "
+                      "Ph.D. Dissertation."),
+            # the extradate letter counts the labeltitle, not the label: two
+            # entries sharing a label and a year take no letters
+            Assertion(engine="both", text="[Project Echo 2042; Project Echo 2042]"),
+            Assertion(engine="both", text="Project Echo. 2042. The first echo report."),
+            Assertion(engine="both", text="Project Echo. 2042. The second echo report."),
+            # a driver that leads with something other than a name never prints the
+            # label, but the citation still uses it
+            Assertion(engine="both", text="[Project Golf 2044]"),
+            Assertion(engine="both", text="A misc carrying a label. (2044)."),
+            # a textual cite goes through the same chain, so the label stands there
+            # too — plainly, where a title fallback would be quoted or emphasized
+            Assertion(engine="both", text="Project Atlas [2038], Project Beta [2039], "
+                      "Marker [2040], Project Delta [2041], and Project Golf"),
+        ),
+        note="the explicit `label` field: its precedence, its plain format, and what it leaves standing.",
+    ),
+    "biblatex-label-numeric-test": Test(
+        kind="twin", pages=1, text_equal=True,
+        text_assertions=(
+            # the numeric style cites by number and leads with the year, so the
+            # label is invisible from end to end
+            Assertion(engine="both", text="2038. A report carrying an explicit label. "
+                      "Tech. rep. Atlas Institute."),
+            Assertion(engine="both", text="2039. A report with a label and a short title."),
+            Assertion(engine="both", text="2041. A thesis carrying a label. Ph.D. Dissertation."),
+            Assertion(engine="both", text="Ada Marker. 2040. A named report with a label."),
+            Assertion(engine="both", kind="absent", text="Project"),
+            # acmnumeric's textual cite (numeric.cbx:26) has no label step at all:
+            # with no name it prints the LABELTITLE, in the citetitle format — the
+            # short title when there is one, emphasized, or quoted for a thesis
+            Assertion(engine="both", text="A report carrying an explicit label [2], Short beta [3], "
+                      "Marker [5], “A thesis carrying a label” [4], and"),
+            Assertion(engine="both", text="A misc carrying a label [1]."),
+        ),
+        note="the same entries under acmnumeric, where the label never prints.",
+    ),
     "biblatex-dates-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(

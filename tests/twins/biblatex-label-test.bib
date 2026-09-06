@@ -1,0 +1,11 @@
+% An explicit `label` field: what it stands in for, what outranks it, and how it
+% prints. BibLaTeX puts it ahead of the labeltitle in both the bibliography lead
+% and the citation label, and prints it through its own (undeclared, so plain)
+% field format.
+@techreport{LbPlain, label = {Project Atlas}, title = {A report carrying an explicit label}, institution = {Atlas Institute}, year = 2038}
+@techreport{LbShort, label = {Project Beta}, shorttitle = {Short beta}, title = {A report with a label and a short title}, institution = {Beta Institute}, year = 2039}
+@techreport{LbNamed, author = {Ada Marker}, label = {Project Gamma}, title = {A named report with a label}, institution = {Gamma Institute}, year = 2040}
+@phdthesis{LbThesis, label = {Project Delta}, title = {A thesis carrying a label}, school = {Delta University}, year = 2041}
+@techreport{LbEchoA, label = {Project Echo}, title = {The first echo report}, institution = {Echo Institute}, year = 2042}
+@techreport{LbEchoB, label = {Project Echo}, title = {The second echo report}, institution = {Foxtrot Institute}, year = 2042}
+@misc{LbMisc, label = {Project Golf}, title = {A misc carrying a label}, year = 2044}
