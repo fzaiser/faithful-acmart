@@ -236,18 +236,19 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "mathfields": ResidualSignatures(font="33b5c052b30812736e907581e38b04c1be363ec608e59cd34c8a13ce193f5170"),
     "sample-acmsmall": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="63571ea7fe48d9b439a405c7ab3b1bb383ec9e93d839d63c4816959c5db469bf"),
     "sample-manuscript": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="ba2c719c2aa71bf411ef3fa382d5365f3b4ab49c2f8f7ccb4ca175b689f95a43", order="e35efb9f0fc720f589914f355ead6d5f4bf9923e8fdf8c24afa14bd20788d0f1"),
-    "sample-acmlarge": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="ab2b7cfc16363f6aa1f2e001aaeccd215a572de06a1cbcb05976a7810d8856f1"),
-    "sample-sigconf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="367f4243c72b390a5969a6cddf713e2a9849004ae4d886298a7ef0812c4e8618"),
+    "sample-acmlarge": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="367f4243c72b390a5969a6cddf713e2a9849004ae4d886298a7ef0812c4e8618"),
+    "sample-sigconf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-sigplan": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="a0309711e0b0b330619cfff07196b1745a9e57d37ec75136e28fbb21804a3b9c", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-acmsmall-submission": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-acmsmall-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-acmtog": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-acmtog-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-sigconf-i13n": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="7670c039210868e04d5111c1c53fb3399558e09f012b1796727a07961be107fe"),
-    "sample-sigconf-authordraft": ResidualSignatures(text="57a4481083f7716ddac8aa384c515bbb498a2281fce9d957465ad5347493f50d", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="60dc257e9cf74ed07717c50f0c7fe929397c3f5cd416bc28ed529e0c6f95890c"),
+    "sample-sigconf-authordraft": ResidualSignatures(text="aef256ae70bb42e04fc169d6910691e6d16f659c1a81746f6b5a19662ed58274", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-acmsmall-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="801b173d792682fd1c8269f080bd291a18b99a88a8a84c2e62dea4809fd1dfa2", order="7b3f516263dd09f3a6d35956cb444a6766bade5d771d04c441c57f4a1e012b01"),
     "sample-sigconf-biblatex": ResidualSignatures(text="60ffeb1dd2b4f2a69bc2266010c29ef43c425480101bd90cbf94d6d58afa9210", font="ec59075f84dabc560ec85a9282b3721d82ed596eee3c504082feea384ffb57dd", order="a7f323c7a7739f484386e5da419133bcce258e6578a0f7007d4ff95239b07b9d"),
     "sample-acmcp": ResidualSignatures(text="a9a95ef15c40d9c28beacacdc681edc7c834fcae0aba217e4764495993a5ac9e"),
+    "authoryear": ResidualSignatures(text="96e3b378cf8c5ff278d12ecbd1c0d5493b7700768a2fe4d380c0b98bcc8870b9", font="604e5aedfa00fd6a5f2bb7e6e0022ecf19ecd9f664ef32ec60beff88f0a76ca8"),
     "sample-acmengage": ResidualSignatures(order="e1375d589c6da53376f20ce6acd938b50f3b317e20333dd6ab48744b32034f58"),
 }
 
@@ -293,13 +294,33 @@ EXPECTED_LINK_DIFFS: dict[str, ExpectedLinkDiff] = {
     "sample-acmengage": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.engage-csedu.org/ontology", "https://doi.org/10.1145/1188913.1188915", "http://ccrma.stanford.edu/~jos/bayes/bayes.html"), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://creativecommons.org/licenses/by/4.0")),
 }
 
-# Legitimate section-bookmark differences vs LaTeX (Tier 1.95). Maps a twin to a
-# one-line reason. Empty by design: with numbered-section restriction, quote
-# folding, and LaTeX-depth capping, every twin's section outline currently agrees
-# (only frontmatter \addcontentsline bookmarks and deeper Typst levels differ,
-# both excluded by construction). An entry here says "this twin's section
-# bookmark titles legitimately diverge" — add one only with a verified reason.
-EXPECTED_OUTLINE_DIFFS: dict[str, str] = {}
+@dataclass(frozen=True)
+class ExpectedOutlineDiff:
+    """Exact page-1 bookmark-target residual plus its rationale (Tier 1.95).
+
+    `moved` names every (bookmark title, LaTeX page, Typst page) triple the gate
+    accepts. Nothing else is waived: bookmark titles still have to match exactly,
+    any other page-1 bookmark leaving page 1 still fails, and a listed heading
+    that stops moving fails too, so the entry cannot outlive its cause.
+    """
+
+    reason: str
+    moved: tuple[tuple[str, int, int], ...]
+
+
+# Legitimate section-bookmark differences vs LaTeX (Tier 1.95). Bookmark TITLES
+# agree for every twin by construction (numbered-section restriction, quote
+# folding, LaTeX-depth capping), and no entry here can waive that; these record
+# page-1 targets that the documented vertical-fill gap pushes onto page 2.
+EXPECTED_OUTLINE_DIFFS: dict[str, ExpectedOutlineDiff] = {
+    "sample-acmsmall-submission": ExpectedOutlineDiff(
+        "page 1 holds one line less than LaTeX's (86 vs 87 extracted lines), so the "
+        "heading closes LaTeX's first page and opens ours: the shrinkable section "
+        "glue plus acmart's \\@textbottom fill let LaTeX take it, and Typst has no "
+        "equivalent (DESIGN.md \"Vertical fill\")",
+        moved=(("2.1 Template Styles", 1, 2),),
+    ),
+}
 
 _DASH_EXTRACTION = "exact normalized dash residual caused by cross-engine extraction/reflow"
 EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
@@ -1796,6 +1817,34 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Online Society 2001. An online with an organization. "
                       "Online Society."),
             Assertion(engine="both", text="Eve Editor (Ed.). 2002. A collection with an editor."),
+            # The a/b pass keys on the label year the .bst had to take from `date`
+            # (2.20's calc.basic.label; 2.18 read the `year` field alone and let a
+            # date-only entry escape disambiguation).
+            Assertion(engine="both", text="[Vance 2015a,b]"),
+            Assertion(engine="both", text="Ivo Wren. [n. d.]a. Undated alpha."),
+        ),
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="[Wren 0000a,b]",
+                typst="[Wren [n. d.]a,b]",
+                cause=AcceptedTypstBehavior(
+                    "ACM-Reference-Format 2.2 stopped writing \"[n.\\,d.]\" into the "
+                    "\\bibitem label year, writing \"0000\" and a \\NAT@parse@date patch that "
+                    "turns it back into \"[n.\\,d.]\". begin.bib emits that patch AFTER "
+                    "\\begin{thebibliography}, so it is local to that environment and never "
+                    "reaches an in-text citation: LaTeX now prints the bare 0000 there, while "
+                    "the reference list (which uses format.year) still prints [n. d.]. We keep "
+                    "[n. d.] in both places; drop this entry if ACM moves the patch."),
+            ),
+        ),
+        expected_font_diffs=(
+            ExpectedFontDiff(
+                latex="[Wren 0000a,b]",
+                typst="[Wren [n. d.]a,b]",
+                cause=AcceptedTypstBehavior(
+                    "the same kept [n. d.] as the text diff above: its \"n\" and \"d\" have "
+                    "no counterpart in LaTeX's bare 0000."),
+            ),
         ),
     ),
     "mathfields": Test(
@@ -1830,6 +1879,13 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1,
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "
              "The title block and footnote stack mix leadings, so pitch is reported, not gated.",
+    ),
+    "notes-conf-test": Test(
+        kind="twin", pages=1,
+        note="the same top-matter notes on an acmsmall CONFERENCE paper: \\acmConference "
+             "empties the authors-addresses stream (no \\thanks, no contact block), so the "
+             "notes sit directly above the copyright stream — the two-stream footnote "
+             "layout that no journal twin reaches.",
     ),
     "options-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
@@ -2001,10 +2057,12 @@ TESTS: dict[str, Test] = {
                     "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
             ),
             ExpectedOrderDiff(
-                latex="(Case 2) Proc. ACM Meas. Anal. Comput. Syst., Vol. 37, No. 4, "
-                      "Article 111. Publication date: August 2018. 111:8 • Trovato "
-                      "et al. [27] and [26]",
-                typst="111:8 • Trovato et al. and (Case 2) [27] and [26]",
+                latex="(see 2a in spec. document) [18], a Proc. ACM Meas. Anal. Comput. "
+                      "Syst., Vol. 37, No. 4, Article 111. Publication date: August 2018. "
+                      "111:8 • Trovato et al. divisible-book such as an anthology or "
+                      "compilation [13]",
+                typst="(see 2a in spec. document) [18], a divisible-book such as an "
+                      "anthology or compilation [13]",
                 cause=ExtractionArtifact(
                     "the citation-guide paragraph is split by a page break, so the "
                     "running head lands inside its token span at a different word in "
@@ -2026,15 +2084,6 @@ TESTS: dict[str, Test] = {
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
                     "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
-            ),
-            ExpectedOrderDiff(
-                latex="an anthology or The Name of the Title Is Hope Conference "
-                      "acronym 'XX, June 03-05, 2018, Woodstock, NY compilation [13]",
-                typst="an anthology or compilation [13] followed by the same example",
-                cause=ExtractionArtifact(
-                    "the citation-guide paragraph is split by a page break, so the "
-                    "running head lands inside its token span at a different word in "
-                    "each engine; the chunk window then loses the paragraph's tail"),
             ),
         ),
         note="upstream sigconf sample: two-column proceedings with author grid and teaser figure.",
@@ -2207,6 +2256,15 @@ TESTS: dict[str, Test] = {
                     "Typst has no wall-clock access, so the timestamp footer prints the "
                     "compile date without the HH:MM time (DESIGN.md)."),
             ),
+            ExpectedTextDiff(
+                latex="Woodstock, NY Rights Information Authors of any work",
+                typst="journal articles. 7 Rights Information Authors of any work",
+                cause=ExtractionArtifact(
+                    "\"7 Rights Information\" opens a page in LaTeX, so its section "
+                    "number is extracted directly above the review ruler and is blanked "
+                    "with that run of bare number lines; Typst carries the heading "
+                    "mid-page, where the number survives."),
+            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
@@ -2217,18 +2275,6 @@ TESTS: dict[str, Test] = {
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
                     "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
-            ),
-            ExpectedOrderDiff(
-                latex="Page 4 of 1-6. Unpublished working draft. Not for distribution. "
-                      "The Name of the Title Is Hope Conference acronym 'XX, June "
-                      "03-05, 2018, Woodstock, NY compilation [13]",
-                typst="an anthology or compilation [13] followed by the same example",
-                cause=ExtractionArtifact(
-                    "the citation-guide paragraph is split by a page break, so the "
-                    "draft footer and running head land inside its token span; the "
-                    "chunk window then loses the paragraph's tail and the fallback "
-                    "whole-stream alignment matches stray digits of the line-number "
-                    "ruler"),
             ),
         ),
         note="upstream sigconf authordraft sample: draft watermark, line numbers, timestamp.",

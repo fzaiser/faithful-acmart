@@ -328,12 +328,12 @@
 // \@specialsection does `\par\medskip\small ...`, so the gap is \medskip before
 // 9pt text (tex-skip with sz: "small"). See DESIGN.md "block vertical spacing".
 #let special-line(cfg, label, content) = {
-  // Journals (bibstrip) run these in at \small with a plain label; sigplan uses
+  // Journals run these in at \small with a plain label; sigplan uses
   // \noindentparagraph (a level-4 run-in heading) at normalsize, so the LABEL takes
   // the paragraph heading style — bold italic (\@specialsection, acmart.dtx:6790).
-  let sz = if cfg.bibstrip { "small" } else { "normalsize" }
+  let sz = if cfg.journal { "small" } else { "normalsize" }
   let pf = cfg.sec-fonts.paragraph
-  let head = if cfg.bibstrip { [#label:] } else { text(weight: pf.weight, style: pf.style)[#label:] }
+  let head = if cfg.journal { [#label:] } else { text(weight: pf.weight, style: pf.style)[#label:] }
   v(tex-skip(cfg, cfg.medskip, sz: sz), weak: true)
   // \@specialsection bodies are ordinary JUSTIFIED paragraphs (acmart.dtx:6773);
   // only visible when the label+content wraps past one line.
@@ -477,7 +477,7 @@
     // overridden (\authorsaddresses, acmart.dtx:5327: `auto` derives it, `none`
     // suppresses it, content replaces it). LaTeX prints name-only entries too.
     let thanks = if meta.thanks == none { () } else if type(meta.thanks) == array { meta.thanks } else { (meta.thanks,) }
-    let has-contact-info = cfg.name != "acmcp" and cfg.bibstrip and not anon and (
+    let has-contact-info = cfg.name != "acmcp" and cfg.bibstrip-or-tog and not anon and (
       if meta.authors-addresses == auto { meta.authors.len() > 0 } else { meta.authors-addresses != none }
     )
     let mode = meta.copyright
@@ -494,16 +494,17 @@
         block(spacing: lead, tagged-par[#note-super(n.symbol)#n.body])
       }
       if thanks.len() > 0 or has-contact-info or has-copyright-info {
-        // These are separate LaTeX footnote streams (ordinary notes, then
-        // manyfoot authors-address/copyright streams). The later full-width
-        // rule is already bottom-aligned; add the measured inter-stream strut so
-        // the author-note rule/text sit at the LaTeX height above it.
-        let stream-gap = if cfg.bibstrip {
-          2 * lead + cfg.footnote-rule-kern-below
-        } else {
-          lead
-        }
-        block(spacing: 0pt)[#box(width: 0pt, height: stream-gap)]
+        // Separate LaTeX footnote streams (ordinary notes, then the manyfoot
+        // authors-address/copyright streams). manyfoot gives every stream the same
+        // \skip\footins as the ordinary one (manyfoot.sty:212) and puts exactly that
+        // glue between two streams, so the gap depends on neither the format nor
+        // which streams are present; the rule's own \kern-3pt then steps back up,
+        // the same expression the footnote float and body footnotes use. LaTeX also
+        // carries the footnote box's depth here, which TeX derives from \footnotesep
+        // and the split struts rather than from any class parameter, so a sub-point
+        // residual remains (DESIGN.md "Footnote stream separation").
+        let stream-gap = cfg.footins-skip - cfg.footnote-rule-kern-above
+        v(stream-gap, weak: false)
       }
     }
 
@@ -565,9 +566,7 @@
         // Conference info line, between the permission text and the © line
         // (acmart.dtx:6615-6622): italic "<conf short>, <conf venue>", or for the
         // engage/booktitle path "<booktitle>, <year>.". Journal/tog skip it.
-        let proceedings-copyright = cfg.name != "manuscript" and (
-          not cfg.bibstrip or meta.conference != none
-        )
+        let proceedings-copyright = cfg.name != "manuscript" and not cfg.bibstrip
         if proceedings-copyright {
           let cl = conf-info-line(cfg, meta)
           // conf-info ends with \par (acmart.dtx:6618/6620), not \\ — a parbreak so
@@ -589,12 +588,12 @@
         } else if meta.author-version {
           // The "Version of Record" notice names the emphasized journal for a
           // journal bibstrip, else the booktitle (acmart.dtx:6638-6644).
-          let venue = if cfg.bibstrip and meta.conference == none { j.name } else { meta.booktitle }
+          let venue = if cfg.bibstrip { j.name } else { meta.booktitle }
           [This is the author's version of the work. It is posted here for your personal use. Not for redistribution. The definitive Version of Record was published in #emph(venue)#{
             if meta.doi != none [, #doi-link(meta.doi).]
             else [.]
           }]
-        } else if cfg.bibstrip and meta.conference == none {
+        } else if cfg.bibstrip {
           // ACM <issn>/<year>/<month>-ART<article> then DOI (acmart.dtx:6651).
           // \@acmArticle defaults to empty, so ART may have no number. str() on the
           // month delimits the number from the following "-ART" (markup would
@@ -1033,9 +1032,9 @@
 #let special-section(cfg, label, content, lang: none) = {
   // acmcp keeps the ACM reference format suppressed but still renders CCS via the
   // real \section* form (acmart.dtx:6797), NOT the journals' \small run-in line —
-  // so it is excluded from the bibstrip (run-in) branch here (keywords are already
+  // so it is excluded from the journals' run-in branch here (keywords are already
   // acmcp-suppressed by the caller, so only CCS reaches this).
-  if (cfg.bibstrip and cfg.name != "acmcp") or cfg.name == "sigplan" {
+  if (cfg.journal and cfg.name != "acmcp") or cfg.name == "sigplan" {
     special-line(cfg, label, if lang != none { text(lang: lang, content) } else { content })
   } else {
     // Proceedings \section*{label}: the heading is a real section and the body is
@@ -1084,9 +1083,9 @@
   }
 
   // --- Abstract ---
-  // Journals (bibstrip) set the abstract in \small with no heading; proceedings do
+  // Journals set the abstract in \small with no heading; proceedings do
   // \section*{Abstract} + a normalsize body (\@mkabstract, acmart.dtx:7688-7696).
-  let render-abstract(name, body) = if cfg.bibstrip {
+  let render-abstract(name, body) = if cfg.journal {
     fm-block(cfg, body, indent: cfg.parindent)
   } else {
     heading(numbering: none, outlined: false)[#name]
@@ -1108,7 +1107,7 @@
   // --- Keywords ---
   // acmcp suppresses normal keyword top matter; the infobox prints it instead.
   if meta.keywords != none and cfg.name != "acmcp" {
-    let label = if cfg.bibstrip { cfg.strings.keywords } else { cfg.strings.keywords_proceedings }
+    let label = if cfg.journal { cfg.strings.keywords } else { cfg.strings.keywords_proceedings }
     special-section(cfg, label, kw-join(meta.keywords))
   }
   // Translated keywords (secondary languages): each block carries \keywordsname
@@ -1116,7 +1115,7 @@
   if cfg.name != "acmcp" {
     for (l, kw) in meta.translated-keywords {
       let rec = lang-record(l)
-      let label = if cfg.bibstrip { rec.keywords } else { rec.keywords_proceedings }
+      let label = if cfg.journal { rec.keywords } else { rec.keywords_proceedings }
       special-section(cfg, label, kw-join(kw), lang: rec.code)
     }
   }
@@ -1124,7 +1123,7 @@
   // --- ACM Reference Format ---
   if meta.print-acm-reference {
     let j = meta.journal
-    let proceedings-ref = not cfg.bibstrip or meta.conference != none
+    let proceedings-ref = not cfg.bibstrip
     // \@mkbibcitation does `\par\medskip\small ...`; next block is 9pt
     v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
     context {

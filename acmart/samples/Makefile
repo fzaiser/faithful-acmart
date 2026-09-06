@@ -57,9 +57,11 @@ sigconf-biblatex.pdf: acmdatamodel.dbx acmnumeric.bbx acmnumeric.cbx
 
 sigconf-lualatex.pdf: ENGINE=lualatex
 
-acmsmall-tagged.pdf: ENGINE = lualatex
+acmsmall-tagged.pdf: ENGINE = lualatex-dev
 
-sigconf-tagged.pdf: ENGINE = lualatex
+sigconf-tagged.pdf: ENGINE = lualatex-dev
+
+.PRECIOUS: ${TEX}
 
 docclean:
 	${RM} acmart.cls \
@@ -67,6 +69,7 @@ docclean:
 	*.log *.aux *.out \
 	*.bbl *.blg *.cut *.toc \
 	acm-jdslogo.png \
+	*.bbx *.cbx *.dbx \
 	*.run.xml *.bcf *.html 
 
 clean: docclean

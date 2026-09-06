@@ -24,25 +24,25 @@
   // Figure/table supplements and caption separator. Journals use "Fig.";
   // proceedings keep caption's default "Figure" name. The table name follows the
   // main language, as in acmart's babel caption hooks.
-  show figure.where(kind: image): set figure(supplement: if cfg.bibstrip { [Fig.] } else { [Figure] })
+  show figure.where(kind: image): set figure(supplement: if cfg.journal { [Fig.] } else { [Figure] })
   show figure.where(kind: table): set figure(supplement: cfg.strings.table)
   show figure.where(kind: table): set figure.caption(position: top)
   // In LaTeX, figure/table environments are floats unless the source opts into a
   // non-floating placement. Typst's figure() is in-flow by default, so give ACM
   // body figures a floating default and let special wrappers opt out explicitly.
   set figure(placement: auto)
-  set figure.caption(separator: if cfg.bibstrip or cfg.name == "sigplan" { [. ] } else { [: ] })
+  set figure.caption(separator: if cfg.journal or cfg.name == "sigplan" { [. ] } else { [: ] })
 
   // Caption typography + singlelinecheck (center if one line, else left-justify).
   // The label ("Figure 1.") and text can carry different weights (sigplan:
   // labelfont={bf}, textfont={normalfont}, acmart.dtx:4211-4213), so the caption
   // is assembled from its fields rather than rendered wholesale.
   show figure.caption: it => context {
-    let cap-font = if cfg.bibstrip { cfg.fonts.sans } else { cfg.fonts.body }
-    let cap-weight = if cfg.bibstrip or cfg.name == "sigplan" { "regular" } else { "bold" }
+    let cap-font = if cfg.journal { cfg.fonts.sans } else { cfg.fonts.body }
+    let cap-weight = if cfg.journal or cfg.name == "sigplan" { "regular" } else { "bold" }
     // sigchi-a captions are {bf, small} (acmart.dtx:4220-4223), one size step
     // below the other proceedings formats' bold normalsize.
-    let cap-step = if cfg.bibstrip or cfg.name == "sigchi-a" { "small" } else { "normalsize" }
+    let cap-step = if cfg.journal or cfg.name == "sigchi-a" { "small" } else { "normalsize" }
     let label-weight = if cfg.name == "sigplan" { "bold" } else { cap-weight }
     set text(font: cap-font, weight: cap-weight, size: cfg.size.at(cap-step))
     set par(leading: comp(cfg, sz: cap-step))

@@ -37,7 +37,7 @@
   urlstyle-sans: true,
   secnumdepth: 0,
   title-style: "sigchi-rule",
-  bibstrip: false,
+  journal: false,
   // \@titlefont \Huge\bfseries — no \sffamily, so it inherits the document default
   // family, which is sans here (acmart.dtx:6930); `body` resolves to that.
   title-font: (family: "body", weight: "bold", size: "Huge"),

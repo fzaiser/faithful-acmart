@@ -1,0 +1,58 @@
+%% notes-conf-test — frontmatter footnote isolator for an acmsmall CONFERENCE
+%% paper (LaTeX twin of notes-conf-test.typ). \acmConference lowers
+%% \if@ACM@journal@bibstrip@or@tog under acmsmall (acmart.dtx:5104), so the
+%% authors-addresses stream is empty here: no \thanks and no contact block. That
+%% leaves exactly two footnote streams — the ordinary top-matter notes and the
+%% copyright/permission block — which is the stream combination notes-test
+%% (journal, three streams) cannot reach.
+\documentclass[acmsmall]{acmart}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmConference[Conference acronym 'XX]{Make sure to enter the correct
+  conference title from your rights confirmation email}{June 03--05,
+  2018}{Woodstock, NY}
+\acmISBN{978-1-4503-XXXX-X/2018/06}
+
+\begin{document}
+
+\title{A Title With a Note}
+\titlenote{This funding note is attached to the title.}
+\subtitle{A Subtitle With a Note}
+\subtitlenote{And this one is attached to the subtitle.}
+
+\author{Alice Researcher}
+\authornote{Alice did the experiments.}
+\authornote{Alice wrote the supplemental material.}
+\email{alice@example.edu}
+\affiliation{%
+  \institution{Example University}
+  \city{Townsville}
+  \country{USA}}
+
+\author{Bob Scientist}
+\correspondingauthor
+\email{bob@example.edu}
+\affiliation{%
+  \institution{Sample Institute}
+  \city{Metropolis}
+  \country{USA}}
+
+\renewcommand{\shortauthors}{Researcher and Scientist}
+
+\begin{abstract}
+  A short abstract anchoring the front matter so the footnote stack, the title
+  and subtitle notes, and the author notes can be compared between the LaTeX and
+  Typst renderings when the authors-addresses stream is absent.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+This document isolates the top-matter footnotes of a conference paper typeset in
+the acmsmall journal format, where the contact-information stream is suppressed
+and the notes sit directly above the copyright block.
+
+\end{document}

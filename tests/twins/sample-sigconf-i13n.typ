@@ -23,6 +23,8 @@
         d'éléments de mise en forme qu'un auteur peut utiliser dans le préparation de
         la documentation de leur travail.
       ],
+      keywords: ("ensembles de données", "réseaux de neurones", "détection du regard",
+                 "marquage de texte"),
     ),
     german: (
       title: "Der Name des Titels ist 'Hoffnung'",
@@ -34,6 +36,8 @@
         Formatierungselemente sowie auch viele der gängigen Variationen, die ein
         Autor bei der Beschreibung seiner Arbeit verwenden darf.
       ],
+      keywords: ("Datensammlungen", "neuronale Netze", "Blickerkennung",
+                 "Textklassifizierung"),
     ),
     spanish: (
       title: "El nombre del título es esperanza",
@@ -45,6 +49,8 @@
         tantos de los elementos de formato que un autor puede usar en el preparación
         de la documentación de su trabajo.
       ],
+      keywords: ("conjuntos de datos", "redes neuronales", "detección de mirada",
+                 "etiquetado de texto"),
     ),
   ),
   teaser: figure(
@@ -67,6 +73,8 @@
   authors: sample-authors,
   abstract: sample-abstract,
   ccs: sample-ccs,
+  keywords: ("Do", "Not", "Use", "This", "Code", "Put", "the", "Correct",
+            "Terms", "for", "Your", "Paper"),
   received: sample-received,
 )
 

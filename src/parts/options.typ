@@ -10,6 +10,7 @@
 #import "../formats/sigchi-a.typ": sigchia
 #import "../formats/acmcp.typ": acmcp
 #import "strings.typ": resolve-language
+#import "metadata.typ": resolve-conference
 #import "colors.typ": acm-orange, acm-purple
 
 #let formats = (
@@ -69,6 +70,24 @@
       + "compile.",
   )
 
+  // acmart carries three journal flags: the static \if@ACM@journal (the format
+  // family, `cfg.journal`) and two that \acmConference lowers. It always lowers
+  // \if@ACM@journal@bibstrip — the ACM bibstrip, the journal footer and the
+  // journal wording of the reference block — and under acmsmall it also lowers
+  // \if@ACM@journal@bibstrip@or@tog and the folios (acmart.dtx:5104, new in
+  // v2.20): an acmsmall paper with a conference is a proceedings paper published
+  // as a book, so it takes the proceedings running heads and drops the contact
+  // footnote and the page numbers (the proceedings assigns those). acmtog keeps
+  // its own conference headers — there a conference paper is a journal issue.
+  // `auto` is not yet a conference: it stands for acmart's untouched default, which
+  // names one only on the proceedings formats (where `journal` is false anyway).
+  let conference = resolve-conference(cfg, data.conference)
+  let acmsmall-conference = cfg.name == "acmsmall" and conference != none
+  let bibstrip-flags = (
+    bibstrip: cfg.journal and conference == none,
+    bibstrip-or-tog: cfg.journal and not acmsmall-conference,
+  )
+
   // acmcp and nonacm each flip the ACM reference block's DEFAULT off via an
   // \AtBeginDocument{\@ACM@printacmreffalse} hook (acmart.dtx:2717/3006), but a
   // user's explicit choice still wins — LaTeX honours a post-\begin{document}
@@ -91,7 +110,7 @@
   let timestamp = timestamp or author-draft
   let review = review or author-draft
   let print-folios = if print-folios == auto {
-    cfg.kind != "proceedings"
+    cfg.journal and not acmsmall-conference
   } else {
     print-folios
   }
@@ -107,6 +126,7 @@
   // on cfg so all downstream modules read identical values.
   let lang = resolve-language(data.language)
   let cfg = cfg + (strings: lang, lang: lang.code, bib-backend: bib-backend)
+  let cfg = cfg + bibstrip-flags
 
   assert(bib-backend in ("typst", "bibtex", "biblatex"),
     message: "faithful-acmart: `bib-backend` must be \"typst\", \"bibtex\", or \"biblatex\".")

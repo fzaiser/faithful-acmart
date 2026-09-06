@@ -23,10 +23,10 @@
   columns: 2,
   columnsep: 24 * tp,      // 2pc
   // conference top matter (acmart.dtx:6884/7167): centered title + author grid,
-  // first-column copyright block (conf-info-line), no journal footer (bibstrip
+  // first-column copyright block (conf-info-line), no journal footer (journal
   // false). acmart \flushbottom-justifies these pages; Typst can't (ragged-bottom).
   title-style: "conf-center",
-  bibstrip: false,
+  journal: false,
   // \@titlefont \Huge\sffamily\bfseries ; \@subtitlefont \LARGE\mdseries (sans)
   title-font: (family: "sans", weight: "bold", size: "Huge"),
   subtitle-font: (family: "sans", weight: "regular", size: "LARGE"),

@@ -21,7 +21,7 @@
   columnsep: 24 * tp,
   parindent: 9 * tp,       // acmart.dtx:3846
   // journal top matter in two columns: left title spanning both columns, author
-  // list, contact-info footnote + ACM bibstrip (bibstrip true). acmart
+  // list, contact-info footnote + ACM bibstrip (journal true). acmart
   // \flushbottom-justifies these pages; Typst can't (ragged-bottom).
   title-style: "journal-left",
   // \@titlefont \Huge\sffamily (no bold) ; \@subtitlefont \LARGE (sans)

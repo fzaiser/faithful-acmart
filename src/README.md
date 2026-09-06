@@ -40,7 +40,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 constants). All public acmart formats are accepted; `siggraph` and `sigchi` map
 to the `sigconf` builder, because the bundled LaTeX class treats them as obsolete
 aliases. Each active `formats/<name>.typ` passes its probed geometry + the
-`\ifcase` flags (`columns`, `title-style`, `sec-fonts`, `bibstrip`,
+`\ifcase` flags (`columns`, `title-style`, `sec-fonts`, `journal`,
 `secnumdepth`, the title/author/affiliation fonts). To add or audit one, run
 `tools/test.py probe --format <name>` and register the builder in `formats` in
 `parts/options.typ`. Two-column is handled once in `lib.typ` (page columns + the

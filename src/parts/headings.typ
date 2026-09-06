@@ -10,7 +10,7 @@
 // where bl = \baselineskip. Section number is followed by \quad (1em). secnumdepth
 // is 3, so paragraphs (level 4) are unnumbered. The paragraph after a heading is
 // not indented (Typst handles this via first-line-indent (all: false)). (acmart
-// stopped uppercasing section titles in v2.08; the bundled class is v2.18.)
+// stopped uppercasing section titles in v2.08; the bundled class is v2.20.)
 
 #import "spacing.typ": comp, tex-skip
 #import "punct.typ": add-punct

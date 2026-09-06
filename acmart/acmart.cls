@@ -20,6 +20,7 @@
 %% original source files, as listed above, are part of the
 %% same distribution. (The sources need not necessarily be
 %% in the same archive or directory.)
+
 %% \CharacterTable
 %%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
 %%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
@@ -39,7 +40,7 @@
 
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesClass{acmart}
-[2026/05/31 v2.18 Typesetting articles for the Association for Computing Machinery]
+[2026/08/16 v2.20 Typesetting articles for the Association for Computing Machinery]
 \def\@classname{acmart}
 \InputIfFileExists{acmart-preload-hook.tex}{%
   \ClassWarning{\@classname}{%
@@ -932,6 +933,9 @@
     \AssignSocketPlug{tagsupport/parbox/after}{caption}}
 }
 \ExplSyntaxOff
+\IfDocumentMetadataT{%
+  \tagpdfsetup{table/header-rows={1}}
+}
 \newfloat{sidebar}{}{sbar}
 \floatname{sidebar}{Sidebar}
 \renewenvironment{sidebar}{\Collect@Body\@sidebar}{}
@@ -1538,6 +1542,10 @@
     \gdef\acmConference@shortname{#2}%
   \fi
   \global\@ACM@journal@bibstripfalse
+  \ifnum\ACM@format@nr=1\relax % acmsmall
+    \global\@ACM@journal@bibstrip@or@togfalse
+    \settopmatter{printfolios=false}%
+  \fi
   \ifx\@acmBooktitle\@empty\relax
     \acmBooktitle{Proceedings of \acmConference@name
       \ifx\acmConference@name\acmConference@shortname\else
@@ -1628,7 +1636,7 @@
   \def\position##1{\ignorespaces}%
   \def\institution##1{##1\ignorespaces}%
   \def\department{\@ifnextchar[{\@department}{\@department[]}}%
-  \def\@department[##1]##2{##2, \ignorespaces}%
+  \def\@department[##1]##2{, ##2 \ignorespaces}%
   \let\city\position
   \let\state\position
   \let\country\position
@@ -2718,7 +2726,7 @@
   \def\and{\par}\normalbaselines
   \global\setbox\author@bx=\vtop{\if@ACM@sigchiamode\else\centering\fi
     \@authorfont\@currentauthors\par\@affiliationfont
-    \@currentaffiliation}\egroup
+    \@currentaffiliation\par}\egroup
   \box\author@bx\hspace{\author@bx@sep}%
   \gdef\@currentauthors{}%
   \gdef\@currentaffiliation{}}

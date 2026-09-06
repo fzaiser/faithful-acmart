@@ -109,8 +109,10 @@ def gate_outline(report: bool = False) -> list[str]:
     nesting depth is implied), capping Typst to LaTeX's own bookmark depth (Typst
     bookmarks subsubsections/paragraphs that acmart's depth omits). Target PAGE is
     checked only for page-1-anchored entries — later-page bookmark targets drift
-    with the documented multi-page page-fill difference. If LaTeX bookmarks any
-    numbered section, Typst must emit a non-empty outline (catches lost tagging)."""
+    with the documented multi-page page-fill difference, and a twin whose first page
+    is itself at the fill boundary names the exact heading and page pair in
+    EXPECTED_OUTLINE_DIFFS. If LaTeX bookmarks any numbered section, Typst must
+    emit a non-empty outline (catches lost tagging)."""
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
@@ -130,24 +132,33 @@ def gate_outline(report: bool = False) -> list[str]:
         depth = max(title.split(" ")[0].count(".") for title, _ in lsec)
         tsec = [(title, page) for title, page in _numbered_sections(tout)
                 if title.split(" ")[0].count(".") <= depth]
-        exempt = M.EXPECTED_OUTLINE_DIFFS.get(name)
         if [s[0] for s in lsec] != [s[0] for s in tsec]:
-            if exempt:
-                if report:
-                    print(f"diff  {name}: expected outline difference ({exempt})")
-                continue
             failures.append(
                 f"{name}: section bookmark titles differ vs LaTeX\n"
                 f"    LaTeX: {[s[0] for s in lsec]}\n    Typst: {[s[0] for s in tsec]}")
             continue
         page1 = [(lt, lp, tp) for (lt, lp), (_tt, tp) in zip(lsec, tsec)
                  if lp == 1 and tp != 1]
-        if page1:
+        exempt = M.EXPECTED_OUTLINE_DIFFS.get(name)
+        allowed = exempt.moved if exempt else ()
+        unexpected = [m for m in page1 if m not in allowed]
+        stale = [m for m in allowed if m not in page1]
+        if unexpected:
             failures.append(
                 f"{name}: section bookmark targets a page-1 section off page 1: "
-                + ", ".join(f"{lt!r} L=p{lp} T=p{tp}" for lt, lp, tp in page1))
-        elif report:
-            print(f"ok   {name}: {len(lsec)} section bookmark(s) match")
+                + ", ".join(f"{lt!r} L=p{lp} T=p{tp}" for lt, lp, tp in unexpected))
+        if stale:
+            failures.append(
+                f"{name}: EXPECTED_OUTLINE_DIFFS lists a bookmark move that no longer "
+                "happens; drop it from the entry: "
+                + ", ".join(f"{lt!r} L=p{lp} T=p{tp}" for lt, lp, tp in stale))
+        if unexpected or stale:
+            continue
+        if report:
+            if allowed:
+                print(f"diff  {name}: expected outline difference ({exempt.reason})")
+            else:
+                print(f"ok   {name}: {len(lsec)} section bookmark(s) match")
     return failures
 def gate_links(report: bool = False) -> list[str]:
     """Tier 1.7 — external and internal hyperlink coverage.

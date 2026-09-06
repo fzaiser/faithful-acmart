@@ -98,7 +98,7 @@
   // body terminal period (fin.block / fin.entry)
   let last-punct = if em.pieces.len() > 0 { em.pieces.at(-1).p } else { true }
   if not last-punct { r += "." }
-  for t in trailing { r += " " + t }   // note/doi/url, each self-punctuating
+  for t in trailing { r += " " + t }   // issue/doi/url/note, each self-punctuating
   r
 }
 
@@ -336,7 +336,7 @@
   (c: pre + mid + [ ] + xref-cite, p: false)
 }
 
-// ---- shared trailing block: note, doi, url --------------------------------
+// ---- shared trailing block: issue, eprint, doi, url, note -----------------
 // .bst strip.doi: bare DOIs start "10."; otherwise drop any scheme + host, keeping
 // the path (http://doi.acm.org/10.1145/X -> 10.1145/X).
 #let strip-doi(d) = {
@@ -364,14 +364,12 @@
   }
 }
 
-// shared trailing block: note, eprint, doi, url — each self-punctuating, with real
-// hyperlinks (acmart renders these via hyperref \href/\url/\showeprint).
+// shared trailing block — each item self-punctuating, with real hyperlinks (acmart
+// renders these via hyperref \href/\url/\showeprint). The order is the .bst's
+// output.issue.doi.coden.isxn.lccn.url.eprint.note: the identifiers first, the note
+// last (bst v2.2; v2.1 led with the note).
 #let trailing(e) = {
   let items = ()
-  if has(e, "note") {
-    let n = render(fld(e, "note"))
-    items.push(if ends-punct(fld(e, "note")) { n } else { n + [.] })
-  }
   if has(e, "issue") { items.push("Issue " + fld(e, "issue") + ".") }
   if has(e, "eprint") { items.push(format-eprint(e)) }
   if has(e, "doi") {
@@ -388,6 +386,10 @@
     let r = if has(e, "lastaccessed") { [Retrieved #render(fld(e, "lastaccessed")) from #link(u)[#u]] } else { link(u)[#u] }
     if has(e, "archived") { r = r + [, archived at \[#link(fld(e, "archived"))[#fld(e, "archived")]\]] }
     items.push(r)
+  }
+  if has(e, "note") {
+    let n = render(fld(e, "note"))
+    items.push(if ends-punct(fld(e, "note")) { n } else { n + [.] })
   }
   items
 }

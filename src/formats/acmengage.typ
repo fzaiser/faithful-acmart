@@ -23,7 +23,7 @@
   // centered conf title + author grid, first-column copyright block (no journal
   // footer). acmart \flushbottom-justifies these pages; Typst can't (ragged-bottom).
   title-style: "conf-center",
-  bibstrip: false,
+  journal: false,
   title-font: (family: "sans", weight: "bold", size: "Huge"),
   subtitle-font: (family: "sans", weight: "regular", size: "LARGE"),
   author-font: (family: "serif", weight: "regular", size: "LARGE"),

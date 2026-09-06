@@ -34,9 +34,6 @@ acmguide.pdf: $(PACKAGE).dtx $(PACKAGE).cls
 %.cls:   %.ins %.dtx
 	pdflatex $<
 
-%-tagged.cls:   %.ins %.dtx
-	pdflatex $<
-
 
 tagged:
 	${MAKE} acmart.cls && cd samples && ${MAKE} acmsmall-tagged.pdf && ${MAKE} sigconf-tagged.pdf
@@ -67,17 +64,14 @@ distclean: clean
 # Archive for the distribution. Includes typeset documentation
 #
 archive:  all clean
-	COPYFILE_DISABLE=1 tar -C .. -czvf ../$(PACKAGE).tgz --exclude '*~' --exclude '*.tgz' --exclude '*.zip'  --exclude CVS --exclude '.git*' $(PACKAGE); mv ../$(PACKAGE).tgz .
-
-zip:  all clean
-	zip -r  $(PACKAGE).zip * -x '*~' -x '*.tgz' -x '*.zip' -x CVS -x 'CVS/*'
+	COPYFILE_DISABLE=1 tar -C .. -czvf ../$(PACKAGE).tgz --exclude '*~' --exclude '*.tgz' --exclude '*.zip'  --exclude CVS --exclude '.git*' --exclude LICENSE $(PACKAGE); mv ../$(PACKAGE).tgz .
 
 # distros
 distros: all docclean
 	zip -r acm-distro.zip  \
-	acmart.pdf acmguide.pdf samples *.cls ACM-Reference-Format.* \
+	acmart.pdf acmguide.pdf samples *.cls ACM-Reference-Format.* LICENSE \
 	--exclude samples/sample-acmengage*
-	zip -r acmengage-distro.zip samples/sample-acmengage* \
+	zip -r acmengage-distro.zip samples/sample-acmengage* LICENSE \
 	samples/*.bib \
 	acmart.pdf acmguide.pdf  *.cls ACM-Reference-Format.*
 

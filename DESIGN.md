@@ -51,8 +51,10 @@ base font size. The font-size ladder and `make-format()` constructor (the
 format-independent constants — float/list/footnote/badge geometry, fonts) live in
 `formats/_base.typ`; each `formats/<name>.typ` passes only what differs (probed
 geometry + the `\ifcase` flags: `columns`, `title-style`, `author-style`,
-`sec-fonts`, `bibstrip`/`conf-footer`, `secnumdepth`, title/author/affiliation
-fonts). `lib.typ` is format-agnostic except the two-column branch.
+`sec-fonts`, `journal`/`conf-footer`, `secnumdepth`, title/author/affiliation fonts).
+`journal` is acmart's static `\if@ACM@journal`, and `parts/options.typ` derives from it the two flags that `\acmConference` lowers: `bibstrip`, which governs the ACM bibstrip, the journal footer and the journal wording of the reference block, and `bibstrip-or-tog`, which governs the running heads, footers, folios and the contact footnote.
+A conference always lowers the first; under acmsmall it lowers the second as well, so an acmsmall conference paper takes the proceedings chrome throughout.
+`lib.typ` is format-agnostic except the two-column branch.
 
 **Config plumbing.** `acmart()` collects user metadata into a `meta` dict passed to
 the part functions, alongside the format dict `cfg` — also published via `state`
@@ -175,7 +177,7 @@ journal name/ISSN table, link colours, line-number colour. Re-derive any value w
 taller-than-`\topskip` title line.
 
 > Section titles are **mixed case** (bold sans), not uppercased — matches the
-> **bundled** acmart (v2.18; uppercasing removed in v2.08). A system acmart may be
+> **bundled** acmart (v2.20; uppercasing removed in v2.08). A system acmart may be
 > older (v2.03) and *does* uppercase level-1 titles, so always validate against the
 > bundled class (`tools/test.py`'s `ensure_class` generates it from [`acmart/`](acmart/)).
 
@@ -406,7 +408,7 @@ mistaken for faithfulness bugs.
 
 ## Author top matter
 
-- **Corresponding-author ✉ is faithful**: acmart's `\correspondingauthor` (v2.18) emits
+- **Corresponding-author ✉ is faithful**: acmart's `\correspondingauthor` (v2.20) emits
   `\textsuperscript{\ding{41}}` (acmart.dtx:5430). What differs is *ordering* — we emit
   ✉-then-note in a fixed order, not source-declaration order (our model stores a boolean
   + note, with no declaration order).
@@ -449,6 +451,17 @@ mistaken for faithfulness bugs.
   correct (forcing `\raggedbottom` in LaTeX matches section positions to 0.2pt); only the
   bottom-fill stretch is missing, showing as gradual drift on *full* pages
   (`tests/twins/full-test` p1), not partial/last pages. No clean Typst workaround.
+- **Footnote stream separation carries a sub-point residual** — acmart stacks the
+  top-matter footnotes as three `manyfoot` streams (ordinary notes, authors-addresses,
+  copyright). manyfoot gives every stream the ordinary stream's `\skip\footins` and
+  puts exactly that glue between two of them, so the separation depends on neither the
+  format nor which streams are present; the port uses the same
+  `footins-skip - footnote-rule-kern-above` it uses for the footnote float. LaTeX also
+  carries the footnote box's *depth* at that boundary, and TeX derives that depth from
+  `\footnotesep` and the split struts rather than from any class parameter the port can
+  read, so the port sits ~0.3pt low at the default base size and within 0.75pt across
+  the 9–12pt range (worst at 9pt). `tests/twins/notes-conf-test` pins the two-stream
+  case and `notes-test` the three-stream one.
 - **`sigchi-a`**: geometry, sans default, the `@mktitle@iv` title (5pc-leftskip ragged
   under a 2pt rule, one title-`\baselineskip` below its bottom, acmart.dtx:7039), the
   `@mkauthors@iv` grid (bold name + email + affiliation, 2/row, acmart.dtx:7518), the
@@ -541,6 +554,9 @@ mistaken for faithfulness bugs.
   colon in `/ term: body` source — so overriding the term list would only risk drift.
   What is *not* modelled is acmart's hanging `\@ACM@labelwidth` geometry (the wide,
   right-aligned label column); that remains an accepted gap.
+- **`\additionalaffiliation` is not modelled.** acmart folds a second affiliation
+  into an author note reading "Also with \<affiliation>." (acmart.dtx:5316); this port
+  has no equivalent command, so pass the extra affiliation as an author `note` instead.
 - **BibLaTeX name-list visibility ignores `uniquelist`.** Both the reference list and
   the sort key cut a name list longer than `maxbibnames`/`maxsortnames` (9) down to the
   first name, which is what biber does whenever `uniquelist` is unset. Under

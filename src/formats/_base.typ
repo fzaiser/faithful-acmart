@@ -110,10 +110,11 @@
 // (acmart.dtx:3090/3754); only the named arguments below actually differ.
 #let make-format(
   name: none,
-  // Coarse layout family for the running-head/footer + folio-default dispatch in
-  // lib.typ (so those don't hard-code format-name lists): "journal" (manuscript /
-  // acmsmall / acmlarge / acmtog), "proceedings" (sigconf / sigplan / acmengage /
-  // sigchi-a), or "cover" (acmcp). Per-format head layouts still read `name`.
+  // Coarse layout family: "journal" (manuscript / acmsmall / acmlarge / acmtog),
+  // "proceedings" (sigconf / sigplan / acmengage / sigchi-a), or "cover" (acmcp).
+  // Only the conference default reads it (a proceedings format gets acmart's
+  // untouched placeholder \acmConference line); the chrome dispatches on the
+  // resolved bibstrip flags, and per-format head layouts on `name`.
   kind: "journal",
   ladder: none,            // result of size-ladder()
   paper: none,
@@ -145,7 +146,7 @@
   // acmlarge + manuscript); acmsmall and the conference formats override.
   author-font: (family: "sans", weight: "regular", size: "Large"),
   affil-font: (family: "serif", weight: "regular", size: "normalsize"),
-  bibstrip: true,              // journal footer (\if@ACM@journal)
+  journal: true,               // \if@ACM@journal: the static format family flag
   sans-default: false,
   urlstyle-sans: false,
   secnumdepth: 3,
@@ -206,7 +207,7 @@
     subtitle-font: subtitle-font,
     author-font: author-font,
     affil-font: affil-font,
-    bibstrip: bibstrip,
+    journal: journal,
     sans-default: sans-default,
     urlstyle-sans: urlstyle-sans,
     title-width-reduction: title-width-reduction,

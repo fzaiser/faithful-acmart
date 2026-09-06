@@ -62,7 +62,9 @@
       if meta.journal.short != none {
         [#meta.journal.name, Volume #meta.acm-volume, Issue #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta))#if meta.doi != none { linebreak(); doi-link(meta.doi) }]
       }
-    } else if cfg.name == "acmtog" and meta.conference != none {
+    } else if not cfg.bibstrip-or-tog {
+      // proceedings chrome: a centered folio and no bibstrip
+    } else if cfg.name == "acmtog" and not cfg.bibstrip {
       [#conference-line.]
     } else if cfg.name in ("acmsmall", "acmlarge", "acmtog") {
       journal-footer
@@ -94,7 +96,7 @@
           // corners, parity-swapped (acmart.dtx:7938/7945).
           if odd { footer-row(l: ts, r: manuscript-footer) } else { footer-row(l: manuscript-footer, r: ts) }
         }
-      } else if cfg.kind == "proceedings" {
+      } else if not cfg.bibstrip-or-tog {
         if odd { footer-row(l: ts, c: folio) } else { footer-row(c: folio, r: ts) }
       } else if odd {
         grid(columns: (1fr, 1fr), align(left, ts), align(right, bib))
@@ -104,7 +106,7 @@
     } else if cfg.name == "manuscript" and first-page {
       let folio = if folio != none { text(size: cfg.size.small, folio) }
       if odd { footer-row(l: bib, r: folio) } else { footer-row(l: folio, r: bib) }
-    } else if cfg.kind == "proceedings" {
+    } else if not cfg.bibstrip-or-tog {
       footer-row(c: folio)
     } else if bib != none {
       if odd { align(right, bib) } else { align(left, bib) }
@@ -133,7 +135,14 @@
     set text(font: hf.first(), size: hf.last())
     let ap = article-page(p)
     let odd = calc.odd(p)
-    let head = if cfg.name == "manuscript" {
+    let head = if not cfg.bibstrip-or-tog {
+      let conf = conference-line
+      if odd or cfg.name == "sigchi-a" {
+        grid(columns: (1fr, 1fr), align(left, st), align(right, if not meta.nonacm { conf }))
+      } else {
+        grid(columns: (1fr, 1fr), align(left, if not meta.nonacm { conf }), align(right, sa))
+      }
+    } else if cfg.name == "manuscript" {
       if odd { grid(columns: (1fr, auto), align(left, st), align(right, if print-folios { [#p] })) }
       else { grid(columns: (auto, 1fr), align(left, if print-folios { [#p] }), align(right, sa)) }
     } else if cfg.name == "acmsmall" {
@@ -142,13 +151,6 @@
     } else if cfg.name in ("acmlarge", "acmtog") {
       if odd { align(right, [#st#h(1em)•#h(1em)#ap]) }
       else { align(left, [#ap#h(1em)•#h(1em)#sa]) }
-    } else if cfg.kind == "proceedings" {
-      let conf = conference-line
-      if odd or cfg.name == "sigchi-a" {
-        grid(columns: (1fr, 1fr), align(left, st), align(right, if not meta.nonacm { conf }))
-      } else {
-        grid(columns: (1fr, 1fr), align(left, if not meta.nonacm { conf }), align(right, sa))
-      }
     } else {
       none
     }

@@ -1,6 +1,6 @@
 # Upstream dependencies of acmart (vendored for audit reference)
 
-These are **not** part of the acmart bundle (the pristine acmart v2.18 sources
+These are **not** part of the acmart bundle (the pristine acmart v2.20 sources
 live in [`acmart/`](../)). They are the external LaTeX packages that acmart
 *loads*, whose behaviour this Typst port also reproduces. They are kept here so a
 reviewer can diff the Typst port against the exact source it was matched to,

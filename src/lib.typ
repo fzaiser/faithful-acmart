@@ -393,6 +393,7 @@
     timestamp: timestamp,
     review: review,
     print-folios: print-folios,
+    conference: conference,
     language: language,
     bib-backend: bib-backend,
     cite-style: cite-style,

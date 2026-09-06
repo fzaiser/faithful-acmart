@@ -17,6 +17,8 @@
   authors: sample-authors,
   abstract: sample-abstract,
   ccs: sample-ccs,
+  keywords: ("Do", "Not", "Use", "This", "Code", "Put", "the", "Correct",
+            "Terms", "for", "Your", "Paper"),
   received: sample-received,
 )
 
