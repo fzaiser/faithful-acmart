@@ -3,7 +3,9 @@
 #import "bibtex.typ": read-bib, parse-bib, parse-names
 #import "tex.typ": tex-to-string
 #import "acmref-common.typ": fld, has, is-others, von-last, year-value, it
-#import "acmref-bst.typ": handle, sort-key
+// the .bst reads a "??" value as a missing one, which decides both its citation
+// label and the year that label carries; biblatex prints such a value instead
+#import "acmref-bst.typ": handle, sort-key, has as bst-has, year-value as bst-year-value
 #import "acmref-biblatex.typ": blx-handle, blx-biber-datamodel, blx-sort-key, blx-np-lengths
 #import "acmref-blxnames.typ": name-list, disambiguate, list-label, list-context, list-namehash, list-punct-initial
 #import "../formats/_base.typ": tp
@@ -114,10 +116,11 @@
 #let bst-lab-label(e, full: false) = {
   let t = e.entry-type
   let names-fn = if full { format-lab-names-full } else { format-lab-names }
-  let au = if has(e, "author") { names-fn(e.names.author) }
-  let ed = if has(e, "editor") { names-fn(e.names.editor) }
-  let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
-  let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
+  let au = if bst-has(e, "author") { names-fn(e.names.author) }
+  let ed = if bst-has(e, "editor") { names-fn(e.names.editor) }
+  let org = if bst-has(e, "organization") { tex-to-string(fld(e, "organization")) }
+  let key = if bst-has(e, "key") { tex-to-string(fld(e, "key")) }
+  if full { return pick((au, ed, org, key, "??")) }
   // author.key.label &co. fall back to cite$[0:3] when nothing else is present (bst:1968)
   let ck = e.at("cite-key", default: "")
   let key3 = ck.clusters().slice(0, calc.min(3, ck.clusters().len())).join()
@@ -150,7 +153,7 @@
 
 // \natexlab a/b/c suffixes: a..z over consecutive (label, year)-equal entries in
 // sorted order (forward.pass/reverse.pass); singletons get "".
-#let lab-dedup-key(e) = bst-lab-label(e) + "\u{0}" + year-value(e).c
+#let lab-dedup-key(e) = bst-lab-label(e) + "\u{0}" + bst-year-value(e).c
 // \natexlab a/b/c suffixes are assigned in BibTeX's PRESORT order (bst forward/
 // reverse pass run right after the presort SORT), where entries are grouped by
 // (citation label, year) so equal-label entries are always adjacent — unlike the

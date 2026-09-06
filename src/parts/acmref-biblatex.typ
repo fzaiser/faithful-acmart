@@ -3,7 +3,12 @@
 #import "bibtex.typ": parse-names
 #import "scan.typ": match-brace, split-list-and, remove-outer
 #import "tex.typ": foreign-purify, decode-chars, _special-letters as special-letters
-#import "acmref-common.typ": render, blx-ends-punct, V, it, fld, has, fV, articleno-of, is-others, join-names, dashify
+#import "acmref-common.typ": render, blx-ends-punct, blx-visible-tail, it, fld, has, articleno-of, is-others, join-names, dashify
+// A value's "already punctuated" flag is biblatex's own, and it reads through a
+// closing bracket or quote to the stop behind it: a note of "(see below.)" ends
+// the block on its own, where the .bst would add a second period.
+#let V(text, c: none) = (c: render(if c == none { text } else { c }), p: blx-ends-punct(text))
+#let fV(e, name) = if has(e, name) { V(fld(e, name)) } else { none }
 
 // ---- BibLaTeX ACM driver port ---------------------------------------------
 // Source files mirrored here:

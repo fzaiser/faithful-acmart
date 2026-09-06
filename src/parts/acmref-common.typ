@@ -23,11 +23,18 @@
   let t = s.trim()
   t != "" and t.last() in (".", "!", "?")
 }
-#let blx-ends-punct(s) = {
+// The punctuation buffer reads the last VISIBLE character: a closing delimiter —
+// including a case-protecting brace, which biber keeps in the field — hides the
+// mark in front of it.
+#let blx-visible-tail(s) = {
   let t = s.trim()
   while t != "" and t.last() in (")", "]", "}", "\"", "\u{201D}", "'", "\u{2019}") {
     t = t.slice(0, -1).trim()
   }
+  t
+}
+#let blx-ends-punct(s) = {
+  let t = blx-visible-tail(s)
   t != "" and t.last() in (".", "!", "?")
 }
 // a value carried through the emitter: rendered content + whether its raw text
@@ -37,14 +44,16 @@
 
 // ---- field access ---------------------------------------------------------
 #let fld(e, name, d: none) = e.fields.at(name, default: d)
-// empty.or.unknown (bst:128): missing, whitespace-only, OR starting with "??"
-// (the TUG/BibNet "unknown value" marker) all count as absent, everywhere.
+// A field is present when it is there and not whitespace-only. The .bst reads
+// one more value as absent — see `has` in acmref-bst.typ — but that is its own
+// convention, so it wraps this rather than the other way round.
 #let has(e, name) = {
   if name not in e.fields { return false }
-  let v = e.fields.at(name)
-  v.trim() != "" and not v.starts-with("??")
+  e.fields.at(name).trim() != ""
 }
-#let articleno-of(e) = if has(e, "articleno") { fld(e, "articleno") } else if has(e, "eid") { fld(e, "eid") } else { none }
+#let articleno-of(e) = {
+  if has(e, "articleno") { fld(e, "articleno") } else if has(e, "eid") { fld(e, "eid") } else { none }
+}
 // A present field as a rendered value, else none (discarded by the .bst `output`);
 // shared by both backends for the many "if has(e, f) { V(fld(e, f)) }" driver sites.
 #let fV(e, name) = if has(e, name) { V(fld(e, name)) } else { none }
@@ -76,11 +85,15 @@
 #let dashify(s) = s.replace(regex("-+"), m => if m.text.len() >= 3 { "\u{2014}" } else { "\u{2013}" })
 #let von-last(n) = (n.von, n.last).filter(p => p != "").join(" ")
 // ---- year piece -----------------------------------------------------------
-#let year-value(e) = {
-  // `date` may be shorter than a full YYYY (malformed input); guard the slice
-  // as blx-date-parts does rather than letting .slice(0, 4) panic.
+// `date` may be shorter than a full YYYY (malformed input); guard the slice
+// rather than letting .slice(0, 4) panic.
+#let date-year(e) = {
   let date = fld(e, "date", d: "")
-  // "[n.\,d.]" — a thin space, matching format.year (bst:511) and calc.basic.label.
-  let y = if has(e, "year") { fld(e, "year") } else if date.len() >= 4 { date.slice(0, 4) } else { "[n.\u{2009}d.]" }
-  (c: y, p: false)
+  if has(e, "year") { fld(e, "year") } else if date.len() >= 4 { date.slice(0, 4) } else { none }
+}
+// `nodate` defaults to the .bst's "[n.\,d.]" — a thin space, matching
+// format.year (bst:511) and calc.basic.label; BibLaTeX cites pass their own.
+#let year-value(e, nodate: "[n.\u{2009}d.]") = {
+  let y = date-year(e)
+  (c: if y == none { nodate } else { y }, p: false)
 }

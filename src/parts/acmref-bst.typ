@@ -4,7 +4,26 @@
 
 #import "bib-data.typ": journal-canon
 #import "tex.typ": purify, change-case
-#import "acmref-common.typ": render, ends-punct, V, it, fld, has, fV, articleno-of, is-others, join-names, dashify, von-last, year-value, nolinkurl
+#import "acmref-common.typ": render, ends-punct, V, it, fld, is-others, join-names, dashify, von-last, nolinkurl
+#import "acmref-common.typ": has as present, year-value as plain-year-value
+// empty.or.unknown (bst:128): on top of a plain absent field, the .bst reads a
+// value opening with "??" — the TUG/BibNet "unknown value" marker — as absent
+// too. That convention is this backend's alone: biblatex prints such a value
+// like any other, so the marker test lives here rather than in the shared rule.
+#let has(e, name) = present(e, name) and not fld(e, name).starts-with("??")
+#let fV(e, name) = if has(e, name) { V(fld(e, name)) } else { none }
+#let articleno-of(e) = {
+  if has(e, "articleno") { fld(e, "articleno") } else if has(e, "eid") { fld(e, "eid") } else { none }
+}
+// format.year (bst:509) reads the year through empty.or.unknown as well, so a
+// marked year falls back to the date and then to "[n.\,d.]" the way a missing
+// one does. The shared helper reads the field off the entry it is given, so
+// the marker is cleared from the copy that goes in.
+#let year-value(e, ..args) = {
+  let f = e.fields
+  if present(e, "year") and not has(e, "year") { f.insert("year", "") }
+  plain-year-value(e + (fields: f), ..args)
+}
 
 // ACM journal.canon.abbrev: map a full journal name to its canonical abbreviation
 #let canon-abbrev(j) = journal-canon.at(j, default: j)
