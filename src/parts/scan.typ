@@ -35,6 +35,17 @@
 
 #let match-brace(cp, i) = match-delim(cp, i)
 
+// remove_outer (Biber Utils.pm): one brace pair wrapping the WHOLE string goes,
+// and every inner pair stays. Biber compares and initials name parts in this
+// form, which is why a dash protected as "{-}" survives its filters.
+#let remove-outer(s) = {
+  let t = s.trim()
+  let cp = t.codepoints()
+  if cp.len() < 2 or cp.first() != "{" or cp.last() != "}" { return s }
+  if match-brace(cp, 0) != cp.len() - 1 { return s }
+  t.slice(1, t.len() - 1)
+}
+
 // Split a name/list field on a top-level whitespace-bounded "and".
 #let split-list-and(raw, trim: false, filter-empty: false) = {
   let cp = raw.codepoints()

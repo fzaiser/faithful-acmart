@@ -4,7 +4,7 @@
 #import "tex.typ": tex-to-string
 #import "acmref-common.typ": fld, has, is-others, von-last, year-value, it
 #import "acmref-bst.typ": handle, sort-key
-#import "acmref-biblatex.typ": blx-handle, blx-biber-datamodel, blx-sort-key
+#import "acmref-biblatex.typ": blx-handle, blx-biber-datamodel, blx-sort-key, blx-np-lengths
 #import "acmref-blxnames.typ": name-list, disambiguate, list-label, list-context, list-namehash, list-punct-initial
 #import "../formats/_base.typ": tp
 
@@ -67,10 +67,17 @@
   (db: db2, order: listed.sorted(key: k => sort-key(db2.at(k))))
 }
 
-#let resolve-biblatex(db, cited) = {
+// biber's `nty` order over the cited set. `useprefix` — whether a name prefix
+// files with the family name or only breaks a tie behind it — is on under
+// acmnumeric (trad-standard.bbx:18) and off under acmauthoryear, and the name
+// part padding widths are measured over the whole list, so both are resolved
+// here and handed to the key builder.
+#let resolve-biblatex(db, cited, style) = {
   let db2 = blx-biber-datamodel(db)
   let listed = cited.filter(k => k in db2)
-  (db: db2, order: listed.sorted(key: k => blx-sort-key(db2.at(k))))
+  let lens = blx-np-lengths(listed.map(k => db2.at(k)))
+  let useprefix = style != "author-year"
+  (db: db2, order: listed.sorted(key: k => blx-sort-key(db2.at(k), lens: lens, useprefix: useprefix)))
 }
 
 // resolved (db, order) for the current cited set, or `none` if no acmart
@@ -251,7 +258,7 @@
   let cited = cited-state.final()
   let fmt = bib-format-state.final()
   let style = cite-style-state.final()
-  let res = if fmt == "biblatex" { resolve-biblatex(db, cited) } else { resolve-crossref(db, cited) }
+  let res = if fmt == "biblatex" { resolve-biblatex(db, cited, style) } else { resolve-crossref(db, cited) }
   res + (fmt: fmt) + if fmt == "biblatex" { blx-labels(res.db, res.order, style) } else {
     (labels: bst-labels(res.db, res.order), extras: bst-extras(res.db, res.order))
   }

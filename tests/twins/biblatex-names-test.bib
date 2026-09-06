@@ -1,0 +1,46 @@
+% Fixtures for the filters biber applies to a name before it compares or
+% initials it: the `nosort` patterns that drop a short dash-joined prefix from a
+% name part, and the `noinit` ones that drop a lowercase such prefix from the
+% initials. Both are biber defaults (Constants.pm:258/266); every expected string
+% was read off real biber.
+
+% ---- nosort: a two-letter dash prefix leaves a name part before it is compared ----
+@article{NsAbe,     author = {Abe, Hal},        title = {Nosort anchors the run}, journal = {J}, year = 2001}
+@article{NsDeZed,   author = {{de-Zed}, Alice}, title = {Nosort files a dash prefix under its stem}, journal = {J}, year = 2001}
+@article{NsAlHakim, author = {{al-Hakim}, Cara},title = {Nosort files another dash prefix}, journal = {J}, year = 2001}
+@article{NsFox,     author = {Fox, Bob},        title = {Nosort separates the two stems}, journal = {J}, year = 2001}
+@article{NsAeZed,   author = {{\AE{}-Zed}, Fay},title = {Nosort counts a character command as one letter}, journal = {J}, year = 2001}
+@article{NsIbnSina, author = {{Ibn-Sina}, Eve}, title = {Nosort keeps a three-letter prefix}, journal = {J}, year = 2001}
+@article{NsProt,    author = {{de{-}Wolf}, Gwen},title = {Nosort cannot read a protected dash}, journal = {J}, year = 2001}
+@misc{NsTitle,      title = {de-Zulu keeps its prefix in a title}, year = 2001}
+
+% ---- noinit and the raw name syntax the initials come from ----
+@article{NiNoinit,  author = {Quirk, de-Paul},    title = {An initial behind a dash prefix}, journal = {J}, year = 2006}
+@article{NiQuirk,   author = {Quirk, Roy},        title = {An initial beside it}, journal = {J}, year = 2007}
+@article{NiUpper,   author = {Rho, De-Paul},      title = {An initial behind an uppercase prefix}, journal = {J}, year = 2008}
+@article{NiRho,     author = {Rho, Dirk},         title = {An initial beside the uppercase one}, journal = {J}, year = 2009}
+@article{NiBraced,  author = {Sage, {Jean Paul}}, title = {A braced given name}, journal = {J}, year = 2010}
+@article{NiSage,    author = {Sage, Kay},         title = {A given name beside it}, journal = {J}, year = 2011}
+@article{NiProtect, author = {Tell, Hans{-}Peter},title = {A protected hyphen}, journal = {J}, year = 2012}
+@article{NiTell,    author = {Tell, Otto},        title = {A given name beside the hyphen}, journal = {J}, year = 2013}
+@article{NiHyphen,  author = {Vane, Jean-Paul},   title = {An unprotected hyphen}, journal = {J}, year = 2014}
+@article{NiVane,    author = {Vane, Kurt},        title = {A given name beside that hyphen}, journal = {J}, year = 2015}
+@article{NiAccent,  author = {Yew, {\"O}zg-Paul},title = {An initial behind a protected accent}, journal = {J}, year = 2016}
+@article{NiYew,     author = {Yew, Rex},          title = {An initial beside that accent}, journal = {J}, year = 2017}
+@article{NiAli,     author = {Ward, `Ali},        title = {An initial behind a leading diacritic}, journal = {J}, year = 2016}
+@article{NiWard,    author = {Ward, Bea},         title = {An initial beside that diacritic}, journal = {J}, year = 2017}
+@article{NiAliTwo,  author = {Ward, ``Ali},       title = {Two marks that typeset as one}, journal = {J}, year = 2018}
+@article{NiXuThree, author = {Xu, ```Ali},        title = {A third mark that is dropped}, journal = {J}, year = 2019}
+@article{NiXu,      author = {Xu, Bea},           title = {An initial beside those marks}, journal = {J}, year = 2020}
+@article{NiChar,    author = {Zeta, \ae-Paul},    title = {An initial behind a character command}, journal = {J}, year = 2018}
+@article{NiZeta,    author = {Zeta, Rex},         title = {An initial beside that command}, journal = {J}, year = 2019}
+
+% ---- one name, two spellings: biber composes both and sees one author ----
+@article{NzEsc,     author = {Jos{\'e} Normalize}, title = {An escaped accent}, journal = {J}, year = 2019}
+@article{NzLit,     author = {José Normalize},     title = {A literal accent}, journal = {J}, year = 2019}
+@article{NzDotless, author = {{\'{\i}}nigo Dotless}, title = {An accent on a dotless i}, journal = {J}, year = 2020}
+@article{NzDotted,  author = {{\'i}nigo Dotless},  title = {An accent on a plain i}, journal = {J}, year = 2020}
+
+% ---- a label that merely OPENS with a period is not a generated initial ----
+@misc{NzBang,    title = {!Bang at the front}, year = 2044}
+@misc{NzDotNet,  title = {.NET at the front}, year = 2043}

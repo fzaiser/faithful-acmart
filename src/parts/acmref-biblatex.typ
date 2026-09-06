@@ -1,9 +1,9 @@
 // ACM BibLaTeX renderer and software driver port.
 
-#import "tex.typ": purify
 #import "bibtex.typ": parse-names
-#import "scan.typ": match-brace, split-list-and
-#import "acmref-common.typ": render, blx-ends-punct, V, it, fld, has, fV, articleno-of, join-names, dashify
+#import "scan.typ": match-brace, split-list-and, remove-outer
+#import "tex.typ": foreign-purify, decode-chars, _special-letters as special-letters
+#import "acmref-common.typ": render, blx-ends-punct, V, it, fld, has, fV, articleno-of, is-others, join-names, dashify
 
 // ---- BibLaTeX ACM driver port ---------------------------------------------
 // Source files mirrored here:
@@ -807,13 +807,230 @@
   else { blx-blocks(blx-lead(e, style: style, suffix: year-suffix), blx-title(e, style: style, sentence: style == "numeric"), ..blx-tail(e)) }
 }
 
-// ---- sort key -------------------------------------------------------------
-#let blx-sort-key(e) = {
-  let ppl = e.names.at("author", default: e.names.at("editor", default: ()))
-  let names = ppl.map(n => (n.von + " " + n.last + " " + n.first).trim()).join(" ")
-  if names == none { names = "" }
-  names = lower(purify(names))
-  if names == "" and has(e, "key") { names = lower(purify(fld(e, "key"))) }
-  let y = if has(e, "year") { fld(e, "year") } else { "" }
-  names + "   " + lower(purify(fld(e, "title", d: ""))) + "   " + y
+// ---- sort key: biber's `nty` template --------------------------------------
+// \DeclareSortingTemplate{nty} (biblatex.def:1493), which both ACM styles select
+// (acmnumeric.bbx:878 / acmauthoryear.bbx:893), is six sort sets compared in
+// turn:
+//   1 presort
+//   2 sortkey                                                          [final]
+//   3 sortname / author / editor / translator / sorttitle / title
+//   4 sorttitle / title
+//   5 sortyear / year                                                    (int)
+//   6 volume, else the literal 0                                         (int)
+// Set 2 is `final`: where it fires biber emits an empty string in its own slot
+// and copies the value into every later slot (Internals.pm:1141), so a `key`
+// field — which biblatex.def:1368 renames to `sortkey` — becomes the entry's
+// whole sort key. That slot is a constant empty string for every entry, so it is
+// left out of the key built here.
+//
+// The whole tuple is packed into one string because Typst compares strings by
+// code point: a NUL joins the slots (below every character a slot can hold, so a
+// shorter slot still sorts first) and the integer slots are zero-padded.
+#let blx-sort-slot-sep = "\u{0}"
+
+// Biber's normalise_string_sort (Utils.pm:589), over the value `decode-chars`
+// has already turned into characters — the one place that reads a character
+// command, here as everywhere else. What is left for this function is the
+// residue: a tie becomes a space, a combining mark goes and leaves the base
+// letter behind (which is what carries the primary collation weight, exactly
+// what biber compares), then the syntax the decoder did not claim — an unknown
+// control word, which biber's own regex deletes while leaving the whitespace
+// behind it, a bare accent symbol, an escape, the braces — and the whitespace
+// collapses. PUNCTUATION IS KEPT, unlike the .bst's purify$, because biber's
+// collator gives it real weights below the digits and the letters.
+// The braces come off LAST, so `nosort` can still see them: biber filters the
+// name part in the form remove_outer left, where "de{-}Zed" keeps a dash the
+// pattern cannot match.
+#let blx-sort-clean(s) = {
+  let t = str.normalize(decode-chars(s), form: "nfd")
+    .replace(regex("([^\\\\])~"), m => m.captures.at(0) + " ")
+  // Decomposing first puts every accent in the same shape, whether this decoded
+  // it or the .bib typed the character whole, and the base letter left behind is
+  // what biber's collator weighs.
+  t = t.replace(regex("\\p{M}+"), "")
+  t = t.replace(regex("\\\\[A-Za-z]+([ \t\n\r]*)"), m => m.captures.at(0))
+  t = t.replace(regex("\\\\['`^\"~=.][ \t\n\r]*"), "")
+  t.replace(regex("\\\\(.)"), m => m.captures.at(0))
+}
+#let blx-sort-debrace(t) = t.replace(regex("[{}]+"), "").trim().replace(regex("\\s+"), " ")
+#let blx-sort-normalize(s) = blx-sort-debrace(blx-sort-clean(s))
+// The primary weight biber's root collation gives each of the characters a
+// BibTeX foreign-letter command stands for: "æ" files as "ae", "ß" as "ss", "å"
+// as "a" — and the case it carries survives, because that is a tertiary
+// difference biber does resolve ("Æ" files ahead of "æ" the way "Aesop" files
+// ahead of "aesop"). Expanding is the LAST step: a rule that counts letters —
+// `nosort` below — has to see "Æ-Zed", one letter before the dash, and not the
+// two letters "AE-Zed" would hand it.
+#let blx-char-expansions = {
+  let out = (:)
+  for (name, expansion) in foreign-purify { out.insert(special-letters.at(name), expansion) }
+  out
+}
+#let blx-expand-chars(t) = {
+  t.clusters().map(c => blx-char-expansions.at(c, default: c)).fold("", (a, b) => a + b)
+}
+
+// One sort slot's collation key. biblatex turns both `sortcase` and `sortupper`
+// on (biblatex.sty:16129), so biber compares a slot with the full UCA: the
+// case-folded text decides first and case only separates slots that are
+// otherwise equal, uppercase first. Packing that as folded text, a separator
+// above NUL but below every real character, then the per-character case pattern
+// reproduces it slot by slot.
+// Biber's collator gives every space, punctuation mark and symbol a primary
+// weight below the digits and the letters, and `variable => non-ignorable` keeps
+// them from being ignored altogether. Code-point order does not: ":;<=>?@",
+// "[\]^_`" and "{|}~" all sit above the digits or above the letters. Folding the
+// non-alphanumeric ASCII characters into a low block, in their own order,
+// restores the class ordering — a title opening with a tie then files under the
+// letter behind it rather than after "z".
+#let blx-sort-punct = {
+  let out = (:)
+  for (i, c) in " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".clusters().enumerate() {
+    out.insert(c, str.from-unicode(2 + i))
+  }
+  out
+}
+#let blx-collate(t) = {
+  let case-bit(c) = if c != lower(c) { "\u{0}" } else { "\u{1}" }
+  let weigh(c) = blx-sort-punct.at(c, default: c)
+  let primary = lower(t).clusters().map(weigh).fold("", (a, b) => a + b)
+  primary + "\u{1}" + t.clusters().map(case-bit).fold("", (a, b) => a + b)
+}
+#let blx-sort-field(s) = blx-collate(blx-expand-chars(blx-sort-normalize(s)))
+
+// ACM leaves `maxsortnames`/`minsortnames` at the values `maxbibnames=9` pulls
+// them to (biblatex.sty:15008); past that biber sorts on the first name alone
+// plus a marker that outranks every character (Biber.pm:2937, Internals.pm:1532).
+#let blx-maxsortnames = 9
+#let blx-minsortnames = 1
+#let blx-name-trunc = "\u{10FFFD}"
+
+// biber's default `nosort` (Constants.pm:266) is scoped to the `setnames` field
+// set — every name list — so it filters each NAME PART before comparison, and
+// leaves titles alone. Two patterns: a two-letter prefix joined by a dash at the
+// very start of the part, whatever its case ("de-Zed" files under Z, "al-Hakim"
+// under H, but three-letter "Ibn-Sina" stays under I), and the two characters
+// biblatex never sorts on, anywhere in the part. The pattern counts LETTERS, so
+// it has to run on the decoded characters and the expansion has to wait for it:
+// "\AE{}-Zed" is "Æ-Zed", one letter before the dash, and keeps its prefix.
+#let blx-nosort(s) = {
+  s.replace(regex("^\\p{L}\\p{L}\\p{Pd}(\\S)"), m => m.captures.at(0))
+    .replace(regex("[\u{02BF}\u{2018}]"), "")
+}
+#let blx-name-sort-part(s) = blx-expand-chars(blx-sort-debrace(blx-nosort(blx-sort-clean(remove-outer(s)))))
+
+// The longest value of each name part anywhere in the reference list. Biber
+// records this while parsing every name of every entry it creates
+// (Input/file/bibtex.pm:1847) and pads with it below; any width at least as
+// large as every value gives the same ordering, so measuring the strings that
+// are actually padded rather than the raw ones is immaterial.
+#let blx-np-lengths(entries) = {
+  let m = (family: 0, given: 0, suffix: 0, prefix: 0)
+  for e in entries {
+    for (_, people) in e.names {
+      for n in people {
+        for (k, s) in (("family", n.last), ("given", n.first), ("suffix", n.jr), ("prefix", n.von)) {
+          let l = blx-name-sort-part(s).clusters().len()
+          if l > m.at(k) { m.insert(k, l) }
+        }
+      }
+    }
+  }
+  m
+}
+
+// _namestring (Internals.pm:1489) driven by \DeclareSortingNamekeyTemplate
+// (biblatex.def:1451): four key parts per name — (prefix, only with useprefix) +
+// family, then given, then suffix, then (prefix, only without useprefix) —
+// concatenated with no separator, name after name. The LAST name part of each
+// key part is space-padded to the list-wide maximum, which is what keeps the
+// parts aligned from one name to the next (biber makes the space non-ignorable
+// in its collator for exactly this reason); a name part the entry does not have
+// contributes nothing at all, not even padding. A prefix that shares its key
+// part with the family name is NOT padded, so "van Berg" runs together as
+// "vanberg". `useprefix` is on under acmnumeric (trad-standard.bbx:18) and off
+// under acmauthoryear, which is why the two ACM styles file prefixed names
+// differently. A trailing "and others" is not a name and neither counts toward
+// the truncation nor marks the list as truncated (Biber.pm:2889).
+#let blx-name-sort-string(people, lens, useprefix) = {
+  let real = people.filter(n => not is-others(n))
+  let visible = if real.len() > blx-maxsortnames { blx-minsortnames } else { real.len() }
+  let out = ""
+  for n in real.slice(0, visible) {
+    let part(s, w) = {
+      let t = blx-name-sort-part(s)
+      t + " " * calc.max(0, w - t.clusters().len())
+    }
+    if useprefix and n.von != "" { out += blx-name-sort-part(n.von) }
+    if n.last != "" { out += part(n.last, lens.family) }
+    if n.first != "" { out += part(n.first, lens.given) }
+    if n.jr != "" { out += part(n.jr, lens.suffix) }
+    if not useprefix and n.von != "" { out += part(n.von, lens.prefix) }
+  }
+  if visible < real.len() { out += blx-name-trunc }
+  out
+}
+
+// _sort_integer (Internals.pm:1239) maps a roman numeral to its value; whatever
+// is still not a number becomes 2000000000 in the key extractor (Biber.pm:4320),
+// so entries missing an integer field sort last within their group.
+#let blx-roman-value(s) = {
+  let t = upper(s.trim())
+  if t == "" { return none }
+  if t.match(regex("^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$")) == none { return none }
+  let vals = (M: 1000, D: 500, C: 100, L: 50, X: 10, V: 5, I: 1)
+  let total = 0
+  let prev = 0
+  for c in t.clusters().rev() {
+    let v = vals.at(c)
+    if v < prev { total -= v } else { total += v; prev = v }
+  }
+  total
+}
+#let blx-sort-int(s) = {
+  if s == none { return 2000000000 }
+  let t = s.trim()
+  let r = blx-roman-value(t)
+  if r != none { return r }
+  if t.match(regex("^[+-]?\d+$")) != none { return int(t.trim("+", at: start)) }
+  2000000000
+}
+// _sort_integer reads the field in Perl's boolean context (Internals.pm:1243), so
+// a field whose value is exactly "0" counts as ABSENT and the sort set falls
+// through to the next field in it — `sortyear = {0}` defers to `year`, and
+// `volume = {0}` to the template's own literal 0.
+#let blx-int-field(e, name) = if has(e, name) and fld(e, name).trim() != "0" { fld(e, name) }
+// Biased so a negative year still sorts numerically, and wide enough for the
+// 2000000000 sentinel above the bias.
+#let blx-int-bias = 5000000000
+#let blx-pad-int(n) = { let s = str(n + blx-int-bias); "0" * calc.max(0, 11 - s.len()) + s }
+
+#let pick-int(..vals) = { let r = vals.pos().find(v => v != none); r }
+#let blx-sort-key(e, lens: (family: 0, given: 0, suffix: 0, prefix: 0), useprefix: false) = {
+  // \DeclarePresort{mm} (biblatex.def:1467) is the default for every entry type.
+  let presort = blx-sort-field(fld(e, "presort", d: "mm"))
+  // A `key` field arrives here as `sortkey` and takes over every later slot.
+  let sortkey = if has(e, "sortkey") { fld(e, "sortkey") }
+  if sortkey != none {
+    let slot = blx-sort-field(sortkey)
+    let n = blx-pad-int(blx-sort-int(blx-sort-normalize(sortkey)))
+    return (presort, slot, slot, n, n).join(blx-sort-slot-sep)
+  }
+  let title = if has(e, "sorttitle") { fld(e, "sorttitle") } else { fld(e, "title", d: "") }
+  // `usetranslator` is off by default (biblatex.sty:16132), so a translator-only
+  // entry falls through to the title in the name slot as well.
+  let people = if "sortname" in e.names { e.names.sortname }
+    else if "author" in e.names { e.names.author }
+    else if "editor" in e.names { e.names.editor }
+  let named = if people != none { blx-name-sort-string(people, lens, useprefix) } else { "" }
+  let name-slot = if named != "" { blx-collate(named) } else { blx-sort-field(title) }
+  let year = pick-int(blx-int-field(e, "sortyear"), blx-int-field(e, "year"))
+  let volume = blx-int-field(e, "volume")
+  (
+    presort,
+    name-slot,
+    blx-sort-field(title),
+    blx-pad-int(blx-sort-int(year)),
+    blx-pad-int(if volume == none { 0 } else { blx-sort-int(volume) }),
+  ).join(blx-sort-slot-sep)
 }

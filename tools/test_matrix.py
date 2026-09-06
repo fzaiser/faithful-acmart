@@ -855,6 +855,40 @@ TESTS: dict[str, Test] = {
         ),
         note="BibLaTeX author-year edge cases: book chapters, videos, authorless online entries, ISBNs.",
     ),
+    "biblatex-uniquename": Test(
+        kind="twin", pages=2, text_equal=True,
+        text_assertions=(
+            # uniquename: nothing / initials / the whole given name, picked per name.
+            Assertion(engine="both", text="[E. Doe 2008; J. Doe 2008]"),
+            Assertion(engine="both", text="[Kaur 2014; P. Kaur 2014]"),
+            Assertion(engine="both", text="[Rita Fox 2012; Robert Fox 2012]"),
+            Assertion(engine="both", text="[S. Fox 2012]"),
+            Assertion(engine="both", text="[J.-P. Rho et al. 2002; J. Rho 2002]"),
+            Assertion(engine="both", text="[J. Fig and M. Fig 2019]"),
+            Assertion(engine="both", text="[Delta 2021; Zulu et al. 2021]"),
+            Assertion(engine="both", text="[J. Nutmeg 2016; S. Nutmeg et al. 2016]"),
+            # …and the year letter that is used when no name part disambiguates.
+            Assertion(engine="both", text="[Brown 2010a,b]"),
+            # uniquelist: widen past maxcitenames, but only as far as it takes.
+            Assertion(engine="both", text="[Vogel, Acid, et al. 2001; Vogel, Beast, and "
+                      "Garble 2000; Vogel, Beast, and Tremble 2000]"),
+            Assertion(engine="both", text="[Prime and Quartz 2018; Prime, Quartz, et al. 2018]"),
+            Assertion(engine="both", text="[Ash, Birch, et al. 2015, 2016; Ash and Dogwood 2015]"),
+            Assertion(engine="both", text="[Coral et al. 2022a,b]"),
+            Assertion(engine="both", text="[Ackee, Balsa, and Cocoa 2024a,b; Ackee, Balsa, "
+                      "Cocoa, and Dill 2024]"),
+            # the two features feeding each other, in both directions
+            Assertion(engine="both", text="[Jane Hill et al. 2005; John Hill et al. 2005]"),
+            Assertion(engine="both", text="[Oak, Pine, and C. Quill 2003; Oak, Pine, and "
+                      "D. Quill 2003]"),
+            # a list the .bib truncated with "and others"
+            Assertion(engine="both", text="[Alpha, Beta, et al. 2005; Chi, Drum, Eta, et al. "
+                      "2006; Chi, Drum, Eta, and Phi 2006]"),
+            Assertion(engine="both", text="[Lime et al. 2020; O. Nib 2020]"),
+        ),
+        note="BibLaTeX author-year cite-label disambiguation: uniquename levels, "
+             "uniquelist widening, and the extradate letters left over.",
+    ),
     "biblatex-driver-test": Test(
         kind="twin", pages=1,
         text_assertions=(
@@ -891,6 +925,159 @@ TESTS: dict[str, Test] = {
                       "(May 4, 2020). Utility Patent Patent No. US-123456"),
         ),
         note="BibLaTeX numeric report sourcemap plus translator and patent drivers.",
+    ),
+    "biblatex-names-test": Test(
+        kind="twin", pages=2, text_equal=True,
+        text_assertions=(
+            # nosort: a two-letter dash-joined prefix leaves the name part before
+            # biber compares it, whatever its case, so each files under the stem
+            Assertion(engine="both",
+                      text="[Abe 2001; Æ-Zed 2001; Fox 2001; al-Hakim 2001; de-Zed 2001]"),
+            Assertion(engine="both", text="[Ibn-Sina 2001]"),
+            # …and a dash the braces protect is not that pattern's dash at all
+            Assertion(engine="both", text="[Abe 2001; de-Wolf 2001; Fox 2001]"),
+            # …and the filter is scoped to name lists, so a title keeps its prefix
+            # and files under it, between Abe and Fox
+            Assertion(engine="both",
+                      text="de-Zulu keeps its prefix in a title. (2001). ínigo Dotless."),
+            Assertion(engine="both", text="Alice de-Zed. 2001."),
+            # noinit: the initial is read off the raw name, after a LOWERCASE
+            # dash-joined prefix goes
+            Assertion(engine="both", text="P. Quirk R. Quirk D.-P. Rho D. Rho"),
+            # a braced given name is one word, a braced hyphen does not split it,
+            # and a plain hyphen does
+            Assertion(engine="both", text="J. Sage K. Sage"),
+            Assertion(engine="both", text="H. Tell O. Tell"),
+            Assertion(engine="both", text="J.-P. Vane K. Vane"),
+            # a character command is one letter to both filters, so it keeps the
+            # prefix nosort would take and becomes the initial itself
+            Assertion(engine="both", text="æ.-P. Zeta R. Zeta"),
+            # …and so is an accent, whichever braces protect it
+            Assertion(engine="both", text="Ö.-P. Yew R. Yew"),
+            # an initial opening with a diacritic takes the letter behind it too
+            Assertion(engine="both", text="‘A. Ward B. Ward"),
+            # …but two marks are two characters to biber, and the one quote
+            # they typeset as is the whole initial; a third is never counted
+            Assertion(engine="both", text="left out of the count “. Ward “. Xu B. Xu"),
+            # the period belongs to the initial in an ordinary citation too,
+            # where biblatex prints \bibinitperiod exactly as \citeauthor does
+            Assertion(engine="both", text="[“. Ward 2018; ‘A. Ward 2016; B. Ward 2017]"),
+            # …and loses it behind an earlier entry, where the punctuation the
+            # separator left standing is what biblatex's \adddot reads
+            Assertion(engine="both", text="[Abe 2001; “ Ward 2018]"),
+            # …while a label that merely OPENS with a period — a title, not a
+            # generated initial — keeps it wherever it sits
+            Assertion(engine="both",
+                      text="[!Bang at the front 2044; .NET at the front 2043]"),
+            # one name spelled two ways is one author, lettered a/b — including
+            # an accent over a dotless \i, which is the dotted letter accented
+            Assertion(engine="both", text="[Normalize 2019a,b]"),
+            Assertion(engine="both", text="[Dotless 2020a,b]"),
+            Assertion(engine="both", text="Fay Æ-Zed. 2001."),
+        ),
+        note="biber's default nosort and noinit filters on a name part, under acmauthoryear.",
+    ),
+    "biblatex-names-numeric-test": Test(
+        kind="twin", pages=2, text_equal=True,
+        text_assertions=(
+            # the same sort order, read off the numeric labels
+            Assertion(engine="both", text="[3, 4, 31, 8, 7]"),
+            Assertion(engine="both", text="[3, 5, 7]"),
+            Assertion(engine="both", text="[9]"),
+            Assertion(engine="both", text="[4] Fay Æ-Zed."),
+            Assertion(engine="both", text="[31] Alice de-Zed."),
+            # the two spellings still sort and number as two entries; only the
+            # author they share is one, which acmnumeric never has to show
+            Assertion(engine="both", text="[13, 12]"),
+            Assertion(engine="both", text="[10, 11]"),
+            # acmnumeric disambiguates no cite label, so no initial is printed
+            Assertion(engine="both", text="Quirk Quirk Rho Rho"),
+            Assertion(engine="both", text="Zeta Zeta"),
+            Assertion(engine="both", text="Yew Yew"),
+        ),
+        note="the same fixtures under acmnumeric, which disambiguates no cite label.",
+    ),
+    "biblatex-sort-test": Test(
+        kind="twin", pages=2, text_equal=True,
+        text_assertions=(
+            # useprefix off: a prefix files under the family name and only
+            # breaks a tie behind the given name and the suffix.
+            Assertion(engine="both", text="Bo Bachman. 2001. “Bachman on prefixes.” J. "
+                      "Ludwig van Beethoven. 2001. “Beethoven on prefixes.” J. "
+                      "Al Berg. 2001. “Berg on prefixes.” J. "
+                      "Jan Berg. 2001. “Another Berg on prefixes.” J. "
+                      "Jan van Berg. 2001. “A third Berg on prefixes.” J."),
+            # the suffix key part, and the extradate letters the order hands out
+            Assertion(engine="both", text="Martin King. 2001a. “King without a suffix.” J. "
+                      "Martin King Jr.. 2001b. “King the younger.” J. "
+                      "Martin King Sr.. 2001c. “King the elder.” J."),
+            Assertion(engine="both", text="[King 2001a; King 2001b; King 2001c]"),
+            # name part padding: the second name decides both comparisons
+            Assertion(engine="both", text="Al Ash and Cy Bo. 2001. “Padding with two names.” J. "
+                      "Alan Ash. 2001. “Padding with one name.” J. "
+                      "Zed Ash and Dee Cy. 2001. “Padding a shorter family name.” J. "
+                      "Zed Ashby. 2001. “Padding a longer family name.” J."),
+            # presort, then the `key` field as sortkey, then sorttitle, then sortname
+            Assertion(engine="both", text="Mid Mid. 2001. “Filed first by its presort.” J. "
+                      "Zebra opening on a tie. (2001). "
+                      "Shelved by the key Aaa, not by this. (2001). "
+                      "Ranged by a sorttitle of Aab. (2001). "
+                      "Zed Zeta. 2001. “Filed under its sortname.” J."),
+            # a tie weighs below the letters, as every symbol does under the UCA
+            Assertion(engine="both", text="“Filed first by its presort.” J. Zebra opening on a tie."),
+            # the integer slots: signed, then falling back on `year` for a "0",
+            # then the sentinel for a value that is no number at all
+            Assertion(engine="both", text="Ivo Int. 2101. “An integer tie-breaker.” J. "
+                      "Ivo Int. 2102. “An integer tie-breaker.” J. "
+                      "Ivo Int. 2103. “An integer tie-breaker.” J. "
+                      "Ivo Int. 2104. “An integer tie-breaker.” J."),
+            # a nameless entry files under its title, among the named ones
+            Assertion(engine="both", text="Middle of the pack, another nameless entry. (2001). "
+                      "Nia Noe. 2001. “Noe among the nameless.” J."),
+            # a translator is not a labelname, so the title stands in
+            Assertion(engine="both", text="Sy Sort. 2009. “Filed under its sortyear.” J. "
+                      "The one with a sortyear of its own. "
+                      "Sy Sort. 2001. “Filed under its sortyear.” J. "
+                      "The one falling back on its year. "
+                      "Sorted under its title, not its translator."),
+            # punctuation stays in the key and weighs below the letters
+            Assertion(engine="both", text="[O’BrienStudy with an apostrophe 2001; "
+                      "ObrienStudy without punctuation 2001]"),
+            # year and volume as integers: roman resolved, missing sorts last
+            Assertion(engine="both", text="Vi Vol. 2001a. “A volume tie-breaker.” J. "
+                      "Vi Vol. 2001b. “A volume tie-breaker.” J, 2. "
+                      "Vi Vol. 2001c. “A volume tie-breaker.” J, IV. "
+                      "Vi Vol. 2001d. “A volume tie-breaker.” J, 10. "
+                      "Vi Vol. 2001e. “A volume tie-breaker.” J, Suppl."),
+            Assertion(engine="both", text="Yo Year. 2001. “A year tie-breaker.” J. "
+                      "Yo Year. 2003. “A year tie-breaker.” J. "
+                      "Yo Year. N.d. “A year tie-breaker.” J."),
+            # case separates what nothing else can, uppercase first
+            Assertion(engine="both", text="Zebracrossing. (2001). zebracrossing. (2001)."),
+        ),
+        note="biber's nty sorting template under acmauthoryear, where a name "
+             "prefix only breaks a tie behind the family name.",
+    ),
+    "biblatex-sort-numeric-test": Test(
+        kind="twin", pages=2, text_equal=True,
+        text_assertions=(
+            # useprefix ON: the same names file under their prefix instead, so
+            # every "van" lands past Valois at the end of the V run.
+            Assertion(engine="both", text="[11] Bo Bachman. 2001. Bachman on prefixes. J. "
+                      "[12] Al Berg. 2001. Berg on prefixes. J. "
+                      "[13] Jan Berg. 2001. Another berg on prefixes. J. "
+                      "[14] Charles de la Vallee Poussin. 2001. A multi-word prefix. J."),
+            Assertion(engine="both", text="[36] Cara Valois. 2001. Valois on prefixes. J. "
+                      "[37] Ludwig van Beethoven. 2001. Beethoven on prefixes. J."),
+            Assertion(engine="both", text="[38] Jan van Berg. 2001. A third berg on prefixes. J."),
+            Assertion(engine="both", text="[39] Ann van Zorn. 2001. Zorn on prefixes. J."),
+            # acmnumeric prints ACM's own undated stand-in and no extradate letters
+            Assertion(engine="both", text="[48] Yo Year. [n. d.] A year tie-breaker. J."),
+            # the tie files second, right behind the entry a presort pulls first
+            Assertion(engine="both", text="[2] 2001. zebra opening on a tie."),
+        ),
+        note="the same fixtures under acmnumeric, which inherits useprefix=true "
+             "from trad-standard.bbx and files a prefixed name under its prefix.",
     ),
     "bib-all": Test(
         kind="twin", pages=1,

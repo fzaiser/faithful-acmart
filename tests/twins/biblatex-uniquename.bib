@@ -1,0 +1,256 @@
+% Fixtures for BibLaTeX's uniquename / uniquelist cite-label disambiguation
+% (acmauthoryear: maxcitenames=2, mincitenames=1, uniquename=full, uniquelist=true).
+% Every expected label in the twin was read off real biber output.
+%
+% Name prefixes ("von"), name suffixes ("Jr.") and entries with no name list at
+% all are left to the biblatex-sort-test pair, which is about where biber's nty
+% template files them rather than what the label prints.
+
+@article{UnDoeJohn,
+  author  = {John Doe},
+  title   = {Doe on initials},
+  journal = {Journal of Disambiguation},
+  year    = {2008},
+}
+@article{UnDoeEdward,
+  author  = {Edward Doe},
+  title   = {Doe on the other initials},
+  journal = {Journal of Disambiguation},
+  year    = {2008},
+}
+
+@article{UnFoxRobert,
+  author  = {Robert Fox},
+  title   = {Fox on full given names},
+  journal = {Journal of Disambiguation},
+  year    = {2012},
+}
+@article{UnFoxRita,
+  author  = {Rita Fox},
+  title   = {Fox on the other full given name},
+  journal = {Journal of Disambiguation},
+  year    = {2012},
+}
+@article{UnFoxSam,
+  author  = {Sam Fox},
+  title   = {Fox needing only an initial},
+  journal = {Journal of Disambiguation},
+  year    = {2012},
+}
+
+@article{UnBrownFirst,
+  author  = {Alan Brown},
+  title   = {Brown first note},
+  journal = {Journal of Disambiguation},
+  year    = {2010},
+}
+@article{UnBrownSecond,
+  author  = {Alan Brown},
+  title   = {Brown second note},
+  journal = {Journal of Disambiguation},
+  year    = {2010},
+}
+
+@article{UnKaur,
+  author  = {Kaur},
+  title   = {Kaur without a given name},
+  journal = {Journal of Disambiguation},
+  year    = {2014},
+}
+@article{UnKaurPriya,
+  author  = {Priya Kaur},
+  title   = {Kaur with a given name},
+  journal = {Journal of Disambiguation},
+  year    = {2014},
+}
+
+@article{UnRhoJeanPaul,
+  author  = {Jean-Paul Rho and Zoe Zeta and Yan Yew},
+  title   = {Rho on hyphenated initials},
+  journal = {Journal of Disambiguation},
+  year    = {2002},
+}
+@article{UnRhoJill,
+  author  = {Jill Rho},
+  title   = {Rho on a plain initial},
+  journal = {Journal of Disambiguation},
+  year    = {2002},
+}
+
+@article{UnFig,
+  author  = {John Fig and Mary Fig},
+  title   = {Two Figs in one list},
+  journal = {Journal of Disambiguation},
+  year    = {2019},
+}
+
+@article{UnZulu,
+  author  = {Zed Zulu and Kim Kilo and John Delta},
+  title   = {Zulu hiding a Delta},
+  journal = {Journal of Disambiguation},
+  year    = {2021},
+}
+@article{UnDelta,
+  author  = {Ella Delta},
+  title   = {Delta in plain sight},
+  journal = {Journal of Disambiguation},
+  year    = {2021},
+}
+
+@periodical{UnNutmegEditor,
+  editor  = {Jacques Nutmeg},
+  title   = {Nutmeg as an editor},
+  journal = {Journal of Disambiguation},
+  volume  = {12},
+  number  = {3},
+  month   = nov,
+  year    = {2016},
+}
+@article{UnNutmegAuthor,
+  author  = {Sarah Nutmeg and Werner Nut and Yehoshua Sag},
+  title   = {Nutmeg as an author},
+  journal = {Journal of Disambiguation},
+  year    = {2016},
+}
+
+@article{UlVogelGarble,
+  author  = {Vogel and Beast and Garble},
+  title   = {Vogel widened to Garble},
+  journal = {Journal of Disambiguation},
+  year    = {2000},
+}
+@article{UlVogelTremble,
+  author  = {Vogel and Beast and Tremble},
+  title   = {Vogel widened to Tremble},
+  journal = {Journal of Disambiguation},
+  year    = {2000},
+}
+@article{UlVogelSqueeze,
+  author  = {Vogel and Acid and Squeeze},
+  title   = {Vogel widened only to Acid},
+  journal = {Journal of Disambiguation},
+  year    = {2001},
+}
+
+@article{UlPrimeLong,
+  author  = {Pat Prime and Quinn Quartz and Rex Ruby and Sam Slate},
+  title   = {Prime stepping back one name},
+  journal = {Journal of Disambiguation},
+  year    = {2018},
+}
+@article{UlPrimeShort,
+  author  = {Pat Prime and Quinn Quartz},
+  title   = {Prime with nothing to widen},
+  journal = {Journal of Disambiguation},
+  year    = {2018},
+}
+
+@article{UlAshEarly,
+  author  = {Ann Ash and Bob Birch and Cara Cedar},
+  title   = {Ash in the earlier year},
+  journal = {Journal of Disambiguation},
+  year    = {2015},
+}
+@article{UlAshLate,
+  author  = {Ann Ash and Bob Birch and Cara Cedar},
+  title   = {Ash in the later year},
+  journal = {Journal of Disambiguation},
+  year    = {2016},
+}
+@article{UlAshPair,
+  author  = {Ann Ash and Dan Dogwood},
+  title   = {Ash with a shorter list},
+  journal = {Journal of Disambiguation},
+  year    = {2015},
+}
+
+@article{UlCoralFirst,
+  author  = {Cal Coral and Deb Dune and Eli Elm},
+  title   = {Coral first note},
+  journal = {Journal of Disambiguation},
+  year    = {2022},
+}
+@article{UlCoralSecond,
+  author  = {Cal Coral and Deb Dune and Eli Elm},
+  title   = {Coral second note},
+  journal = {Journal of Disambiguation},
+  year    = {2022},
+}
+
+@article{UlAckeeFirst,
+  author  = {Ann Ackee and Bo Balsa and Cy Cocoa},
+  title   = {Ackee first note},
+  journal = {Journal of Disambiguation},
+  year    = {2024},
+}
+@article{UlAckeeSecond,
+  author  = {Ann Ackee and Bo Balsa and Cy Cocoa},
+  title   = {Ackee second note},
+  journal = {Journal of Disambiguation},
+  year    = {2024},
+}
+@article{UlAckeeDill,
+  author  = {Ann Ackee and Bo Balsa and Cy Cocoa and Di Dill},
+  title   = {Ackee with a fourth name},
+  journal = {Journal of Disambiguation},
+  year    = {2024},
+}
+
+@article{UlHillJohn,
+  author  = {John Hill and Ann Ivy and Bo Jay},
+  title   = {Hill disambiguated by given name},
+  journal = {Journal of Disambiguation},
+  year    = {2005},
+}
+@article{UlHillJane,
+  author  = {Jane Hill and Ann Ivy and Cy Kite},
+  title   = {Hill disambiguated by the other given name},
+  journal = {Journal of Disambiguation},
+  year    = {2005},
+}
+
+@article{UlOakCarl,
+  author  = {Ann Oak and Bud Pine and Carl Quill},
+  title   = {Oak widened to one Quill},
+  journal = {Journal of Disambiguation},
+  year    = {2003},
+}
+@article{UlOakDana,
+  author  = {Ann Oak and Bud Pine and Dana Quill},
+  title   = {Oak widened to the other Quill},
+  journal = {Journal of Disambiguation},
+  year    = {2003},
+}
+
+@article{UlAlphaOthers,
+  author  = {Aldo Alpha and Bea Beta and others},
+  title   = {Alpha truncated in the bib},
+  journal = {Journal of Disambiguation},
+  year    = {2005},
+}
+
+@article{UlChiOthers,
+  author  = {Cid Chi and Dot Drum and Eve Eta and others},
+  title   = {Chi truncated in the bib},
+  journal = {Journal of Disambiguation},
+  year    = {2006},
+}
+@article{UlChiPhi,
+  author  = {Cid Chi and Dot Drum and Eve Eta and Fay Phi},
+  title   = {Chi listed in full},
+  journal = {Journal of Disambiguation},
+  year    = {2006},
+}
+
+@article{UlLimeOthers,
+  author  = {Kay Lime and Moe Mint and Nan Nib and others},
+  title   = {Lime hiding a Nib in plain sight},
+  journal = {Journal of Disambiguation},
+  year    = {2020},
+}
+@article{UlNib,
+  author  = {Ora Nib},
+  title   = {Nib on its own},
+  journal = {Journal of Disambiguation},
+  year    = {2020},
+}

@@ -1,0 +1,27 @@
+%% biblatex-uniquename - BibLaTeX author-year cite-label name disambiguation.
+\documentclass[acmsmall,nonacm,natbib=false]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmauthoryear,
+  ]{biblatex}
+\addbibresource{biblatex-uniquename.bib}
+\begin{document}
+\thispagestyle{empty}
+
+\section*{Individual names}
+Initials are enough for the two Does \cite{UnDoeJohn,UnDoeEdward}, the two Kaurs \cite{UnKaur,UnKaurPriya} and the two Rhos \cite{UnRhoJeanPaul,UnRhoJill}, but the Foxes need whole given names \cite{UnFoxRobert,UnFoxRita} except for the third one \cite{UnFoxSam}.
+Two identical Browns get a year letter instead \cite{UnBrownFirst,UnBrownSecond}.
+Both Figs are disambiguated inside one list \cite{UnFig}.
+A Delta hidden past the truncation point does not disambiguate the visible one \cite{UnZulu,UnDelta}, and an editor list is disambiguated against an author list \cite{UnNutmegEditor,UnNutmegAuthor}.
+
+\section*{Lists of names}
+Ambiguous lists are widened until they part company \cite{UlVogelGarble,UlVogelTremble,UlVogelSqueeze}, but no further than they must \cite{UlPrimeLong,UlPrimeShort}.
+Identical lists widen only as far as a third, similar list demands \cite{UlAshEarly,UlAshLate,UlAshPair} -- with no such list they are not widened at all and take year letters \cite{UlCoralFirst,UlCoralSecond} -- and a list that is a prefix of another is shown whole \cite{UlAckeeFirst,UlAckeeSecond,UlAckeeDill}.
+A given name that already separates two lists stops them from widening \cite{UlHillJohn,UlHillJane}, while a name hidden past the truncation point still decides where they part \cite{UlOakCarl,UlOakDana}.
+A list the .bib itself truncated shows every name it does list \cite{UlAlphaOthers,UlChiOthers,UlChiPhi}, including names past the truncation point \cite{UlLimeOthers,UlNib}.
+
+\printbibliography
+
+\end{document}

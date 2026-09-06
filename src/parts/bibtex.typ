@@ -275,8 +275,9 @@
   // Parse every name-list role in the ACM data model. `translator` is not yet
   // rendered by our backends, but the upstream ACM BibLaTeX drivers do print it
   // (acmnumeric/acmauthoryear.bbx `translator+others`), so keep it in the parsed
-  // data model rather than dropping it on the floor.
-  for role in ("author", "editor", "bookauthor", "translator", "holder") {
+  // data model rather than dropping it on the floor; `sortname` is never printed
+  // at all, but it heads biber's `nty` name slot.
+  for role in ("author", "editor", "bookauthor", "translator", "holder", "sortname") {
     if role in fields { names.insert(role, parse-names(fields.at(role))) }
   }
   (key: key, entry: (entry-type: etype, fields: fields, names: names))

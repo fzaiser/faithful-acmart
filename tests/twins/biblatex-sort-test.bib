@@ -1,0 +1,91 @@
+% Fixtures for biber's `nty` sorting template and its name key template. The
+% same file is filed differently by the two ACM styles, because acmnumeric
+% inherits `useprefix=true` from trad-standard.bbx while acmauthoryear does not:
+% a name prefix files with the family name under one and only breaks a tie
+% behind it under the other. Every expected position was read off real biber.
+%
+% Deliberately absent: editor-led entries, which belong to the biblatex-fields
+% pair (the editor fallback in the name slot is pinned in tests/unit/acmref.typ),
+% and name lists past maxsortnames, which acmauthoryear cannot demonstrate --
+% two lists sharing a leading name are exactly the ones biber widens uniquelist
+% for, and the widened count then overrides the truncation (see DESIGN.md).
+
+% ---- name prefixes, and the plain names they file among ----
+@article{PfBachman,   author = {Bo Bachman},           title = {Bachman on prefixes}, journal = {J}, year = 2001}
+@article{PfBeethoven, author = {Ludwig van Beethoven}, title = {Beethoven on prefixes}, journal = {J}, year = 2001}
+@article{PfBergAl,    author = {Al Berg},              title = {Berg on prefixes}, journal = {J}, year = 2001}
+@article{PfBergJan,   author = {Jan Berg},             title = {Another Berg on prefixes}, journal = {J}, year = 2001}
+@article{PfBergVan,   author = {Jan van Berg},         title = {A third Berg on prefixes}, journal = {J}, year = 2001}
+@article{PfValois,    author = {Cara Valois},          title = {Valois on prefixes}, journal = {J}, year = 2001}
+@article{PfZorn,      author = {Ann van Zorn},         title = {Zorn on prefixes}, journal = {J}, year = 2001}
+@article{PfVallee,    author = {de la Vallee Poussin, Charles}, title = {A multi-word prefix}, journal = {J}, year = 2001}
+
+% ---- name suffixes: an extra key part behind the given name ----
+@article{SfKing,   author = {Martin King},       title = {King without a suffix}, journal = {J}, year = 2001}
+@article{SfKingJr, author = {King, Jr., Martin}, title = {King the younger}, journal = {J}, year = 2001}
+@article{SfKingSr, author = {King, Sr., Martin}, title = {King the elder}, journal = {J}, year = 2001}
+
+% ---- nameless entries file under their title, not ahead of everything ----
+@misc{NlAardvark, title = {Aardvark, an entry with no name at all}, year = 2001}
+@misc{NlMiddle,   title = {Middle of the pack, another nameless entry}, year = 2001}
+@misc{NlZebra,    title = {Zebra, a third nameless entry}, year = 2001}
+@article{NlLee,   author = {Ann Lee}, title = {Lee among the nameless}, journal = {J}, year = 2001}
+@article{NlNoe,   author = {Nia Noe}, title = {Noe among the nameless}, journal = {J}, year = 2001}
+@article{NlYar,   author = {Yves Yar}, title = {Yar among the nameless}, journal = {J}, year = 2001}
+
+% ---- a `key` field becomes `sortkey`, which is final ----
+@misc{KyAaa, key = {Aaa}, title = {Shelved by the key Aaa, not by this}, year = 2001}
+@misc{KyZzz, key = {Zzz}, title = {Shelved by the key Zzz instead}, year = 2001}
+
+% ---- name part padding aligns the parts from one name to the next ----
+@article{PdTwo,  author = {Ash, Al and Bo, Cy},   title = {Padding with two names}, journal = {J}, year = 2001}
+@article{PdOne,  author = {Ash, Alan},            title = {Padding with one name}, journal = {J}, year = 2001}
+@article{PdFamB, author = {Ash, Zed and Cy, Dee}, title = {Padding a shorter family name}, journal = {J}, year = 2001}
+@article{PdFamA, author = {Ashby, Zed},           title = {Padding a longer family name}, journal = {J}, year = 2001}
+
+% ---- the given name is a key part of its own ----
+@article{GvNone, author = {Smith},      title = {Smith with no given name}, journal = {J}, year = 2001}
+@article{GvAl,   author = {Al Smith},   title = {Smith with a short given name}, journal = {J}, year = 2001}
+@article{GvAlan, author = {Alan Smith}, title = {Smith with a longer given name}, journal = {J}, year = 2001}
+
+% ---- "and others" is not a name: it neither counts nor truncates ----
+@article{OtOthers, author = {Ozzy Oak and others},  title = {Oak and others}, journal = {J}, year = 2001}
+@article{OtSolo,   author = {Ozzy Oak},             title = {Oak on its own}, journal = {J}, year = 2001}
+@article{OtPine,   author = {Ozzy Oak and Al Pine}, title = {Oak and Pine}, journal = {J}, year = 2001}
+
+% ---- punctuation is kept in a sort key and weighs below the letters ----
+@misc{PnPlain, title = {ObrienStudy without punctuation}, year = 2001}
+@misc{PnQuote, title = {O'BrienStudy with an apostrophe}, year = 2001}
+
+% ---- a translator is no labelname, because usetranslator is off ----
+@book{RlTranslator, translator = {Tr Translator}, title = {Sorted under its title, not its translator}, publisher = {P}, year = 2001}
+
+% ---- year and volume tie-breakers, both compared as integers ----
+@article{YrLate,  author = {Yo Year}, title = {A year tie-breaker}, journal = {J}, year = 2003}
+@article{YrEarly, author = {Yo Year}, title = {A year tie-breaker}, journal = {J}, year = 2001}
+@article{YrNone,  author = {Yo Year}, title = {A year tie-breaker}, journal = {J}}
+@article{VlNone,  author = {Vi Vol}, title = {A volume tie-breaker}, journal = {J}, year = 2001}
+@article{VlTen,   author = {Vi Vol}, title = {A volume tie-breaker}, journal = {J}, year = 2001, volume = {10}}
+@article{VlTwo,   author = {Vi Vol}, title = {A volume tie-breaker}, journal = {J}, year = 2001, volume = {2}}
+@article{VlRoman, author = {Vi Vol}, title = {A volume tie-breaker}, journal = {J}, year = 2001, volume = {IV}}
+@article{VlWord,  author = {Vi Vol}, title = {A volume tie-breaker}, journal = {J}, year = 2001, volume = {Suppl}}
+
+% ---- the sort-only overrides ----
+@misc{OvSorttitle,   title = {Ranged by a sorttitle of Aab}, sorttitle = {Aab}, year = 2001}
+@article{OvSortname, author = {Zed Zeta}, sortname = {Aac Aac}, title = {Filed under its sortname}, journal = {J}, year = 2001}
+@article{OvSortyear, author = {Sy Sort}, title = {Filed under its sortyear}, journal = {J}, year = 2009, sortyear = 1990, note = {The one with a sortyear of its own}}
+@article{OvPlainyear, author = {Sy Sort}, title = {Filed under its sortyear}, journal = {J}, year = 2001, note = {The one falling back on its year}}
+@article{OvPresort,  author = {Mid Mid}, presort = {aa}, title = {Filed first by its presort}, journal = {J}, year = 2001}
+
+% ---- a tie weighs below the letters, where the UCA puts every symbol ----
+@misc{TiTilde, title = {~Zebra opening on a tie}, year = 2001}
+
+% ---- the integer slots: signed, roman, and Perl's falsy "0" ----
+@article{IsNeg,  author = {Ivo Int}, title = {An integer tie-breaker}, journal = {J}, year = 2101, sortyear = {-44}}
+@article{IsOne,  author = {Ivo Int}, title = {An integer tie-breaker}, journal = {J}, year = 2102, sortyear = {1}}
+@article{IsZero, author = {Ivo Int}, title = {An integer tie-breaker}, journal = {J}, year = 2103, sortyear = {0}}
+@article{IsWord, author = {Ivo Int}, title = {An integer tie-breaker}, journal = {J}, year = 2104, sortyear = {circa}}
+
+% ---- case separates entries that are otherwise equal, uppercase first ----
+@misc{CsLower, title = {zebracrossing}, year = 2001}
+@misc{CsUpper, title = {Zebracrossing}, year = 2001}

@@ -265,6 +265,20 @@ mistaken for faithfulness bugs.
   but whose names do not still cite apart ("[King 2001a; King 2001b]"). Pinned end to end
   by the `biblatex-uniquename` twin and, for the hashes a twin cannot read, by
   `tests/unit/blxnames.typ`; every expectation in both came from real biber output.
+- **BibLaTeX reference order is biber's `nty` template** (biblatex.def:1493, selected by
+  both ACM styles): presort, then a `sortkey` that — being `final` — takes over the whole
+  key when a `key` field supplies one, then the name slot (`sortname`, else author, else
+  editor, else the title, since `usetranslator` is off), then the title, then the year and
+  the volume as integers with roman numerals resolved and a 2000000000 fallback that files
+  entries missing them last. A name contributes four key parts — prefix + family, given,
+  suffix, prefix again — each padded with spaces to the longest of its kind in the list, so
+  the parts of one name line up with the next and a second name can decide a comparison the
+  first would have lost; a part the name does not have contributes nothing at all. Which of
+  the two prefix key parts is used turns on `useprefix`, which acmnumeric inherits as
+  *true* from `trad-standard.bbx:18` and acmauthoryear leaves *false* — so the two ACM
+  styles file "Ludwig van Beethoven" in genuinely different places. Sorting decides which
+  of two colliding entries takes the `a` extradate letter, so the two are pinned together
+  by the `biblatex-sort-test` / `biblatex-sort-numeric-test` pair.
 
 ### Implemented (each validated against real bibtex)
 - **Author-year mode** (`cite-style: "author-year"`, `\citestyle{acmauthoryear}`):
@@ -499,6 +513,30 @@ mistaken for faithfulness bugs.
   colon in `/ term: body` source — so overriding the term list would only risk drift.
   What is *not* modelled is acmart's hanging `\@ACM@labelwidth` geometry (the wide,
   right-aligned label column); that remains an accepted gap.
+- **BibLaTeX name-list visibility ignores `uniquelist`.** Both the reference list and
+  the sort key cut a name list longer than `maxbibnames`/`maxsortnames` (9) down to the
+  first name, which is what biber does whenever `uniquelist` is unset. Under
+  acmauthoryear, though, `uniquelist` is on, and biber uses the widened count in place
+  of that minimum (Biber.pm:2924/2937) — so two entries of ten-plus names sharing a
+  leading name print and sort on as many names as it takes to tell their *cites* apart,
+  where we print and sort on one. Reproducing it means disambiguating before sorting
+  rather than after, which is the opposite of our pipeline order. acmnumeric has no
+  `uniquelist` and is exact; the acmnumeric case is pinned in `tests/unit/acmref.typ`.
+- **BibLaTeX sort keys compare by code point, not by the Unicode Collation Algorithm.**
+  Biber collates each sort slot with `Unicode::Collate` (`sortcase`/`sortupper` both on,
+  spaces made non-ignorable), so accents are a secondary difference and case a tertiary
+  one. We case-fold, resolve accent commands to their base letter and BibTeX's
+  thirteen foreign-character commands to their expansion (so `\ae` files as "ae" and
+  `\ss` as "ss", the expansions the root collation gives those characters), fold every
+  non-alphanumeric ASCII character into a low block so punctuation and symbols weigh
+  below the digits and the letters as the UCA weighs them, and compare code points,
+  with a per-slot case pattern appended so uppercase still wins an otherwise exact
+  tie. That agrees with the UCA on the character *classes* and on ASCII letters,
+  digits and spaces, and on accented letters at the primary level; it can still
+  differ on the *relative* order of two different punctuation marks, on an accent
+  used as the only tie-break, and on a character command outside those thirteen
+  (`\dh`, `\th`, …), which is still dropped — our TeX renderer does not know them
+  either, so such a title cannot be typeset at all.
 - **Full BibLaTeX sample drift**: `sample-sigconf-biblatex` (with the software artifact
   block) reflows to one extra Typst page (dense two-column bibliography); the bundled
   samples gate visual snapshots, not page parity, and `biblatex-test` is the exact text
