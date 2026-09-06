@@ -40,7 +40,7 @@
 // recognizes as foreign letters. `purify$` maps each to the first alphabetic
 // char of its name, plus the second only for \oe \OE \ae \AE \ss (hence \aa->a
 // but \ss->ss). Anything else inside a special character is dropped.
-#let _foreign-purify = (
+#let foreign-purify = (
   i: "i", j: "j", o: "o", O: "O", l: "l", L: "L",
   oe: "oe", OE: "OE", ae: "ae", AE: "AE", aa: "a", AA: "A", ss: "ss",
 )
@@ -68,7 +68,7 @@
     // and array.join returns none; treat it as the unrecognized cs "" (drop the
     // accent, keep the trailing letter), matching BibTeX purify$.
     let cs = if p > y { cp.slice(y, p).join("") } else { "" }
-    if cs in _foreign-purify { out += _foreign-purify.at(cs) }
+    if cs in foreign-purify { out += foreign-purify.at(cs) }
     while p < n and bl > 0 and cp.at(p) != "\\" {
       let cc = cp.at(p)
       let l = _lex(cc)
@@ -287,7 +287,9 @@
 }
 
 // ---- command tables --------------------------------------------------------
-// Combining diacritics (NFC composes downstream; the text gate NFKC-folds).
+// Combining diacritics. What comes out is DECOMPOSED, so anything that compares
+// two names has to compose first: a .bib may type the character whole instead,
+// and the two forms are one name to biber.
 #let _accent-cs = (                        // control symbols: \"o \'e \^o ...
   "\"": "\u{0308}", "'": "\u{0301}", "`": "\u{0300}", "^": "\u{0302}",
   "~": "\u{0303}", "=": "\u{0304}", ".": "\u{0307}",
@@ -300,6 +302,42 @@
   ss: "ß", SS: "ẞ", ae: "æ", AE: "Æ", oe: "œ", OE: "Œ", aa: "å", AA: "Å",
   o: "ø", O: "Ø", l: "ł", L: "Ł", i: "ı", j: "ȷ",
 )
+
+// Biber LaTeX-decodes every field before it parses a name or builds a sort key
+// (Input/file/bibtex.pm:1723), so a character command is one CHARACTER by the
+// time any of its filters sees it. This decodes exactly that much — the accents
+// and the foreign letters — and leaves the rest of the syntax alone. Braces
+// above all: they are what tells biber's initialler which parts of a name may
+// be split, so a decoder that dropped them (`tex-to-string`) cannot be used
+// ahead of it. Whitespace behind a control word is the delimiter, so a decoded
+// letter absorbs it the way TeX does ("\ae sop" is one "æ" and then "sop").
+//
+// A brace is only ever consumed together with its partner, and biber decides
+// which pairs go: the braces protecting an ACCENT leave with it ("M{\"u}ller"
+// is "Müller"), while the ones around a letter macro stay ("{\ae}-Paul" is
+// "{æ}-Paul", which the initialler then splits at the dash all the same).
+#let _accent-of(name) = _accent-cs.at(name, default: _accent-cw.at(name, default: none))
+// An accent goes over the DOTTED letter: "\i" and "\j" exist to carry one, and
+// TeX, biber and this renderer all spell the result "í", never a dotless "ı́".
+#let _dotted(t) = t.replace("ı", "i").replace("ȷ", "j")
+#let _accented = m => {
+  let d = _accent-of(m.captures.at(0))
+  if d == none { return m.text }
+  let a = m.captures.at(1)
+  _dotted(if a.starts-with("\\") { _special-letters.at(a.slice(1)) } else { a }) + d
+}
+#let _cs-or-cw = "([A-Za-z]+|[\"'`^~=.])"
+// what an accent may sit on: a letter, or the dotless-letter command
+#let _acc-arg = "(\\p{L}|\\\\[ij])"
+#let decode-chars(s) = {
+  s
+    .replace(regex("\\{\\\\" + _cs-or-cw + "[ \t\n]*\\{?" + _acc-arg + "\\}?\\}"), _accented)
+    .replace(regex("\\\\" + _cs-or-cw + "[ \t\n]*\\{" + _acc-arg + "\\}"), _accented)
+    .replace(regex("\\\\([\"'`^~=.])[ \t\n]*" + _acc-arg), _accented)
+    .replace(regex("\\\\([A-Za-z]+)[ \t\n]+" + _acc-arg), _accented)
+    .replace(regex("\\\\([A-Za-z]+)(\\{\\})?[ \t\n]*"),
+      m => _special-letters.at(m.captures.at(0), default: m.text))
+}
 #let tex-logo = box(height: 1em)[T#h(-0.1667em)E#h(-0.125em)X]
 #let latex-logo = box(height: 1em)[L#h(-0.36em)#text(size: 0.82em)[A]#h(-0.15em)T#h(-0.1667em)E#h(-0.125em)X]
 #let bibtex-logo = box(height: 1em)[BibT#h(-0.1667em)E#h(-0.125em)X]
@@ -494,7 +532,7 @@
         let (a, r) = _grab(tail); next = r
         piece = if cont { eval(_eval(a, "math"), mode: "math") } else { _unsupported("\\ensuremath in a name/label field") }
       }
-      else if nm in _accent-cw { let (a, r) = _grab(tail); piece = _eval(a, "string") + _accent-cw.at(nm); next = r }
+      else if nm in _accent-cw { let (a, r) = _grab(tail); piece = _dotted(_eval(a, "string")) + _accent-cw.at(nm); next = r }
       else if nm in _id-cw { let (a, r) = _grab(tail); piece = _eval(a, mode); next = r }
       else if nm in _switch-cw {                  // declaration switch: restyle REST of group
         let tag = _switch-cw.at(nm); next = ()
@@ -519,7 +557,7 @@
       if math {
         if nm in _math-cs-space { piece = _math-cs-space.at(nm) + " " }
         else { _unsupported("math command \\" + nm) }
-      } else if nm in _accent-cs { let (a, r) = _grab(tail); piece = _eval(a, "string") + _accent-cs.at(nm); next = r }
+      } else if nm in _accent-cs { let (a, r) = _grab(tail); piece = _dotted(_eval(a, "string")) + _accent-cs.at(nm); next = r }
       else if nm in _cs-literal { piece = _cs-literal.at(nm) }
       else if nm in _cs-space { piece = _cs-space.at(nm) }
       else if nm in _noop-cs { }
