@@ -865,17 +865,6 @@
 // the journal list); fonts are cfg.author-font / cfg.affil-font. Each row is
 // centered independently (acmart \centering per row), so a partial final row is
 // centered under the full rows rather than left-aligned.
-// Chunk a flat list into rows of at most `n` (acmart lays author boxes N per row).
-#let chunk-rows(items, n) = {
-  let rows = ()
-  let i = 0
-  while i < items.len() {
-    rows.push(items.slice(i, calc.min(i + n, items.len())))
-    i += n
-  }
-  rows
-}
-
 // One author box shared by the conference (@mkauthors@iii) and sigchi-a
 // (@mkauthors@iv) grids: STACKED names in author-font (acmart adds every name with
 // `\par##1`, NOT andified like the journal list), a blank line, then the contact
@@ -925,7 +914,7 @@
   // sits centered rather than left-aligned. Rows are \lineskip (1pc) apart. The
   // conference box keeps the ambient body first-line indent (\parindent).
   let fli = cfg.parindent
-  stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..chunk-rows(groups, n).map(row => align(center, grid(
+  stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..groups.chunks(n).map(row => align(center, grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,
     ..row.map(g => author-grid-box(cfg, g, contact-fn, fli: fli)),
@@ -972,7 +961,7 @@
   let contact-fn(group) = group.authors.map(a => a.email).filter(e => e != none).map(email-link) + affil-conf-lines(group.affiliation)
   // Boxes flow left-aligned (sigchiamode skips \centering) and wrap after N; rows
   // are \lineskip (1pc) apart. The box first line is unindented (\parindent 0).
-  stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..chunk-rows(groups, n).map(row => grid(
+  stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..groups.chunks(n).map(row => grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,
     align: top + left,
