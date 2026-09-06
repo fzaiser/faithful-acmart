@@ -137,12 +137,15 @@
 #assert.eq(ordered.early.fields.title, "First")
 #assert.eq(ordered.late.fields.title, "Second")
 
-// A forward/undefined macro is empty in BibTeX. Omit a wholly empty field, but
-// retain the defined pieces of a concatenation. Decimal literals are not macros.
+// A forward/undefined macro is empty in BibTeX. The field is KEPT with its empty
+// value — `has` reads it as absent in both backends, so nothing prints, but the
+// entry carries the name, which is what lets an empty canonical spelling keep a
+// legacy alias from taking its place. The defined pieces of a concatenation are
+// retained. Decimal literals are not macros.
 #let undefined = parse-bib("@misc{before, title = future, note = \"pre\" # missing # \"post\", year = 2026}
 @string{future = \"Now defined\"}
 @misc{after, title = future}")
-#assert("title" not in undefined.before.fields)
+#assert.eq(undefined.before.fields.title, "")
 #assert.eq(undefined.before.fields.note, "prepost")
 #assert.eq(undefined.before.fields.year, "2026")
 #assert.eq(undefined.after.fields.title, "Now defined")

@@ -74,9 +74,38 @@
 // acmnumeric (trad-standard.bbx:18) and off under acmauthoryear, and the name
 // part padding widths are measured over the whole list, so both are resolved
 // here and handed to the key builder.
+// biblatex's `mincrossrefs` and `minxrefs` (both 2): a parent this many CITED
+// entries point at joins the bibliography in its own right, uncited. Measured
+// against biber: the two relations count APART — one `crossref` beside one
+// `xref` promotes nothing — the count is over distinct entries rather than
+// citations, and a parent promoted this way does not itself count as a citing
+// entry, so promotion never travels further up a chain.
+#let blx-min-refs = (crossref: 2, xref: 2)
+#let blx-promotions(db, cited) = {
+  let counts = (:)
+  for rel in blx-min-refs.keys() { counts.insert(rel, (:)) }
+  for k in cited {
+    if k not in db { continue }
+    for (rel, seen) in counts {
+      let parent = db.at(k).fields.at(rel, default: none)
+      if parent != none and parent in db {
+        counts.at(rel).insert(parent, seen.at(parent, default: 0) + 1)
+      }
+    }
+  }
+  let out = ()
+  for (rel, seen) in counts {
+    for (parent, n) in seen {
+      if n >= blx-min-refs.at(rel) and parent not in cited and parent not in out { out.push(parent) }
+    }
+  }
+  out
+}
 #let resolve-biblatex(db, cited, style) = {
   let db2 = blx-biber-datamodel(db)
-  let listed = cited.filter(k => k in db2)
+  // a promoted parent is an ordinary entry of the list from here on: it sorts,
+  // labels and takes an extradate letter like any other
+  let listed = cited.filter(k => k in db2) + blx-promotions(db2, cited)
   let lens = blx-np-lengths(listed.map(k => db2.at(k)))
   let useprefix = style != "author-year"
   (db: db2, order: listed.sorted(key: k => blx-sort-key(db2.at(k), lens: lens, useprefix: useprefix)))

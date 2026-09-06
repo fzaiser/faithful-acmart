@@ -264,10 +264,11 @@
     // BibTeX's format.name$ (brace/case rules in parse-names), so "Stra\ss e" and
     // "{Barnes and Noble}" split the way bibtex splits them.
     let val = collapse-ws(val)
-    // An entirely undefined/empty value is absent in BibTeX's output. In a
-    // concatenation, only the undefined fragment disappears and the remaining
-    // text is retained, because read-value joins fragments before this check.
-    if val != "" { fields.insert(name, val) }
+    // An empty value is kept as an empty FIELD: it prints as nothing either way
+    // (`has` reads it as absent in both backends), but the entry does carry the
+    // name — which is what lets "journaltitle = {}" beside a legacy "journal"
+    // keep the legacy spelling from taking the canonical one's place.
+    fields.insert(name, val)
     i = skip-ws-comment(cp, ni)
     while i < cp.len() and cp.at(i) == "," { i = skip-ws-comment(cp, i + 1) }
   }

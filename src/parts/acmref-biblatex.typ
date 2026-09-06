@@ -826,13 +826,61 @@
 )
 
 // acmnumeric.bbx/acmauthoryear.bbx DeclareStyleSourcemap.
+#let blx-typed-remaps = (
+  techreport: "techreport", phdthesis: "phdthesis", mastersthesis: "mathesis",
+)
+// The name lists our parser keeps; an inherited one has to reach `names` too,
+// because sorting, labels and disambiguation all read the parsed form.
+#let blx-name-roles = ("author", "editor", "bookauthor", "translator", "holder", "sortname")
+// …and the rest of that same driver sourcemap: the entry types BibTeX spells
+// differently, and the fields it does. Both are renames, not fallbacks, and both
+// happen BEFORE inheritance — which is what lets a child's own `journal` block
+// the `journaltitle` its parent would otherwise pass down.
+#let blx-type-aliases = (conference: "inproceedings", electronic: "online", www: "online")
+#let blx-field-aliases = (
+  hyphenation: "langid", address: "location", school: "institution",
+  annote: "annotation", archiveprefix: "eprinttype", journal: "journaltitle",
+  primaryclass: "eprintclass", key: "sortkey", pdf: "file",
+)
 #let blx-acm-sourcemap(db) = {
   let out = (:)
   for (k, e0) in db {
     let e = e0
+    if e.entry-type in blx-typed-remaps and not has(e, "type") {
+      e.fields.insert("type", blx-typed-remaps.at(e.entry-type))
+    }
     if e.entry-type == "techreport" { e = e + (entry-type: "report") }
     else if e.entry-type == "artifactsoftware" { e = e + (entry-type: "software") }
     else if e.entry-type == "artifactdataset" { e = e + (entry-type: "dataset") }
+    else if e.entry-type in blx-type-aliases {
+      e = e + (entry-type: blx-type-aliases.at(e.entry-type))
+    }
+    // \step[fieldset=day, null]: a `day` FIELD is not part of a BibTeX entry's
+    // date. Only a parsed `date` carries day precision — and, from here on, the
+    // components inheritance materializes.
+    if "day" in e.fields { let _ = e.fields.remove("day") }
+    for (alias, canonical) in blx-field-aliases {
+      if alias in e.fields {
+        let v = e.fields.at(alias)
+        let _ = e.fields.remove(alias)
+        // a RENAME, so an entry that spells the field both ways keeps the
+        // canonical value and the legacy one goes with its name
+        if canonical not in e.fields {
+          e.fields.insert(canonical, v)
+          if canonical in blx-name-roles { e.names.insert(canonical, parse-names(v)) }
+        }
+        if alias in e.names { let _ = e.names.remove(alias) }
+      }
+    }
+    // …and then the empty ones go: biber's own parser drops them, so an empty
+    // field of the child's does NOT stand in the way of what its parent passes
+    // down — it only decided, just above, which spelling of the name survives.
+    for (name, value) in e.fields {
+      if value.trim() == "" {
+        let _ = e.fields.remove(name)
+        if name in e.names { let _ = e.names.remove(name) }
+      }
+    }
     out.insert(k, e)
   }
   out
@@ -851,6 +899,10 @@
   e
 }
 
+// Biber materializes every component it parsed out of a `date` — and an EMPTY
+// field for each one that date leaves unknown, which is what keeps a crossref
+// parent's own year out of a child whose range starts open. A date string biber
+// cannot read leaves no trace at all, so such a child inherits everything.
 #let blx-fill-date-fields(e) = {
   let p = blx-date-parts(e)
   if not p.parsed { return e }
@@ -871,28 +923,72 @@
   e
 }
 
-#let blx-software-can-inherit(parent, child) = {
-  if parent == "software" { child in ("softwareversion", "softwaremodule", "codefragment") }
-  else if parent == "softwareversion" { child in ("softwaremodule", "codefragment") }
-  else if parent == "softwaremodule" { child == "codefragment" }
-  else { false }
+#let blx-inherit-skip = (
+  "ids", "crossref", "xref", "entryset", "entrysubtype", "execute", "label",
+  "options", "presort", "related", "relatedoptions", "relatedstring",
+  "relatedtype", "shorthand", "shorthandintro", "sortkey",
+  // biber splits a parsed date into its parts and inherits THOSE (a child's own
+  // `year` keeps the parent's year out while its month still arrives), so the
+  // date string itself never travels — `blx-fill-date-fields` has already put
+  // the parent's parts where this pass can find them.
+  "date",
+)
+#let blx-title-skip = ("shorttitle", "sorttitle", "indextitle", "indexsorttitle")
+#let blx-inherit-rules = (
+  (from: ("mvbook", "book"), to: ("inbook", "bookinbook", "suppbook"),
+   map: (("author", "author"), ("author", "bookauthor")), skip: ()),
+  (from: ("mvbook",), to: ("book", "inbook", "bookinbook", "suppbook"),
+   map: (("title", "maintitle"), ("subtitle", "mainsubtitle"),
+         ("titleaddon", "maintitleaddon")), skip: blx-title-skip),
+  (from: ("mvcollection", "mvreference"),
+   to: ("collection", "reference", "incollection", "inreference", "suppcollection"),
+   map: (("title", "maintitle"), ("subtitle", "mainsubtitle"),
+         ("titleaddon", "maintitleaddon")), skip: blx-title-skip),
+  (from: ("mvproceedings",), to: ("proceedings", "inproceedings"),
+   map: (("title", "maintitle"), ("subtitle", "mainsubtitle"),
+         ("titleaddon", "maintitleaddon")), skip: blx-title-skip),
+  (from: ("book",), to: ("inbook", "bookinbook", "suppbook"),
+   map: (("title", "booktitle"), ("subtitle", "booksubtitle"),
+         ("titleaddon", "booktitleaddon")), skip: blx-title-skip),
+  (from: ("collection", "reference"), to: ("incollection", "inreference", "suppcollection"),
+   map: (("title", "booktitle"), ("subtitle", "booksubtitle"),
+         ("titleaddon", "booktitleaddon")), skip: blx-title-skip),
+  (from: ("proceedings",), to: ("inproceedings",),
+   map: (("title", "booktitle"), ("subtitle", "booksubtitle"),
+         ("titleaddon", "booktitleaddon")), skip: blx-title-skip),
+  (from: ("periodical",), to: ("article", "suppperiodical"),
+   map: (("title", "journaltitle"), ("subtitle", "journalsubtitle"),
+         ("titleaddon", "journaltitleaddon")), skip: blx-title-skip),
+)
+#let blx-inherit-field(e, name, value) = {
+  if name in e.fields { return e }
+  e.fields.insert(name, value)
+  if name in blx-name-roles { e.names.insert(name, parse-names(value)) }
+  e
 }
-
-// software.dbx DeclareDataInheritance, resolved recursively so a codefragment
-// inherits through softwareversion to the top-level software project.
-#let blx-software-inherit-entry(db, key, seen: ()) = {
+// Resolved recursively, so a chain resolves from the top down and a codefragment
+// reaches the software project two crossrefs above it.
+#let blx-inherit-entry(db, key, seen: ()) = {
   let e = blx-fill-date-fields(blx-software-sourcemap-entry(db.at(key)))
-  if e.entry-type not in blx-software-types or not has(e, "crossref") { return e }
+  if not has(e, "crossref") { return e }
   let xr = fld(e, "crossref")
   if xr not in db or xr in seen { return e }
-  let parent = blx-software-inherit-entry(db, xr, seen: seen + (key,))
-  if not blx-software-can-inherit(parent.entry-type, e.entry-type) { return e }
-  for (fk, fv) in parent.fields {
-    if fk == "crossref" { continue }
-    if fk not in e.fields {
-      e.fields.insert(fk, fv)
-      if fk == "author" or fk == "editor" { e.names.insert(fk, parse-names(fv)) }
+  let parent = blx-inherit-entry(db, xr, seen: seen + (key,))
+  let processed = ()
+  for rule in blx-inherit-rules {
+    if parent.entry-type not in rule.from or e.entry-type not in rule.to { continue }
+    for (source, target) in rule.map {
+      if source not in parent.fields { continue }
+      processed.push(source)
+      e = blx-inherit-field(e, target, parent.fields.at(source))
     }
+    for source in rule.skip {
+      if source in parent.fields { processed.push(source) }
+    }
+  }
+  for (fk, fv) in parent.fields {
+    if fk in blx-inherit-skip or fk in processed { continue }
+    e = blx-inherit-field(e, fk, fv)
   }
   e
 }
@@ -901,14 +997,12 @@
   let mapped = blx-acm-sourcemap(db)
   let out = (:)
   for (k, e) in mapped {
-    let r = if e.entry-type in blx-software-types {
-      blx-software-inherit-entry(mapped, k)
-    } else {
-      blx-fill-date-fields(e)
-    }
+    let r = blx-inherit-entry(mapped, k)
     out.insert(k, r)
   }
   out
+}
+
 }
 
 #let blx-list-content(raw) = {
