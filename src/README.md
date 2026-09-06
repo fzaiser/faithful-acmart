@@ -28,6 +28,7 @@ for the architecture and the Typst-vs-LaTeX modeling decisions.
 | `parts/acmref-common.typ` | shared bibliography rendering primitives: TeX render state, rendered-value helpers, field/name helpers, date/year helpers |
 | `parts/acmref-bst.typ` | pure-Typst port of `ACM-Reference-Format.bst`: output state machine, per-entry handlers, crossref text, trailing DOI/URL/arXiv rendering, BST sort key |
 | `parts/acmref-biblatex.typ` | ACM BibLaTeX `acmnumeric`/`acmauthoryear` plus `biblatex-software` visible reference formatting and software data-model inheritance |
+| `parts/acmref-blxnames.typ` | BibLaTeX's `uniquename`/`uniquelist` cite-label name disambiguation (biber's alternating passes), and the label + extradate-context strings it produces |
 | `parts/acmref-cite.typ` | cite registration, BibTeX crossref resolution, BibLaTeX data-model preparation, numeric and author-year labels, and bibliography output |
 | `parts/bib-data.typ` | the `.bst`'s built-in journal MACRO table + `journal.canon.abbrev` map, used by the `bibtex` backend and checked exactly against the bundled `ACM-Reference-Format.bst` by `test.py source-data` |
 | `assets/` | bundled image assets, addressed root-absolute (`/src/assets/…`): `cc/` (Creative Commons licence badges). The acmcp cover logo is supplied by the user via `acmcp-logo:` (ACM's trademark, not bundled); `acm-jdslogo.png` remains for the acmcp twin only |

@@ -250,6 +250,21 @@ mistaken for faithfulness bugs.
   labels (`[SW]`, `[SW Rel.]`, `[SW Mod.]`, `[SW exc.]`), and HAL/URL/VCS/SWHID
   identifier blocks. The `biblatex-test` twin gates acmnumeric against biber with no
   exemption; the full samples exercise the software cite block against upstream.
+- **BibLaTeX cite-label name disambiguation**
+  ([`acmref-blxnames.typ`](src/parts/acmref-blxnames.typ)). `acmauthoryear.bbx` builds on
+  `authoryear-comp`, which turns on biber's `uniquename=full` and `uniquelist=true` and
+  caps citation name lists at `maxcitenames=2`. A label therefore shows as much of each
+  name, and as many names, as it takes to identify the entry: a name grows from its bare
+  family name to given initials to the whole given name, and a list is widened past the
+  truncation point one name at a time. Because each mechanism decides what the other sees,
+  biber alternates the two passes to a fixed point; the port reproduces that loop, and
+  what is left over — entries no name part can separate — takes biblatex's `extradate`
+  year letter, grouped the way biber's uniqueness-aware name hash groups it. The plain
+  name hash beside it — every part of every visible name, uniquename ignored — is what
+  `authoryear-comp` compresses consecutive cites on, so two entries whose labels coincide
+  but whose names do not still cite apart ("[King 2001a; King 2001b]"). Pinned end to end
+  by the `biblatex-uniquename` twin and, for the hashes a twin cannot read, by
+  `tests/unit/blxnames.typ`; every expectation in both came from real biber output.
 
 ### Implemented (each validated against real bibtex)
 - **Author-year mode** (`cite-style: "author-year"`, `\citestyle{acmauthoryear}`):
@@ -325,8 +340,10 @@ mistaken for faithfulness bugs.
   best-effort.
 - `/` inside `$…$` becomes a Typst fraction, not a literal slash (rare in refs).
 - `\left`/`\right` are dropped, so delimiters don't auto-size (the bare delimiter prints).
-- Accents render as combining sequences (`o`+◌̈), not precomposed — NFKC-fold
-  identically, so invisible (we just don't NFC-normalize).
+- Accents render as combining sequences (`o`+◌̈), not precomposed. Invisible in the
+  rendered text, which NFKC-folds identically — but NOT in a comparison, so every
+  key that decides identity (BibLaTeX name disambiguation, extradate contexts) is
+  composed first and the sort keys are decomposed first, matching biber either way.
 - `edition` is lowercased with `lower()`, not brace-aware `change.case$` (differs only
   for a braced edition).
 - Multi-token first-name tie placement may not match BibTeX exactly — inter-token

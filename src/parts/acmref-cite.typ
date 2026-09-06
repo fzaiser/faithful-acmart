@@ -5,6 +5,7 @@
 #import "acmref-common.typ": fld, has, is-others, von-last, year-value, it
 #import "acmref-bst.typ": handle, sort-key
 #import "acmref-biblatex.typ": blx-handle, blx-biber-datamodel, blx-sort-key
+#import "acmref-blxnames.typ": name-list, disambiguate, list-label, list-context, list-namehash, list-punct-initial
 #import "../formats/_base.typ": tp
 
 // ---- cite/number layer ----------------------------------------------------
@@ -75,20 +76,6 @@
 // resolved (db, order) for the current cited set, or `none` if no acmart
 // `#bibliography` ever registered a path (`bib-path-state` still `none`). Callers
 // turn that into an actionable error — see `with-prepared`.
-#let prepared() = {
-  let path = bib-path-state.final()
-  if path == none { return none }
-  let db = read-merged(path)
-  // Stamp each entry with its citation key (cite$) for the author.key.label
-  // last-ditch fallback — the first 3 chars of the key when there is no
-  // author/editor/organization/key field (bst:1968).
-  for (k, e) in db { db.insert(k, e + (cite-key: k)) }
-  let cited = cited-state.final()
-  let fmt = bib-format-state.final()
-  let res = if fmt == "biblatex" { resolve-biblatex(db, cited) } else { resolve-crossref(db, cited) }
-  res + (fmt: fmt)
-}
-
 // ---- author-year labels (format.lab.names + calc.basic.label dispatch) -----
 // short citation label: von+Last only, " and " for two, "et al." for >2 (or "and
 // others"). von-last is RAW; tex-to-string gives the plain label used for both
@@ -106,25 +93,8 @@
 #let format-lab-names-full(people) = {
   people.map(n => tex-to-string(von-last(n))).join(" and ")
 }
-#let format-blx-lab-names(people, full: false, count: none) = {
-  let last = people.map(n => if is-others(n) { "et al." } else { tex-to-string(von-last(n)) })
-  if last.len() == 0 { return "" }
-  // 1- or 2-name rendering, shared by the fully-spelled and default paths.
-  let short = if last.len() == 1 { last.first() }
-    else if last.at(1) == "et al." { last.first() + " et al." }
-    else { last.first() + " and " + last.at(1) }
-  if full or count != none and count >= last.len() {
-    if last.len() <= 2 { return short }
-    return last.slice(0, -1).join(", ") + ", and " + last.last()
-  }
-  if count != none {
-    if count <= 1 { return last.first() + " et al." }
-    return last.slice(0, count).join(", ") + ", et al."
-  }
-  if last.len() <= 2 { return short }
-  last.first() + " et al."
-}
 #let pick(arr) = { let r = arr.find(x => x != none); if r == none { "" } else { r } }
+// \DeclareLabeltitle (biblatex.def:1406): shorttitle, then title, then maintitle.
 #let label-title(e, quoted: false) = if has(e, "title") {
   let t = tex-to-string(fld(e, "title"))
   if quoted { "\u{201C}" + t + "\u{201D}" } else { t }
@@ -150,18 +120,15 @@
   else { pick((au, key, key3)) }
 }
 
-#let blx-lab-label(e, full: false) = {
-  let t = e.entry-type
-  let au = if has(e, "author") { format-blx-lab-names(e.names.author, full: full) }
-  let ed = if has(e, "editor") { format-blx-lab-names(e.names.editor, full: full) }
-  let org = if has(e, "organization") { tex-to-string(fld(e, "organization")) }
-  let title = label-title(e, quoted: t in ("article", "inproceedings", "conference", "presentation", "incollection"))
-  let key = if has(e, "key") { tex-to-string(fld(e, "key")) }
-  if t in ("book", "inbook", "article") { pick((au, ed, title, key)) }
-  else if t in ("proceedings", "periodical", "collection") { pick((ed, org, title, key)) }
-  else { pick((au, ed, org, title, key)) }
-}
+#let blx-lab-label(e, names, style) = pick((
+  names,
+  label-title(e, quoted: e.entry-type in
+    ("article", "inproceedings", "conference", "presentation", "incollection")),
+  if has(e, "key") { tex-to-string(fld(e, "key")) },
+))
 
+// \DeclareLabelname: the author list, or the editor list when there is none
+// (ACM's proceedings-like types label on the editor).
 #let blx-label-people(e) = {
   if e.entry-type in ("proceedings", "periodical", "collection") {
     if has(e, "editor") { e.names.editor } else { none }
@@ -170,43 +137,28 @@
   }
 }
 
-#let blx-label-title-italic(e) = {
-  (e.entry-type in (manual-like-types + ("book", "collection", "proceedings"))) and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
-}
-
-#let name-prefix-len(left, right) = {
-  let i = 0
-  while i < left.len() and i < right.len() and tex-to-string(von-last(left.at(i))) == tex-to-string(von-last(right.at(i))) {
-    i += 1
-  }
-  i
+#let blx-label-title-italic(e, style) = {
+  blx-label-people(e) == none and has(e, "title")
 }
 
 // \natexlab a/b/c suffixes: a..z over consecutive (label, year)-equal entries in
-// sorted order (forward.pass/reverse.pass); singletons get "". The bst backend
-// keys on bst-lab-label; biblatex on the fully-spelled disambiguation label.
-#let lab-dedup-key(fmt, e) = {
-  let label = if fmt == "biblatex" { blx-lab-label(e, full: true) } else { bst-lab-label(e) }
-  label + "\u{0}" + year-value(e).c
-}
+// sorted order (forward.pass/reverse.pass); singletons get "".
+#let lab-dedup-key(e) = bst-lab-label(e) + "\u{0}" + year-value(e).c
 // \natexlab a/b/c suffixes are assigned in BibTeX's PRESORT order (bst forward/
 // reverse pass run right after the presort SORT), where entries are grouped by
 // (citation label, year) so equal-label entries are always adjacent — unlike the
 // FINAL bib.sort.order (name/year/title), which can interleave a different-label
-// entry between two same-label ones and split the group. For the bst backend we
-// therefore regroup over the presort key (dedup label+year, then the final
-// name/title order for the a/b order within a group) before the passes. BibLaTeX
-// (biber) already groups same-label entries adjacently, so its order is kept.
-#let extra-labels(fmt, db, order) = {
-  if fmt != "biblatex" {
-    order = order.sorted(key: k => (lab-dedup-key(fmt, db.at(k)), sort-key(db.at(k))))
-  }
+// entry between two same-label ones and split the group. We therefore regroup
+// over the presort key (dedup label+year, then the final name/title order for
+// the a/b order within a group) before the passes.
+#let bst-extras(db, order) = {
+  order = order.sorted(key: k => (lab-dedup-key(db.at(k)), sort-key(db.at(k))))
   let res = (:)
   let i = 0
   while i < order.len() {
-    let k = lab-dedup-key(fmt, db.at(order.at(i)))
+    let k = lab-dedup-key(db.at(order.at(i)))
     let j = i
-    while j < order.len() and lab-dedup-key(fmt, db.at(order.at(j))) == k { j += 1 }
+    while j < order.len() and lab-dedup-key(db.at(order.at(j))) == k { j += 1 }
     let grp = order.slice(i, j)
     if grp.len() == 1 { res.insert(grp.at(0), "") }
     else { for (m, gk) in grp.enumerate() { res.insert(gk, str.from-unicode(97 + m)) } }
@@ -215,44 +167,114 @@
   res
 }
 
+// BibLaTeX's extradate: entries sharing a label context and a year are lettered
+// a, b, c… in reference-list order. Unlike the .bst passes above this is a plain
+// global count (biber's seen_nametitledateparts), so an intervening entry does
+// not split a group.
+#let blx-extras(db, order, contexts) = {
+  let group = k => contexts.at(k) + "\u{0}" + year-value(db.at(k)).c
+  let counts = (:)
+  for k in order { counts.insert(group(k), counts.at(group(k), default: 0) + 1) }
+  let seen = (:)
+  let res = (:)
+  for k in order {
+    let g = group(k)
+    if counts.at(g) == 1 { res.insert(k, ""); continue }
+    seen.insert(g, seen.at(g, default: 0) + 1)
+    res.insert(k, str.from-unicode(96 + seen.at(g)))
+  }
+  res
+}
+
+// Every BibLaTeX cite label plus the extradate letters, resolved in one pass over
+// the reference list: name disambiguation decides both what a label prints and
+// which labels still collide and so need a letter.
+// `style` decides two things biblatex ties to the citation style rather than the
+// entry: acmauthoryear rides authoryear-comp, which turns uniquename and
+// uniquelist on, while acmnumeric rides plain numeric and leaves both off; and
+// `useprefix`, which acmnumeric inherits as true from trad-standard.bbx:18, puts
+// the prefix into a bare family-name label ("van Beethoven", not "Beethoven").
+#let blx-labels(db, order, style) = {
+  let unique = style == "author-year"
+  let useprefix = not unique
+  let lists = order
+    .map(k => {
+      let people = blx-label-people(db.at(k))
+      if people != none { name-list(k, people) }
+    })
+    .filter(l => l != none)
+  let dis = (:)
+  for d in disambiguate(lists, unique: unique) { dis.insert(d.key, d) }
+  let by-key = (:)
+  for l in lists { by-key.insert(l.key, l) }
+
+  let labels = (:)
+  let contexts = (:)
+  let hashes = (:)
+  for k in order {
+    let e = db.at(k)
+    let named = k in dis
+    labels.insert(k, (
+      text: blx-lab-label(e, if named { list-label(by-key.at(k), dis.at(k), useprefix: useprefix) }, style),
+      italic: blx-label-title-italic(e, style),
+      named: named,
+    ))
+    // what authoryear-comp compresses consecutive cites on
+    hashes.insert(k, if named { list-namehash(by-key.at(k), dis.at(k)) } else { "\u{0}" + k })
+    // \DeclareExtradateContext is labelname, else labeltitle; an entry with
+    // neither is never lettered, so give it a context nothing can share.
+    contexts.insert(k, if named { "n\u{0}" + list-context(by-key.at(k), dis.at(k)) }
+      else if has(e, "title") { "t\u{0}" + str.normalize(tex-to-string(fld(e, "title")), form: "nfc") }
+      else { "k\u{0}" + k })
+  }
+  (labels: labels, hashes: hashes, extras: blx-extras(db, order, contexts))
+}
+
+#let bst-labels(db, order) = {
+  let res = (:)
+  for k in order { res.insert(k, (text: bst-lab-label(db.at(k)), italic: false)) }
+  res
+}
+
+// The whole resolved reference list for the current cited set — entries, their
+// sorted order, and every entry's cite label and year suffix — or `none` if no
+// acmart `#bibliography` ever registered a path (`bib-path-state` still `none`).
+// Callers turn that into an actionable error — see `with-prepared`.
+#let prepared() = {
+  let path = bib-path-state.final()
+  if path == none { return none }
+  let db = read-merged(path)
+  // Stamp each entry with its citation key (cite$) for the author.key.label
+  // last-ditch fallback — the first 3 chars of the key when there is no
+  // author/editor/organization/key field (bst:1968).
+  for (k, e) in db { db.insert(k, e + (cite-key: k)) }
+  let cited = cited-state.final()
+  let fmt = bib-format-state.final()
+  let style = cite-style-state.final()
+  let res = if fmt == "biblatex" { resolve-biblatex(db, cited) } else { resolve-crossref(db, cited) }
+  res + (fmt: fmt) + if fmt == "biblatex" { blx-labels(res.db, res.order, style) } else {
+    (labels: bst-labels(res.db, res.order), extras: bst-extras(res.db, res.order))
+  }
+}
+
 // cited keys reordered into reference-list (sorted) order
 #let cite-order(keys, order) = keys.filter(k => k in order).sorted(key: k => order.position(x => x == k))
 
-#let cite-label(fmt, k, db, order) = {
-  let e = db.at(k)
-  if fmt != "biblatex" { return bst-lab-label(e) }
-  let people = blx-label-people(e)
-  if people != none and people.len() > 2 {
-    let full = format-blx-lab-names(people, full: true)
-    let count = 1
-    for ok in order {
-      if ok == k { continue }
-      let other = blx-label-people(db.at(ok))
-      if other == none { continue }
-      if format-blx-lab-names(other, full: true) == full { continue }
-      let prefix = name-prefix-len(people, other)
-      if prefix > 0 and prefix + 1 > count { count = prefix + 1 }
-    }
-    if count > 1 {
-      if count > people.len() { count = people.len() }
-      return format-blx-lab-names(people, count: count)
-    }
-  }
-  let short = blx-lab-label(e)
-  let full = blx-lab-label(e, full: true)
-  let year = year-value(e).c
-  for ok in order {
-    if ok == k { continue }
-    let oe = db.at(ok)
-    if year-value(oe).c == year and blx-lab-label(oe) == short and blx-lab-label(oe, full: true) != full {
-      return full
-    }
-  }
-  short
-}
-#let cite-label-content(fmt, k, db, order) = {
-  let label = cite-label(fmt, k, db, order)
-  if fmt == "biblatex" and blx-label-title-italic(db.at(k)) { it(label) } else { label }
+// The year a cite prints. The BibLaTeX cite styles have no ACM `year` bibmacro:
+// an entry biber resolved to \literal{nodate} (biblatex.def:1391) shows the
+// `nodate` string (english.lbx:389) mid-sentence, and so uncapitalized, where
+// the .bst backend shows ACM's own "[n. d.]".
+#let cite-year(p, k) = year-value(p.db.at(k)).c
+#let cite-label(p, k) = p.labels.at(k).text
+// biblatex's \bibinitperiod is \adddot, and its punctuation tracker drops that
+// dot when punctuation already stands in front of it. An initial that is nothing
+// but a mark ("“.") never re-arms the tracker, so it keeps its period only where
+// nothing precedes it — first in a citation — and loses it behind the "; " an
+// earlier entry left. An initial with a letter in it re-arms the tracker and
+// keeps its period wherever it sits.
+#let cite-label-content(p, k) = {
+  let label = p.labels.at(k)
+  if label.italic { it(label.text) } else { label.text }
 }
 
 // ---- cite -> reference-list hyperlinks -------------------------------------
@@ -268,13 +290,15 @@
 // `mode`: "citep" ([Label Year; …], the default), "citet" (Label [Year]), or
 // "citealt" (Label Year — no brackets, natbib \citealt). `supplement` is natbib's
 // postnote, joined with notesep ", " inside the closing bracket (dtx:3272).
-#let cite-ay(fmt, keys, db, order, extras, mode: "citep", supplement: none) = {
-  let ks = cite-order(keys, order)
+#let cite-ay(p, keys, mode: "citep", supplement: none) = {
+  let ks = cite-order(keys, p.order)
   let lgroups = ()
   for k in ks {
-    let lbl = cite-label(fmt, k, db, order)
-    let shown = cite-label-content(fmt, k, db, order)
-    let yr = (base: year-value(db.at(k)).c, suf: extras.at(k, default: ""))
+    // natbib compresses on the printed label; authoryear-comp compresses on
+    // biber's namehash, which separates entries whose labels coincide.
+    let lbl = if "hashes" in p { p.hashes.at(k) } else { cite-label(p, k) }
+    let shown = cite-label-content(p, k)
+    let yr = (base: cite-year(p, k), suf: p.extras.at(k, default: ""))
     if lgroups.len() > 0 and lgroups.at(-1).label == lbl { lgroups.at(-1).years.push(yr) }
     else { lgroups.push((label: lbl, shown: shown, years: (yr,), key: k)) }
   }
@@ -287,17 +311,18 @@
     ybits.map(b => b.base + b.sufs.join(",")).join(", ")
   }
   // link each author group to its first entry (hyperref anchors the whole citation)
+  let years = g => render-years(g.years)
   let parts = lgroups.map(g => link(entry-label(g.key),
-    if mode == "citet" { g.shown + " [" + render-years(g.years) + "]" }
-    else { g.shown + " " + render-years(g.years) }))
+    if mode == "citet" { g.shown + " [" + years(g) + "]" }
+    else { g.shown + " " + years(g) }))
   let note = if supplement != none { [, #supplement] } else { [] }
   if mode == "citep" { "[" + parts.join("; ") + note + "]" } else { parts.join("; ") }
 }
 // natbib \citet/\citealt in NUMBERS mode: "Author et al. [N]" / "Author et al. N".
-#let numeric-textcite(fmt, ks, db, order, brackets: true) = {
-  cite-order(ks, order).map(k => {
-    let num = order.position(x => x == k) + 1
-    let label = cite-label-content(fmt, k, db, order)
+#let numeric-textcite(p, ks, brackets: true) = {
+  cite-order(ks, p.order).map(k => {
+    let num = p.order.position(x => x == k) + 1
+    let label = cite-label-content(p, k)
     link(entry-label(k), if brackets { [#label \[#num\]] } else { [#label #num] })
   }).join(", ")
 }
@@ -321,10 +346,10 @@
 // numeric \cite: each cited key -> its reference-list number; the .bst collapses
 // ranges while BibLaTeX lists them in command order. Every key is known here
 // (ensure-known ran first, so `position` never returns none).
-#let numeric-cite(fmt, ks, order, supplement: none) = {
-  let pairs = ks.map(k => (num: order.position(x => x == k) + 1, key: k))
-  let inner = if fmt == "biblatex" {
-    pairs.map(p => cite-num-link(p.num, p.key)).join(", ")
+#let numeric-cite(p, ks, supplement: none) = {
+  let pairs = ks.map(k => (num: p.order.position(x => x == k) + 1, key: k))
+  let inner = if p.fmt == "biblatex" {
+    pairs.map(pair => cite-num-link(pair.num, pair.key)).join(", ")
   } else {
     collapse-linked(pairs)
   }
@@ -379,9 +404,9 @@
   let supp = keys.named().at("supplement", default: none)
   with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
-      cite-ay(p.fmt, ks, p.db, p.order, extra-labels(p.fmt, p.db, p.order), supplement: supp)
+      cite-ay(p, ks, supplement: supp)
     } else {
-      numeric-cite(p.fmt, ks, p.order, supplement: supp)
+      numeric-cite(p, ks, supplement: supp)
     }
   })
 }
@@ -392,9 +417,9 @@
   let ks = keys.pos()
   with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
-      cite-ay(p.fmt, ks, p.db, p.order, extra-labels(p.fmt, p.db, p.order), mode: "citet")
+      cite-ay(p, ks, mode: "citet")
     } else {
-      numeric-textcite(p.fmt, ks, p.db, p.order)
+      numeric-textcite(p, ks)
     }
   })
 }
@@ -404,9 +429,9 @@
   let ks = keys.pos()
   with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
-      cite-ay(p.fmt, ks, p.db, p.order, extra-labels(p.fmt, p.db, p.order), mode: "citealt")
+      cite-ay(p, ks, mode: "citealt")
     } else {
-      numeric-textcite(p.fmt, ks, p.db, p.order, brackets: false)
+      numeric-textcite(p, ks, brackets: false)
     }
   })
 }
@@ -417,9 +442,9 @@
 #let bbl-citeyearpar(..keys) = {
   let ks = keys.pos()
   with-prepared(ks, p => {
-    let extras = if cite-style-state.get() == "author-year" { extra-labels(p.fmt, p.db, p.order) } else { (:) }
+    let extras = if cite-style-state.get() == "author-year" { p.extras } else { (:) }
     "[" + cite-order(ks, p.order).map(k =>
-      link(entry-label(k), year-value(p.db.at(k)).c + extras.at(k, default: ""))).join(", ") + "]"
+      link(entry-label(k), cite-year(p, k) + extras.at(k, default: ""))).join(", ") + "]"
   })
 }
 
@@ -432,14 +457,21 @@
 #let bbl-citeyear(..keys) = {
   let ks = keys.pos()
   with-prepared(ks, p => {
-    let extras = extra-labels(p.fmt, p.db, p.order)
-    cite-order(ks, p.order).map(k => year-value(p.db.at(k)).c + extras.at(k, default: "")).join(", ")
+    let extras = if cite-style-state.get() == "author-year" { p.extras } else { (:) }
+    cite-order(ks, p.order).map(k => cite-year(p, k) + extras.at(k, default: "")).join(", ")
   })
 }
 #let bbl-citeauthor(..keys) = {
   let ks = keys.pos()
   with-prepared(ks, p => {
-    cite-order(ks, p.order).map(k => link(entry-label(k), cite-label-content(p.fmt, k, p.db, p.order))).join("; ")
+    // \citeauthor prints `labelname` and nothing else, so under acmnumeric an
+    // entry with no name list prints nothing at all — where \textcite and \cite
+    // fall through to `cite:label` and show the title. acmauthoryear patches
+    // \citeauthor (acmauthoryear.cbx) and does show the title there.
+    let bare = p.fmt == "biblatex" and cite-style-state.get() != "author-year"
+    cite-order(ks, p.order)
+      .filter(k => not (bare and not p.labels.at(k).at("named", default: true)))
+      .map(k => link(entry-label(k), cite-label-content(p, k))).join("; ")
   })
 }
 
@@ -451,7 +483,7 @@
     let db = p.db
     let order = p.order
     let ay = cite-style-state.get() == "author-year"
-    let extras = if ay { extra-labels(format, db, order) } else { (:) }
+    let extras = if ay { p.extras } else { (:) }
     let num-of = (:)
     for (i, k) in order.enumerate() { num-of.insert(k, i + 1) }
     set text(size: size)
@@ -478,7 +510,7 @@
       let xref-cite = none
       let xr = e.fields.at("crossref", default: none)
       if xr != none and xr in num-of {
-        xref-cite = if ay { cite-ay(format, (xr,), db, order, extras, citet: true) } else { [[#cite-num-link(num-of.at(xr), xr)]] }
+        xref-cite = if ay { cite-ay(p, (xr,), mode: "citet") } else { [[#cite-num-link(num-of.at(xr), xr)]] }
       }
       let body = if format == "biblatex" {
         blx-handle(e, style: cite-style-state.get(), year-suffix: extras.at(key, default: ""))
