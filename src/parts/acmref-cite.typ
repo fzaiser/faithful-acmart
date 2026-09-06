@@ -111,9 +111,6 @@
   (db: db2, order: listed.sorted(key: k => blx-sort-key(db2.at(k), lens: lens, useprefix: useprefix)))
 }
 
-// resolved (db, order) for the current cited set, or `none` if no acmart
-// `#bibliography` ever registered a path (`bib-path-state` still `none`). Callers
-// turn that into an actionable error — see `with-prepared`.
 // ---- author-year labels (format.lab.names + calc.basic.label dispatch) -----
 // short citation label: von+Last only, " and " for two, "et al." for >2 (or "and
 // others"). von-last is RAW; tex-to-string gives the plain label used for both
@@ -336,10 +333,6 @@
 // cited keys reordered into reference-list (sorted) order
 #let cite-order(keys, order) = keys.filter(k => k in order).sorted(key: k => order.position(x => x == k))
 
-// The year a cite prints. The BibLaTeX cite styles have no ACM `year` bibmacro:
-// an entry biber resolved to \literal{nodate} (biblatex.def:1391) shows the
-// `nodate` string (english.lbx:389) mid-sentence, and so uncapitalized, where
-// the .bst backend shows ACM's own "[n. d.]".
 // The year a cite prints. The BibLaTeX cite styles have no ACM `year` bibmacro:
 // an entry biber resolved to \literal{nodate} (biblatex.def:1391) shows the
 // `nodate` string (english.lbx:389) mid-sentence, and so uncapitalized, where

@@ -60,15 +60,18 @@
 
 // ---- names ----------------------------------------------------------------
 #let is-others(n) = n.last == "others" and n.first == "" and n.von == "" and n.jr == ""
-#let one-name(n) = (n.first, n.von, n.last).filter(p => p != "").join(" ") + (
-  if n.jr != "" { ", " + n.jr } else { "" })
+// BibTeX's format.names writes the name suffix after a comma ("{ff }{vv }{ll}{, jj}");
+// biblatex's name:given-family (biblatex.def:1068) separates it with a plain
+// \bibnamedelimd space, so the two backends pass different `suffix-comma`.
+#let one-name(n, suffix-comma: true) = (n.first, n.von, n.last).filter(p => p != "").join(" ") + (
+  if n.jr != "" { (if suffix-comma { ", " } else { " " }) + n.jr } else { "" })
 
 // format.names: list authors/editors in "First von Last, Jr" order
-#let join-names(people) = {
+#let join-names(people, suffix-comma: true) = {
   let n = people.len()
   let out = ""
   for (i, person) in people.enumerate() {
-    let nm = if is-others(person) { "et al." } else { one-name(person) }
+    let nm = if is-others(person) { "et al." } else { one-name(person, suffix-comma: suffix-comma) }
     if i == 0 { out = nm }
     else if i < n - 1 { out = out + ", " + nm }
     else {

@@ -3,6 +3,8 @@
 #import "bibtex.typ": parse-names
 #import "scan.typ": match-brace, split-list-and, remove-outer
 #import "tex.typ": foreign-purify, decode-chars, _special-letters as special-letters
+#import "tex.typ": _accent-cs as accent-symbols, _cs-literal as visible-symbols
+#import "tex.typ": _noop-cw as noop-words
 #import "acmref-common.typ": render, blx-ends-punct, blx-visible-tail, it, fld, has, articleno-of, is-others, join-names, dashify
 // A value's "already punctuated" flag is biblatex's own, and it reads through a
 // closing bracket or quote to the stop behind it: a note of "(see below.)" ends
@@ -21,51 +23,188 @@
 // below are named after the source macros/drivers where practical, but they emit
 // Typst content directly and share the parser, TeX renderer, sort/cite state, and
 // hyperlink machinery with the ACM-Reference-Format.bst port above.
-#let blx-has-cased(s) = s.codepoints().any(c => lower(c) != upper(c))
-
-// BibLaTeX numeric inherits a sentence-casing title formatter. Keep TeX control
-// words and protected brace groups intact so presentation commands/logos survive.
+// maxbibnames is 9 under both ACM styles and minbibnames is the biblatex default
+// 1, so a reference-list name list longer than nine shows its first name and
+// "et al." (Biber.pm:2924). An explicit "and others" is not one of the counted
+// names, so a list of nine plus "and others" still prints all nine.
+#let blx-maxbibnames = 9
+#let blx-minbibnames = 1
+#let blx-join-names(people) = {
+  let real = people.filter(n => not is-others(n))
+  let shown = if real.len() > blx-maxbibnames {
+    real.slice(0, blx-minbibnames) + ((first: "", von: "", last: "others", jr: ""),)
+  } else { people }
+  join-names(shown, suffix-comma: false)
+}
+// \MakeSentenceCase* (blx-case-*.sty), which trad-standard.bbx:92 applies to
+// every title it does not preserve: the FIRST character of the field is
+// uppercased and every other letter is lowercased. "First character" is literal —
+// a digit, a bracket or a quote takes that slot and nothing is uppercased at all
+// ("3D rendering" -> "3d rendering"), and a sentence-ending period does not start
+// a new one. A brace group is protected and passes through untouched, taking the
+// slot with it; an accent command does not, so the letter it accents is cased.
+// The letter-named accent commands. Like the symbol ones, they are not a
+// character themselves: the letter behind them is what gets cased.
+#let blx-accent-words = ("b", "c", "d", "H", "k", "r", "t", "u", "v")
+// The letter-named commands that ARE a character, in the form each slot needs:
+// uppercased as the first character of a title, lowercased anywhere else. "\ss"
+// has no single uppercase — biblatex writes "SS" and the rest-rule then lowers
+// the second letter — and dotless "\j" has no uppercase at all.
+#let blx-case-macros = (
+  ae: ("\\AE", "\\ae"), AE: ("\\AE", "\\ae"),
+  oe: ("\\OE", "\\oe"), OE: ("\\OE", "\\oe"),
+  o: ("\\O", "\\o"), O: ("\\O", "\\o"),
+  aa: ("\\AA", "\\aa"), AA: ("\\AA", "\\aa"),
+  l: ("\\L", "\\l"), L: ("\\L", "\\l"),
+  ss: ("Ss", "\\ss"),
+  i: ("I", "\\i"),
+  j: ("\\j", "\\j"),
+)
 #let blx-sentence-case(raw) = {
   let cp = raw.codepoints()
+  let n = cp.len()
+  let letter = c => (c >= "A" and c <= "Z") or (c >= "a" and c <= "z")
+  // a backslash followed by one of the seven accent symbols, or by an accent
+  // command's name. Every OTHER control symbol — "\\&", "\\%" — is a character
+  // of its own, so it fills the first-character slot instead of passing it on.
+  let accent-at = j => j + 1 < n and cp.at(j) == "\\" and (
+    cp.at(j + 1) in accent-symbols or {
+      let k = j + 1
+      while k < n and letter(cp.at(k)) { k += 1 }
+      cp.slice(j + 1, k).join("") in blx-accent-words
+    })
   let out = ""
   let first = true
+  let after-accent = false
   let i = 0
-  while i < cp.len() {
+  while i < n {
     let c = cp.at(i)
     if c == "\\" {
+      let at = i + 1
+      let k = at
+      while k < n and letter(cp.at(k)) { k += 1 }
+      if k > at {
+        let name = cp.slice(at, k).join("")
+        if name in blx-accent-words {
+          // an accent spelled as a word: the letter behind it takes the slot
+          out += "\\" + name
+          after-accent = true
+        } else if name in blx-case-macros {
+          // a character of its own, so it takes the slot AND is cased. Its
+          // delimiter whitespace belongs to the command, so it goes with it —
+          // and a replacement that is itself a control word needs "{}" put back
+          // in the delimiter's place ("\\ae sop" -> "\\AE{}sop", not "\\AE sop",
+          // which would keep the space as text once the command name changed).
+          let form = blx-case-macros.at(name).at(if first { 0 } else { 1 })
+          out += form
+          let ws = k
+          while k < n and cp.at(k) in (" ", "\t", "\n", "\r") { k += 1 }
+          if k > ws and form.starts-with("\\") { out += "{}" }
+          first = false
+          after-accent = false
+        } else {
+          // …and a command that prints nothing at all leaves the slot alone
+          out += "\\" + name
+          if name not in noop-words { first = false }
+          after-accent = false
+        }
+        i = k
+      } else {
+        // only a control symbol that IS a visible character takes the slot. An
+        // accent passes it to the letter behind it, and one that prints nothing
+        // or a space ("\ ", "\,", "\/", "\-") passes it on like whitespace.
+        let sym = if at < n { cp.at(at) } else { "" }
+        out += c + sym
+        i = if at < n { at + 1 } else { at }
+        after-accent = sym in accent-symbols
+        if sym in visible-symbols { first = false }
+      }
+    } else if after-accent and c in (" ", "\t", "\n", "\r") {
+      // TeX scans past the whitespace that delimits an accent command from its
+      // argument, so the letter behind it is still the character being cased.
       out += c
       i += 1
-      let start = i
-      while i < cp.len() and ((cp.at(i) >= "A" and cp.at(i) <= "Z") or (cp.at(i) >= "a" and cp.at(i) <= "z")) {
-        out += cp.at(i)
-        i += 1
-      }
-      if i == start and i < cp.len() { out += cp.at(i); i += 1 }
+    } else if c == "{" and (after-accent or accent-at(i + 1)) {
+      // the braces around an accent, or around its argument, are transparent —
+      // biblatex cases the accented letter either way
+      out += c
+      i += 1
+      after-accent = false
     } else if c == "{" {
       let j = match-brace(cp, i)
-      let g = cp.slice(i, calc.min(j + 1, cp.len())).join("")
-      out += g
-      if first and blx-has-cased(g) { first = false }
+      out += cp.slice(i, calc.min(j + 1, n)).join("")
+      first = false
+      after-accent = false
       i = j + 1
-    } else if c in (".", "!", "?") {
-      out += c
-      if i + 1 < cp.len() and cp.at(i + 1) == " " { first = true }
-      i += 1
     } else if lower(c) != upper(c) {
       out += if first { upper(c) } else { lower(c) }
       first = false
+      after-accent = false
       i += 1
     } else {
+      // whitespace is not a character to be cased, so it never takes the slot
       out += c
+      if c not in (" ", "\t", "\n", "\r") { first = false }
+      after-accent = false
       i += 1
     }
   }
   out
 }
 
+// A biblatex list field prints with the list's own punctuation: two items joined
+// by "and", more by commas with a final "and" (the patent driver's parenthesized
+// country list is the exception, and joins with bare commas).
+#let blx-list-join(parts) = {
+  if parts.len() == 0 { return [] }
+  let out = []
+  for (i, p) in parts.enumerate() {
+    if i > 0 {
+      if parts.len() == 2 { out += " and " }
+      else if i == parts.len() - 1 { out += ", and " }
+      else { out += ", " }
+    }
+    out += p
+  }
+  out
+}
+#let blx-list-content(raw) = blx-list-join(
+  split-list-and(raw, trim: true, filter-empty: true).map(render))
+// biblatex.def:641 prints each language item through the localization string
+// `lang<identifier>` (english.lbx:472); an identifier with no string of its own
+// prints literally, in the case it was given.
+#let blx-language-strings = (
+  american: "American", basque: "Basque", brazilian: "Brazilian",
+  bulgarian: "Bulgarian", catalan: "Catalan", croatian: "Croatian", czech: "Czech",
+  danish: "Danish", dutch: "Dutch", english: "English", estonian: "Estonian",
+  finnish: "Finnish", french: "French", galician: "Galician", german: "German",
+  greek: "Greek", hungarian: "Hungarian", italian: "Italian", japanese: "Japanese",
+  latin: "Latin", latvian: "Latvian", lithuanian: "Lithuanian", marathi: "Marathi",
+  norwegian: "Norwegian", polish: "Polish", portuguese: "Portuguese",
+  romanian: "Romanian", russian: "Russian", serbian: "Serbian", slovak: "Slovak",
+  slovene: "Slovene", spanish: "Spanish", swedish: "Swedish", turkish: "Turkish",
+  ukrainian: "Ukrainian",
+)
+#let blx-language-items(raw) = {
+  let parts = split-list-and(raw, trim: true, filter-empty: true)
+  parts.map(v => if v in blx-language-strings { blx-language-strings.at(v) } else { v })
+}
+#let blx-language-value(raw) = {
+  let parts = blx-language-items(raw)
+  (c: blx-list-join(parts.map(render)), p: parts.len() > 0 and blx-ends-punct(parts.last()))
+}
+// The punctuation buffer sees the last item printed, not the whole field.
+#let blx-list-last(raw) = {
+  let parts = split-list-and(raw, trim: true, filter-empty: true)
+  if parts.len() == 0 { raw } else { parts.last() }
+}
+#let blx-list-value(raw) = {
+  let parts = split-list-and(raw, trim: true, filter-empty: true)
+  (c: blx-list-content(raw), p: parts.len() > 0 and blx-ends-punct(parts.last()))
+}
 #let blx-list-field(e, ..names) = {
   for name in names.pos() {
-    if has(e, name) { return V(fld(e, name)) }
+    if has(e, name) { return blx-list-value(fld(e, name)) }
   }
   none
 }
@@ -271,49 +410,6 @@
 #let blx-printdate(e) = blx-render-date(blx-date-parts(e))
 // The label year a cite prints: the two ends collapse when they share it, and an
 // open end keeps its dash ("[Open 2025-]", "[Year 2020-2022]").
-#let blx-print-full-date(e) = {
-  let p = blx-date-parts(e)
-  if p.year == none { return "[n. d.]" }
-  if p.month == none { return p.year }
-  let c = blx-month(p.month)
-  if p.day != none {
-    let day = p.day.trim(regex("^0+"))
-    c += " " + if day == "" { "0" } else { day } + ","
-  }
-  c + " " + p.year
-}
-#let blx-date(e, full: false, suffix: "") = {
-  // ACM's bundled author-year style prints month+year in ordinary label dates;
-  // a day appears only in drivers that explicitly use BibLaTeX's full date
-  // macro (notably patents).
-  (c: blx-printdate(e) + suffix, p: false)
-}
-#let blx-date-if-month(e) = {
-  let p = blx-date-parts(e)
-  if p.month != none and p.year != none { (c: "(" + blx-printdate(e) + ")", p: false) } else { none }
-}
-#let blx-date-parens(e) = {
-  let p = blx-date-parts(e)
-  if p.year != none { (c: "(" + blx-printdate(e) + ")", p: false) } else { none }
-}
-#let blx-eprint-date(e) = {
-  if not has(e, "eprint") { return blx-date-if-month(e) }
-  let p = blx-date-parts(e)
-  if p.year != none { (c: "(" + blx-printdate(e) + ")", p: false) } else { none }
-}
-
-#let blx-title-raw(e) = {
-  if not has(e, "title") { return none }
-  let raw = fld(e, "title")
-  if has(e, "subtitle") { raw += ". " + fld(e, "subtitle") }
-  raw
-}
-#let blx-title(e, style: "numeric", sentence: true) = {
-  let raw = blx-title-raw(e)
-  if raw == none { return none }
-  let shown = if style == "numeric" and sentence { blx-sentence-case(raw) } else { raw }
-  (c: render(shown), p: blx-ends-punct(shown))
-}
 #let blx-label-year(e) = {
   let p = blx-date-parts(e)
   let y = blx-year-label(p.year)
@@ -361,22 +457,83 @@
 
 // The punctuation buffer counts a comma, semicolon or colon as punctuation just
 // as it counts a stop: a unit ending in one takes no separator of its own.
+#let blx-punctuated(raw) = {
+  let t = blx-visible-tail(raw)
+  t != "" and t.last() in (".", "!", "?", ":", ";", ",")
+}
 #let blx-booktitle(e, with-in: false, style: "numeric") = {
-  if not has(e, "booktitle") { return none }
-  let c = it(render(fld(e, "booktitle")))
-  if has(e, "booksubtitle") { c += ". " + render(fld(e, "booksubtitle")) }
-  if has(e, "series") { c += " (" + render(fld(e, "series")) + ")" }
-  if has(e, "number") { c += " " + render(fld(e, "number")) }
-  if articleno-of(e) != none { c += " Article " + articleno-of(e) }
+  // \usebibmacro{in:} is printed by the driver, not by the booktitle: an
+  // entry with no booktitle still opens its container block with it.
   let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
-  (c: pre + c, p: false)
+  // With nothing behind it the macro's own colon (or its bare "In") is the last
+  // punctuation of the block — no separator period follows it, and the space that
+  // would have led into the title belongs to the block break instead.
+  let has-book = has(e, "booktitle") or has(e, "booksubtitle") or has(e, "booktitleaddon")
+  if not has-book {
+    if not with-in { return none }
+    return (c: if style == "author-year" { [In:] } else { [In] }, p: true, ends-colon: true)
+  }
+  // \mkbibemph wraps the container title AND its subtitle, with the same unit
+  // between them the entry title uses; the addon sits outside the emphasis.
+  let inner = ""
+  if has(e, "booktitle") { inner = fld(e, "booktitle") }
+  if has(e, "booksubtitle") {
+    if inner != "" { inner += if blx-punctuated(inner) { " " } else { ". " } }
+    inner += fld(e, "booksubtitle")
+  }
+  let c = if inner == "" { [] } else { it(render(inner)) }
+  // \printfield{booktitleaddon} follows with no unit between it and the title —
+  // the ACM styles leave the separator out, so the two run together.
+  let last = inner
+  if has(e, "booktitleaddon") {
+    c += render(fld(e, "booktitleaddon"))
+    last = fld(e, "booktitleaddon")
+  }
+  if has(e, "series") {
+    c += " (" + render(fld(e, "series")) + ")"
+    last = "(" + fld(e, "series") + ")"
+  }
+  if has(e, "number") {
+    c += " " + render(fld(e, "number"))
+    last = fld(e, "number")
+  }
+  if articleno-of(e) != none {
+    c += " Article " + articleno-of(e)
+    last = articleno-of(e)
+  }
+  // the container title keeps its own terminal punctuation, and \DeclareFieldFormat
+  // {booktitle} (biblatex.def:564) adds no \isdot, so that stop is a sentence one
+  (c: pre + c, p: blx-punctuated(last), sentence-punct: true)
 }
 #let blx-booktitle-simple(e, with-in: false, style: "numeric") = {
-  if not has(e, "booktitle") { return none }
-  let c = it(render(fld(e, "booktitle")))
-  if has(e, "booksubtitle") { c += ". " + render(fld(e, "booksubtitle")) }
+  // \usebibmacro{in:} is printed by the driver, not by the booktitle: an
+  // entry with no booktitle still opens its container block with it.
   let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
-  (c: pre + c, p: false)
+  // With nothing behind it the macro's own colon (or its bare "In") is the last
+  // punctuation of the block — no separator period follows it, and the space that
+  // would have led into the title belongs to the block break instead.
+  let has-book = has(e, "booktitle") or has(e, "booksubtitle") or has(e, "booktitleaddon")
+  if not has-book {
+    if not with-in { return none }
+    return (c: if style == "author-year" { [In:] } else { [In] }, p: true, ends-colon: true)
+  }
+  // \mkbibemph wraps the container title AND its subtitle, with the same unit
+  // between them the entry title uses; the addon sits outside the emphasis.
+  let inner = ""
+  if has(e, "booktitle") { inner = fld(e, "booktitle") }
+  if has(e, "booksubtitle") {
+    if inner != "" { inner += if blx-punctuated(inner) { " " } else { ". " } }
+    inner += fld(e, "booksubtitle")
+  }
+  let c = if inner == "" { [] } else { it(render(inner)) }
+  // \printfield{booktitleaddon} follows with no unit between it and the title —
+  // the ACM styles leave the separator out, so the two run together.
+  let last = inner
+  if has(e, "booktitleaddon") {
+    c += render(fld(e, "booktitleaddon"))
+    last = fld(e, "booktitleaddon")
+  }
+  (c: pre + c, p: blx-punctuated(last), sentence-punct: true)
 }
 #let blx-title-format(e, style: "numeric") = {
   let t = e.entry-type
@@ -398,23 +555,43 @@
     } else { "plain" }
   }
 }
+// trad-standard.bbx:78 \MakeTitleCase leaves these entry types' titles alone.
 #let blx-numeric-preserve-titlecase-types = (
-  "book", "collection", "manual", "periodical", "proceedings", "report",
+  "book", "mvbook", "bookinbook", "booklet", "suppbook", "collection",
+  "mvcollection", "suppcollection", "manual", "periodical", "suppperiodical",
+  "proceedings", "mvproceedings", "reference", "mvreference", "report",
   "techreport", "thesis", "mastersthesis", "phdthesis",
 )
-#let blx-title-field(e, style: "numeric", format: auto, sentence: auto) = {
-  let raw = blx-title-raw(e)
-  if raw == none { return none }
+#let blx-title-field(e, style: "numeric", format: auto, sentence: auto, omit-title: false) = {
+  // `omit-title` is authoryear.bbx's \clearfield{title}: a lead that already
+  // printed the title leaves the rest of the family to this stage.
+  let use-title = has(e, "title") and not omit-title
+  if not use-title and not has(e, "subtitle") and not has(e, "titleaddon") { return none }
   let sentence = if sentence == auto {
     // trad-standard.bbx MakeTitleCase sentence-cases article/chapter/paper-like
     // titles in numeric style. Whole-volume/report/thesis titles preserve the
     // supplied case; authoryear-comp/standard keeps supplied title case too.
     style == "numeric" and e.entry-type not in blx-numeric-preserve-titlecase-types
   } else { sentence }
-  let shown = if sentence { blx-sentence-case(raw) } else { raw }
+  // the `title` bibmacro casts title and subtitle through `titlecase`
+  // SEPARATELY before joining them with \subtitlepunct, so the subtitle gets a
+  // capital of its own.
+  let cased = t => if sentence { blx-sentence-case(t) } else { t }
+  // each component of the family stands on its own: an entry with a subtitle or
+  // an addon and no title prints what it has.
+  // \subtitlepunct is a unit like any other: a title that ends in punctuation of
+  // its own — a colon — takes a space where another takes a period.
+  let comps = ()
+  if use-title { comps.push(cased(fld(e, "title"))) }
+  if has(e, "subtitle") { comps.push(cased(fld(e, "subtitle"))) }
+  let shown = ""
+  for (i, comp) in comps.enumerate() {
+    if i > 0 { shown += if blx-punctuated(comps.at(i - 1)) { " " } else { ". " } }
+    shown += comp
+  }
   let fmt = if format == auto { blx-title-format(e, style: style) } else { format }
-  let p = blx-ends-punct(shown)
-  if fmt == "quoted" {
+  let p = blx-punctuated(shown)
+  let out = if shown == "" { (c: [], p: false) } else if fmt == "quoted" {
     let inner = render(shown) + if p { [] } else { [.] }
     (c: "\u{201C}" + inner + "\u{201D}", p: true)
   } else if fmt == "emph" {
@@ -422,6 +599,13 @@
   } else {
     (c: render(shown), p: p)
   }
+  // \printfield{titleaddon} is a unit of the `title` bibmacro itself, so it
+  // travels with the title wherever a driver prints one.
+  if not has(e, "titleaddon") { return out }
+  let addon = fld(e, "titleaddon")
+  if shown == "" { return (c: render(addon), p: blx-punctuated(addon)) }
+  let joined = if out.p or blx-punctuated(shown) { " " } else { ". " }
+  (c: out.c + joined + render(addon), p: blx-punctuated(addon))
 }
 #let blx-ordinal-edition(n) = {
   let suf = if n.ends-with("11") or n.ends-with("12") or n.ends-with("13") { "th" }
@@ -436,6 +620,43 @@
   if ed.match(regex("^\d+$")) != none { (c: "(" + blx-ordinal-edition(ed) + " ed.)", p: false) }
   else { (c: "(" + render(ed) + " ed.)", p: false) }
 } else { none }
+// \DeclareFieldFormat{type} (biblatex.def:586) resolves a `type` field that
+// names a localization string to that string. These are every string english.lbx
+// puts in the type position — the four theses (:419), the two reports (:423), the
+// three media (:425) and the twelve patent and patent-request ones (:548) — in
+// their abbreviated forms, since both ACM styles set abbreviate=true. ACM
+// redefines two of the theses (acmnumeric.bbx:13/14) and biblatex-software takes
+// `software` over. Every driver prints the field at a sentence start, so the
+// punctuation tracker capitalizes whatever comes back.
+#let blx-type-strings = (
+  bathesis: "BA thesis",
+  mathesis: "Master\u{2019}s thesis",
+  phdthesis: "Ph.D. Dissertation",
+  candthesis: "Cand. thesis",
+  resreport: "research rep.",
+  techreport: "tech. rep.",
+  software: "[SW]",
+  datacd: "CD-ROM",
+  audiocd: "audio CD",
+  patent: "pat.",
+  patentde: "German pat.",
+  patenteu: "European pat.",
+  patentfr: "French pat.",
+  patentuk: "British pat.",
+  patentus: "U.S. pat.",
+  patreq: "pat. req.",
+  patreqde: "German pat. req.",
+  patreqeu: "European pat. req.",
+  patreqfr: "French pat. req.",
+  patrequk: "British pat. req.",
+  patrequs: "U.S. pat. req.",
+)
+#let blx-type(e) = if has(e, "type") {
+  let raw = fld(e, "type")
+  let s = blx-type-strings.at(lower(raw.trim()), default: none)
+  if s == none { V(raw) }
+  else { (c: upper(s.first()) + s.slice(1), p: blx-ends-punct(s)) }
+} else { none }
 #let blx-pages(e) = {
   if has(e, "pages") { (c: dashify(fld(e, "pages")), p: false) }
   else if has(e, "numpages") { (c: fld(e, "numpages") + " pages", p: false) }
@@ -448,12 +669,16 @@
   else if ch != none { (c: "Chap. " + ch, p: false) }
   else { pg }
 }
-#let blx-series-number(e, style: "numeric") = {
+#let blx-series-number(e, style: "numeric", lower-strings: false, emph-cond: false) = {
   if not has(e, "series") and not has(e, "number") { return none }
   let series = if has(e, "series") {
     // trad-standard.bbx emphasizes series for book/inproceedings/proceedings
     // but not inbook/incollection; standard.bbx leaves it plain.
-    if style == "numeric" and e.entry-type in ("book", "inproceedings", "conference", "proceedings") {
+    // series+number:emphcond (trad-standard.bbx:703) emphasizes the series only
+    // where a VOLUME stands with it; on its own the series prints [noformat].
+    let emph-types = ("book", "inproceedings", "conference", "proceedings")
+    let emphasized = style == "numeric" and e.entry-type in emph-types and (not emph-cond or has(e, "volume"))
+    if emphasized {
       it(render(fld(e, "series")))
     } else {
       render(fld(e, "series"))
@@ -461,12 +686,20 @@
   } else { none }
   if style == "numeric" {
     // trad-standard.bbx \series+number: \printfield{number} "in"
-    // \printfield{series}; ACM's number field format is bare for the custom
-    // inproceedings macro, but incollection/book use the inherited "Number N".
+    // \printfield{series}. The "Number N" number format is declared for
+    // book/incollection/inproceedings/proceedings only (trad-standard.bbx:65);
+    // every other entry type falls through to ACM's bare format
+    // (acmnumeric.bbx:29), which is declared later and so wins.
+    let num = if has(e, "number") {
+      let n = render(fld(e, "number"))
+      if e.entry-type in ("book", "incollection", "inproceedings", "conference", "proceedings") {
+        (if lower-strings { "number " } else { "Number " }) + n
+      } else { n }
+    }
     if has(e, "series") and has(e, "number") {
-      (c: "Number " + render(fld(e, "number")) + " in " + series, p: false)
+      (c: num + " in " + series, p: blx-punctuated(fld(e, "series")))
     } else if has(e, "number") {
-      (c: "Number " + render(fld(e, "number")), p: false)
+      (c: num, p: blx-punctuated(fld(e, "number")))
     } else {
       (c: series, p: blx-ends-punct(fld(e, "series")))
     }
@@ -474,34 +707,62 @@
     // standard.bbx \series+number: \printfield{series} [space]
     // \printfield{number}.
     let c = []
-    if has(e, "series") { c += series }
+    let last = ""
+    if has(e, "series") { c += series; last = fld(e, "series") }
     if has(e, "number") {
       if c != [] { c += " " }
       c += render(fld(e, "number"))
+      last = fld(e, "number")
     }
-    (c: c, p: false)
+    (c: c, p: blx-ends-punct(last))
   }
 }
 #let blx-volumes(e) = if has(e, "volumes") {
-  (c: render(fld(e, "volumes")) + " volumes", p: false)
+  (c: render(fld(e, "volumes")) + " vols.", p: true)
 } else { none }
 #let blx-bookauthor(e) = if has(e, "bookauthor") and fld(e, "bookauthor") != fld(e, "author", d: "\u{0}") {
-  if "bookauthor" in e.names { (c: render(join-names(e.names.bookauthor)), p: false) }
+  if "bookauthor" in e.names {
+    let raw = blx-join-names(e.names.bookauthor)
+    (c: render(raw), p: blx-ends-punct(raw))
+  }
   else { V(fld(e, "bookauthor")) }
 } else { none }
 #let blx-publisher-location-date(e) = {
   let parts = ()
-  if has(e, "publisher") { parts.push(render(fld(e, "publisher"))) }
-  if has(e, "location") { parts.push(render(fld(e, "location"))) }
-  else if has(e, "address") { parts.push(render(fld(e, "address"))) }
-  if has(e, "month") { parts.push("(" + blx-printdate(e) + ")") }
+  if has(e, "publisher") { parts.push(blx-list-content(fld(e, "publisher"))) }
+  if has(e, "location") { parts.push(blx-list-content(fld(e, "location"))) }
+  let d = blx-date-ifmonth(e)
+  if d != none { parts.push(d.c) }
   let raw = ()
-  if has(e, "publisher") { raw.push(fld(e, "publisher")) }
-  if has(e, "location") { raw.push(fld(e, "location")) }
-  else if has(e, "address") { raw.push(fld(e, "address")) }
-  if has(e, "month") { raw.push("(" + blx-printdate(e) + ")") }
+  if has(e, "publisher") { raw.push(blx-list-last(fld(e, "publisher"))) }
+  if has(e, "location") { raw.push(blx-list-last(fld(e, "location"))) }
+  if d != none { raw.push(d.c) }
   if parts.len() == 0 { none } else { (c: parts.join(", "), p: blx-ends-punct(raw.join(", "))) }
 }
+// standard.bbx:871 \organization+location+date — the misc driver's tail. The
+// location leads, a colon (not a comma) introduces the organization, and the
+// `date` macro closes it, so a misc entry always shows a parenthesized date.
+#let blx-organization-location-date(e) = {
+  let loc = if has(e, "location") { fld(e, "location") }
+  let c = []
+  if loc != none { c += blx-list-content(loc) }
+  if has(e, "organization") {
+    if c != [] { c += ": " }
+    c += blx-list-content(fld(e, "organization"))
+  }
+  if c != [] { c += ", " }
+  (c: c + blx-date-macro(e).c, p: false)
+}
+// The pages as their own unit: with no chapter ahead of them, \bibpagespunct
+// overrides whatever break the driver left pending (see `blx-blocks`).
+#let blx-pages-unit(e) = {
+  let pg = blx-chapter-pages(e)
+  if pg == none { return () }
+  if has(e, "chapter") { return (pg,) }
+  ((c: pg.c, p: pg.p, join: "comma"),)
+}
+// A date field other than `date` — `eventdate` is the one a driver prints —
+// rendered exactly as \printdate renders the entry's own, ranges included.
 #let blx-field-date(e, name) = {
   if not has(e, name) { return "" }
   let halves = fld(e, name).trim().split("/")
@@ -534,34 +795,50 @@
 #let blx-publisher-pages(e) = {
   let pub = blx-publisher-location-date(e)
   let pg = blx-chapter-pages(e)
-  if pub != none and pg != none { (c: pub.c + ", " + pg.c, p: false) }
-  else if pub != none { pub }
-  else { pg }
+  if pg == none { return (pub,) }
+  if has(e, "chapter") { return (pub, pg) }
+  // The comma is the pages' own \bibpagespunct, which overrides the pending
+  // block break whether or not a publisher block stands in front of them.
+  if pub == none { return ((c: pg.c, p: pg.p, join: "comma"),) }
+  ((c: pub.c + ", " + pg.c, p: false),)
 }
 #let blx-volume(e) = if has(e, "volume") { (c: "Vol. " + fld(e, "volume"), p: false) } else { none }
-#let blx-ed-by(e) = if has(e, "editor") {
-  (c: "Ed. by " + render(join-names(e.names.editor)), p: false)
+// biblatex capitalizes "Ed. by" at the start of a sentence and leaves it
+// lowercase mid-sentence. The container macro's colon is what decides it: with
+// nothing behind the "In:" the editor follows the colon and stays lowercase,
+// where a booktitle would have closed the block and started a new sentence.
+#let blx-ed-by(e, sentence-start: true) = if has(e, "editor") {
+  let raw = blx-join-names(e.names.editor)
+  (c: (if sentence-start { "Ed. by " } else { "ed. by " }) + render(raw), p: blx-ends-punct(raw))
 } else { none }
-#let blx-editor-block(e, style: "numeric") = if not has(e, "editor") {
+#let blx-editor-block(e, style: "numeric", sentence-start: true) = if not has(e, "editor") {
   none
 } else if style == "author-year" {
-  blx-ed-by(e)
+  blx-ed-by(e, sentence-start: sentence-start)
 } else {
   let suffix = if e.names.editor.len() > 1 { ", (Eds.)" } else { ", (Ed.)" }
-  (c: render(join-names(e.names.editor)) + suffix, p: true)
+  (c: render(blx-join-names(e.names.editor)) + suffix, p: true)
 }
 #let blx-bytranslator(e) = if has(e, "translator") {
-  (c: "Trans. by " + render(join-names(e.names.translator)), p: false)
+  let raw = blx-join-names(e.names.translator)
+  (c: "Trans. by " + render(raw), p: blx-ends-punct(raw))
 } else { none }
 #let blx-isbn(e) = if has(e, "isbn") { (c: "isbn: " + fld(e, "isbn"), p: false) } else { none }
+// biblatex's own name for the field is `journaltitle`; `journal` is the alias it
+// keeps for BibTeX's spelling (biblatex.def field alias), and the `periodical`
+// inheritance rule above writes the parent's title into the former.
+// biblatex's own name for the field; the sourcemap above renames BibTeX's
+// `journal` to it before any driver looks.
+#let blx-journal-title(e) = if has(e, "journaltitle") { fld(e, "journaltitle") } else { none }
 #let blx-journal(e) = {
-  if not has(e, "journal") { return none }
-  let parts = (it(render(fld(e, "journal"))),)
+  let jt = blx-journal-title(e)
+  if jt == none { return none }
+  let parts = (it(render(jt)),)
   if has(e, "series") { parts.push(render(fld(e, "series"))) }
   if has(e, "volume") { parts.push(fld(e, "volume")) }
   if has(e, "number") { parts.push(fld(e, "number")) }
   if has(e, "articleno") { parts.push("Article " + fld(e, "articleno").replace("~", " ")) }
-  let d = blx-date-if-month(e)
+  let d = blx-date-ifmonth(e)
   if d != none { parts.push(d.c) }
   if has(e, "eid") { parts.push(fld(e, "eid")) }
   let pg = blx-pages(e)
@@ -569,11 +846,12 @@
   (c: parts.join(", "), p: false)
 }
 #let blx-periodical-journal(e) = {
-  if not has(e, "journal") { return none }
-  let c = it(render(fld(e, "journal")))
+  let jt = blx-journal-title(e)
+  if jt == none { return none }
+  let c = it(render(jt))
   if has(e, "volume") { c += " " + fld(e, "volume") }
   if has(e, "number") { c += ", " + fld(e, "number") }
-  let d = blx-date-if-month(e)
+  let d = blx-date-ifmonth(e)
   if d != none { c += " " + d.c }
   (c: c, p: false)
 }
@@ -586,11 +864,17 @@
 }
 #let blx-eprint(e) = if has(e, "eprint") {
   let ep = fld(e, "eprint")
-  let prefix = fld(e, "archiveprefix", d: if has(e, "eprinttype") { fld(e, "eprinttype") } else { "arXiv" })
-  let cls = if has(e, "primaryclass") { " [" + fld(e, "primaryclass") + "]" } else if has(e, "eprintclass") { " [" + fld(e, "eprintclass") + "]" } else { "" }
-  // acmart links arXiv eprints to arxiv.org/abs (\showeprint, acmart.dtx:8913);
-  // non-arXiv prefixes stay plain text.
-  let num = if lower(prefix) == "arxiv" { link("https://arxiv.org/abs/" + ep)[#ep] } else { ep }
+  let prefix = fld(e, "eprinttype", d: "arXiv")
+  let arxiv = lower(prefix) == "arxiv"
+  // \DeclareFieldFormat{eprint:arxiv} brackets the class; the generic eprint
+  // format parenthesizes it behind the archive's own name.
+  let cls = if not has(e, "eprintclass") { "" }
+    else if arxiv { " [" + fld(e, "eprintclass") + "]" }
+    else { " (" + fld(e, "eprintclass") + ")" }
+  // \DeclareFieldFormat{eprint:arxiv} links to arxiv.org/abs; biblatex's generic
+  // eprint format has no archive to build a URL from and links the identifier
+  // itself, so an eprint is a hyperlink either way.
+  let num = if arxiv { link("https://arxiv.org/abs/" + ep)[#ep] } else { link(ep)[#ep] }
   (c: prefix + ": " + num + cls, p: false)
 } else { none }
 #let blx-doi(e) = if has(e, "doi") {
@@ -602,53 +886,82 @@
   // file matters: TeX Live's installed version can differ here.
   (c: link("https://doi.org/" + d)[doi:#d], p: false)
 } else { none }
-#let blx-tail(e, url-always: false) = {
+// ACM's doi+eprint+url (acmnumeric.bbx:269 / acmauthoryear.bbx:283).
+#let blx-tail(e) = {
   let items = ()
   // print url when no doi, OR when the per-entry `distinctURL` field is set and not
   // "0" (matches the .bst's `distinctURL empty.or.zero not`; field keys are lowercased
   // at parse time, so only "distincturl" can occur).
   let distinct-url = has(e, "distincturl") and fld(e, "distincturl") != "0"
-  if url-always or (not has(e, "doi")) or distinct-url {
-    let u = blx-url-urldate(e)
-    if u != none { items.push(u) }
-  }
+  let u = if (not has(e, "doi")) or distinct-url { blx-url-urldate(e) } else { none }
   let ep = blx-eprint(e)
+  // The \newunit that separates the URL from the eprint never fires: the line
+  // break after \usebibmacro{url+urldate} inside the macro's \iffieldundef
+  // branch already typeset a space, and the unit punctuation is dropped. Only
+  // this one pair loses its period — a doi one unit further on keeps its own.
+  if u != none { items.push(if ep == none { u } else { u + (p: true) }) }
   if ep != none { items.push(ep) }
   let doi = blx-doi(e)
   if doi != none { items.push(doi) }
   items
 }
 
+// `dot` records whether the lead already ends in a full stop of its own — an
+// "et al." or ACM's "(Eds.)" — which the punctuation tracker then reads as the
+// separator that would otherwise follow.
 #let blx-person-label(e, editor-ok: true, org-ok: true, key-ok: true) = {
-  if has(e, "author") { return (c: render(join-names(e.names.author)), kind: "author") }
+  if has(e, "author") {
+    let raw = blx-join-names(e.names.author)
+    return (c: render(raw), kind: "author", dot: blx-ends-punct(raw))
+  }
   if editor-ok and has(e, "editor") {
     let suffix = if e.names.editor.len() > 1 { ", (Eds.)" } else { ", (Ed.)" }
-    return (c: render(join-names(e.names.editor)) + suffix, kind: "editor")
+    return (c: render(blx-join-names(e.names.editor)) + suffix, kind: "editor", dot: true)
   }
-  if org-ok and has(e, "organization") { return (c: render(fld(e, "organization")), kind: "organization") }
-  if key-ok and has(e, "key") { return (c: render(fld(e, "key")), kind: "key") }
+  if org-ok and has(e, "organization") {
+    let org = blx-list-value(fld(e, "organization"))
+    return (c: org.c, kind: "organization", dot: org.p)
+  }
+  if key-ok and has(e, "key") { return (c: render(fld(e, "key")), kind: "key", dot: false) }
   none
 }
-#let blx-lead(e, style: "numeric", suffix: "", editor-ok: true, org-ok: true, key-ok: true) = {
+#let blx-lead(e, style: "numeric", suffix: "", editor-ok: true, org-ok: true, key-ok: true,
+              editor-others: false) = {
   let who = blx-person-label(e, editor-ok: editor-ok, org-ok: org-ok, key-ok: key-ok)
-  let dt = blx-date(e, full: style == "author-year", suffix: suffix)
+  let dt = blx-lead-date(e, style: style, suffix: suffix)
   if who == none { return if style == "numeric" { dt } else { none } }
-  let sep = if style == "numeric" and who.kind == "editor" { " " } else { ". " }
-  (c: who.c + sep + dt.c, p: false)
+  // acmauthoryear.bbx:874 patches a LITERAL period into `date+extradate`, so the
+  // separator is printed whatever precedes it ("… et al.. 2005"). acmnumeric
+  // keeps \labelnamepunct, which the tracker drops after a lead of its own.
+  // A lead that came through acmauthoryear's `editor+others` (:153) also carries
+  // a stray space: line 163 of that macro ends without a `%`, so the newline
+  // between the organization branch and `date+extradate` is typeset. Only that
+  // one macro has the typo — the `editor` macro the periodical driver leads with
+  // (authoryear.bbx:228) is `%`-terminated throughout.
+  let sep = if style == "numeric" { if who.dot { " " } else { ". " } }
+    else if editor-others and who.kind != "author" { " . " }
+    else { ". " }
+  (c: who.c + sep + dt.c, p: dt.p)
 }
 #let blx-inbook-lead(e, style: "numeric", suffix: "") = {
-  // acmnumeric.bbx/acmauthoryear.bbx use \iffieldundef{author} here, not
-  // \ifnameundef{author}. Since author is a name list rather than a literal
-  // field, real BibLaTeX takes the "author undefined" branch even when the .bib
-  // entry has an author name. Mirror that visible behavior: byeditor+others is
-  // the only name lead in this ACM inbook driver.
-  if has(e, "editor") {
-    // acmnumeric.bbx then prints the year; acmauthoryear.bbx does not.
-    let c = "Ed. by " + render(join-names(e.names.editor))
-    if style == "numeric" { c += ". " + blx-date(e, suffix: suffix).c }
-    return (c: c, p: false)
-  }
-  if style == "numeric" { blx-date(e, suffix: suffix) } else { none }
+  // Both inbook drivers (acmnumeric.bbx:382, acmauthoryear.bbx:401) branch on
+  // \iffieldundef{author}, not \ifnameundef{author}. author is a name list, and
+  // a name list never defines the like-named field, so the "author undefined"
+  // branch — \usebibmacro{byeditor+others} — runs even for entries that do have
+  // an author: the editor is the only name lead this driver ever prints.
+  // The two styles inherit different byeditor+others, which is why the editor
+  // is typeset differently: acmauthoryear (via authoryear-comp -> standard.bbx)
+  // keeps biblatex.def:2710, "Ed. by" ahead of the names, while acmnumeric (via
+  // trad-plain -> trad-standard.bbx:675) puts the names first and appends the
+  // ACM `editor`/`editors` strings "(Ed.)"/"(Eds.)" (acmnumeric.bbx:10) — the
+  // same lead blx-editor-block builds. Their \adddot swallows the following
+  // \labelnamepunct, so only a space separates the lead from the year that
+  // acmnumeric.bbx then prints; acmauthoryear.bbx prints no year here.
+  let ed = blx-editor-block(e, style: style)
+  if ed == none { return if style == "numeric" { blx-year-macro(e) } else { none } }
+  if style != "numeric" { return ed }
+  let dt = blx-year-macro(e)
+  (c: ed.c + " " + dt.c, p: dt.p)
 }
 // a rendered value carries visible text (drives block/swids filtering)
 #let blx-nonempty(v) = v != none and v.c != none and v.c != [] and v.c != ""
@@ -656,37 +969,79 @@
   let pieces = vals.pos().filter(blx-nonempty)
   let out = []
   for (i, v) in pieces.enumerate() {
-    if i > 0 { out += " " }
+    // A value may carry its own join, which overrides the block break the driver
+    // left pending: \bibpagespunct's comma ahead of pages, or the plain space an
+    // event's parentheses take. \DeclarePunctuationPairs{comma} (biblatex.sty:2015)
+    // still governs it: a comma survives an abbreviation dot — which is what every
+    // name and list format leaves behind (\isdot, biblatex.def:624) — but not a
+    // sentence period or a colon, so behind those the comma gives way to a space.
+    let prev = if i == 0 { none } else { pieces.at(i - 1) }
+    let after-stop = prev != none and (prev.at("ends-colon", default: false)
+      or (prev.p and prev.at("sentence-punct", default: false)))
+    let join = if i == 0 { none } else if after-stop and v.at("join", default: none) == "comma" {
+      "space"
+    } else { v.at("join", default: none) }
+    if i > 0 { out += if join == "comma" { ", " } else { " " } }
     out += v.c
-    if not v.p { out += "." }
+    let next-join = if i + 1 < pieces.len() and not v.at("ends-colon", default: false) {
+      pieces.at(i + 1).at("join", default: none)
+    } else { none }
+    if not v.p and next-join == none { out += "." }
   }
   out
 }
+// \DeclareFieldFormat{version} (biblatex.def:589), which neither ACM .bbx
+// overrides: the `version` bibstring (english.lbx:428) then a tie then the
+// value. Every driver that prints it does so right after a \newunit, so the
+// punctuation tracker always capitalizes the string here — unlike the software
+// drivers, which print the same field mid-sentence (blx-sw-version).
+#let blx-version(e) = if has(e, "version") {
+  (c: "Version " + render(fld(e, "version")), p: false)
+} else { none }
+
+// misc, online, dataset and book lead with author/editor+others/translator+others:
+// an editor can lead, and after that the macro falls through to the *translator*
+// and then to an empty `key` (biber remaps key -> sortkey, biblatex.def:1368), so
+// it never reaches the `\printlist{organization}` fallback inside editor+others.
+// The manual driver's author/editor+others does reach it, which is why manual
+// calls blx-lead directly with the organization left enabled.
+#let blx-misc-lead(e, style: "numeric", suffix: "") = blx-lead(
+  e, style: style, suffix: suffix, org-ok: false, key-ok: false, editor-others: true)
+
+// The article, inbook, incollection and inproceedings drivers lead with
+// `author/translator+others` (acmnumeric.bbx:295 and friends), which falls
+// through to the translator and then to an empty `key` — so unlike the misc and
+// book drivers they never lead with an editor or an organization. Their editor
+// is printed later, by `byeditor+others`.
+#let blx-author-lead(e, style: "numeric", suffix: "") = blx-lead(
+  e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false)
+
 #let blx-article-like(e, style: "numeric", suffix: "") = blx-blocks(
-  blx-lead(e, style: style, suffix: suffix),
+  blx-author-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
   blx-bytranslator(e),
+  blx-version(e),
   blx-journal(e),
+  blx-editor-block(e, style: style),
   blx-note(e),
   ..blx-tail(e),
 )
 #let blx-inproceedings(e, style: "numeric", suffix: "") = {
-  let title-led = style == "author-year" and not has(e, "author") and not has(e, "editor") and not has(e, "organization") and has(e, "title")
   blx-blocks(
-    if title-led { none } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) },
+    blx-author-lead(e, style: style, suffix: suffix),
     blx-title-field(e, style: style),
     blx-bytranslator(e),
     blx-booktitle(e, with-in: true, style: style),
-    blx-editor-block(e, style: style),
+    blx-editor-block(e, style: style, sentence-start: has(e, "booktitle")),
     blx-volume(e),
     blx-list-field(e, "organization"),
-    blx-publisher-pages(e),
+    ..blx-publisher-pages(e),
     blx-isbn(e),
     ..blx-tail(e),
   )
 }
 #let blx-incollection(e, style: "numeric", suffix: "") = blx-blocks(
-  blx-lead(e, style: style, suffix: suffix),
+  blx-author-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
   blx-bytranslator(e),
   blx-booktitle-simple(e, with-in: true, style: style),
@@ -694,9 +1049,9 @@
   blx-edition(e),
   blx-volume(e),
   blx-volumes(e),
-  blx-editor-block(e, style: style),
+  blx-editor-block(e, style: style, sentence-start: has(e, "booktitle")),
   blx-note(e),
-  blx-publisher-pages(e),
+  ..blx-publisher-pages(e),
   blx-isbn(e),
   ..blx-tail(e),
 )
@@ -713,68 +1068,350 @@
     blx-volumes(e),
     blx-series-number(e, style: style),
     blx-note(e),
-    blx-publisher-location-date(e),
-    blx-chapter-pages(e),
+    ..blx-publisher-pages(e),
     blx-isbn(e),
     ..blx-tail(e),
   )
 }
+// @proceedings has a driver of its own in both styles, and neither is the book
+// one. standard.bbx:569 and trad-standard.bbx:298, stage for stage:
+//
+//   author-year  editor lead . title . event+venue+date . volume(.part) .
+//                volumes . series+number . note . organization .
+//                publisher+location+date . chapter+pages . pagetotal . isbn …
+//   numeric      editor lead . title . event+venue+date , vol(.part) of
+//                number-in-series , volumes . location , edition , (date) .
+//                organization , publisher . chapter+pages . pagetotal . isbn …
+//                … and the note LAST, behind doi/eprint/url.
+//
+// The numeric branch's commas are trad-standard's \newcommaunit; ACM prints no
+// year beside the editor there, and the date arrives parenthesized after the
+// location instead.
+#let blx-event(e) = {
+  // \usebibmacro{event+venue+date}: the event title and its addon are units of
+  // their own — an addon behind a title that already ends in a period takes no
+  // second one — and the venue and event date follow in parentheses.
+  let head = ()
+  for name in ("eventtitle", "eventtitleaddon") {
+    if has(e, name) { head.push((raw: fld(e, name), c: render(fld(e, name)))) }
+  }
+  let inner = ()
+  if has(e, "venue") { inner.push(render(fld(e, "venue"))) }
+  let d = blx-field-date(e, "eventdate")
+  if d != "" { inner.push(d) }
+  if head.len() == 0 and inner.len() == 0 { return none }
+  let c = []
+  for (i, h) in head.enumerate() {
+    if i > 0 { c += if blx-punctuated(head.at(i - 1).raw) { " " } else { ". " } }
+    c += h.c
+  }
+  let bare = head.len() == 0
+  if inner.len() > 0 {
+    if c != [] { c += " " }
+    c += "(" + inner.join(", ") + ")"
+  }
+  // punctuated only when the text really ends that way — a parenthesized venue
+  // does not, a title that ends in a period does
+  // the punctuation buffer counts a colon and a semicolon too, not only a stop
+  let ends = if inner.len() > 0 or head.len() == 0 { false } else {
+    blx-punctuated(head.last().raw)
+  }
+  // with no event title ahead of them the parentheses follow the entry title
+  // with a space, not a block break of their own
+  if bare { return (c: c, p: ends, join: "space") }
+  (c: c, p: ends)
+}
+// \printfield{volume} then \printfield{part}, and the part's own format is
+// ".#1" — so a part standing without a volume prints as ".B", dot and all.
+#let blx-volume-part(e, lower-case: false) = {
+  let vol = if has(e, "volume") {
+    (if lower-case { "vol. " } else { "Vol. " }) + render(fld(e, "volume"))
+  } else { none }
+  let part = if has(e, "part") { "." + render(fld(e, "part")) } else { none }
+  if vol == none and part == none { return none }
+  (c: (if vol == none { [] } else { vol }) + (if part == none { [] } else { part }), p: false)
+}
+// \mkpagetotal (biblatex.sty:3464): a NUMERAL takes the page string — singular
+// for exactly one, leading zeros and all, since the value is read as an integer
+// — and anything else (a range, a word) prints bare with no string at all.
+#let blx-pagetotal(e) = if has(e, "pagetotal") {
+  let raw = fld(e, "pagetotal").trim()
+  if raw.match(regex("^\\d+$")) == none { return (c: render(fld(e, "pagetotal")), p: false) }
+  (c: render(fld(e, "pagetotal")) + (if int(raw) == 1 { " p." } else { " pp." }), p: true)
+} else { none }
+// \printlist{organization}: a list, joined the way biblatex joins one.
+#let blx-organization-list(e) = blx-list-field(e, "organization")
+// trad-standard's unit model, which the numeric proceedings driver needs and the
+// block model cannot express: \newunit and \newcommaunit SET the pending
+// separator — the last one before something actually prints wins, so a run of
+// absent stages passes the comma the series stage left on to the date. A starred
+// \newcommaunit* is the exception: it applies only when the stage just before it
+// printed. A value that already ends in punctuation keeps it and takes a space.
+#let blx-units(..stages) = {
+  let out = []
+  let pending = none
+  let pending-starred = false
+  let emitted = false
+  let last-punct = false
+  for stage in stages.pos() {
+    let (sep, v) = (stage.at(0), stage.at(1))
+    let starred = stage.len() > 2 and stage.at(2)
+    if not (starred and not emitted) { pending = sep; pending-starred = starred }
+    emitted = false
+    if not blx-nonempty(v) { continue }
+    if out != [] {
+      // \blx@addpunct drops a separator that would follow punctuation already
+      // standing — but a STARRED unit is not routed through that test, which is
+      // why an organization ending in an abbreviation dot still takes its comma.
+      // A value carrying its own join (an event's parentheses) overrides both.
+      let own = v.at("join", default: none)
+      out += if own == "space" { " " }
+        else if own == "comma" { ", " }
+        else if pending == "." and not last-punct { ". " }
+        else if pending == "," and (pending-starred or not last-punct) { ", " }
+        else { " " }
+    }
+    out += v.c
+    last-punct = v.p
+    emitted = true
+    pending = none
+  }
+  if out == [] { none } else { (c: out, p: last-punct) }
+}
+// \usebibmacro{maintitle+title}: with a maintitle the hierarchy leads, its addon
+// rides with it, and the VOLUME belongs to it — "Main. Vol. 2: Component", where
+// the colon is the volume's own unit and a hierarchy without one simply takes a
+// period. A part with no volume beside it is dropped here. When the maintitle
+// and the title are the same string biblatex prints it once, and the volume goes
+// back to the driver's own stage.
+#let blx-maintitle-same(e) = {
+  has(e, "maintitle") and has(e, "title") and fld(e, "maintitle") == fld(e, "title")
+}
+#let blx-maintitle-takes-volume(e) = has(e, "maintitle") and not blx-maintitle-same(e)
+#let blx-maintitle-title(e, style: "numeric") = {
+  let title = blx-title-field(e, style: style)
+  if not has(e, "maintitle") or blx-maintitle-same(e) { return title }
+  // the maintitle carries the emphasis a container title does; the volume and
+  // the title behind it do not
+  let main = fld(e, "maintitle")
+  let last = main
+  if has(e, "mainsubtitle") {
+    main += (if blx-punctuated(main) { " " } else { ". " }) + fld(e, "mainsubtitle")
+    last = fld(e, "mainsubtitle")
+  }
+  let c = it(render(main))
+  if has(e, "maintitleaddon") {
+    c += (if blx-punctuated(last) { " " } else { ". " }) + render(fld(e, "maintitleaddon"))
+    last = fld(e, "maintitleaddon")
+  }
+  let vol = if has(e, "volume") { blx-volume-part(e) }
+  if vol != none {
+    c += (if blx-punctuated(last) { " " } else { ". " }) + vol.c
+    last = fld(e, "volume")
+  }
+  if title == none { return (c: c, p: blx-punctuated(last)) }
+  let join = if vol != none { ": " } else if blx-punctuated(last) { " " } else { ". " }
+  (c: c + join + title.c, p: title.p)
+}
+#let blx-proceedings(e, style: "numeric", suffix: "") = {
+  if style != "numeric" {
+    return blx-blocks(
+      blx-misc-lead(e, style: style, suffix: suffix),
+      blx-maintitle-title(e, style: style),
+      if has(e, "language") { blx-language-value(fld(e, "language")) },
+      blx-event(e),
+      blx-bytranslator(e),
+      if has(e, "author") { blx-editor-block(e, style: style) },
+      if not blx-maintitle-takes-volume(e) { blx-volume-part(e) },
+      blx-volumes(e),
+      blx-series-number(e, style: style),
+      blx-note(e),
+      blx-organization-list(e),
+      blx-publisher-location-date(e),
+      ..blx-pages-unit(e),
+      blx-pagetotal(e),
+      blx-isbn(e),
+      ..blx-tail(e),
+    )
+  }
+  // Stage for stage, each with the separator that precedes it.
+  let vol = if blx-maintitle-takes-volume(e) { none } else { blx-volume-part(e, lower-case: true) }
+  let ser = blx-series-number(e, style: style, lower-strings: true, emph-cond: true)
+  let series-vol = if vol != none and ser != none { (c: vol.c + " of " + ser.c, p: false) }
+    else if vol != none { vol } else { ser }
+  let pages = blx-pages-unit(e)
+  let location = if has(e, "location") { blx-list-value(fld(e, "location")) }
+  let publisher = if has(e, "publisher") {
+    (c: blx-list-content(fld(e, "publisher")), p: blx-punctuated(blx-list-last(fld(e, "publisher"))))
+  }
+  let run = blx-units(
+    (none, blx-editor-block(e, style: style)),
+    (" ", blx-maintitle-title(e, style: style)),
+    (".", if has(e, "language") { blx-language-value(fld(e, "language")) }),
+    // trad-standard's guard tests venue/eventtitle/eventyear, so an event that
+    // is nothing but an addon is skipped here where author-year prints it
+    (".", if has(e, "eventtitle") or has(e, "venue") or blx-field-date(e, "eventdate") != "" {
+      blx-event(e)
+    }),
+    (".", blx-bytranslator(e)),
+    (",", series-vol),
+    (",", blx-volumes(e)),
+    (".", location),
+    (",", blx-edition(e)),
+    (",", blx-date-macro(e)),
+    (".", blx-organization-list(e)),
+    (",", publisher, true),
+    (if has(e, "chapter") { "." } else { "," }, if pages.len() > 0 { pages.first() }),
+    (".", blx-pagetotal(e)),
+  )
+  blx-blocks(run, blx-isbn(e), ..blx-tail(e), blx-note(e))
+}
 #let blx-book-like(e, style: "numeric", suffix: "") = blx-blocks(
-  blx-lead(e, style: style, suffix: suffix),
+  blx-misc-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
   blx-bytranslator(e),
+  // the name lead consumed the editor unless the entry also has an author
+  if has(e, "author") { blx-editor-block(e, style: style) },
   blx-edition(e),
   blx-series-number(e, style: style),
   blx-volume(e),
   blx-volumes(e),
   blx-note(e),
-  blx-publisher-pages(e),
+  ..blx-publisher-pages(e),
   blx-isbn(e),
   ..blx-tail(e),
 )
-#let blx-online(e, style: "numeric", suffix: "") = {
-  let who = blx-person-label(e, key-ok: false)
-  let lead = if who == none {
-    if style == "numeric" { blx-date(e, suffix: suffix) } else { none }
-  } else { blx-lead(e, style: style, suffix: suffix, key-ok: false) }
+// misc (acmnumeric.bbx:597 / acmauthoryear.bbx:608), which every entry type
+// without a driver of its own aliases to (standard.bbx:752). Its tail is
+// organization+location+date, so a misc entry always shows a parenthesized
+// date, and doi+eprint+url, which drops the URL when a DOI is present.
+#let blx-misc(e, style: "numeric", suffix: "") = blx-blocks(
+  blx-misc-lead(e, style: style, suffix: suffix),
+  blx-title-field(e, style: style),
+  blx-bytranslator(e),
+  fV(e, "howpublished"),
+  blx-type(e),
+  blx-version(e),
+  blx-note(e),
+  blx-organization-location-date(e),
+  ..blx-tail(e),
+)
+
+// online (acmnumeric.bbx:636 / acmauthoryear.bbx:645). Unlike misc it prints no
+// howpublished and no type, dates only when the entry has a month, and ends in
+// a bare eprint + url+urldate rather than doi+eprint+url — so an online entry
+// never shows a DOI, and shows its URL even when it has one.
+#let blx-online(e, style: "numeric", suffix: "") = blx-blocks(
+  blx-misc-lead(e, style: style, suffix: suffix),
+  blx-title-field(e, style: style),
+  blx-bytranslator(e),
+  blx-version(e),
+  blx-note(e),
+  blx-list-field(e, "organization"),
+  blx-date-ifmonth(e),
+  blx-eprint(e),
+  blx-url-urldate(e),
+)
+
+// manual (acmnumeric.bbx:546 / acmauthoryear.bbx:559).
+#let blx-manual(e, style: "numeric", suffix: "") = blx-blocks(
+  blx-lead(e, style: style, suffix: suffix, key-ok: false, editor-others: true),
+  blx-title-field(e, style: style),
+  blx-edition(e),
+  blx-series-number(e, style: style),
+  blx-type(e),
+  blx-version(e),
+  blx-note(e),
+  blx-list-field(e, "organization"),
+  blx-publisher-location-date(e),
+  blx-chapter-pages(e),
+  blx-isbn(e),
+  ..blx-tail(e),
+)
+// standard.bbx:348 is the only definition of the `dataset` driver: neither ACM
+// .bbx redefines it, so — unlike the ACM-authored drivers next door, online
+// (acmnumeric.bbx:636) and misc (:597) — it never calls acmnumeric.bbx's `year`
+// macro (:71). A numeric dataset entry therefore carries no year at all. An
+// author-year one still shows its date because authoryear.bbx prints the label
+// date from the name macro, for every driver alike. The only date this driver
+// prints itself arrives through publisher+location+date (acmnumeric.bbx:203),
+// which defers to date-ifmonth (:212) and so emits a parenthesized date only
+// when the entry has a month. Unlike the online driver this one also prints
+// type/edition/series+number, drops howpublished, and routes its URL through
+// ACM's doi+eprint+url (:269), which suppresses the URL when a DOI is present.
+#let blx-dataset(e, style: "numeric", suffix: "") = {
+  let lead = if style == "author-year" {
+    blx-misc-lead(e, style: style, suffix: suffix)
+  } else {
+    let who = blx-person-label(e, org-ok: false, key-ok: false)
+    if who != none { (c: who.c, p: who.dot) }
+  }
   blx-blocks(
     lead,
     blx-title-field(e, style: style),
+    // the name lead consumed the editor unless the entry has an author
+    if has(e, "author") { blx-editor-block(e, style: style) },
     blx-bytranslator(e),
-    fV(e, "howpublished"),
-    fV(e, "version"),
+    blx-type(e),
+    blx-edition(e),
+    blx-version(e),
+    blx-series-number(e, style: style),
     blx-note(e),
     blx-list-field(e, "organization"),
-    blx-eprint-date(e),
-    blx-eprint(e),
-    blx-doi(e),
-    blx-url-urldate(e),
+    blx-publisher-location-date(e),
+    ..blx-tail(e),
   )
 }
-#let blx-presentation(e, style: "numeric", suffix: "") = blx-blocks(
-  blx-lead(e, style: style, suffix: suffix, key-ok: false),
-  blx-title-field(e, style: style, format: "plain"),
-  blx-date-parens(e),
-  ..blx-tail(e),
-)
+// acmnumeric.bbx:219 institution+location+date — like publisher+location+date,
+// it closes with date-ifmonth.
 #let blx-institution-location(e) = {
-  let inst = blx-list-field(e, "school", "institution")
-  let loc = blx-list-field(e, "location", "address")
-  if inst != none and loc != none { (c: inst.c + ", " + loc.c, p: false) }
-  else if inst != none { inst }
-  else { loc }
+  let parts = ()
+  for v in (blx-list-field(e, "institution"),
+            blx-list-field(e, "location"),
+            blx-date-ifmonth(e)) {
+    if v != none { parts.push(v.c) }
+  }
+  if parts.len() == 0 { none } else { (c: parts.join(", "), p: false) }
+}
+// authoryear.bbx:202 — report, thesis and patent lead with biblatex's own `author`
+// macro, which prints the LABEL title where a name would go when the entry has no
+// author, and the date behind it. labeltitle (:285) prints `shorttitle` if there is
+// one and otherwise the title, which it then clears, so the driver's own title
+// stage prints only what is left of the family. The separator is acmauthoryear's
+// literal ". " (its `date+extradate` patch), and csquotes pulls that whole unit
+// inside a quoted title, leaving the year flush against the closing quote.
+#let blx-labeltitle-lead(lead, title, e, style: "numeric", suffix: "") = {
+  if style != "author-year" or lead != none { return (lead, title) }
+  // an explicit `label` outranks both (authoryear.bbx:286) and prints through its
+  // own field format, which no style declares — so plainly, with no quotes and no
+  // emphasis — and leaves the whole title family to the driver's title stage.
+  let explicit = has(e, "label")
+  let short = has(e, "shorttitle")
+  let raw = if explicit { fld(e, "label") } else if short { fld(e, "shorttitle") } else if has(e, "title") { fld(e, "title") } else { "" }
+  if raw == "" { return (lead, title) }
+  let fmt = if explicit { "plain" } else { blx-title-format(e, style: style) }
+  let head = if fmt == "quoted" { "\u{201C}" + render(raw) + ". \u{201D}" }
+    else if fmt == "emph" { it(render(raw)) + ". " }
+    else { render(raw) + ". " }
+  let dt = blx-labeldate(e, suffix: suffix)
+  ((c: head + dt.c, p: dt.p), blx-title-field(e, style: style, omit-title: not (explicit or short)))
 }
 #let blx-report(e, style: "numeric", suffix: "", thesis: false) = {
-  let ty = if thesis {
-    if has(e, "type") { fV(e, "type") } else if e.entry-type == "phdthesis" { (c: "Ph.D. Dissertation", p: false) } else { (c: "Master\u{2019}s thesis", p: false) }
-  } else if has(e, "type") and has(e, "number") { (c: render(fld(e, "type")) + " " + render(fld(e, "number")), p: false) }
-  else if has(e, "type") { fV(e, "type") }
-  else { none }
-  blx-blocks(
+  // report prints the type and the number as one unit (acmnumeric.bbx:767);
+  // the thesis driver (:799) prints no number at all.
+  let ty = blx-type(e)
+  if ty != none and not thesis and has(e, "number") {
+    ty = (c: ty.c + " " + render(fld(e, "number")), p: false)
+  }
+  let (lead, title) = blx-labeltitle-lead(
     blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false),
-    blx-title-field(e, style: style),
+    blx-title-field(e, style: style), e, style: style, suffix: suffix)
+  blx-blocks(
+    lead,
+    title,
     ty,
-    fV(e, "version"),
+    // report prints a version (acmnumeric.bbx:771); the thesis driver (:799) does not
+    if not thesis { blx-version(e) },
     blx-institution-location(e),
     blx-note(e),
     blx-chapter-pages(e),
@@ -785,11 +1422,12 @@
 #let blx-patent(e, style: "numeric", suffix: "") = {
   let locations = if has(e, "location") {
     split-list-and(fld(e, "location"), trim: true, filter-empty: true).map(render).join(", ")
-  } else if has(e, "address") {
-    split-list-and(fld(e, "address"), trim: true, filter-empty: true).map(render).join(", ")
+  } else if has(e, "location") {
+    split-list-and(fld(e, "location"), trim: true, filter-empty: true).map(render).join(", ")
   } else { none }
   let identification = []
-  if has(e, "type") { identification += render(fld(e, "type")) }
+  let ty = blx-type(e)
+  if ty != none { identification += ty.c }
   if has(e, "number") {
     if identification != [] { identification += " " }
     identification += "Patent No. " + render(fld(e, "number"))
@@ -798,17 +1436,16 @@
     identification += " (" + locations + ")"
   }
   let holder = if has(e, "holder") {
-    (c: render(join-names(e.names.holder)), p: false)
+    let raw = blx-join-names(e.names.holder)
+    (c: render(raw), p: blx-ends-punct(raw))
   } else { none }
-  let lead = if style == "author-year" and has(e, "author") {
-    (c: render(join-names(e.names.author)) + ". " + blx-print-full-date(e) + suffix, p: false)
-  } else {
-    blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false)
-  }
+  let (lead, title) = blx-labeltitle-lead(
+    blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false),
+    blx-title-field(e, style: style), e, style: style, suffix: suffix)
   blx-blocks(
     lead,
-    blx-title-field(e, style: style),
-    (c: "(" + blx-print-full-date(e) + ")", p: false),
+    title,
+    blx-date-macro(e),
     if identification == [] { none } else { (c: identification, p: false) },
     holder,
     blx-note(e),
@@ -825,7 +1462,10 @@
   codefragment: "[SW exc.]",
 )
 
-// acmnumeric.bbx/acmauthoryear.bbx DeclareStyleSourcemap.
+// acmnumeric.bbx:846/acmauthoryear.bbx:861 DeclareStyleSourcemap, plus the two
+// steps of biblatex's own driver sourcemap (biblatex.def:1348-1358) that matter
+// here: remapping a thesis or techreport also stamps the `type` field with the
+// localization string naming what it was, unless the entry already has one.
 #let blx-typed-remaps = (
   techreport: "techreport", phdthesis: "phdthesis", mastersthesis: "mathesis",
 )
@@ -1005,39 +1645,40 @@
 
 }
 
-#let blx-list-content(raw) = {
-  let parts = split-list-and(raw, trim: true, filter-empty: true).map(render)
-  if parts.len() == 0 { return [] }
-  let out = []
-  for (i, p) in parts.enumerate() {
-    if i > 0 {
-      if parts.len() == 2 { out += " and " }
-      else if i == parts.len() - 1 { out += ", and " }
-      else { out += ", " }
-    }
-    out += p
-  }
-  out
-}
-
 #let blx-printlist(e, name) = if has(e, name) {
   (c: blx-list-content(fld(e, name)), p: false)
 } else { none }
 
+// software.bbx prints the title with the style's plain \printfield{title}:
+// trad-standard.bbx (acmnumeric) leaves it upright, while acmauthoryear
+// inherits biblatex's emphasized default.
+#let blx-sw-title(e, style) = {
+  let t = render(fld(e, "title", d: ""))
+  if style == "author-year" { it(t) } else { t }
+}
+// The same `version` field format as blx-version, printed mid-sentence (right
+// after the title), so the bibstring stays lowercase.
 #let blx-sw-version(e) = if has(e, "version") { " version " + render(fld(e, "version")) } else { [] }
+// software.bbx's shared date tail: a starred \setunit before \printdate, so an
+// entry with no date at all ends right after the title/version.
+#let blx-sw-date(e) = {
+  let date = blx-printdate(e)
+  if date == "" { [] }
+  else if has(e, "version") or has(e, "editor") { ", " + date }
+  else { " " + date }
+}
 #let blx-sw-editor(e) = if has(e, "editor") {
-  [ (Coord.by #render(join-names(e.names.editor)))]
+  [ (Coord.by #render(blx-join-names(e.names.editor)))]
 } else { [] }
 
 // software.bbx: \newbibmacro*{swtitleauthoreditoryear}
-#let blx-swtitleauthoreditoryear(e) = {
+#let blx-swtitleauthoreditoryear(e, style) = {
   let c = []
-  if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
-  c += render(fld(e, "title", d: ""))
+  if has(e, "author") { c += render(blx-join-names(e.names.author)) + ", " }
+  c += blx-sw-title(e, style)
   c += blx-sw-version(e)
   c += blx-sw-editor(e)
-  let date = blx-printdate(e)
-  if has(e, "version") or has(e, "editor") { c += ", " + date } else { c += " " + date }
+  c += blx-sw-date(e)
   (c: c, p: false)
 }
 
@@ -1046,28 +1687,26 @@
 } else { [] }
 
 // software.bbx: \newbibmacro*{swsubtitleauthoreditoryear}
-#let blx-swsubtitleauthoreditoryear(e) = {
+#let blx-swsubtitleauthoreditoryear(e, style) = {
   let c = []
-  if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
+  if has(e, "author") { c += render(blx-join-names(e.names.author)) + ", " }
   if has(e, "subtitle") { c += blx-sw-subtitle(e) + " part of " }
-  c += render(fld(e, "title", d: ""))
+  c += blx-sw-title(e, style)
   c += blx-sw-version(e)
   c += blx-sw-editor(e)
-  let date = blx-printdate(e)
-  if has(e, "version") or has(e, "editor") { c += ", " + date } else { c += " " + date }
+  c += blx-sw-date(e)
   (c: c, p: false)
 }
 
 // software.bbx: \newbibmacro*{codefragmenttitleauthoreditoryear}
-#let blx-codefragmenttitleauthoreditoryear(e) = {
+#let blx-codefragmenttitleauthoreditoryear(e, style) = {
   let c = []
-  if has(e, "author") { c += render(join-names(e.names.author)) + ", " }
+  if has(e, "author") { c += render(blx-join-names(e.names.author)) + ", " }
   if has(e, "subtitle") { c += blx-sw-subtitle(e) + " from " }
-  c += render(fld(e, "title", d: ""))
+  c += blx-sw-title(e, style)
   c += blx-sw-version(e)
   c += blx-sw-editor(e)
-  let date = blx-printdate(e)
-  if has(e, "version") or has(e, "editor") { c += ", " + date } else { c += " " + date }
+  c += blx-sw-date(e)
   (c: c, p: false)
 }
 
@@ -1108,10 +1747,10 @@
   (c: c, p: false)
 }
 
-#let blx-software-driver(e, kind) = {
-  let body = if kind == "software" { blx-swtitleauthoreditoryear(e) }
-    else if kind == "codefragment" { blx-codefragmenttitleauthoreditoryear(e) }
-    else { blx-swsubtitleauthoreditoryear(e) }
+#let blx-software-driver(e, kind, style: "numeric") = {
+  let body = if kind == "software" { blx-swtitleauthoreditoryear(e, style) }
+    else if kind == "codefragment" { blx-codefragmenttitleauthoreditoryear(e, style) }
+    else { blx-swsubtitleauthoreditoryear(e, style) }
   let labelled = (c: blx-software-labels.at(kind) + " " + body.c, p: body.p)
   blx-blocks(
     labelled,
@@ -1124,25 +1763,16 @@
 #let blx-handle(e, style: "numeric", year-suffix: "") = {
   let t = e.entry-type
   if t == "article" { blx-article-like(e, style: style, suffix: year-suffix) }
-  else if t == "underreview" {
-    blx-blocks(
-      blx-lead(e, style: style, suffix: year-suffix),
-      blx-title(e, style: style, sentence: style == "numeric"),
-      blx-date-parens(e),
-      blx-note(e),
-      ..blx-tail(e),
-    )
-  }
   else if t == "inproceedings" or t == "conference" { blx-inproceedings(e, style: style, suffix: year-suffix) }
-  else if t == "presentation" { blx-presentation(e, style: style, suffix: year-suffix) }
   else if t == "incollection" { blx-incollection(e, style: style, suffix: year-suffix) }
   else if t == "inbook" { blx-inbook(e, style: style, suffix: year-suffix) }
-  else if t == "book" or t == "proceedings" or t == "collection" { blx-book-like(e, style: style, suffix: year-suffix) }
+  else if t == "proceedings" { blx-proceedings(e, style: style, suffix: year-suffix) }
+  else if t == "book" or t == "collection" { blx-book-like(e, style: style, suffix: year-suffix) }
   else if t == "patent" { blx-patent(e, style: style, suffix: year-suffix) }
-  else if t in blx-software-types { blx-software-driver(e, t) }
-  else if t == "online" or t == "manual" or t == "misc" or t == "game" or t == "video" or t == "artifactdataset" or t == "dataset" or t == "preprint" {
-    blx-online(e, style: style, suffix: year-suffix)
-  }
+  else if t in blx-software-types { blx-software-driver(e, t, style: style) }
+  else if t == "artifactdataset" or t == "dataset" { blx-dataset(e, style: style, suffix: year-suffix) }
+  else if t == "online" or t == "www" or t == "electronic" { blx-online(e, style: style, suffix: year-suffix) }
+  else if t == "manual" { blx-manual(e, style: style, suffix: year-suffix) }
   else if t == "mastersthesis" or t == "phdthesis" or t == "thesis" { blx-report(e, style: style, suffix: year-suffix, thesis: true) }
   else if t == "techreport" or t == "report" { blx-report(e, style: style, suffix: year-suffix) }
   else if t == "periodical" {
@@ -1154,7 +1784,10 @@
       ..blx-tail(e),
     )
   }
-  else { blx-blocks(blx-lead(e, style: style, suffix: year-suffix), blx-title(e, style: style, sentence: style == "numeric"), ..blx-tail(e)) }
+  // misc, and with it every type biblatex has no driver for — including ACM's
+  // own `presentation` and `underreview`, which acm{numeric,authoryear}.bbx
+  // declare in the datamodel but never give a driver.
+  else { blx-misc(e, style: style, suffix: year-suffix) }
 }
 
 // ---- sort key: biber's `nty` template --------------------------------------

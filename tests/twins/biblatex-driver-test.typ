@@ -6,5 +6,10 @@ This sentence cites a book #cite("DriverBook"), an in-book chapter
 #cite("DriverInbook"), an in-collection chapter #cite("DriverIncollection"), a
 translated article #cite("DriverTranslatedArticle"), a translator-led book
 #cite("DriverTranslatorBook"), and a patent #cite("DriverPatent").
+A publisher, a location and an institution are lists: two items take an "and", more take commas and a final "and" #cite("DriverPublishers", "DriverInstitutions").
+A colon a protecting brace hides is still the last visible character of a title #cite("DriverProtectedColon", "DriverDoubledColon", "DriverProtectedMain"), and a container title that ends in an abbreviation keeps the separator behind it out #cite("DriverAbbrevBook", "DriverAbbrevPages").
+A canonical language identifier prints as its localized name and an unknown one literally #cite("DriverLanguages"), and an organization leading an entry is a list #cite("DriverOrgLead").
+A report or a thesis with no author leads with its title, and the date follows it #cite("DriverNamelessReport", "DriverNamelessThesis").
+A short title stands in for the long one there #cite("DriverShortReport"), and the date behind it may be missing #cite("DriverDatelessReport") or carry an extradate letter #cite("DriverSharedReportA", "DriverSharedReportB").
 
 #bibliography("/tests/twins/biblatex-driver-test.bib")

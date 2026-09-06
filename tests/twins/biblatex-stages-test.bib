@@ -1,0 +1,28 @@
+% Fixtures for the driver stages the ACM BibLaTeX styles print and the port had
+% been skipping: the title family, a proceedings' language and translator, the
+% numeric event guard, the punctuation buffer, and \mkpagetotal.
+@article{TiAddon, author = {Fay Addon}, title = {A titled article}, titleaddon = {Extended abstract}, journal = {J}, year = 2001}
+@inproceedings{TiBook, author = {Gus Book}, title = {A paper}, booktitle = {A host book}, booktitleaddon = {Extended proceedings}, pages = {1--9}, year = 2002}
+@proceedings{TiMain, title = {A subtitle-bearing proceedings}, maintitle = {A main title}, volume = {3}, part = {B}, editor = {Mia Main}, date = {2003}, publisher = {Ti Press}, address = {Bern}}
+@proceedings{PrLang, title = {A translated proceedings}, editor = {Lang Elder}, language = {French}, translator = {Xena Xavier}, date = {2004}}
+@proceedings{EvAddon, title = {An addon-only event}, editor = {Ad Elder}, eventtitleaddon = {Special Session}, date = {2005}}
+@proceedings{PnOrg, title = {An organization that ends in a dot}, editor = {Or Elder}, organization = {Comput. Society.}, publisher = {Pn Press}, date = {2006}}
+@proceedings{PnSer, title = {A series that ends in a dot}, editor = {Se Elder}, series = {Ser Series.}, date = {2007}}
+@proceedings{Pg01, title = {A pagetotal with a leading zero}, editor = {P1 Elder}, pagetotal = {01}, date = {2009}}
+@proceedings{PgRng, title = {A pagetotal that is no integer}, editor = {P3 Elder}, pagetotal = {1-1}, date = {2011}}
+@proceedings{EvVenue, title = {A venue and nothing else}, editor = {Vic Vance}, venue = {Paris}, date = {2001}}
+@misc{TiSubOnly, author = {Ann Sub}, subtitle = {A subtitle with no title}, year = 2003}
+@misc{TiAddOnly, author = {Bob Add}, titleaddon = {An addon with no title}, year = 2004}
+@proceedings{MtPlain, maintitle = {Main}, title = {Component}, editor = {Mia Marsh}, date = {2006}}
+@proceedings{MtVol,   maintitle = {Main}, title = {Component}, volume = {2}, editor = {Nia Nolan}, date = {2007}}
+@proceedings{MtSame,  maintitle = {Same}, title = {Same}, volume = {2}, editor = {Ola Owens}, date = {2008}}
+@proceedings{MtAddon, maintitle = {Main}, maintitleaddon = {Main addon}, title = {Component}, editor = {Pia Pike}, date = {2009}}
+@proceedings{LgThree, title = {Three languages}, editor = {Lou Lyman}, language = {English and French and German}, date = {2012}}
+@proceedings{EvGuard, title = {A guarded event}, editor = {Gil Gray}, eventtitleaddon = {Special Session}, eventdate = {bogus}, date = {2013}}
+@proceedings{PnSerNum, title = {A series and a number}, editor = {Sam Sloan}, series = {Series.}, number = {4}, date = {2016}}
+@misc{AdColon, author = {Kim Colon}, title = {Title:}, titleaddon = {Addon}, year = 2014}
+@article{KoTitle, author = {Ann Kolon}, title = {A title ending in a colon:}, journal = {J}, year = 2017}
+@article{KoSub, author = {Bob Sable}, title = {A title ending in a colon:}, subtitle = {The continuation}, journal = {J}, year = 2018}
+@inproceedings{KoBook, author = {Cy Vega}, title = {A paper}, booktitle = {A book ending in a colon:}, booksubtitle = {The book continuation}, pages = {1--9}, year = 2019}
+@proceedings{KoMain, maintitle = {A main ending in a colon:}, title = {Part}, editor = {Dot Wren}, organization = {Two Society and Three Society}, date = {2020}}
+@proceedings{OrThree, title = {Three organizers}, editor = {Gus Zorn}, organization = {One Society and Two Society and Three Society}, date = {2022}}

@@ -245,8 +245,8 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "sample-acmtog-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-sigconf-i13n": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="7670c039210868e04d5111c1c53fb3399558e09f012b1796727a07961be107fe"),
     "sample-sigconf-authordraft": ResidualSignatures(text="57a4481083f7716ddac8aa384c515bbb498a2281fce9d957465ad5347493f50d", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="60dc257e9cf74ed07717c50f0c7fe929397c3f5cd416bc28ed529e0c6f95890c"),
-    "sample-acmsmall-biblatex": ResidualSignatures(text="92a70243730412d508ba78837840e05ffee4b632be406778fe2261b017cc6df4", font="49aeb0090f34955cfe4955eb61ec3205d5316489e0e531efc5b177d41a4d0312", order="06838db4fff42bd54f758c0a5cae5701f23098e6576c58f0a1d6c24a368758b5"),
-    "sample-sigconf-biblatex": ResidualSignatures(text="7f1f8f05af6984e9254fef2c1f79dd32a26c12d351162b040216671262a9c62e", font="331464ac0b75d83068122c1a2016d6e6e77733b7111debd67a0e13bcbb89a919", order="e05fdb9a10feff979fed0ce72291eaccc755f16d3d214ceaa35153a19bdc49f9"),
+    "sample-acmsmall-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="801b173d792682fd1c8269f080bd291a18b99a88a8a84c2e62dea4809fd1dfa2", order="7b3f516263dd09f3a6d35956cb444a6766bade5d771d04c441c57f4a1e012b01"),
+    "sample-sigconf-biblatex": ResidualSignatures(text="60ffeb1dd2b4f2a69bc2266010c29ef43c425480101bd90cbf94d6d58afa9210", font="ec59075f84dabc560ec85a9282b3721d82ed596eee3c504082feea384ffb57dd", order="a7f323c7a7739f484386e5da419133bcce258e6578a0f7007d4ff95239b07b9d"),
     "sample-acmcp": ResidualSignatures(text="a9a95ef15c40d9c28beacacdc681edc7c834fcae0aba217e4764495993a5ac9e"),
     "sample-acmengage": ResidualSignatures(order="e1375d589c6da53376f20ce6acd938b50f3b317e20333dd6ab48744b32034f58"),
 }
@@ -907,6 +907,47 @@ TESTS: dict[str, Test] = {
                       "\"A carefully specified widget.\" (May 4, 2020). "
                       "Utility Patent Patent No. US-123456"),
             Assertion(engine="both", text="Holding Company. Filed electronically. doi:10.1000/patent"),
+            # a list field prints with the list's own punctuation: an "and" between
+            # two items, commas and a final "and" beyond that
+            Assertion(engine="both", text="A book with several publishers. First Press and "
+                      "Second Press, Bern, Basel, and Bonn."),
+            Assertion(engine="both", text="A report from several institutions. Tech. rep. "
+                      "First Institute, Second Institute, and Third Institute, Kiel"),
+            # a case-protecting brace hides no punctuation: the tracker reads the
+            # last VISIBLE character, in the entry title, the booktitle and the
+            # maintitle alike
+            Assertion(engine="both", text="Ann Protect. 2022. “A title ending in protected "
+                      "JSON: The continuation.” J."),
+            Assertion(engine="both", text="In: A doubled book title: The book continuation, 1–9."),
+            Assertion(engine="both", text="Cleo Mainline, (Ed.) . 2022. A main title ending in "
+                      "protected XML: Component."),
+            # a container title ending in a stop keeps the next separator out — and
+            # that stop is a sentence one, so the pages' comma gives way too
+            Assertion(engine="both", text="In: Proceedings of the Example Conf. "
+                      "Ed. by Emil Chair. Conf Press."),
+            Assertion(engine="both", text="In: Proceedings of the Example Conf. 1–9."),
+            # a canonical language identifier prints as its localization string; one
+            # with no string of its own prints literally
+            Assertion(engine="both", text="A proceedings in two languages. English and klingon."),
+            # an organization leading an entry is a list like any other
+            Assertion(engine="both", text="First Society, Second Society, and Third Society . 2024. "
+                      "An organization-led manual."),
+            # with no author the report and thesis drivers lead with the LABEL
+            # title and print the date behind it; the quoted title swallows that
+            # separator whole, so the year sits against the closing quote
+            Assertion(engine="both", text="A nameless report. 2025. Tech. rep. Nameless Institute."),
+            Assertion(engine="both", text="“A nameless thesis. ”2025. “With a subtitle of its own.” "
+                      "Ph.D. Dissertation. Nameless University."),
+            # the label title is the short title when there is one, and the full
+            # title is left for the driver's own stage
+            Assertion(engine="both", text="Short report. 2025. A report with a long title. "
+                      "Tech. rep. Short Institute."),
+            Assertion(engine="both", text="[Short report 2025]"),
+            # …and that date is the label date, missing or lettered like any other
+            Assertion(engine="both", text="A dateless report. N.d. Tech. rep. Dateless Institute."),
+            Assertion(engine="both", text="A shared report title. 2026a. Tech. rep. First Institute."),
+            Assertion(engine="both", text="A shared report title. 2026b. Tech. rep. Second Institute."),
+            Assertion(engine="both", text="[A dateless report n.d.]"),
         ),
         note="BibLaTeX driver order for book/chapter, translator, and patent fields.",
     ),
@@ -923,6 +964,30 @@ TESTS: dict[str, Test] = {
                       "Trans. by Tina Translator."),
             Assertion(engine="both", text="Pat Inventor. 2020. A carefully specified widget. "
                       "(May 4, 2020). Utility Patent Patent No. US-123456"),
+            # the same list punctuation under the numeric style; the patent's own
+            # country list above keeps its bare commas
+            Assertion(engine="both", text="A book with several publishers. First Press and "
+                      "Second Press, Bern, Basel, and Bonn."),
+            Assertion(engine="both", text="A report from several institutions. Tech. rep. "
+                      "First Institute, Second Institute, and Third Institute,"),
+            # the same punctuation reading under the numeric style
+            Assertion(engine="both", text="Ann Protect. 2022. A title ending in protected "
+                      "JSON: The continuation. J."),
+            Assertion(engine="both", text="In A doubled book title: The book continuation, 1–9."),
+            Assertion(engine="both", text="In Proceedings of the Example Conf. Emil Chair, (Ed.) "
+                      "Conf Press."),
+            Assertion(engine="both", text="In Proceedings of the Example Conf. 1–9."),
+            Assertion(engine="both", text="A proceedings in two languages. English and klingon, "
+                      "(2023)."),
+            Assertion(engine="both", text="First Society, Second Society, and Third Society. 2024. "
+                      "An organization-led manual."),
+            # the numeric style leads with the year wherever the name is missing,
+            # so these entries are untouched by the author-year label-title lead
+            Assertion(engine="both", text="2025. A nameless report. Tech. rep. Nameless Institute."),
+            Assertion(engine="both", text="2025. A nameless thesis. With a subtitle of its own. "
+                      "Ph.D. Dissertation. Nameless University."),
+            Assertion(engine="both", text="2025. A report with a long title. Tech. rep. Short Institute."),
+            Assertion(engine="both", text="[n. d.] A dateless report. Tech. rep. Dateless Institute."),
         ),
         note="BibLaTeX numeric report sourcemap plus translator and patent drivers.",
     ),
@@ -996,6 +1061,212 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Yew Yew"),
         ),
         note="the same fixtures under acmnumeric, which disambiguates no cite label.",
+    ),
+    "biblatex-fields-test": Test(
+        kind="twin", pages=4, text_equal=True,
+        text_assertions=(
+            # a `date` field carries its day everywhere, including the label date
+            Assertion(engine="both", text='Ada Adams. June 14, 2026. "An article dated to '
+                      'the day." Journal of Dates, (June 14, 2026).'),
+            Assertion(engine="both", text="Gus Grant. Jan. 5, 2026. A misc dated in an "
+                      "abbreviated month. (Jan. 5, 2026)."),
+            Assertion(engine="both", text="Eve Ellis. June 2026. A misc dated to the month. "
+                      "(June 2026)."),
+            # …but a `day` FIELD does not: biber nulls it
+            Assertion(engine="both", text="Fay Foster. June 2026. A misc with a day field "
+                      "biber drops. (June 2026)."),
+            # a `date` OUTRANKS the legacy year and month, component by component
+            Assertion(engine="both", text="[Ingle 2026]"),
+            Assertion(engine="both", text="Ivy Ingle. June 14, 2026. A date beside the legacy "
+                      "fields it overwrites. (June 14, 2026)."),
+            # a range prints both ends, each dropping what the other already says
+            Assertion(engine="both",
+                      text="[Joyner 2024; Kirby 2024–2025; Mabry 2020–2022]"),
+            Assertion(engine="both", text="[Lyman 2025–]"),
+            Assertion(engine="both", text="Jan Joyner. Jan. 2–Mar. 4, 2024."),
+            Assertion(engine="both", text="Kay Kirby. Jan. 2, 2024–Mar. 4, 2025."),
+            Assertion(engine="both", text="Lou Lyman. May 6, 2025–."),
+            Assertion(engine="both", text="Mel Mabry. 2020–2022."),
+            # an open START leaves the year empty rather than missing, and a
+            # range open at both ends is no date at all
+            Assertion(engine="both", text="[Nesbit –2025]"),
+            Assertion(engine="both", text="[Orwell n.d.]"),
+            Assertion(engine="both", text="Nan Nesbit. –May 6, 2025. A range with an open "
+                      "start. (–May 6, 2025)."),
+            Assertion(engine="both", text="Ott Orwell. N.d. A range open at both ends. ()."),
+            # …but a legacy year answers that start, and the range closes
+            Assertion(engine="both", text="[Pruitt 1999–2026]"),
+            Assertion(engine="both", text="Pia Pruitt. Jan. 1999–June 14, 2026. An open start "
+                      "the legacy fields answer. (Jan. 1999–June 14, 2026)."),
+            # a legacy MONTH reaches an open start without closing it…
+            Assertion(engine="both", text="[Quayle –2026]"),
+            Assertion(engine="both", text="Rex Quayle. Jan. –June 14, 2026. An open start a "
+                      "legacy month reaches. (Jan. –June 14, 2026)."),
+            # …and a date string biber cannot read is ignored, range and all
+            Assertion(engine="both", text="[Rhodes 1998]"),
+            Assertion(engine="both", text="Sal Rhodes. Mar. 1998. A date field that is not one. "
+                      "(Mar. 1998)."),
+            # a `type` field naming a localization string prints that string
+            Assertion(engine="both", text="A techreport with no type of its own. Tech. rep. "
+                      "Type Institute, Kiel."),
+            Assertion(engine="both", text="A report with no type of its own. Type Institute, Kiel."),
+            Assertion(engine="both", text='"A doctoral thesis with no type." Ph.D. Dissertation.'),
+            Assertion(engine="both", text='"A masters thesis with no type." Master\'s thesis.'),
+            Assertion(engine="both", text='"A thesis typed as a candidate thesis." Cand. thesis.'),
+            Assertion(engine="both", text="A report typed as a research report. Research rep. 7."),
+            Assertion(engine="both", text="A misc typed as software. [SW]. (2001)."),
+            Assertion(engine="both", text="A dataset typed as an audio CD. Audio CD."),
+            Assertion(engine="both", text='"A patent typed as a US patent." (2001). U.S. pat. '
+                      "Patent No. US-2."),
+            Assertion(engine="both", text="A report with a free-text type. Working Note."),
+            # the editor and organization leads acmauthoryear leaves a space before
+            Assertion(engine="both", text="Uma Upton, (Ed.) . 2001. A book led by one editor."),
+            Assertion(engine="both", text="Van Vance and Wes Walton, (Eds.) . 2001."),
+            Assertion(engine="both", text="Lead Org . Mar. 2001. A manual led by an organization."),
+            # …and the drivers whose name macro cannot reach an editor at all
+            Assertion(engine="both", text='"An article whose editor cannot lead." Journal of '
+                      "Leads. Ed. by Ana Abbott."),
+            Assertion(engine="both", text="Xia Xu. 2001. A book with an author and an editor. "
+                      "Ed. by Yin Young."),
+            # maxbibnames: nine names in full, ten cut to the first plus "et al."
+            Assertion(engine="both", text="Ann Ash, Bo Birch, Cy Cedar, Di Dogwood, Ed Elm, "
+                      "Fay Fir, Gus Gum, Hal Holly, and Ivy Ivy. 2001."),
+            Assertion(engine="both", text='Jo Juniper et al.. 2001. "Ten authors cut to one."'),
+            Assertion(engine="both", text="Cam Cherry et al., (Eds.) . 2001. Ten editors cut to one."),
+            Assertion(engine="both", text="Zed Zelkova, Abe Alder, Bea Beech, et al.. 2001."),
+            # a truncated list ends in a stop of its own, in every list a driver
+            # prints — here only acmauthoryear's own literal period follows it
+            Assertion(engine="both", text="Ann Alpha et al.. 2001. A truncated dataset name list."),
+            Assertion(engine="both", text="Trans. by Pat Pi et al. Journal of Names."),
+            Assertion(engine="both", text="Patent No. US-9. Rex Rho et al."),
+            Assertion(engine="both", text="Tia Tau et al. A Host Book."),
+            # a character macro sorts as the character, between its two anchors
+            # (in two halves: a page folio falls between them in the text layer)
+            Assertion(engine="both", text="[Adept anchors the ae expansion 2001; æsop expands to "
+                      "ae 2001; Alpha closes the a run 2001; Lima anchors the l expansion 2001; "
+                      "łodz expands to l 2001; Luna closes the l run 2001; Smith anchors the ss "
+                      "expansion"),
+            Assertion(engine="both", text="ßmith expands to ss 2001; Szabo closes the s run 2001]"),
+            # the delimiter whitespace belongs to the command, so the key is
+            # "aespace…" and files behind "aesop…", not ahead of "adept…"
+            Assertion(engine="both", text="[æspace delimits the command 2001]"),
+            # …and the case the macro carries is the tertiary difference biber
+            # resolves, uppercase first
+            Assertion(engine="both", text="[Æon files by macro case 2001; æon files by "
+                      "macro case 2001]"),
+            # whitespace between an accent or character command and what follows
+            # it is the delimiter, not a character of the title
+            Assertion(engine="both", text='Abe Ashby. 2001. "ßtrasse DATA behind a space."'),
+            # the type strings the table used to be missing
+            Assertion(engine="both", text='"A thesis typed as a bachelor thesis." BA thesis.'),
+            Assertion(engine="both", text='"A patent typed as a plain request." (2001). Pat. req.'),
+            Assertion(engine="both", text='"A patent typed as a US request." (2001). U.S. pat. req.'),
+            # uniquename and uniquelist are on here, and the prefix is dropped
+            # a "??" value is the .bst's missing-value marker, not biblatex's:
+            # the BibLaTeX drivers print it like any other field text
+            Assertion(engine="both", text="Vic Vance. 2001. A field the .bst would call "
+                      "unknown. Real value. ??unknown."),
+            Assertion(engine="both", text="a missing-value marker [Vic Vance 2001]"),
+            # …and a nameless entry labels on that title, marker and all
+            Assertion(engine="both",
+                      text="still labels its own citation [??unknown 2013]"),
+            Assertion(engine="both", text="References ??unknown. (2013)."),
+            Assertion(engine="both", text="a surname apart John Smith Jane Smith, widens a name "
+                      "list past the truncation point Bell, Cole, and Dunn Bell, Cole, and Ewing, "
+                      "and drops a name prefix that the numeric style keeps Beethoven."),
+        ),
+        note="BibLaTeX date, type, name-lead and title-case field formats under "
+             "acmauthoryear.",
+    ),
+    "biblatex-fields-numeric-test": Test(
+        kind="twin", pages=3, text_equal=True,
+        text_assertions=(
+            # \MakeSentenceCase*: the FIRST character is uppercased and every other
+            # letter lowercased, so a title opening with anything else keeps none.
+            Assertion(engine="both", text="Dan Doyle. 2001. 3 ways of counting things."),
+            Assertion(engine="both", text="Eli Emery. 2001. 3d rendering explained again."),
+            Assertion(engine="both", text="Fern Floyd. 2001. 3D rendering explained once more."),
+            Assertion(engine="both", text="Gil Gordon. 2001. 'tis the season for counting."),
+            Assertion(engine="both", text="Hana Hardy. 2001. (almost) never again is enough."),
+            Assertion(engine="both", text="Ivo Ingram. 2001. Ebay and the rest of them."),
+            Assertion(engine="both", text="Joy Jenkins. 2001. One two three four five."),
+            Assertion(engine="both", text="Kit Kramer. 2001. A study. another sentence entirely."),
+            Assertion(engine="both", text="Lou Lawson. 2001. The ACM way of doing things."),
+            # a control symbol that IS a character takes the first-character slot,
+            # so the word behind it is lowercased like any other
+            Assertion(engine="both", text="Ann Amper. 2001. & data at the front."),
+            Assertion(engine="both", text="Bud Percy. 2001. % data at the front."),
+            # the numeric lead is the start year alone; the range lives in the
+            # parenthesized date
+            Assertion(engine="both", text="Ivy Ingle. 2026. A date beside the legacy fields it "
+                      "overwrites. (June 14, 2026)."),
+            Assertion(engine="both", text="Jan Joyner. 2024. A range inside one year. "
+                      "(Jan. 2–Mar. 4, 2024)."),
+            Assertion(engine="both", text="Kay Kirby. 2024. A range across two years. "
+                      "(Jan. 2, 2024–Mar. 4, 2025)."),
+            Assertion(engine="both", text="Lou Lyman. 2025. A range with an open end. "
+                      "(May 6, 2025–)."),
+            Assertion(engine="both", text="Mel Mabry. 2020. A range of bare years. (2020–2022)."),
+            # the empty year field prints as nothing, where a missing date
+            # prints the "[n. d.]" stand-in
+            Assertion(engine="both", text="Nan Nesbit. A range with an open start. "
+                      "(–May 6, 2025)."),
+            Assertion(engine="both", text="Ott Orwell. [n. d.] A range open at both ends. ()."),
+            Assertion(engine="both", text="Pia Pruitt. 1999. An open start the legacy fields "
+                      "answer. (Jan. 1999–June 14, 2026)."),
+            Assertion(engine="both", text="Rex Quayle. An open start a legacy month reaches. "
+                      "(Jan. –June 14, 2026)."),
+            Assertion(engine="both", text="Sal Rhodes. 1998. A date field that is not one. "
+                      "(Mar. 1998)."),
+            # a command that prints nothing, or only a space, leaves the
+            # first-character slot to the word behind it
+            Assertion(engine="both", text="Cleo Ryder. 2001. Data at the front."),
+            Assertion(engine="both", text="Dot Sawyer. 2001. Data at the front."),
+            Assertion(engine="both", text="Eli Tanner. 2001. Data at the front."),
+            Assertion(engine="both", text="Fitz Usher. 2001. Data at the front."),
+            Assertion(engine="both", text="Mae Mendez. 2001. Étude on accented starts."),
+            # acmnumeric's \labelnamepunct is absorbed after an editor lead, so the
+            # space acmauthoryear leaves there is not doubled by a period here
+            Assertion(engine="both", text="Uma Upton, (Ed.) 2001. A book led by one editor."),
+            Assertion(engine="both", text="[37] Jo Juniper et al. 2001. Ten authors cut to one."),
+            # a letter-named accent leaves the letter behind it to be cased, and a
+            # command that IS a character takes the slot and is cased with it
+            Assertion(engine="both", text="Tao Tucker. 2001. Čase data every minute."),
+            Assertion(engine="both", text="Uma Ulrich. 2001. Çedilla data every second."),
+            Assertion(engine="both", text="Quin Quill. 2001. Æsop fable every year."),
+            Assertion(engine="both", text="Rex Rankin. 2001. Sstrasse data every week."),
+            Assertion(engine="both", text="Sal Sutton. 2001. Italic data every month."),
+            Assertion(engine="both", text="Val Vernon. 2001. Data čase and æsop every so often."),
+            Assertion(engine="both", text="Wyn Waller. 2001. æsop fable every decade."),
+            # …and the same truncation and expansion, sentence-cased
+            Assertion(engine="both", text="Ann Alpha et al. A truncated dataset name list."),
+            Assertion(engine="both", text="Trans. by Pat Pi et al. Journal of Names."),
+            Assertion(engine="both", text="Patent No. US-9. Rex Rho et al."),
+            Assertion(engine="both", text="Tia Tau et al. A Host Book."),
+            Assertion(engine="both", text="[4] 2001. Adept anchors the ae expansion. (2001). "
+                      "[5] 2001. Æon files by macro case. the uppercase macro. (2001). "
+                      "[6] 2001. Æon files by macro case. the lowercase macro. (2001)."),
+            Assertion(engine="both", text="Æsop expands to ae. (2001). [8] 2001. "
+                      "Æspace delimits the command. (2001)."),
+            Assertion(engine="both", text="Xia Xiong. 2001. Čase data behind a space."),
+            Assertion(engine="both", text="Yan Yeager. 2001. Æsop fable behind a space."),
+            Assertion(engine="both", text="Zoe Zamora. 2001. Öpen data behind a space."),
+            Assertion(engine="both", text="Abe Ashby. 2001. Sstrasse data behind a space."),
+            # an accent is a character wherever the braces sit, and a control
+            # WORD in braces stays protected
+            Assertion(engine="both", text="Nia Newton. 2001. Öpen data every day."),
+            Assertion(engine="both", text="Oli Osgood. 2001. Öpen data every night."),
+            Assertion(engine="both", text="Pia Prewitt. 2001. ßpen data every hour."),
+            # acmnumeric enables neither uniquename nor uniquelist, and keeps the prefix
+            Assertion(engine="both", text="Vic Vance. 2001. A field the .bst would call "
+                      "unknown. Real value. ??unknown."),
+            Assertion(engine="both", text="a missing-value marker [87]"),
+            Assertion(engine="both", text="a surname apart Smith Smith, widens a name list past "
+                      "the truncation point Bell et al. Bell et al., and drops a name prefix "
+                      "that the numeric style keeps van Beethoven."),
+        ),
+        note="the same fixtures under acmnumeric, which alone sentence-cases the "
+             "titles and prints ACM's own year stand-in.",
     ),
     "biblatex-sort-test": Test(
         kind="twin", pages=2, text_equal=True,
@@ -1078,6 +1349,92 @@ TESTS: dict[str, Test] = {
         ),
         note="the same fixtures under acmnumeric, which inherits useprefix=true "
              "from trad-standard.bbx and files a prefixed name under its prefix.",
+    ),
+    "biblatex-stages-test": Test(
+        kind="twin", pages=1, text_equal=True,
+        text_assertions=(
+            # the title addon rides with its title; the container's runs straight
+            # on, which is what the ACM styles do
+            Assertion(engine="both", text="Fay Addon. 2001. “A titled article.” "
+                      "Extended abstract. J."),
+            Assertion(engine="both", text="In: A host bookExtended proceedings, 1–9."),
+            # a main title leads and takes the volume with it
+            Assertion(engine="both", text="A main title. Vol. 3.B: A subtitle-bearing "
+                      "proceedings. Ti Press, Bern."),
+            # the language and translator stages, and an addon-only event, which
+            # author-year prints
+            Assertion(engine="both", text="A translated proceedings. French. "
+                      "Trans. by Xena Xavier."),
+            Assertion(engine="both", text="An addon-only event. Special Session."),
+            # a comma follows an abbreviation dot only through a starred unit
+            Assertion(engine="both", text="Comput. Society. Pn Press."),
+            Assertion(engine="both", text="A series that ends in a dot. Ser Series."),
+            # \\mkpagetotal: an integer takes the page string, anything else none
+            Assertion(engine="both", text="A pagetotal with a leading zero. 01 p."),
+            Assertion(engine="both", text="A pagetotal that is no integer. 1-1."),
+            # an event with no title of its own is the parentheses alone
+            Assertion(engine="both", text="A venue and nothing else (Paris)."),
+            # a title family prints whatever components it has
+            Assertion(engine="both", text="Bob Add. 2004. An addon with no title."),
+            Assertion(engine="both", text="Ann Sub. 2003. A subtitle with no title."),
+            # the maintitle hierarchy: a period without a volume, a colon with
+            # one, an addon riding along, and one copy of an equal title
+            Assertion(engine="both", text="Mia Marsh, (Ed.) . 2006. Main. Component."),
+            Assertion(engine="both", text="Nia Nolan, (Ed.) . 2007. Main. Vol. 2: Component."),
+            Assertion(engine="both", text="Pia Pike, (Ed.) . 2009. Main. Main addon. Component."),
+            Assertion(engine="both", text="Ola Owens, (Ed.) . 2008. Same. Vol. 2."),
+            # a language field is a list, and an addon behind a colon takes a space
+            Assertion(engine="both", text="Three languages. English, French, and German."),
+            Assertion(engine="both", text="Kim Colon. 2014. Title: Addon."),
+            # a title component that ends in a colon takes a space where another
+            # takes a period, and adds no stop of its own inside the quotes
+            Assertion(engine="both", text="Ann Kolon. 2017. “A title ending in a colon:” J."),
+            Assertion(engine="both", text="Bob Sable. 2018. “A title ending in a colon: "
+                      "The continuation.” J."),
+            Assertion(engine="both", text="Cy Vega. 2019. “A paper.” In: A book ending in a "
+                      "colon: The book continuation, 1–9."),
+            Assertion(engine="both", text="Dot Wren, (Ed.) . 2020. A main ending in a colon: Part."),
+            # an organization is a list, and the buffer sees its last item
+            Assertion(engine="both", text="A main ending in a colon: Part. Two Society and "
+                      "Three Society."),
+            Assertion(engine="both", text="Gus Zorn, (Ed.) . 2022. Three organizers. One Society, "
+                      "Two Society, and Three Society."),
+        ),
+        note="driver stages the ACM styles print: titles, language, translator, punctuation.",
+    ),
+    "biblatex-stages-numeric-test": Test(
+        kind="twin", pages=1, text_equal=True,
+        text_assertions=(
+            # the numeric guard skips an event that is nothing but an addon
+            Assertion(engine="both", text="Ad Elder, (Ed.) An addon-only event, (2005)."),
+            Assertion(engine="both", kind="absent", text="An addon-only event. Special Session"),
+            # …and here the starred unit's comma shows, where the sentence period
+            # keeps the next separator out
+            Assertion(engine="both", text="An organization that ends in a dot, (2006). "
+                      "Comput. Society., Pn Press."),
+            Assertion(engine="both", text="A series that ends in a dot, Ser Series. (2007)."),
+            Assertion(engine="both", text="A translated proceedings. French. "
+                      "Trans. by Xena Xavier, (2004)."),
+            Assertion(engine="both", text="A main title. Vol. 3.B: A subtitle-bearing "
+                      "proceedings. Bern, (2003). Ti Press."),
+            # the numeric guard skips an event whose date it cannot read
+            Assertion(engine="both", text="Gil Gray, (Ed.) A guarded event, (2013)."),
+            Assertion(engine="both", kind="absent", text="A guarded event. Special Session"),
+            # an equal title is printed once, and the volume goes back to the
+            # driver's own stage
+            Assertion(engine="both", text="Ola Owens, (Ed.) Same, vol. 2, (2008)."),
+            Assertion(engine="both", text="A series and a number, number 4 in Series. (2016)."),
+            # the colon carries the same space through the numeric title format
+            Assertion(engine="both", text="Ann Kolon. 2017. A title ending in a colon: J."),
+            Assertion(engine="both", text="Cy Vega. 2019. A paper. In A book ending in a colon: "
+                      "The book continuation, 1–9."),
+            # the organization list prints after the parenthesized date here
+            Assertion(engine="both", text="Dot Wren, (Ed.) A main ending in a colon: Part, (2020). "
+                      "Two Society and Three Society."),
+            Assertion(engine="both", text="Gus Zorn, (Ed.) Three organizers, (2022). One Society, "
+                      "Two Society, and Three Society."),
+        ),
+        note="the same fixtures under acmnumeric, whose event guard skips an addon-only event.",
     ),
     "biblatex-label-test": Test(
         kind="twin", pages=1, text_equal=True,
@@ -1192,6 +1549,166 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Cy Cross. 50. A range across the era. (−50–50)."),
         ),
         note="the same fixtures under acmnumeric, whose lead prints the start year alone.",
+    ),
+    "biblatex-misc-test": Test(
+        kind="twin", pages=2, text_equal=True,
+        text_assertions=(
+            # \DeclareFieldFormat{version} (biblatex.def:589), in each of the six
+            # drivers that print one - and in neither of the two that do not.
+            Assertion(engine="both", text="“An article carrying a version.” "
+                      "Version v3. Journal of Versions"),
+            Assertion(engine="both", text="Handbook. Version 2.1."),
+            # software inheritance: a child's own date blocks the parent's, and a
+            # date that starts open supplies an empty year that blocks it too
+            Assertion(engine="both", text="Pat Parent, A parent carrying a date version 2.0, "
+                      "–June 2025."),
+            Assertion(engine="both", text="Pat Parent, A parent carrying a date version 3.0, "
+                      "Jan. 1999."),
+            # mincrossrefs: two cited versions put their parent in the list
+            # uncited, where it takes an extradate letter with the child that
+            # inherited its year — and one cited version does not
+            Assertion(engine="both", text="[Parent 1999a, –2025]"),
+            Assertion(engine="both", text="version 3.0, Jan. 1999. [SW] Pat Parent, A parent "
+                      "carrying a date Jan. 1999."),
+            Assertion(engine="both", text="[Ward 2024]"),
+            Assertion(engine="both", kind="absent", text="[SW] Wren Ward"),
+            # crossref inheritance: the child takes the parent's fields, and the
+            # parent's TITLE arrives in the slot its own type asks for — and the
+            # two of them promote the parent into the list beside them
+            Assertion(engine="both", text="[Ashby 2001; Boyle 2001]"),
+            Assertion(engine="both", text="Ada Ashby. 2001. “A first shared paper.” In: A shared "
+                      "proceedings parent. Ed. by Eve Editor. Inherit Press, Oslo, 1–9."),
+            Assertion(engine="both", text="Ben Boyle. 2001. “A second shared paper.” In: A shared "
+                      "proceedings parent. Ed. by Eve Editor. Inherit Press, Oslo, 10–19."),
+            Assertion(engine="both", text="Eve Editor, (Ed.) . 2001. A shared proceedings parent. "
+                      "Inherit Press, Oslo."),
+            Assertion(engine="both", text="Cy Colby. 1995b. “An article in it.” A periodical "
+                      "parent, 3–7. Ed. by Pia Press."),
+            # the driver sourcemap's field and type aliases: a child's own
+            # `journal`/`address` blocks what the parent passes down, and a
+            # @conference is an @inproceedings by the time inheritance looks
+            Assertion(engine="both", text="Cy Colby. 1995a. “A child article.” Child Journal, 3–7. "
+                      "Ed. by Pia Press."),
+            Assertion(engine="both", text="Dot Doyle. 2001. “A conference child.” In: A parent "
+                      "proceedings. Ed. by Eve Editor. Al Press, Child City, 1–9."),
+            # every component of the parent's date travels, day and range alike…
+            Assertion(engine="both", text="Fay Foster. Aug. 17, 2003. “A day-dated child.”"),
+            # …and a date of the child's own that biber cannot read blocks none of it
+            Assertion(engine="both", text="Gus Grant. 1990–1992. “A range-dated child.”"),
+            # the container macro prints its own "In" with no booktitle behind it
+            Assertion(engine="both", text="Ida Irwin. 2010. “A standalone paper.” In: 1–5."),
+            # pages alone join the publisher with a comma (a chapter takes a stop)
+            Assertion(engine="both", text="“A chapter of its own.” Lee Larson. A whole book. "
+                      "Pg Press, Bern, 5–9."),
+            # a legacy spelling is renamed, never allowed to overwrite the canonical
+            Assertion(engine="both", text="Ann Able. 2001. “Both spellings of a field.” "
+                      "Canonical Journal. CanonArch: 1234.5678 (canon.cls)."),
+            # …every stage of the author-year proceedings driver, in its order
+            Assertion(engine="both", text="A full proceedings. The Big Event (Reykjavik, "
+                      "Mar. 4, 2000). Vol. 7.2. 3 vols. Proc Series 9. A closing note. Proc Org. "
+                      "Full Press, Oslo. 321 pp."),
+            # a date biber cannot read blocks no inheritance…
+            Assertion(engine="both", text="Bo Bogus. 1990–1992. “A bogus-dated child.”"),
+            # …while one it can read stops its parent's range where it stands
+            Assertion(engine="both", text="Dot Doyle. 2005. “An undated grandchild.”"),
+            # pages take their comma with no publisher ahead of them
+            Assertion(engine="both", text="“A chapter with no publisher.” A host book, 5–9."),
+            # an archive of its own parenthesizes the class where arXiv brackets it
+            Assertion(engine="both", text="Hal Hooper. 2005. “A custom archive.” J. "
+                      "Custom Archive: 9876.5432 (custom.class)."),
+            # and the colon of a bare container leaves the editor lowercase
+            Assertion(engine="both", text="Jon Jarvis. 2007. “A containerless paper.” In: ed. by "
+                      "Eve Elder, 1–5."),
+            # the event's addon and its own date range
+            Assertion(engine="both", text="Event full. Annual Event. Special Session "
+                      "(Paris, Apr. 2–3, 2000)."),
+            # a part prints without a volume, dot and all
+            Assertion(engine="both", text="Part only. .B. Pt Press, Bern."),
+            # a date biber rejects leaves the parent's to be inherited
+            Assertion(engine="both", text="Cy Thirteen. Aug. 17, 2003. “A month biber rejects.”"),
+            # an open end does not outlive the child that dates itself
+            Assertion(engine="both", text="Dot Doyle. 2005. “An undated grandchild.”"),
+            # an empty canonical spelling keeps the legacy one out
+            Assertion(engine="both", text="Ivy Empty. 2007. “An empty canonical spelling.”"),
+            # …and one page is one
+            Assertion(engine="both", text="One page. Pg Press, Oslo. 1 p."),
+            Assertion(engine="both", text="On a blog. Working note. Version v2."),
+            Assertion(engine="both", text="An online carrying a version. Version v5."),
+            Assertion(engine="both", text="Technical Report TR-3. Version v6."),
+            Assertion(engine="both", text="Corpus. (2nd ed.). Version v12."),
+            Assertion(engine="both", text="“A thesis carrying a version.” "
+                      "Ph.D. Dissertation. Thesis University"),
+            Assertion(engine="both", text="Software with a version and no date version v9."),
+            # misc: organization+location+date, always parenthesized, and
+            # doi+eprint+url dropping the URL for a DOI.
+            Assertion(engine="both", text="A misc with a year and a month. (June 2011)."),
+            Assertion(engine="both", text="Berlin: Misc Org, (May 2002)."),
+            Assertion(engine="both", text="Vienna: Authorless Org, (Feb. 2023)."),
+            Assertion(engine="both", text="A misc with a doi and a url. (Sept. 2003). "
+                      "doi:10.1000/miscdoiurl."),
+            Assertion(engine="both", text="(July 2007). http://ex.org/me arXiv: 2402.00002."),
+            # online: no howpublished/type, no DOI, a URL even with one, and a
+            # date only when the entry has a month.
+            Assertion(engine="both", text="An online with a doi and a url. Retrieved "
+                      "December 8, 2026 from http://ex.org/od."),
+            Assertion(engine="both", text="An online with a doi and no url."),
+            Assertion(engine="both", text="An online with howpublished type and "
+                      "organization. Online Org. (Oct. 2035)."),
+            Assertion(engine="both", text="A www entry. http://ex.org/ww."),
+            # presentation / underreview have no driver and alias to misc
+            Assertion(engine="both", text="A presentation with a date. (Mar. 2027)."),
+            Assertion(engine="both", text="A paper under review. (2025)."),
+        ),
+        note="BibLaTeX misc/online/manual driver split, the `version` field format, "
+             "and undated entries; acmauthoryear half of the pair.",
+    ),
+    "biblatex-misc-numeric-test": Test(
+        kind="twin", pages=2, text_equal=True,
+        text_assertions=(
+            # acmnumeric prints ACM's own `year` bibmacro stand-in, whose bracket
+            # ends the sentence, where acmauthoryear prints biblatex's `nodate`.
+            Assertion(engine="both", text="Tom Tate. [n. d.] An article with no date."),
+            Assertion(engine="both", text="Val Vale. [n. d.] A misc with no date. ()."),
+            # …and the same inheritance, where an open start leaves no year to lead with
+            Assertion(engine="both", text="Pat Parent, A parent carrying a date version 2.0, "
+                      "–June 2025."),
+            Assertion(engine="both", text="Wren Ward, Another parent carrying a date version 4.0, "
+                      "May 2024."),
+            # the promoted parent is numbered in the list like any other entry
+            Assertion(engine="both", text="[SW] Pat Parent, A parent carrying a date Jan. 1999."),
+            Assertion(engine="both", kind="absent", text="[SW] Wren Ward"),
+            # …and the same inheritance, a periodical title in the journal slot
+            Assertion(engine="both", text="Cy Colby. 1995. An article in it. A periodical "
+                      "parent, 3–7. Pia Press, (Ed.)"),
+            # the numeric @proceedings driver is trad-standard's, not the book one
+            Assertion(engine="both", text="Eve Editor, (Ed.) A shared proceedings parent. "
+                      "Oslo, (2001). Inherit Press."),
+            Assertion(engine="both", text="Ida Irwin. 2010. A standalone paper. In 1–5."),
+            Assertion(engine="both", text="A chapter of its own. Lee Larson. A whole book. "
+                      "Pg Press, Bern, 5–9."),
+            # every stage of the numeric proceedings driver, note last of all
+            Assertion(engine="both", text="A full proceedings. The Big Event (Reykjavik, "
+                      "Mar. 4, 2000), vol. 7.2 of number 9 in Proc Series, 3 vols. Oslo, "
+                      "(2nd ed.), (2001). Proc Org, Full Press. 321 pp."),
+            Assertion(engine="both", text="Jon Jarvis. 2007. A containerless paper. In "
+                      "Eve Elder, (Ed.), 1–5."),
+            Assertion(engine="both", text="A chapter with no publisher. A host book, 5–9."),
+            # the numeric driver's pending separators: the comma the absent
+            # stages pass along, and the mid-sentence bibstring with no volume
+            Assertion(engine="both", text="Min Elder, (Ed.) Proceedings with pages, (2004), 1–9."),
+            Assertion(engine="both", text="Ser Elder, (Ed.) Proceedings with a series, number 7 "
+                      "in Ser Series, (2002)."),
+            Assertion(engine="both", text="Eve Elder, (Ed.) Event full. Annual Event. "
+                      "Special Session (Paris, Apr. 2–3, 2000), (2001)."),
+            Assertion(engine="both", text="Pat Part, (Ed.) Part only, .B. Bern, (2006). Pt Press."),
+            Assertion(engine="both", text="One Elder, (Ed.) One page. Oslo, (2008). Pg Press. 1 p."),
+            Assertion(engine="both", text="Wes Webb. [n. d.] An online with no date."),
+            # the dataset driver has no `year` macro at all, so it shows none
+            Assertion(engine="both", text="Sam Stone. A dataset with no date whatsoever."),
+            Assertion(engine="both", text="Zoe Zane. A dataset with a month but no year. ()."),
+        ),
+        note="the same fixtures under acmnumeric, where the undated stand-in is "
+             "ACM's \"[n. d.]\" rather than biblatex's `nodate` string.",
     ),
     "bib-all": Test(
         kind="twin", pages=1,
@@ -1692,16 +2209,6 @@ TESTS: dict[str, Test] = {
                     "LaTeX draws the author-note star tight against the following "
                     "\"and\", so the extracted stream has no space there"),
             ),
-            ExpectedTextDiff(
-                latex="an enumerated journal article [S. Cohen et al. 2007], a "
-                      "reference to an entire issue [J. Cohen 1996]",
-                typst="an enumerated journal article [Cohen, Nutt, et al. 2007], a "
-                      "reference to an entire issue [Cohen 1996]",
-                cause=TypstBug(
-                    "two entries share the surname Cohen: biblatex disambiguates them "
-                    "with the authors' given-name initials, the port instead widens "
-                    "the author list"),
-            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
@@ -1720,17 +2227,6 @@ TESTS: dict[str, Test] = {
                     "reference URLs and DOIs wrap at a different character in each "
                     "engine, so the flat stream chops the identifier where the tagged "
                     "chunk does not and the split piece cannot be re-joined"),
-            ),
-            ExpectedOrderDiff(
-                latex="an enumerated journal article [S. Cohen et al. 2007], a "
-                      "reference to an entire issue [J. Cohen 1996]",
-                typst="an enumerated journal article [Cohen, Nutt, et al. 2007], a "
-                      "reference to an entire issue [Cohen 1996]",
-                cause=TypstBug(
-                    "author-year BibLaTeX cite labels are not name-disambiguated: "
-                    "LaTeX distinguishes the two Cohens by given-name initial and "
-                    "truncates to \"S. Cohen et al.\", we spell out a second surname "
-                    "instead"),
             ),
         ),
         text_assertions=(
@@ -1769,21 +2265,6 @@ TESTS: dict[str, Test] = {
                     "page (DESIGN.md), which also puts that page's running head into "
                     "the char residual"),
             ),
-            ExpectedTextDiff(
-                latex="[15] Ian Editor, (Ed.) 2007. The title of book one.",
-                typst="[15] Ed. by Ian Editor. 2007. The title of book one.",
-                cause=TypstBug(
-                    "for a book with an editor and no author, biblatex puts the editor "
-                    "in the author slot as \"Ian Editor, (Ed.)\"; the port keeps it in "
-                    "the byeditor slot"),
-            ),
-            ExpectedTextDiff(
-                latex="Andrew McCallum. UMass citation field extraction dataset.",
-                typst="Andrew McCallum. 2013. UMass citation field extraction dataset.",
-                cause=TypstBug(
-                    "the port prints a year for this dataset entry, which biblatex "
-                    "suppresses in favour of the retrieval date alone"),
-            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
@@ -1802,15 +2283,6 @@ TESTS: dict[str, Test] = {
                     "the software-artifact SWHIDs wrap at a different character in "
                     "each engine, so the flat stream chops the identifier where the "
                     "tagged chunk does not and the split piece cannot be re-joined"),
-            ),
-            ExpectedOrderDiff(
-                latex="[15] Ian Editor, (Ed.) 2007. The title of book one.",
-                typst="[15] Ed. by Ian Editor. 2007. The title of book one.",
-                cause=TypstBug(
-                    "numeric BibLaTeX leads an editor-only @inbook with \"Ed. by "
-                    "<name>.\"; acmnumeric.bbx leads with the name list followed by "
-                    "\", (Ed.)\", the form our blx-editor-block already produces for "
-                    "other numeric drivers"),
             ),
         ),
         text_assertions=(

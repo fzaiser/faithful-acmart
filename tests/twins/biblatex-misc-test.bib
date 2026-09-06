@@ -1,0 +1,290 @@
+% Fixtures for the BibLaTeX drivers that carry no publication venue — misc (which
+% every driverless entry type aliases to), online, manual, dataset — plus the
+% `version` field format they share with article/report, and entries with no date
+% at all. Every expected string in the two twins was read off real LaTeX.
+%
+% One entry deliberately has no name list, because biber's nty sort puts its
+% title in the name slot; its title sorts ahead of every surname here, which is
+% where our sort key (empty name, then title) puts it too.
+
+@misc{MiscNoName,
+  title        = {An authorless misc with an organization},
+  organization = {Authorless Org},
+  address      = {Vienna},
+  year         = 2023,
+  month        = feb,
+}
+
+% ---- version, in each driver that prints it (and two that do not) ----
+@article{VerArticle,
+  author  = {Bea Brown},
+  title   = {An article carrying a version},
+  journal = {Journal of Versions},
+  volume  = {5},
+  number  = {2},
+  pages   = {1--9},
+  year    = 2011,
+  version = {v3},
+}
+@manual{VerManual,
+  author       = {Cara Cole},
+  title        = {A manual with every field},
+  edition      = {3},
+  series       = {Manual Series},
+  number       = {7},
+  type         = {Handbook},
+  version      = {2.1},
+  note         = {A manual note},
+  organization = {Manual Org},
+  publisher    = {Manual Press},
+  address      = {Zurich},
+  month        = nov,
+  year         = 2012,
+  chapter      = {4},
+  pages        = {11--22},
+  isbn         = {978-0-00-000000-2},
+}
+@misc{VerMisc,
+  author       = {Dan Dane},
+  title        = {A misc with howpublished and type},
+  howpublished = {On a blog},
+  type         = {Working note},
+  version      = {v2},
+  year         = 2022,
+}
+@online{VerOnline,
+  author  = {Eve Ellis},
+  title   = {An online carrying a version},
+  year    = 2014,
+  version = {v5},
+  url     = {http://ex.org/vo},
+}
+@techreport{VerReport,
+  author      = {Fay Frost},
+  title       = {A report carrying a version},
+  institution = {Report Institute},
+  address     = {Boston, MA},
+  type        = {Technical Report},
+  number      = {TR-3},
+  year        = 2015,
+  version     = {v6},
+}
+@ArtifactDataset{VerDataset,
+  author  = {Gil Gray},
+  title   = {A dataset with type edition and version},
+  type    = {Corpus},
+  edition = {2},
+  version = {v12},
+  year    = 2021,
+}
+@phdthesis{VerThesis,
+  author  = {Hana Hall},
+  title   = {A thesis carrying a version},
+  school  = {Thesis University},
+  address = {Ithaca, NY},
+  year    = 2017,
+  version = {v8},
+}
+
+% ---- the misc driver's organization+location+date tail ----
+@misc{MiscMonth,
+  author = {Ida Ives},
+  title  = {A misc with a year and a month},
+  year   = 2011,
+  month  = jun,
+}
+@misc{MiscOrgLoc,
+  author       = {Jo Jones},
+  title        = {A misc with an organization and a location},
+  organization = {Misc Org},
+  address      = {Berlin},
+  year         = 2002,
+  month        = may,
+}
+@misc{MiscDoiUrl,
+  author       = {Kim Kerr},
+  title        = {A misc with a doi and a url},
+  year         = 2003,
+  month        = sep,
+  doi          = {10.1000/miscdoiurl},
+  url          = {http://ex.org/md},
+  lastaccessed = {June 1, 2019},
+}
+@misc{MiscUrlEprint,
+  author        = {Lee Lowe},
+  title         = {A misc with a url and an eprint},
+  year          = 2007,
+  month         = jul,
+  url           = {http://ex.org/me},
+  eprint        = {2402.00002},
+  archiveprefix = {arXiv},
+}
+
+% ---- the online driver: no howpublished, no type, no doi, url regardless ----
+@online{OnlineDoiUrl,
+  author       = {Mia Mays},
+  title        = {An online with a doi and a url},
+  year         = 2031,
+  doi          = {10.1000/onlinedoiurl},
+  url          = {http://ex.org/od},
+  lastaccessed = {December 8, 2026},
+}
+@online{OnlineDoiOnly,
+  author = {Ned Nash},
+  title  = {An online with a doi and no url},
+  year   = 2032,
+  doi    = {10.1000/onlinedoionly},
+}
+@online{OnlineHowOrg,
+  author       = {Otto Ober},
+  title        = {An online with howpublished type and organization},
+  howpublished = {On a website},
+  type         = {Web page},
+  organization = {Online Org},
+  year         = 2035,
+  month        = oct,
+  url          = {http://ex.org/oo},
+}
+@www{OnlineWww,
+  author = {Pam Pike},
+  title  = {A www entry},
+  year   = 2071,
+  url    = {http://ex.org/ww},
+  doi    = {10.1000/www},
+}
+
+% ---- types with no driver of their own, which alias to misc ----
+@presentation{MiscPresentation,
+  author = {Quin Quinn},
+  title  = {A presentation with a date},
+  year   = 2027,
+  month  = mar,
+}
+@underreview{MiscUnderreview,
+  author  = {Rex Reed},
+  title   = {A paper under review},
+  journal = {Journal of Review},
+  year    = 2025,
+}
+
+% ---- no date at all ----
+@ArtifactDataset{NdDatasetA,
+  author = {Sam Stone},
+  title  = {A dataset with no date whatsoever},
+  url    = {http://ex.org/da},
+}
+@ArtifactDataset{NdDatasetB,
+  author = {Sam Stone},
+  title  = {Another dataset with no date},
+  url    = {http://ex.org/db},
+}
+@article{NdArticle,
+  author  = {Tom Tate},
+  title   = {An article with no date},
+  journal = {Journal of Nothing},
+}
+@misc{NdMisc,
+  author = {Val Vale},
+  title  = {A misc with no date},
+}
+@online{NdOnline,
+  author = {Wes Webb},
+  title  = {An online with no date},
+  url    = {http://ex.org/no},
+}
+@ArtifactSoftware{NdSoftware,
+  author  = {Yan Yates},
+  title   = {Software with a version and no date},
+  version = {v9},
+  url     = {http://ex.org/ns},
+}
+@ArtifactDataset{NdDatasetMonth,
+  author = {Zoe Zane},
+  title  = {A dataset with a month but no year},
+  month  = feb,
+}
+
+% ---- a child's own date blocks what it would inherit from its parent ----
+% Two cited versions point at SwDated, which is `mincrossrefs` enough to put it
+% in the bibliography uncited; SwDatedTwo has one and stays out of it.
+@software{SwDated,
+  title  = {A parent carrying a date},
+  author = {Pat Parent},
+  date   = {1999-01},
+}
+@softwareversion{SwOpenChild,
+  crossref = {SwDated},
+  version  = {2.0},
+  date     = {/2025-06},
+}
+@softwareversion{SwPlainChild,
+  crossref = {SwDated},
+  version  = {3.0},
+}
+@software{SwDatedTwo,
+  title  = {Another parent carrying a date},
+  author = {Wren Ward},
+  date   = {1999-01},
+}
+@softwareversion{SwLoneChild,
+  crossref = {SwDatedTwo},
+  version  = {4.0},
+  date     = {2024-05},
+}
+
+% ---- crossref inheritance: the parent's fields, its title in the slot the
+% child's own type asks for, and the parent promoted by the two of them ----
+@proceedings{IhParent,
+  title     = {A shared proceedings parent},
+  editor    = {Eve Editor},
+  publisher = {Inherit Press},
+  address   = {Oslo},
+  date      = {2001},
+}
+@inproceedings{IhFirst,  crossref = {IhParent}, title = {A first shared paper}, author = {Ada Ashby}, pages = {1--9}}
+@inproceedings{IhSecond, crossref = {IhParent}, title = {A second shared paper}, author = {Ben Boyle}, pages = {10--19}}
+@periodical{IhJournal,
+  title  = {A periodical parent},
+  editor = {Pia Press},
+  date   = {1995},
+}
+@article{IhArticle, crossref = {IhJournal}, title = {An article in it}, author = {Cy Colby}, pages = {3--7}}
+
+% ---- the driver sourcemap's aliases, the components a date passes down, and
+% ---- the container macro's own "In" ----
+@periodical{AlJournal, title = {A parent journal}, editor = {Pia Press}, date = {1995}}
+@article{AlKid, crossref = {AlJournal}, title = {A child article}, author = {Cy Colby}, journal = {Child Journal}, pages = {3--7}}
+@proceedings{AlProc, title = {A parent proceedings}, editor = {Eve Editor}, location = {Parent City}, date = {2001}, publisher = {Al Press}}
+@conference{AlConf, crossref = {AlProc}, title = {A conference child}, author = {Dot Doyle}, address = {Child City}, pages = {1--9}}
+@proceedings{DcProc, title = {A day-dated parent}, editor = {Dee Day}, date = {2003-08-17}, publisher = {Dc Press}, address = {Bern}}
+@inproceedings{DcKid, crossref = {DcProc}, title = {A day-dated child}, author = {Fay Foster}, pages = {1--3}}
+@proceedings{DrProc, title = {A range-dated parent}, editor = {Ray Range}, date = {1990/1992}, publisher = {Dr Press}, address = {Kiel}}
+@inproceedings{DrKid, crossref = {DrProc}, title = {A range-dated child}, author = {Gus Grant}, date = {/}, pages = {4--6}}
+@inproceedings{SoloIn, title = {A standalone paper}, author = {Ida Irwin}, pages = {1--5}, year = 2010}
+@inbook{PgBook, title = {A chapter of its own}, author = {Kim Keller}, bookauthor = {Lee Larson}, booktitle = {A whole book}, publisher = {Pg Press}, address = {Bern}, date = {1992}, pages = {5--9}}
+
+% ---- the sourcemap renames rather than overwrites; the proceedings driver's
+% ---- own stages; a date biber cannot read; end components that stop a range;
+% ---- pages with no publisher ahead of them; a non-arXiv eprint ----
+@article{TwoSpellings, author = {Ann Able}, title = {Both spellings of a field}, journal = {Legacy Journal}, journaltitle = {Canonical Journal}, archiveprefix = {LegacyArch}, eprinttype = {CanonArch}, eprint = {1234.5678}, primaryclass = {legacy.cls}, eprintclass = {canon.cls}, year = 2001}
+@proceedings{FullProc, title = {A full proceedings}, editor = {Eve Elder}, eventtitle = {The Big Event}, venue = {Reykjavik}, eventdate = {2000-03-04}, volume = {7}, part = {2}, number = {9}, series = {Proc Series}, volumes = {3}, edition = {2}, organization = {Proc Org}, location = {Oslo}, publisher = {Full Press}, date = {2001}, pagetotal = {321}, note = {A closing note}, isbn = {978-0-000-00000-0}}
+@inproceedings{BogusKid, crossref = {DrProc}, title = {A bogus-dated child}, author = {Bo Bogus}, date = {bogus}, pages = {1--3}}
+@proceedings{ChainMid, crossref = {DrProc}, title = {A single-dated parent}, editor = {Mia Mid}, date = {2005}}
+@inproceedings{ChainKid, crossref = {ChainMid}, title = {An undated grandchild}, author = {Dot Doyle}, pages = {7--9}}
+@inbook{NoPubPages, title = {A chapter with no publisher}, author = {Eli Ellis}, booktitle = {A host book}, pages = {5--9}, year = 2002}
+@article{CustomEprint, author = {Hal Hooper}, title = {A custom archive}, journal = {J}, eprinttype = {Custom Archive}, eprint = {9876.5432}, eprintclass = {custom.class}, year = 2005}
+@inproceedings{NoBookEditor, title = {A containerless paper}, author = {Jon Jarvis}, editor = {Eve Elder}, pages = {1--5}, year = 2007}
+
+% ---- the event stages, the numeric driver's pending separators, a date biber
+% ---- rejects outright, an open end that must not outlive its child, a part
+% ---- without a volume, an empty canonical field, and a single page ----
+@proceedings{EvFull, title = {Event full}, editor = {Eve Elder}, eventtitle = {Annual Event}, eventtitleaddon = {Special Session}, venue = {Paris}, eventdate = {2000-04-02/2000-04-03}, date = {2001}}
+@proceedings{PrMin, title = {Proceedings with pages}, editor = {Min Elder}, date = {2004}, pages = {1--9}}
+@proceedings{PrSer, title = {Proceedings with a series}, editor = {Ser Elder}, series = {Ser Series}, number = {7}, date = {2002}}
+@inproceedings{DtM13, crossref = {DcProc}, title = {A month biber rejects}, author = {Cy Thirteen}, date = {2005-13}, pages = {5--6}}
+@proceedings{OpTop, title = {An open-ended grandparent}, editor = {Gus Grand}, date = {1990/}, publisher = {Op Press}, address = {Kiel}}
+@proceedings{OpMid, crossref = {OpTop}, title = {A single-dated parent}, editor = {Mia Mid}, date = {2005}}
+@inproceedings{OpKid, crossref = {OpMid}, title = {An undated grandchild}, author = {Hal Kid}, pages = {1--3}}
+@proceedings{PtOnly, title = {Part only}, editor = {Pat Part}, part = {B}, date = {2006}, publisher = {Pt Press}, address = {Bern}}
+@article{EmCanon, author = {Ivy Empty}, title = {An empty canonical spelling}, journal = {Legacy Journal}, journaltitle = {}, year = 2007}
+@proceedings{PgOne, title = {One page}, editor = {One Elder}, pagetotal = {1}, date = {2008}, publisher = {Pg Press}, address = {Oslo}}

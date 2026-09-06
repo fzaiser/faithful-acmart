@@ -250,6 +250,34 @@ mistaken for faithfulness bugs.
   labels (`[SW]`, `[SW Rel.]`, `[SW Mod.]`, `[SW exc.]`), and HAL/URL/VCS/SWHID
   identifier blocks. The `biblatex-test` twin gates acmnumeric against biber with no
   exemption; the full samples exercise the software cite block against upstream.
+- **The venue-less BibLaTeX drivers are three different drivers**, not one. `misc` —
+  which every type biblatex has no driver for aliases to, including ACM's own
+  `presentation` and `underreview` — prints howpublished and type, ends in
+  `organization+location+date` (so it always shows a parenthesized date, empty
+  parentheses included) and then `doi+eprint+url`, which drops the URL for a DOI.
+  `online` prints neither howpublished nor type, dates itself only when the entry has a
+  month, and ends in a bare eprint + `url+urldate`, so it never shows a DOI and always
+  shows a URL. `manual` is a book-shaped driver with edition, series, publisher, pages
+  and ISBN. All three, plus `article`, `report` and `dataset`, print a `version` field
+  through biblatex's own format — the `version` bibstring, capitalized by the
+  punctuation tracker ("Version v3"); the software drivers print the same field
+  mid-sentence, so it stays lowercase. An entry biber found no date for prints ACM's
+  `[n. d.]` under acmnumeric and biblatex's `nodate` string under acmauthoryear ("N.d."
+  in the reference list, "n.d." in a cite), with any `extradate` letter parenthesized
+  after it. Pinned by the `biblatex-misc-test` / `biblatex-misc-numeric-test` pair.
+- **BibLaTeX field formats that cut across the drivers.** A `date` field is the only
+  one that can carry a day — biber nulls a `day` field (biblatex.def:1341) — and the day
+  then shows in every parenthesized date and, under acmauthoryear, in the label date
+  ("June 14, 2026"). A `type` field naming a localization string prints that string
+  (biblatex.def:586), which is where a typeless `@techreport` gets its "Tech. rep." and
+  a thesis its "Ph.D. Dissertation": biber's driver sourcemap stamps the type on while
+  remapping the entry (biblatex.def:1348). A reference-list name list stops at nine
+  names and continues "et al.", counting an explicit "and others" as none of the nine.
+  And the numeric styles sentence-case a title by uppercasing its FIRST character and
+  lowercasing every letter after it — a title opening with a digit, a bracket or a quote
+  therefore keeps no capital at all, and a full stop inside the title starts nothing new;
+  the title and the subtitle are cased separately, so the subtitle keeps a capital of its
+  own. Pinned by the `biblatex-fields-test` / `biblatex-fields-numeric-test` pair.
 - **BibLaTeX cite-label name disambiguation**
   ([`acmref-blxnames.typ`](src/parts/acmref-blxnames.typ)). `acmauthoryear.bbx` builds on
   `authoryear-comp`, which turns on biber's `uniquename=full` and `uniquelist=true` and

@@ -1,0 +1,33 @@
+%% biblatex-stages-test - driver stages and punctuation, under acmauthoryear.
+\documentclass[acmsmall,nonacm,natbib=false]{acmart}
+\pagestyle{empty}
+\settopmatter{printacmref=false}
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmauthoryear,
+  ]{biblatex}
+\addbibresource{biblatex-stages-test.bib}
+\begin{document}
+\thispagestyle{empty}
+
+\section*{Titles}
+A title addon travels with the title it belongs to, in an article and in a container alike \cite{TiAddon,TiBook}.
+A main title leads the hierarchy and takes the volume with it \cite{TiMain}.
+
+\section*{Stages}
+A proceedings prints its language and its translator, which both styles had been stopping short of \cite{PrLang}.
+An event that is nothing but an addon is printed here, where the numeric guard looks for a title and skips it \cite{EvAddon}.
+
+\section*{Punctuation}
+A comma still follows an abbreviation dot, but not a sentence one \cite{PnOrg,PnSer}.
+A pagetotal is a page count only when it is an integer \cite{Pg01,PgRng}.
+
+\section*{Components}
+An event with a venue and no title of its own is the parentheses alone \cite{EvVenue}, and a subtitle or an addon prints without a title beside it \cite{TiSubOnly,TiAddOnly}.
+A main title takes a period where no volume follows it and a colon where one does \cite{MtPlain,MtVol}, an addon rides with it \cite{MtAddon}, and a title equal to it is printed once \cite{MtSame}.
+A language field is a list \cite{LgThree}, an event the numeric guard cannot read a date for is skipped \cite{EvGuard}, a series that ends in a dot keeps the next separator out \cite{PnSerNum}, and an addon behind a colon takes a space \cite{AdColon}.
+A title that ends in a colon takes a space where another takes a period \cite{KoTitle,KoSub,KoBook,KoMain}, and an organization is a list \cite{OrThree}.
+
+\printbibliography
+
+\end{document}

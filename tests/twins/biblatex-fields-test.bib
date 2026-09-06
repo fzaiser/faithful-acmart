@@ -1,0 +1,119 @@
+% Fixtures for the BibLaTeX field formats that survive into every driver: dates
+% at day precision, a `type` field that names a localization string, the name
+% lead each driver's name macro can actually reach, and the numeric styles'
+% sentence-casing of titles. Every expected string was read off real LaTeX.
+
+% ---- dates: only a `date` field can carry a day (biber nulls `day`) ----
+@article{DtArticle, author = {Ada Adams}, title = {An article dated to the day}, journal = {Journal of Dates}, date = {2026-06-14}}
+@misc{DtMisc,       author = {Ben Baker}, title = {A misc dated to the day}, date = {2026-06-14}}
+@book{DtBook,       author = {Cal Carter}, title = {A book dated to the day}, publisher = {Date Press}, address = {Oslo}, date = {2026-06-14}}
+@techreport{DtReport, author = {Dee Dixon}, title = {A report dated to the day}, institution = {Date Institute}, address = {Bern}, type = {Note}, date = {2026-06-14}}
+@misc{DtMonth,      author = {Eve Ellis}, title = {A misc dated to the month}, date = {2026-06}}
+@misc{DtDayField,   author = {Fay Foster}, title = {A misc with a day field biber drops}, year = 2026, month = jun, day = 14}
+@misc{DtShortMonth, author = {Gus Grant}, title = {A misc dated in an abbreviated month}, date = {2026-01-05}}
+@patent{DtPatent,   author = {Hal Hooper}, title = {A patent dated to the day}, number = {US-1}, date = {2026-06-14}}
+@misc{DtOverwrite,  author = {Ivy Ingle}, title = {A date beside the legacy fields it overwrites}, date = {2026-06-14}, year = 1999, month = jan}
+@misc{DtRange,      author = {Jan Joyner}, title = {A range inside one year}, date = {2024-01-02/2024-03-04}}
+@misc{DtCrossRange, author = {Kay Kirby}, title = {A range across two years}, date = {2024-01-02/2025-03-04}}
+@misc{DtOpenRange,  author = {Lou Lyman}, title = {A range with an open end}, date = {2025-05-06/}}
+@misc{DtYearRange,  author = {Mel Mabry}, title = {A range of bare years}, date = {2020/2022}}
+@misc{DtOpenStart,  author = {Nan Nesbit}, title = {A range with an open start}, date = {/2025-05-06}}
+@misc{DtLegacyStart,author = {Pia Pruitt}, title = {An open start the legacy fields answer}, date = {/2026-06-14}, year = 1999, month = jan}
+@misc{DtMonthOnly,  author = {Rex Quayle}, title = {An open start a legacy month reaches}, date = {/2026-06-14}, month = jan}
+@misc{DtNoDate,     author = {Sal Rhodes}, title = {A date field that is not one}, date = {/}, year = 1998, month = mar}
+@misc{DtBothOpen,   author = {Ott Orwell}, title = {A range open at both ends}, date = {/}}
+
+% ---- the `type` field, resolved through the localization strings ----
+@techreport{TyTechNone, author = {Ida Irwin}, title = {A techreport with no type of its own}, institution = {Type Institute}, address = {Kiel}, year = 2001}
+@report{TyReportNone,   author = {Jon Jarvis}, title = {A report with no type of its own}, institution = {Type Institute}, address = {Kiel}, year = 2001}
+@phdthesis{TyPhd,       author = {Kim Keller}, title = {A doctoral thesis with no type}, school = {Type University}, address = {Kiel}, year = 2001}
+@mastersthesis{TyMa,    author = {Lee Larson}, title = {A masters thesis with no type}, school = {Type University}, address = {Kiel}, year = 2001}
+@thesis{TyCand,         author = {Mia Morris}, title = {A thesis typed as a candidate thesis}, type = {candthesis}, school = {Type University}, address = {Kiel}, year = 2001}
+@techreport{TyRes,      author = {Ned Norton}, title = {A report typed as a research report}, type = {resreport}, number = {7}, institution = {Type Institute}, address = {Kiel}, year = 2001}
+@misc{TySoftware,       author = {Oda Osborn}, title = {A misc typed as software}, type = {software}, year = 2001}
+@manual{TyManual,       author = {Pam Palmer}, title = {A manual typed as a techreport}, type = {techreport}, organization = {Type Org}, year = 2001}
+@ArtifactDataset{TyDataset, author = {Ray Reeves}, title = {A dataset typed as an audio CD}, type = {audiocd}, year = 2001}
+@techreport{TyFree,     author = {Sue Sawyer}, title = {A report with a free-text type}, type = {Working Note}, institution = {Type Institute}, address = {Kiel}, year = 2001}
+@misc{TyMarker,         author = {Vic Vance}, title = {A field the .bst would call unknown}, note = {??unknown}, howpublished = {Real value}, year = 2001}
+@misc{TyMarkerLabel,    title = {??unknown}, year = 2013}
+@patent{TyPatent,       author = {Tom Turner}, title = {A patent typed as a US patent}, type = {patentus}, number = {US-2}, year = 2001}
+@thesis{TyBachelor,     author = {Uri Upshaw}, title = {A thesis typed as a bachelor thesis}, type = {bathesis}, school = {Type University}, address = {Kiel}, year = 2001}
+@patent{TyPatreq,       author = {Vic Vaughn}, title = {A patent typed as a plain request}, type = {patreq}, number = {US-3}, year = 2001}
+@patent{TyPatrequs,     author = {Wes Whitlock}, title = {A patent typed as a US request}, type = {patrequs}, number = {US-4}, year = 2001}
+
+% ---- name leads: which macro each driver's lead can actually reach ----
+@book{LdEditorOne,   editor = {Uma Upton}, title = {A book led by one editor}, publisher = {Lead Press}, address = {Genoa}, year = 2001}
+@book{LdEditorTwo,   editor = {Van Vance and Wes Walton}, title = {A book led by two editors}, publisher = {Lead Press}, address = {Genoa}, year = 2001}
+@book{LdBoth,        author = {Xia Xu}, editor = {Yin Young}, title = {A book with an author and an editor}, publisher = {Lead Press}, address = {Genoa}, year = 2001}
+@misc{LdEditorMisc,  editor = {Zoe Zimmer}, title = {A misc led by an editor}, year = 2001, month = feb}
+@manual{LdOrg,       title = {A manual led by an organization}, organization = {Lead Org}, address = {Genoa}, year = 2001, month = mar}
+@article{LdArticle,  editor = {Ana Abbott}, title = {An article whose editor cannot lead}, journal = {Journal of Leads}, year = 2001}
+@incollection{LdIncoll, editor = {Bob Bishop}, title = {A chapter whose editor cannot lead}, booktitle = {A Host Book}, publisher = {Lead Press}, address = {Genoa}, year = 2001}
+@inproceedings{LdInproc, editor = {Cy Chandler}, title = {A paper whose editor cannot lead}, booktitle = {Lead Proceedings}, publisher = {Lead Press}, address = {Genoa}, year = 2001}
+
+% ---- cite labels: only acmauthoryear disambiguates them ----
+@article{UnSmithJohn, author = {John Smith}, title = {Smith on one thing}, journal = {Journal of Labels}, year = 2001}
+@article{UnSmithJane, author = {Jane Smith}, title = {Smith on another thing}, journal = {Journal of Labels}, year = 2002}
+@article{UnListA, author = {Bo Bell and Cy Cole and Di Dunn}, title = {Three names one}, journal = {Journal of Labels}, year = 2003}
+@article{UnListB, author = {Bo Bell and Cy Cole and Ed Ewing}, title = {Three names two}, journal = {Journal of Labels}, year = 2004}
+@article{UnPrefix, author = {Ludwig van Beethoven}, title = {A prefixed cite label}, journal = {Journal of Labels}, year = 2005}
+
+% ---- maxbibnames: nine names, then the first one and "et al." ----
+@article{MbNine, author = {Ann Ash and Bo Birch and Cy Cedar and Di Dogwood and Ed Elm and Fay Fir and Gus Gum and Hal Holly and Ivy Ivy}, title = {Nine authors listed in full}, journal = {Journal of Names}, year = 2001}
+@article{MbTen,  author = {Jo Juniper and Ken Kauri and Lil Larch and Mo Maple and Ned Nutmeg and Ora Oak and Pat Pine and Quin Quince and Rae Rowan and Sam Spruce}, title = {Ten authors cut to one}, journal = {Journal of Names}, year = 2001}
+@article{MbNineOthers, author = {Tam Teak and Uli Ulmo and Vic Vine and Wyn Willow and Xan Xylia and Yal Yew and Zed Zelkova and Abe Alder and Bea Beech and others}, title = {Nine authors and others}, journal = {Journal of Names}, year = 2001}
+@book{MbTenEditors, editor = {Cam Cherry and Dot Date and Eli Ebony and Fin Fig and Gil Ginkgo and Hux Hazel and Ike Iroko and Jem Jarrah and Kit Karri and Lex Linden}, title = {Ten editors cut to one}, publisher = {Name Press}, address = {Turin}, year = 2001}
+
+% ---- a character macro sorts as the character it stands for ----
+@misc{CmAdept,  title = {Adept anchors the ae expansion}, year = 2001}
+@misc{CmAesop,  title = {\ae{}sop expands to ae}, year = 2001}
+@misc{CmAlpha,  title = {Alpha closes the a run}, year = 2001}
+@misc{CmLima,   title = {Lima anchors the l expansion}, year = 2001}
+@misc{CmLodz,   title = {\l{}odz expands to l}, year = 2001}
+@misc{CmLuna,   title = {Luna closes the l run}, year = 2001}
+@misc{CmSmith,  title = {Smith anchors the ss expansion}, year = 2001}
+@misc{CmSsmith, title = {\ss{}mith expands to ss}, year = 2001}
+@misc{CmSzabo,  title = {Szabo closes the s run}, year = 2001}
+@misc{CmSpace,  title = {\ae space delimits the command}, year = 2001}
+@misc{CmCaseUpper, title = {\AE{}on files by macro case}, note = {the uppercase macro}, year = 2001}
+@misc{CmCaseLower, title = {\ae{}on files by macro case}, note = {the lowercase macro}, year = 2001}
+
+% ---- a truncated name list already ends in a full stop ----
+@ArtifactDataset{TrDataset, author = {Ann Alpha and Bo Beta and Cy Gamma and Di Delta and Ed Epsilon and Fay Zeta and Gus Eta and Hal Theta and Ivy Iota and Jo Kappa}, title = {A truncated dataset name list}, year = 2001}
+@article{TrTranslator, author = {Ken Lambda}, translator = {Pat Pi and Bo Beta and Cy Gamma and Di Delta and Ed Epsilon and Fay Zeta and Gus Eta and Hal Theta and Ivy Iota and Jo Kappa}, title = {A truncated translator list}, journal = {Journal of Names}, year = 2001}
+@patent{TrHolder, author = {Lou Mu}, holder = {Rex Rho and Bo Beta and Cy Gamma and Di Delta and Ed Epsilon and Fay Zeta and Gus Eta and Hal Theta and Ivy Iota and Jo Kappa}, title = {A truncated holder list}, number = {US-9}, year = 2001}
+@inbook{TrBookauthor, author = {Moe Nu}, bookauthor = {Tia Tau and Bo Beta and Cy Gamma and Di Delta and Ed Epsilon and Fay Zeta and Gus Eta and Hal Theta and Ivy Iota and Jo Kappa}, editor = {Ned Xi}, title = {A truncated bookauthor list}, booktitle = {A Host Book}, publisher = {Name Press}, address = {Turin}, year = 2001}
+
+% ---- sentence casing, which only the numeric style applies ----
+@article{ScDigit,   author = {Dan Doyle}, title = {3 ways of counting things}, journal = {Journal of Case}, year = 2001}
+@article{ScDigit2,  author = {Eli Emery}, title = {3D rendering explained again}, journal = {Journal of Case}, year = 2001}
+@article{ScBraced,  author = {Fern Floyd}, title = {{3D} rendering explained once more}, journal = {Journal of Case}, year = 2001}
+@article{ScQuote,   author = {Gil Gordon}, title = {'Tis the season for counting}, journal = {Journal of Case}, year = 2001}
+@article{ScParen,   author = {Hana Hardy}, title = {(Almost) never again is enough}, journal = {Journal of Case}, year = 2001}
+@article{ScLower,   author = {Ivo Ingram}, title = {eBay and the rest of them}, journal = {Journal of Case}, year = 2001}
+@article{ScShout,   author = {Joy Jenkins}, title = {ONE two THREE four five}, journal = {Journal of Case}, year = 2001}
+@article{ScPeriod,  author = {Kit Kramer}, title = {A study. Another sentence entirely}, journal = {Journal of Case}, year = 2001}
+@article{ScProtect, author = {Lou Lawson}, title = {The {ACM} way of doing things}, journal = {Journal of Case}, year = 2001}
+@article{ScAccent,  author = {Mae Mendez}, title = {\'Etude on accented starts}, journal = {Journal of Case}, year = 2001}
+@article{ScAccBrace,  author = {Nia Newton}, title = {\"{o}PEN DATA every day}, journal = {Journal of Case}, year = 2001}
+@article{ScAccGroup,  author = {Oli Osgood}, title = {{\"o}PEN DATA every night}, journal = {Journal of Case}, year = 2001}
+@article{ScAccWord,   author = {Pia Prewitt}, title = {{\ss}PEN DATA every hour}, journal = {Journal of Case}, year = 2001}
+@article{ScCharAe,   author = {Quin Quill}, title = {\ae{}SOP FABLE every year}, journal = {Journal of Case}, year = 2001}
+@article{ScCharSs,   author = {Rex Rankin}, title = {\ss{}TRASSE DATA every week}, journal = {Journal of Case}, year = 2001}
+@article{ScCharI,    author = {Sal Sutton}, title = {\i{}TALIC DATA every month}, journal = {Journal of Case}, year = 2001}
+@article{ScWordAcc,  author = {Tao Tucker}, title = {\v{c}ASE DATA every minute}, journal = {Journal of Case}, year = 2001}
+@article{ScWordCed,  author = {Uma Ulrich}, title = {\c{c}EDILLA DATA every second}, journal = {Journal of Case}, year = 2001}
+@article{ScCharMid,  author = {Val Vernon}, title = {Data \v{c}ASE AND \ae{}SOP every so often}, journal = {Journal of Case}, year = 2001}
+@article{ScCharBrace,author = {Wyn Waller}, title = {{\ae}SOP FABLE every decade}, journal = {Journal of Case}, year = 2001}
+@article{ScWordSp,  author = {Xia Xiong}, title = {\v cASE DATA behind a space}, journal = {Journal of Case}, year = 2001}
+@article{ScCharSp,  author = {Yan Yeager}, title = {\ae sop FABLE behind a space}, journal = {Journal of Case}, year = 2001}
+@article{ScSymSp,   author = {Zoe Zamora}, title = {\" oPEN DATA behind a space}, journal = {Journal of Case}, year = 2001}
+@article{ScSsSp,    author = {Abe Ashby}, title = {\ss trasse DATA behind a space}, journal = {Journal of Case}, year = 2001}
+
+% ---- a control symbol that is a character, not an accent, takes the first slot ----
+@misc{ScAmp,        author = {Ann Amper}, title = {\& DATA at the front}, year = 2001}
+@misc{ScPct,        author = {Bud Percy}, title = {\% DATA at the front}, year = 2001}
+@misc{ScRelax,      author = {Cleo Ryder}, title = {\relax DATA at the front}, year = 2001}
+@misc{ScSpace,      author = {Dot Sawyer}, title = {\ DATA at the front}, year = 2001}
+@misc{ScSlash,      author = {Eli Tanner}, title = {\/DATA at the front}, year = 2001}
+@misc{ScThin,       author = {Fitz Usher}, title = {\,DATA at the front}, year = 2001}
