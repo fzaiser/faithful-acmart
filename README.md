@@ -127,7 +127,9 @@ Most papers only need a subset of these:
 Author dictionaries accept `name`, `orcid`, `email`, `note`, `corresponding`, and
 `affiliation`. `note` may be one note or an array of notes; repeated identical
 note content shares one footnote mark across authors, like LaTeX's
-`\authornotemark`. An affiliation is a dictionary with fields such as `institution`,
+`\authornotemark`. `corresponding` puts an asterisk after the name and a
+"Corresponding author" footnote at the head of the top-matter stack; at most one
+author may set it. An affiliation is a dictionary with fields such as `institution`,
 `city`, `state`, and `country`; pass an array of affiliation dictionaries for
 multiple affiliations.
 

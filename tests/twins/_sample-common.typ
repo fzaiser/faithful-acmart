@@ -9,34 +9,36 @@
   // Trovato carries NO affiliation; Tobin holds the shared one, so acmart's
   // structural rule andifies them onto one line (samples.dtx:181-194 does the
   // same — only Tobin has \affiliation). See group-authors in frontmatter.typ.
+  // Trovato is given TWO \orcid commands in samples.dtx; each one redefines
+  // \typeset@author for the current author, so the last wins.
   (name: "Ben Trovato", note: [Both authors contributed equally to this research.],
    email: "trovato@corporation.com", orcid: "1234-5678-9012"),
-  (name: "G.K.M. Tobin", note: [Both authors contributed equally to this research.],
-   corresponding: true, email: "webmaster@marysville-ohio.com",
+  (name: "G.K.M. Tobin", orcid: "0000-0012-1825-0097", note: [Both authors contributed equally to this research.],
+   email: "webmaster@marysville-ohio.com",
    affiliation: (institution: "Institute for Clarity in Documentation",
                  city: "Dublin", state: "Ohio", country: "USA")),
   // Lars/Charles/John/Julius declare \affiliation BEFORE \email in the source
   // (samples.dtx), so the contact lines replay affiliation-then-email — the key
   // order here is significant (contact-line in frontmatter.typ).
-  (name: "Lars Thørväld",
+  (name: "Lars Thørväld", orcid: "0000-2034-1825-0097",
    affiliation: (institution: "The Thørväld Group", city: "Hekla", country: "Iceland"),
    email: "larst@affiliation.org"),
-  (name: "Valerie Béranger",
+  (name: "Valerie Béranger", orcid: "0000-0002-3225-0097",
    affiliation: (institution: "Inria Paris-Rocquencourt", city: "Rocquencourt", country: "France")),
-  (name: "Aparna Patel",
+  (name: "Aparna Patel", orcid: "0000-0002-1825-0197",
    affiliation: (institution: "Rajiv Gandhi University", city: "Doimukh",
                  state: "Arunachal Pradesh", country: "India")),
-  (name: "Huifen Chan",
+  (name: "Huifen Chan", orcid: "0000-0002-1825-1297",
    affiliation: (institution: "Tsinghua University", city: "Haidian Qu",
                  state: "Beijing Shi", country: "China")),
-  (name: "Charles Palmer",
+  (name: "Charles Palmer", orcid: "0000-0002-1825-0037",
    affiliation: (institution: "Palmer Research Laboratories", city: "San Antonio",
                  state: "Texas", country: "USA"),
    email: "cpalmer@prl.com"),
-  (name: "John Smith",
+  (name: "John Smith", orcid: "0000-0002-1825-5697",
    affiliation: (institution: "The Thørväld Group", city: "Hekla", country: "Iceland"),
    email: "jsmith@affiliation.org"),
-  (name: "Julius P. Kumquat", corresponding: true,
+  (name: "Julius P. Kumquat", orcid: "0000-0002-1825-0447", corresponding: true,
    affiliation: (institution: "The Kumquat Consortium", city: "New York", country: "USA"),
    email: "jpkumquat@consortium.net"),
 )

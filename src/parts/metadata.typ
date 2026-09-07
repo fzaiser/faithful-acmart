@@ -81,6 +81,11 @@
 // front matter and page chrome.
 #let resolve-metadata(cfg, lang, data) = {
   let authors = data.authors.map(normalize-author)
+  // acmart raises a class error on the second \correspondingauthor
+  // (acmart.dtx:5490): the asterisk mark and its footnote belong to one author.
+  assert(authors.filter(a => a.corresponding).len() <= 1,
+    message: "faithful-acmart: at most one author may set `corresponding: true`, "
+      + "matching acmart's \\correspondingauthor.")
   let translated = resolve-translations(lang, data.translations)
   let publication = resolve-publication(data.journal, data.doi)
   let conference = resolve-conference(cfg, data.conference)

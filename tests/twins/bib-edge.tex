@@ -2,7 +2,8 @@
 %% twin (bib-all) doesn't hit: strip.doi host prefix, reduce.pages.to.page.count,
 %% format.bookpages, book "pages" label, issue, howpublished (article/inproc),
 %% format.key fallback, journal MACRO + canon.abbrev, @string/# concatenation,
-%% von-name parsing, unpublished. LaTeX twin of bib-edge.typ.
+%% von-name parsing, unpublished, and the ISBN sentences acmart v2.21 turned on
+%% (\showISBNx / \showISBNxiii). LaTeX twin of bib-edge.typ.
 \documentclass[acmsmall,nonacm]{acmart}
 \pagestyle{empty}
 \settopmatter{printacmref=false}
@@ -10,7 +11,7 @@
 \thispagestyle{empty}% titleless body-only fixture: re-assert empty.
 
 \section{Introduction}
-Field-level edge cases through the bst backend \cite{UnpubX,MacroJournal,ConcatTest,DoiUrl,ArtPages,ColonPages,MiscPages,BookPages,TRnoNum,BookPagesField,IssueTest,HowPub,KeyOnly,ArtHP,IpHP,Accents,VonNames,Formatting,IpArtNo,IpJournal,IpEdOnly,MiscEdIgnore,PerNoteDoi,ArtNoJournal,ArtPrefixed,QQNote,DayMonthPer,UnpubArt,BracedEd,OnePage,URevHP,NoteLast}.
+Field-level edge cases through the bst backend \cite{UnpubX,MacroJournal,ConcatTest,DoiUrl,ArtPages,ColonPages,MiscPages,BookPages,TRnoNum,BookPagesField,IssueTest,HowPub,KeyOnly,ArtHP,IpHP,Accents,VonNames,Formatting,IpArtNo,IpJournal,IpEdOnly,MiscEdIgnore,PerNoteDoi,ArtNoJournal,ArtPrefixed,QQNote,DayMonthPer,UnpubArt,BracedEd,OnePage,URevHP,NoteLast,IsbnBoth,IsbnThirteen}.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{bib-all-extra}

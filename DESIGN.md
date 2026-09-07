@@ -177,7 +177,7 @@ journal name/ISSN table, link colours, line-number colour. Re-derive any value w
 taller-than-`\topskip` title line.
 
 > Section titles are **mixed case** (bold sans), not uppercased — matches the
-> **bundled** acmart (v2.20; uppercasing removed in v2.08). A system acmart may be
+> **bundled** acmart (v2.21; uppercasing removed in v2.08). A system acmart may be
 > older (v2.03) and *does* uppercase level-1 titles, so always validate against the
 > bundled class (`tools/test.py`'s `ensure_class` generates it from [`acmart/`](acmart/)).
 
@@ -370,9 +370,12 @@ mistaken for faithfulness bugs.
   of no-ops (`\noopsort`, `\relax`, `\protect`, …) is recognized.
 
 ### Not ported (out of reach, or faithful to omit)
-- **ISBN/ISSN/CODEN/LCCN**: emitted by the `.bst` but suppressed by acmart (`\showISBNx`
-  etc. undefined in every format → the `.bbl`'s `\unskip` eats them), so omitting them is
-  *faithful to stock acmart*. Redefining `\showISBNx` to surface them isn't supported.
+- **ISSN/CODEN/LCCN**: emitted by the `.bst` but suppressed by acmart (`\showISSN` etc.
+  undefined in every format → the `.bbl`'s `\unskip` eats them), so omitting them is
+  *faithful to stock acmart*. Redefining them to surface the fields isn't supported.
+  **ISBN is the exception** since acmart v2.21 defines `\showISBNx`/`\showISBNxiii`
+  (acmart.dtx:9018): a reference prints `ISBN <isbn>.` and `ISBN-13 <isbn-13>.`, both
+  when an entry carries both (`show-isbn-10-and-13`, bst:3162).
 - **Arbitrary/full-equation TeX** beyond the command tables + `tex-render` —
   *unbounded* (a field can hold any TeX; interpreting all of it means a TeX engine). We
   support the finite set references use and **error on anything unknown**.
@@ -408,10 +411,13 @@ mistaken for faithfulness bugs.
 
 ## Author top matter
 
-- **Corresponding-author ✉ is faithful**: acmart's `\correspondingauthor` (v2.20) emits
-  `\textsuperscript{\ding{41}}` (acmart.dtx:5430). What differs is *ordering* — we emit
-  ✉-then-note in a fixed order, not source-declaration order (our model stores a boolean
-  + note, with no declaration order).
+- **Corresponding-author `*` is faithful**: acmart's `\correspondingauthor` (v2.21) emits
+  `\textsuperscript{*}` (acmart.dtx:5506) and opens the top-matter footnote stack with a
+  "Corresponding author" note carrying the asterisk symbol, which is why every other note
+  now starts at the dagger (`\maketitle` sets the footnote counter to 1). At most one
+  author may be the corresponding one — a second is a class error, which the port raises
+  too. What differs is *ordering* — we emit mark-then-note in a fixed order, not
+  source-declaration order (our model stores a boolean + note, with no declaration order).
 - **Contact-info field order follows the author dict's key order** — acmart's
   `\@mkauthorsaddresses` replays the declared `\email`/`\affiliation` order; Typst
   dicts preserve insertion order, so writing `email:` before `affiliation:` (or vice
@@ -511,6 +517,11 @@ mistaken for faithfulness bugs.
   cap-top to the top margin (the faithful `\topskip` model), whereas LaTeX places the
   baseline. Imperceptible; the sigplan twin marks its Tier-2 top check report-only.
 - **Math fidelity untuned** (Libertinus Math ≈ newtxmath, best-effort).
+- **The `\LaTeX` logo's raised A is ~1pt large.** LaTeX sets it at `\sf@size`, the math
+  script size for the surrounding text size, which the amsart ladder puts at roughly
+  0.72× the body; `latex-logo` in `parts/tex.typ` uses a fixed 0.82em, so at a 9pt body
+  ours is 7.35pt against LaTeX's 6.58pt. Recorded as font-residual evidence on every
+  twin whose text carries a logo.
 - **Continuation-page first baseline** sits 1em (the base font size) below the top
   margin instead of LaTeX's fixed `\topskip` = 10pt: ~+1pt on the 9pt-base formats,
   −1/−2pt at the 11/12pt options. Typst has no per-page margin control, and shifting

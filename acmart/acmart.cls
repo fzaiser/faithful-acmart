@@ -40,7 +40,7 @@
 
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesClass{acmart}
-[2026/08/16 v2.20 Typesetting articles for the Association for Computing Machinery]
+[2026/08/30 v2.21 Typesetting articles for the Association for Computing Machinery]
 \def\@classname{acmart}
 \InputIfFileExists{acmart-preload-hook.tex}{%
   \ClassWarning{\@classname}{%
@@ -812,7 +812,6 @@
 \if@ACM@sigchiamode
   \renewcommand{\familydefault}{\sfdefault}
 \fi
-\RequirePackage{pifont}
 \newif\if@Description@present
 \@Description@presenttrue
 \newif\if@undescribed@images
@@ -1662,7 +1661,11 @@
   \selectlanguage{#1}%
   {\@specialsection{\keywordsname}%
     \noindent#2\par}\egroup}
-\def\@titlenotes{}
+\def\@titlenotes{%
+  \if@ACM@corresponding@present
+   \footnotetext[1]{Corresponding author}%
+  \fi
+}
 \def\titlenote#1{%
   \g@addto@macro\@title{\footnotemark}%
   \if@ACM@anonymous
@@ -1688,12 +1691,20 @@
     \g@addto@macro\@authornotes{%
       \stepcounter{footnote}\footnotetext{#1}}%
   \fi}
+\newif\if@ACM@corresponding@present
+\@ACM@corresponding@presentfalse
 \newcommand\correspondingauthor{%
   \if@ACM@anonymous\else
-  \g@addto@macro\addresses{\@correspondingauthormark}%
+    \if@ACM@corresponding@present
+        \ClassError{\@classname}{You can have no more than one
+          corresponding author}
+    \fi
+    \@ACM@corresponding@presenttrue
+    \g@addto@macro\addresses{\@correspondingauthormark}%
+
   \fi}
 \def\@correspondingauthormark{\g@addto@macro\@currentauthors{%
-    \advance\hfuzz by 5pt\relax\textsuperscript{\ding{41}}\relax}}
+    \advance\hfuzz by 5pt\relax\textsuperscript{*}\relax}}
 \newcommand\authornotemark[1][\relax]{%
   \if@ACM@anonymous\else
     \ifx#1\relax\relax\relax
@@ -2199,13 +2210,14 @@
   \let\@footnotemark\@footnotemark@nolink
   \let\@footnotetext\@footnotetext@nolink
   \renewcommand\thefootnote{\@fnsymbol\c@footnote}%
+  \setcounter{footnote}{1}%
   \hsize=\textwidth
   \def\@makefnmark{\hbox{\@textsuperscript{\@thefnmark}}}%
   \@mktitle\if@ACM@sigchiamode\else\@mkauthors\fi\@mkteasers
   \@printtopmatter
   \if@ACM@sigchiamode\@mkauthors\fi
-  \setcounter{footnote}{0}%
   \def\@makefnmark{\hbox{\@textsuperscript{\normalfont\@thefnmark}}}%
+  \setcounter{footnote}{1}%
   \@titlenotes
   \@subtitlenotes
   \@authornotes
@@ -3569,6 +3581,8 @@
        #1:#2%
     \fi
   \fi}
+\newcommand\showISBNx[1]{ISBN~#1.}
+\newcommand\showISBNxiii[1]{ISBN-13~#1.}
 \def\theindex{\@restonecoltrue\if@twocolumn\@restonecolfalse\fi
   \columnseprule\z@ \columnsep 35\p@
   \@indextitlestyle

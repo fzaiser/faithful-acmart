@@ -368,9 +368,17 @@
 // renders these via hyperref \href/\url/\showeprint). The order is the .bst's
 // output.issue.doi.coden.isxn.lccn.url.eprint.note: the identifiers first, the note
 // last (bst v2.2; v2.1 led with the note).
+//
+// Of the identifier macros the .bst writes, acmart defines only \showISBNx and
+// \showISBNxiii (acmart.dtx:9018, new in v2.21); \showCODEN, \showISSN and
+// \showLCCN keep the .bbl preamble's \unskip no-ops, so those fields print nothing.
 #let trailing(e) = {
   let items = ()
   if has(e, "issue") { items.push("Issue " + fld(e, "issue") + ".") }
+  // output.isbn with show-isbn-10-and-13 set (bst:3162): BOTH spellings print when
+  // an entry carries both, the 10-digit one first.
+  if has(e, "isbn") { items.push("ISBN\u{00A0}" + fld(e, "isbn") + ".") }
+  if has(e, "isbn-13") { items.push("ISBN-13\u{00A0}" + fld(e, "isbn-13") + ".") }
   if has(e, "eprint") { items.push(format-eprint(e)) }
   if has(e, "doi") {
     let bare = strip-doi(fld(e, "doi"))

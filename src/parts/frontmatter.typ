@@ -13,7 +13,11 @@
 #import "punct.typ": add-punct
 #import "../formats/_base.typ": tp
 
+// \@fnsymbol marks, which acmart takes for \thefootnote in the top matter. They
+// are math-mode glyphs, so the asterisks are U+2217 — unlike the corresponding
+// author's \textsuperscript{*}, which is the text asterisk.
 #let fnsymbols = ("∗", "†", "‡", "§", "¶", "‖", "∗∗", "††", "‡‡")
+#let corresponding-mark = "*"
 
 #let month-names = (
   "January", "February", "March", "April", "May", "June",
@@ -30,15 +34,14 @@
 // \@formatdoi = \url{https://doi.org/...} (acmart.dtx:6204): the body is the URL.
 #let doi-link(doi) = link(doi.url)[#doi.url]
 
-// Match LaTeX \@textsuperscript marks. Typst's super() scales its body further;
-// the Dingbats-style envelope needs less inner scaling than text glyph marks.
+// Match LaTeX \@textsuperscript marks. Typst's super() scales its body further.
 // The mark is wrapped in a zero-height box so its (enlarged, raised) glyph does
 // not inflate the line's ascent past the `top-edge: 1em` line box — otherwise
 // Typst grows the line to contain the superscript and a marked author/name line
 // gains ~2.6pt over TeX's rigid \baselineskip. `align(bottom, …)` keeps the
 // superscript anchored at the baseline so it prints in the identical spot.
 #let note-super(mark) = box(height: 0pt, align(bottom,
-  super(text(size: if mark == "✉" { 1.05em } else { 1.22em })[#mark])))
+  super(text(size: 1.22em)[#mark])))
 
 // Join a list of names the ACM/amsart "andify" way ("a", "a and b",
 // "a, b, and c"). Items may be strings (author names) or content (names carrying
@@ -341,21 +344,25 @@
 }
 
 // Assign footnote symbols across the whole top matter, matching acmart's shared
-// footnote counter. \maketitle resets the counter and emits the texts in the
-// order \@titlenotes, \@subtitlenotes, \@authornotes (acmart.dtx:6577-6581), all
-// using \@fnsymbol marks (acmart.dtx:6571). So a title note takes the first
-// symbol (*), a subtitle note the next, and author notes follow. Identical author
-// notes are deduplicated; the corresponding-author ✉ is a fixed glyph (\ding{41},
-// acmart.dtx:5430), NOT a counter step, so it consumes no symbol. In anonymous
-// mode \authornote is suppressed (acmart.dtx:5406) while title/subtitle notes
-// still appear with placeholder text (acmart.dtx:5360/5383).
+// footnote counter. \maketitle sets the counter to 1 and emits the texts in the
+// order \@titlenotes, \@subtitlenotes, \@authornotes (acmart.dtx:6659-6661), all
+// using \@fnsymbol marks (acmart.dtx:6650). The asterisk (symbol 1) is reserved for
+// the corresponding author, so every counted note starts one symbol later: a title
+// note takes the dagger, a subtitle note the next, and author notes follow.
+// Identical author notes are deduplicated; the corresponding-author mark is a fixed
+// \textsuperscript{*} (acmart.dtx:5506), NOT a counter step, so it consumes no
+// symbol, and its "Corresponding author" text opens \@titlenotes
+// (acmart.dtx:5403) ahead of every counted note. In anonymous mode \authornote and
+// \correspondingauthor are both suppressed (acmart.dtx:5461/5487) while
+// title/subtitle notes still appear with placeholder text (acmart.dtx:5417/5440).
 //
 // Returns the title/subtitle marks (for make-title), the ordered footnote list
 // (for make-footnotes), and each author's superscript marks.
 #let collect-notes(meta) = {
   let anon = meta.anonymous
   let notes = ()
-  let idx = 0
+  // \maketitle's \setcounter{footnote}{1}: the first \stepcounter lands on 2.
+  let idx = 1
   let title-mark = none
   let subtitle-mark = none
   let symbol-at(i) = {
@@ -363,6 +370,13 @@
     fnsymbols.at(i)
   }
 
+  // \if@ACM@corresponding@present (acmart.dtx:5476), which \correspondingauthor
+  // raises only outside anonymous mode.
+  let corresponding-present = not anon and meta.authors.any(a => a.corresponding)
+  if corresponding-present {
+    // \footnotetext[1] takes symbol 1 explicitly, leaving the counter alone.
+    notes.push((symbol: fnsymbols.at(0), body: [Corresponding author]))
+  }
   if meta.title-note != none {
     title-mark = symbol-at(idx)
     notes.push((symbol: title-mark, body: if anon { [Title note] } else { meta.title-note }))
@@ -378,7 +392,7 @@
   let marks = ()
   for a in meta.authors {
     let m = ()
-    if a.corresponding { m.push("✉") }
+    if corresponding-present and a.corresponding { m.push(corresponding-mark) }
     if not anon {
       for note in a.note {
         let key = repr(note)

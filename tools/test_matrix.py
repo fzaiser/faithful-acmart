@@ -234,20 +234,20 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
     "manuscript-pages-test": ResidualSignatures(text="13857b6c3436762b1c09a161ad0ba212a0fc064b6c149ce01b1dc4ec95b82cfd"),
     "mathfields": ResidualSignatures(font="33b5c052b30812736e907581e38b04c1be363ec608e59cd34c8a13ce193f5170"),
-    "sample-acmsmall": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="63571ea7fe48d9b439a405c7ab3b1bb383ec9e93d839d63c4816959c5db469bf"),
-    "sample-manuscript": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="ba2c719c2aa71bf411ef3fa382d5365f3b4ab49c2f8f7ccb4ca175b689f95a43", order="e35efb9f0fc720f589914f355ead6d5f4bf9923e8fdf8c24afa14bd20788d0f1"),
-    "sample-acmlarge": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="367f4243c72b390a5969a6cddf713e2a9849004ae4d886298a7ef0812c4e8618"),
-    "sample-sigconf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmsmall": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="813e8881bbb6f703eb9d801fb3e671da56d1704712751ea35cb699161061575b", order="63571ea7fe48d9b439a405c7ab3b1bb383ec9e93d839d63c4816959c5db469bf"),
+    "sample-manuscript": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="2960f69bea8909ea366cb710c8997b616760064184c8dadac8c6c52148c8ad81", order="e35efb9f0fc720f589914f355ead6d5f4bf9923e8fdf8c24afa14bd20788d0f1"),
+    "sample-acmlarge": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="de0799e0057d232fca28ab2d3981a408e29352f83576a0652e1288be3fba10c8", order="367f4243c72b390a5969a6cddf713e2a9849004ae4d886298a7ef0812c4e8618"),
+    "sample-sigconf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="7b1a241f946a6824b0f185da5b9ab05b904d2985688116b6c5ad6e4ba6942de0", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
     "sample-sigplan": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="a0309711e0b0b330619cfff07196b1745a9e57d37ec75136e28fbb21804a3b9c", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmsmall-submission": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="261a3c04b619777bdce2946bfee4f5bdd1b995fa1390e8829caede1a2f1b2406", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmsmall-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="98e1639cc36abda915fc635b599a331980f4a1443934b3dcbe664abc1a0ccb46", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmtog": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmtog-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="21c511d6c66fbcd45e3ec5844a286813ac485ccbd8c3a3cc2e880f76a9e8c926", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-sigconf-i13n": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="106dbb64d8ba5ef21a762614e6b2da77f95885be88619e99bf7847c7f23d9b88", order="7670c039210868e04d5111c1c53fb3399558e09f012b1796727a07961be107fe"),
-    "sample-sigconf-authordraft": ResidualSignatures(text="aef256ae70bb42e04fc169d6910691e6d16f659c1a81746f6b5a19662ed58274", font="719bd7515c439d8ca322032e6cbe879cc7911b2582a8ed6f752157b284ec94d5", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmsmall-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="801b173d792682fd1c8269f080bd291a18b99a88a8a84c2e62dea4809fd1dfa2", order="7b3f516263dd09f3a6d35956cb444a6766bade5d771d04c441c57f4a1e012b01"),
-    "sample-sigconf-biblatex": ResidualSignatures(text="60ffeb1dd2b4f2a69bc2266010c29ef43c425480101bd90cbf94d6d58afa9210", font="ec59075f84dabc560ec85a9282b3721d82ed596eee3c504082feea384ffb57dd", order="a7f323c7a7739f484386e5da419133bcce258e6578a0f7007d4ff95239b07b9d"),
-    "sample-acmcp": ResidualSignatures(text="a9a95ef15c40d9c28beacacdc681edc7c834fcae0aba217e4764495993a5ac9e"),
+    "sample-acmsmall-submission": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="de0799e0057d232fca28ab2d3981a408e29352f83576a0652e1288be3fba10c8", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmsmall-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="813e8881bbb6f703eb9d801fb3e671da56d1704712751ea35cb699161061575b", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmtog": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="f6f037d8cc04695ed57cac15181b130824dfbcc03a1703070e82af7c96e57b05", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmtog-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="f6f037d8cc04695ed57cac15181b130824dfbcc03a1703070e82af7c96e57b05", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-sigconf-i13n": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="352ed13966ca08fe709a6e0c2da96fa8610b6dc55d1ced6a9f4076ae2cdd3edb", order="7670c039210868e04d5111c1c53fb3399558e09f012b1796727a07961be107fe"),
+    "sample-sigconf-authordraft": ResidualSignatures(text="57a4481083f7716ddac8aa384c515bbb498a2281fce9d957465ad5347493f50d", font="7b1a241f946a6824b0f185da5b9ab05b904d2985688116b6c5ad6e4ba6942de0", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmsmall-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="17351d160cc343217e4b029203348d3ccef341ab41733e6c99e31e1611e2f36c", order="7b3f516263dd09f3a6d35956cb444a6766bade5d771d04c441c57f4a1e012b01"),
+    "sample-sigconf-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="cec811655b358439f862994830fd6224db09c88d28f96cb4adc591f06e6391dd", order="a7f323c7a7739f484386e5da419133bcce258e6578a0f7007d4ff95239b07b9d"),
+    "sample-acmcp": ResidualSignatures(text="a9a95ef15c40d9c28beacacdc681edc7c834fcae0aba217e4764495993a5ac9e", font="bfbf03713dca3c452d710214279971be8ce2be9cc5ba5d5aab052587a267d893"),
     "authoryear": ResidualSignatures(text="96e3b378cf8c5ff278d12ecbd1c0d5493b7700768a2fe4d380c0b98bcc8870b9", font="604e5aedfa00fd6a5f2bb7e6e0022ecf19ecd9f664ef32ec60beff88f0a76ca8"),
     "sample-acmengage": ResidualSignatures(order="e1375d589c6da53376f20ce6acd938b50f3b317e20333dd6ab48744b32034f58"),
 }
@@ -276,21 +276,21 @@ EXPECTED_LINK_DIFFS: dict[str, ExpectedLinkDiff] = {
     "manuscript-pages-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/XXXXXXX.XXXXXXX",)),
     "acmlarge-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/XXXXXXX.XXXXXXX",)),
     "acmcp-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://example.com/data",)),
-    "sample-acmsmall": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
+    "sample-acmsmall": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-1825-0037",), extra=("https://www.acm.org/publications/proceedings-template",)),
     "sample-manuscript": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1188913.1188915", "https://doi.org/10.1145/1057270.1057278"), extra=("https://www.acm.org/publications/taps/describing-figures/",)),
-    "sample-acmlarge": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1145/1057270.1057278"), extra=("http://ccrma.stanford.edu/~jos/bayes/bayes.html",)),
+    "sample-acmlarge": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1145/1057270.1057278"), extra=("https://orcid.org/0000-0002-1825-1297", "http://ccrma.stanford.edu/~jos/bayes/bayes.html")),
     "sample-sigconf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
-    "sample-sigplan": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.acm.org/publications/proceedings-template",), extra=("https://doi.org/10.48550/arXiv.1403.1349", "https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1007/3-540-65193-4_29", "https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1109/ICWS.2004.64", "https://doi.org/10.1109/ICWS.2004.64", "https://doi.org/10.1137/080734467", "https://doi.org/10.945/woot07-S422", "https://doi.org/10.1145/90417.90738")),
+    "sample-sigplan": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.acm.org/publications/proceedings-template", "https://doi.org/10.1145/1057270.1057278"), extra=("https://doi.org/10.48550/arXiv.1403.1349", "https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1007/3-540-65193-4_29", "https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1137/080734467", "https://doi.org/10.945/woot07-S422", "https://doi.org/10.1145/90417.90738")),
     "language-de-sigplan-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/10.1145/1219092.1219093",)),
     "sample-acmsmall-submission": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
     "sample-acmsmall-conf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
-    "sample-acmtog": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
-    "sample-acmtog-conf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
+    "sample-acmtog": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-3225-0097", "https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
+    "sample-acmtog-conf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-3225-0097", "https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
     "sample-sigconf-i13n": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
     "sample-sigconf-authordraft": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
-    "sample-acmsmall-biblatex": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1057270.1057278",), extra=("https://www.acm.org/publications/proceedings-template", "https://github.com/nuprl/tag-sound", "http://archive.softwareheritage.org/swh:1:dir:cd0b0abeee707e57cd699e2e2ebd075da8ebf1f7;origin=https://github.com/nuprl/tag-sound;visit=swh:1:snp:7967bc0abee8bf3bfffb9252207a07b73538525a;anchor=swh:1:rev:4cc09ca228947a99c8f4ac45eefb76e96ee96e53")),
+    "sample-acmsmall-biblatex": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-1825-0037", "https://doi.org/10.1145/1057270.1057278"), extra=("https://www.acm.org/publications/proceedings-template", "https://github.com/nuprl/tag-sound", "http://archive.softwareheritage.org/swh:1:dir:cd0b0abeee707e57cd699e2e2ebd075da8ebf1f7;origin=https://github.com/nuprl/tag-sound;visit=swh:1:snp:7967bc0abee8bf3bfffb9252207a07b73538525a;anchor=swh:1:rev:4cc09ca228947a99c8f4ac45eefb76e96ee96e53")),
     "sample-sigconf-biblatex": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1188913.1188915", "https://hal.archives-ouvertes.fr/hal-02090402v1", "https://doi.org/10.1007/3-540-65193-4_29"), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm", "https://github.com/scilab/scilab", "http://archive.softwareheritage.org/swh:1:cnt:43a6b232768017b03da934ba22d9cc3f2726a6c5;origin=https://github.com/rdicosmo/parmap;visit=swh:1:snp:2a6c348c53eb77d458f24c9cbcecaf92e3c45615;anchor=swh:1:rel:373e2604d96de4ab1d505190b654c5c4045db773;path=/src/parmap.ml;lines=192-228", "https://github.com/nuprl/tag-sound", "http://archive.softwareheritage.org/swh:1:dir:cd0b0abeee707e57cd699e2e2ebd075da8ebf1f7;origin=https://github.com/nuprl/tag-sound;visit=swh:1:snp:7967bc0abee8bf3bfffb9252207a07b73538525a;anchor=swh:1:rev:4cc09ca228947a99c8f4ac45eefb76e96ee96e53", "http://archive.softwareheritage.org/swh:1:rel:636541bbf6c77863908eae744610a3d91fa58855;origin=https://github.com/CGAL/cgal/", "http://video.google.com/videoplay?docid=6528042696351994555")),
-    "sample-acmcp": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://orcid.org/1234-5678-9012",)),
+    "sample-acmcp": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-1825-0197",), extra=("https://orcid.org/1234-5678-9012", "https://orcid.org/0000-2034-1825-0097", "https://orcid.org/0000-0002-1825-1297")),
     "sample-acmengage": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.engage-csedu.org/ontology", "https://doi.org/10.1145/1188913.1188915", "http://ccrma.stanford.edu/~jos/bayes/bayes.html"), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://creativecommons.org/licenses/by/4.0")),
 }
 
@@ -320,6 +320,14 @@ EXPECTED_OUTLINE_DIFFS: dict[str, ExpectedOutlineDiff] = {
         "equivalent (DESIGN.md \"Vertical fill\")",
         moved=(("2.1 Template Styles", 1, 2),),
     ),
+    "sample-sigplan": ExpectedOutlineDiff(
+        "the abstract flows out of the first column into the second, where ours "
+        "wraps one line longer than LaTeX's, so our whole top matter sits ~1.5 "
+        "lines lower. acmart v2.21's corresponding-author footnote takes two body "
+        "lines off page 1 in both engines, which is enough to push the heading "
+        "LaTeX still fits past our page break",
+        moved=(("1 Introduction", 1, 2),),
+    ),
 }
 
 _DASH_EXTRACTION = "exact normalized dash residual caused by cross-engine extraction/reflow"
@@ -334,15 +342,17 @@ EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
     "fontsize-sigconf-11-test": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-acmsmall": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-manuscript": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=3),
-    "sample-acmlarge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=3),
+    "sample-acmlarge": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
     "sample-sigconf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
-    "sample-sigplan": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
+    "sample-acmtog": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "sample-acmtog-conf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
+    "sample-sigplan": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-acmsmall-submission": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-acmsmall-conf": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-sigconf-i13n": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=2),
     "sample-sigconf-authordraft": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "sample-acmsmall-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
-    "sample-sigconf-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=2),
+    "sample-sigconf-biblatex": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=3),
     "sample-acmcp": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
 }
 
@@ -476,6 +486,20 @@ _FULL_SAMPLE_FONT_EVIDENCE = (
     ),
 )
 
+# The CCS concept list separates an area from its specifics with
+# "\textrightarrow\ " (acmart.dtx:6076) — a math arrow with an ordinary space on
+# each side, exactly what the port emits. PyMuPDF glues LaTeX's space onto the
+# arrow's math box and drops it, so the arrow and the following word arrive fused.
+_CCS_ARROW_TEXT_EVIDENCE = (
+    ExpectedTextDiff(
+        latex="Do Not Use This Code →Generate the Correct Terms",
+        typst="Do Not Use This Code → Generate the Correct Terms",
+        cause=ExtractionArtifact(
+            "the space after the CCS arrow is absorbed into its math box in "
+            "LaTeX's extracted stream"),
+    ),
+)
+
 _STACKED_SCRIPT_TEXT_EVIDENCE = (
     ExpectedTextDiff(
         latex="Used in business Ψ2 1 1 in 40,000 Unexplained usage",
@@ -515,10 +539,6 @@ _RULE_ACMCP_FOOT = "acmcp cover foot rule weight, colour, and extent."
 _RULE_REVIEW_SAMPLE = (
     "review-mode sample: its tables and foot rule are drawn identically across "
     "engines (the line-number margin ticks are not horizontal rules)."
-)
-_SIGCONF_BIBLATEX_PAGE_DIFF = (
-    "Typst currently reflows the numeric BibLaTeX/software reference block to "
-    "seven pages while LaTeX fits six."
 )
 _ALIAS_GOLDEN_EXEMPT = (
     "Compile-only alias smoke; sigconf-test owns the rendered layout golden."
@@ -1920,10 +1940,12 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="SUBMISSION ID: 123-A56-BU3"),
             Assertion(engine="typst", kind="absent", text="Trovato"),
             Assertion(engine="typst", kind="absent", text="Contact Information"),
+            Assertion(engine="both", kind="absent", text="Corresponding author"),
         ),
         note="double-anonymous journal submission: anonymized author strip with the "
              "uppercased \"SUBMISSION ID:\" second line (acmart.dtx:5190-5193), "
-             "suppressed contact footnote, anonymized ACM reference block.",
+             "suppressed contact footnote, suppressed \\correspondingauthor, "
+             "anonymized ACM reference block.",
     ),
     "language-test": Test(
         kind="twin", pages=1,
@@ -1960,15 +1982,6 @@ TESTS: dict[str, Test] = {
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
-                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                cause=ExtractionArtifact(
-                    "LaTeX draws the author-note star tight against the following "
-                    "\"and\", so the extracted stream has no space there"),
-            ),
-            ExpectedTextDiff(
                 latex="centered horizontally— is produced by the equation environment",
                 typst="centered horizontally —is produced by the equation environment",
                 cause=ExtractionArtifact(
@@ -2002,17 +2015,7 @@ TESTS: dict[str, Test] = {
     "sample-manuscript": Test(
         kind="twin", pages=11, review_line_numbers=True,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                cause=ExtractionArtifact(
-                    "LaTeX draws the author-note star tight against the following "
-                    "\"and\", so the extracted stream has no space there"),
-            ),
-        ),
+        expected_text_diffs=_CCS_ARROW_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
@@ -2039,17 +2042,7 @@ TESTS: dict[str, Test] = {
     "sample-acmlarge": Test(
         kind="twin", pages=11,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                cause=ExtractionArtifact(
-                    "LaTeX draws the author-note star tight against the following "
-                    "\"and\", so the extracted stream has no space there"),
-            ),
-        ),
+        expected_text_diffs=_CCS_ARROW_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
@@ -2139,17 +2132,7 @@ TESTS: dict[str, Test] = {
     "sample-acmsmall-conf": Test(
         kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                cause=ExtractionArtifact(
-                    "LaTeX draws the author-note star tight against the following "
-                    "\"and\", so the extracted stream has no space there"),
-            ),
-        ),
+        expected_text_diffs=_CCS_ARROW_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
@@ -2167,17 +2150,7 @@ TESTS: dict[str, Test] = {
     "sample-acmtog": Test(
         kind="twin", pages=6, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                cause=ExtractionArtifact(
-                    "LaTeX draws the author-note star tight against the following "
-                    "\"and\", so the extracted stream has no space there"),
-            ),
-        ),
+        expected_text_diffs=_CCS_ARROW_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
@@ -2195,17 +2168,7 @@ TESTS: dict[str, Test] = {
     "sample-acmtog-conf": Test(
         kind="twin", pages=6,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                cause=ExtractionArtifact(
-                    "LaTeX draws the author-note star tight against the following "
-                    "\"and\", so the extracted stream has no space there"),
-            ),
-        ),
+        expected_text_diffs=_CCS_ARROW_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
@@ -2260,15 +2223,6 @@ TESTS: dict[str, Test] = {
                     "Typst has no wall-clock access, so the timestamp footer prints the "
                     "compile date without the HH:MM time (DESIGN.md)."),
             ),
-            ExpectedTextDiff(
-                latex="Woodstock, NY Rights Information Authors of any work",
-                typst="journal articles. 7 Rights Information Authors of any work",
-                cause=ExtractionArtifact(
-                    "\"7 Rights Information\" opens a page in LaTeX, so its section "
-                    "number is extracted directly above the review ruler and is blanked "
-                    "with that run of bare number lines; Typst carries the heading "
-                    "mid-page, where the number survives."),
-            ),
         ),
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
@@ -2286,17 +2240,7 @@ TESTS: dict[str, Test] = {
     "sample-acmsmall-biblatex": Test(
         kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="BEN TROVATO*and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                typst="BEN TROVATO* and G.K.M. TOBIN✉*, Institute for Clarity in "
-                      "Documentation, USA",
-                cause=ExtractionArtifact(
-                    "LaTeX draws the author-note star tight against the following "
-                    "\"and\", so the extracted stream has no space there"),
-            ),
-        ),
+        expected_text_diffs=_CCS_ARROW_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
@@ -2341,18 +2285,9 @@ TESTS: dict[str, Test] = {
         note="upstream acmsmall-biblatex sample with author-year software artifact cites.",
     ),
     "sample-sigconf-biblatex": Test(
-        kind="twin", pages=7, expected_page_count_diff=_SIGCONF_BIBLATEX_PAGE_DIFF,
+        kind="twin", pages=7,
         text_equal=False,
-        expected_text_diffs=(
-            ExpectedTextDiff(
-                latex="ACM, New York, NY, USA, 6 pages.",
-                typst="ACM, New York, NY, USA, 7 pages.",
-                cause=AcceptedTypstBehavior(
-                    "the dense software reference block reflows to a seventh Typst "
-                    "page (DESIGN.md), which also puts that page's running head into "
-                    "the char residual"),
-            ),
-        ),
+        expected_text_diffs=_CCS_ARROW_TEXT_EVIDENCE,
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
@@ -2388,6 +2323,16 @@ TESTS: dict[str, Test] = {
     "sample-acmcp": Test(
         kind="twin", pages=1,
         text_equal="bag", rule_gate=_RULE_ACMCP_FOOT,
+        expected_font_diffs=(
+            ExpectedFontDiff(
+                latex="This document provides LATEX templates for the article",
+                typst="This document provides LATEX templates for the article",
+                cause=AcceptedTypstBehavior(
+                    "the \\LaTeX logo raises its A at \\sf@size, the math script size "
+                    "for the surrounding text size; the port scales it by a fixed "
+                    "0.82em, so the A comes out ~0.9pt large (DESIGN.md)."),
+            ),
+        ),
         expected_text_diffs=(
             ExpectedTextDiff(
                 latex="Ben Trovato, trovato@corporation.com G.K.M. Tobin,",
@@ -2527,6 +2472,15 @@ ERROR_CASES: dict[str, tuple] = {
     # acmcp with a valid article type but no journal logo: the cover infobox
     # errors with an actionable message rather than a bare image(none) failure.
     "missing-acmcp-logo": ('format: "acmcp",', "acmcp` cover format needs a journal logo"),
+    # acmart v2.21 makes the second \correspondingauthor a class error, since the
+    # asterisk mark and its footnote belong to one author (acmart.dtx:5487).
+    "two-corresponding-authors": (
+        'authors: ((name: "Ada Lovelace", corresponding: true, '
+        'affiliation: (institution: "Analytical Engine Institute", country: "UK")), '
+        '(name: "Grace Hopper", corresponding: true, '
+        'affiliation: (institution: "Harvard", country: "USA")),),',
+        "at most one author may set `corresponding: true`",
+    ),
     "missing-affiliation-country": (
         'authors: ((name: "Ada Lovelace", affiliation: (institution: "Analytical Engine Institute")),),',
         "every author affiliation must include a nonempty `country`",

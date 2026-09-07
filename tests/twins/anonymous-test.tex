@@ -2,6 +2,8 @@
 %% (twin of the .typ). The author strip must read "ANONYMOUS AUTHOR(S)" with a
 %% second "SUBMISSION ID: <id>" line (acmart.dtx:5190-5193, uppercased by the
 %% journal strip's \MakeUppercase), and the contact-info footnote is suppressed.
+%% \correspondingauthor is a no-op under `anonymous` (acmart.dtx:5487), so neither
+%% the author's asterisk nor the "Corresponding author" footnote may appear.
 \documentclass[acmsmall,anonymous]{acmart}
 
 \setcopyright{acmlicensed}
@@ -20,6 +22,7 @@
 \title{An Anonymous Submission}
 
 \author{Ben Trovato}
+\correspondingauthor
 \email{trovato@corporation.com}
 \affiliation{%
   \institution{Institute for Clarity in Documentation}

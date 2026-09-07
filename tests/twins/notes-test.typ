@@ -1,8 +1,10 @@
 // notes-test — frontmatter footnote isolator.
 // Matched twin: notes-test.tex. Exercises the shared top-matter footnote-symbol
-// counter (title note *, subtitle note †, author notes ‡/§, in acmart's emission
-// order) plus the corresponding-author ✉ on the OTHER author, the `received`
-// paper-history line (end of document), and the `acks` environment.
+// counter (title note †, subtitle note ‡, author notes §/¶, in acmart's emission
+// order) plus the corresponding-author * on the OTHER author — whose
+// "Corresponding author" note takes the asterisk and opens the stack, which is why
+// the counted notes start at the dagger. Also the `received` paper-history line
+// (end of document) and the `acks` environment.
 #import "/src/lib.typ": acmart, acks
 
 #show: acmart.with(

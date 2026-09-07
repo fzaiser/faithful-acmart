@@ -1,9 +1,11 @@
 %% notes-test — frontmatter footnote isolator (LaTeX twin of notes-test.typ).
 %% Exercises the SHARED footnote-symbol counter across the top matter: a title
-%% note (*), a subtitle note (dagger), and author notes (double-dagger/section sign), in the
-%% order acmart emits them (titlenote, subtitlenote, authornote). A separate
-%% corresponding-author envelope sits on the OTHER author so no single name mixes
-%% the envelope with a note symbol (that ordering is a documented approximation).
+%% note (dagger), a subtitle note (double dagger), and author notes (section/pilcrow
+%% sign), in the order acmart emits them (titlenote, subtitlenote, authornote) —
+%% one symbol later than the counter's first, because \maketitle reserves the
+%% asterisk for the corresponding author's own note. That corresponding author is
+%% the OTHER one, so no single name mixes the asterisk with a note symbol (that
+%% ordering is a documented approximation).
 %% Also exercises \received (end of document) and the acks environment.
 \documentclass[acmsmall]{acmart}
 

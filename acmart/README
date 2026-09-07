@@ -1,5 +1,6 @@
 This package provides a class for typesetting publications of the
-Association for Computing Machinery.
+Association for Computing Machinery.  The package is maintained by
+Boris Veytsman <borisv@lk.net> and released under LPPL 1.3
 
 Your TeX distribution probably includes the latest released version of
 this package.  If you decide to install it yourself, please see the
@@ -11,6 +12,12 @@ The production version is the one on CTAN and ACM sites.
 
 
 Changes
+
+Version 2.21   2028-08-23
+	       Bibliography change: ISBN is now shown if present
+	       (thanks to Dirk Beyer)
+	       Only one author can be a corresponding author
+	       
 
 Version 2.20   2028-08-16
                Conference proceedings in acmsmall now use conference
