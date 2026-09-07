@@ -14,6 +14,14 @@ The job requires extra pluck and zeal from every young wage earner.
 The quick brown fox jumps over the lazy dog. Pack my box with five dozen
 liquor jugs. How vexingly quick daft zebras jump!
 
+=== The Bound on $X$.
+A run-in heading whose own period follows a formula: math resets the space
+factor, so the run-in dot is dropped and one period is printed.
+
+=== The Bound on U.S.
+Here the period follows an uppercase letter, which leaves the space factor at
+1000, so the run-in dot lands after the one the title already carries.
+
 ==== An inline heading
 The five boxing wizards jump quickly. Sphinx of black quartz, judge my vow.
 Two driven jocks help fax my big quiz.

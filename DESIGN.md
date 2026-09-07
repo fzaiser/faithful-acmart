@@ -422,6 +422,17 @@ mistaken for faithfulness bugs.
   `department:` before `institution:` reads "Theory Division, The Group, …" in the
   contact line (`contact-affil-strings`, `frontmatter.typ`; `title-test` declares one
   department-first).
+- **Terminal punctuation follows TeX's space factor**, not "does it already end in a
+  mark". acmart appends stops through `\@addpunct` (`\@adddotafter`, `\@setthanks`,
+  `\@setauthorsaddresses`, the proof head), which fires whenever `\spacefactor` is at
+  most 1000. An uppercase letter sets the factor to 999 and TeX then clamps the
+  following period's 3000 back down to 1000 instead of letting it through, so acmart
+  really does print "…London, UK.." while "…London, England." keeps its single stop.
+  `src/parts/punct.typ` replays the space-factor table over the trailing text rather
+  than testing the last character. Math and boxes reset the factor to 1000, so a
+  period after `$X$` is the author's own and content we can't read as text (a `ref`,
+  a citation, an image) stands in as a digit rather than letting the text before it
+  decide. `notes-test` and `head-test` pin both directions against LaTeX.
 - **Author line grouping IS faithful**: `group-authors` (`frontmatter.typ`) implements
   `\@mkauthors@i` (acmart.dtx:7337) — authors accumulate onto a line and an
   `\affiliation` closes it for everyone accumulated so far; values are never compared.

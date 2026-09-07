@@ -546,7 +546,7 @@ TESTS: dict[str, Test] = {
                 cause=AcceptedTypstBehavior(
                     "acmart typesets a \\part title TWICE: \\ACM@NRadjust re-runs the "
                     "level-9 section format through hyperref's \\Sectionformat hook "
-                    "(acmart.dtx:8304/8381), an upstream display-heading quirk (confirmed "
+                    "(acmart.dtx:8353/8430), an upstream display-heading quirk (confirmed "
                     "on a minimal acmart doc). The port renders the \\part title once."),
             ),
         ),
@@ -556,11 +556,13 @@ TESTS: dict[str, Test] = {
                 typst="A Part Division",
                 cause=AcceptedTypstBehavior(
                     "One extra copy of the \\part heading glyphs is present in LaTeX only "
-                    "(the acmart.dtx:8304 double-typesetting quirk)."),
+                    "(the acmart.dtx:8353 double-typesetting quirk)."),
             ),
         ),
         note="section / subsection / subsubsection / paragraph (run-in) headings, plus "
-             "\\part (a level-9 display heading acmart renders twice; see the diffs).",
+             "\\part (a level-9 display heading acmart renders twice; see the diffs). "
+             "Two subsubsections end in a period — one after math, one after an uppercase "
+             "letter — which is where \\@adddotafter's space-factor test diverges.",
     ),
     "figure-heading-test": Test(
         kind="twin", pages=1,
@@ -1878,7 +1880,9 @@ TESTS: dict[str, Test] = {
     "notes-test": Test(
         kind="twin", pages=1,
         note="title/subtitle/author notes, corresponding mark, received line, and acks. "
-             "The title block and footnote stack mix leadings, so pitch is reported, not gated.",
+             "The title block and footnote stack mix leadings, so pitch is reported, not gated. "
+             "Its two \\thanks notes end on a lowercase and an uppercase letter, pinning both "
+             "sides of \\@addpunct's space-factor rule against LaTeX.",
     ),
     "notes-conf-test": Test(
         kind="twin", pages=1,

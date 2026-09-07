@@ -6,7 +6,12 @@
 #import "/src/lib.typ": acmart, acks
 
 #show: acmart.with(
-  thanks: [The authors thank the Example Foundation for supporting this work.],
+  // Two notes: the first ends on a lowercase letter, the second on an
+  // uppercase one, which is what decides whether \@addpunct's stop lands.
+  thanks: (
+    [The authors thank the Example Foundation for supporting this work.],
+    [Bob's contribution was funded by a grant from the NSF.],
+  ),
   format: "acmsmall",
   title: "A Title With a Note",
   title-note: [This funding note is attached to the title.],

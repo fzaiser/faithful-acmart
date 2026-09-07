@@ -516,7 +516,7 @@
       rule(100%)
       for t in thanks {
         // \@setthanks: \par <text>\@addpunct. — anonymous swaps in "A note"
-        // (acmart.dtx:6420/7790).
+        // (acmart.dtx:6420/7839).
         block(spacing: lead, tagged-par[#add-punct(if anon [A note] else { t })])
       }
       if has-contact-info {
@@ -525,10 +525,7 @@
           let contacts = meta.authors.map(contact-line).join("; ")
           block(spacing: lead, tagged-par[#add-punct([#label #contacts])])
         } else {
-          // The class source routes this through \@addpunct., but for the
-          // \authorsaddresses override the stored macro hides a user-supplied
-          // final stop from \@addpunct; LaTeX therefore prints "UK.." here.
-          block(spacing: lead, tagged-par[#meta.authors-addresses.])
+          block(spacing: lead, tagged-par[#add-punct(meta.authors-addresses)])
         }
       }
     }
