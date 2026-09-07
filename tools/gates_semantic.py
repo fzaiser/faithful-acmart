@@ -404,9 +404,11 @@ def gate_structure(report: bool = False) -> list[str]:
         alternatives = Counter(
             str(elem.get("/Alt")) for elem in elements if "/Alt" in elem
         )
+    # /THead + /TH pin acmart's \tagpdfsetup{table/header-rows={1}}
+    # (acmart.dtx:4292): a table's first row is a header, not loose data.
     required_roles = {
         "/Document", "/H1", "/H2", "/P", "/L", "/LI", "/Table", "/TR",
-        "/TD", "/Figure", "/Caption", "/Link", "/Formula",
+        "/TD", "/THead", "/TH", "/Figure", "/Caption", "/Link", "/Formula",
     }
     missing_roles = sorted(role for role in required_roles if not roles[role])
     if missing_roles:

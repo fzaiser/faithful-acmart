@@ -513,7 +513,19 @@ mistaken for faithfulness bugs.
   `table` renders booktabs rules flush against the cell struts; `tabular` has the same
   signature as `table` and re-adds `\aboverulesep` (`.4ex`) above each rule and
   `\belowrulesep` (`.65ex`) below it, with heavy (`.08em`) `\toprule`/`\bottomrule`
-  and light (`.05em`) `\midrule` weights. Design notes:
+  and light (`.05em`) `\midrule` weights. `tabular` also marks its first row as a
+  table header, mirroring acmart's `\tagpdfsetup{table/header-rows={1}}`
+  (acmart.dtx:4292), so a screen reader announces each cell under its column
+  heading; `header-rows: 0` opts out. Typst's `table.header` repeats the row after
+  a page break and acmart's declaration does not, so the header is built with
+  `repeat: false` and the rendered table is byte-identical. Because a wrong split
+  silently MOVES cells, the header is only built when the children can be read
+  row-major with certainty: `columns` must be an explicit argument (a
+  `set table(columns: ..)` default is visible only from `context`, which `tabular`
+  must not enter), every cell must take its automatic position, no header cell may
+  span into the body, and a caller's own `table.header`/`table.footer` is left
+  alone. Any other table is tagged without a header rather than reflowed. Design
+  notes:
   - It is a **plain function, not a `show table` rule** — a show rule whose body emits
     a `table` re-matches its own output (`maximum show rule depth exceeded`), so the
     wrapper sidesteps recursion entirely and needs no re-entry guard. It builds

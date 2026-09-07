@@ -51,7 +51,15 @@
 // boundary is inferred with the same row-major occupancy model as `table`, so
 // colspan, rowspan, and explicitly positioned cells all contribute to the next
 // automatic position.
-#let tabular(..args) = {
+// `header-rows` mirrors acmart's \tagpdfsetup{table/header-rows={1}}
+// (acmart.dtx:4292): the first row of every table is a HEADER row, so assistive
+// software reads each cell under its column heading instead of as loose data.
+// Typst spells that `table.header`, which additionally REPEATS the row after a
+// page break; acmart's declaration is tagging-only and moves nothing, so the
+// header is built with `repeat: false` and the rendered table is unchanged. Pass
+// `header-rows: 0` for a table whose first row is ordinary data, and a caller who
+// builds their own `table.header` is left untouched.
+#let tabular(header-rows: 1, ..args) = {
   let cols = args.named().at("columns", default: 1)
   let ncols = if type(cols) == array { cols.len() } else if type(cols) == int { cols } else { 1 }
 
@@ -87,7 +95,18 @@
     }
     position
   }
-  for c in args.pos() {
+  // Header selection must never move a cell, so it runs only when the children
+  // can be read row-major with certainty: `columns` must be an explicit argument
+  // (a `set table(columns: ..)` default is readable only from `context`, which
+  // tabular must not enter), every cell must take its automatic position (an
+  // explicit x/y can drop a cell into row 0 after later rows have been given),
+  // and no header cell may span into the body. Anything else keeps the children
+  // exactly as passed, tagging the table without a header rather than risking
+  // the layout.
+  let header-safe = "columns" in args.named()
+  let header-start = none
+  let header-end = none
+  for (index, c) in args.pos().enumerate() {
     if c.func() == std.table.hline {
       let y-field = c.fields().at("y", default: auto)
       let y = if y-field == auto { calc.quo(cursor, ncols) } else { y-field }
@@ -105,10 +124,34 @@
       for dy in range(rowspan) {
         for dx in range(colspan) { occupied.push(slot(x + dx, y + dy)) }
       }
+      if cell-x != auto or cell-y != auto { header-safe = false }
+      if y < header-rows and y + rowspan > header-rows { header-safe = false }
+      if header-start == none { header-start = index }
+      if header-end == none and y >= header-rows { header-end = index }
       if cell-x == auto and cell-y == auto { cursor = y * ncols + x + colspan }
       cursor = advance(cursor, occupied)
     }
   }
+
+  // Leading rules stay outside the header; it spans the cells of the first
+  // `header-rows` rows (and any rule between them). A caller's own header or
+  // footer, or a vline, inside that span means the run is not a plain row of
+  // cells, so it is left alone.
+  let children = args.pos()
+  let stop = if header-end == none { children.len() } else { header-end }
+  let plain(c) = (
+    c.func() != std.table.header and c.func() != std.table.footer
+      and c.func() != std.table.vline
+  )
+  let wrap = (
+    header-safe and header-rows > 0 and header-start != none
+      and children.all(c => c.func() != std.table.header)
+      and children.slice(header-start, stop).all(plain)
+  )
+  let children = if wrap {
+    let head = std.table.header(repeat: false, ..children.slice(header-start, stop))
+    children.slice(0, header-start) + (head,) + children.slice(stop)
+  } else { children }
 
   // A LaTeX `tabular` is a single box that never splits across a page/column
   // boundary — if it does not fit it moves whole to the next page. Typst tables
@@ -117,7 +160,8 @@
   // does not style; a floated `tabular` inside `figure` likewise never breaks.)
   // The wrapper keeps figure()'s table-kind detection (verified: "Table N").
   block(breakable: false, spacing: 0pt, std.table(
-    ..args,
+    ..children,
+    ..args.named(),
     inset: (x, y) => {
       let base = inset-at(x, y)
       (
