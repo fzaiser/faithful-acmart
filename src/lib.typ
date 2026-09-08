@@ -35,12 +35,6 @@
 // `label.name`).
 #let _cite-label(k) = if type(k) == label { k } else { label(k) }
 
-// Public `cite` — SHADOWS Typst's built-in so `#cite(<a>, <b>)` accepts MULTIPLE
-// keys and renders one grouped bracket ("[1, 2]", like LaTeX \cite{a,b}); single
-// `@key` / `#cite(<a>)` work too. Our per-element `show` rules can't merge adjacent
-// citations, so this variadic form is the only way to group through the bibtex/
-// biblatex backends. For "typst" it emits adjacent native cites (which Typst groups
-// itself); otherwise it renders the group through the ACM engine.
 // Typst's citation forms, mapped onto the commands acmart defines. Each takes
 // natbib's postnote through `supplement:` — where a postnote goes depends on the
 // form, and \citeyear/\citeauthor drop it outright in numbers mode (see
@@ -54,6 +48,12 @@
   "full": bbl-fullcite,
 )
 
+// Public `cite` — SHADOWS Typst's built-in so `#cite(<a>, <b>)` accepts MULTIPLE
+// keys and renders one grouped bracket ("[1, 2]", like LaTeX \cite{a,b}); single
+// `@key` / `#cite(<a>)` work too. Our per-element `show` rules can't merge adjacent
+// citations, so this variadic form is the only way to group through the bibtex/
+// biblatex backends. For "typst" it emits adjacent native cites (which Typst groups
+// itself); otherwise it renders the group through the ACM engine.
 #let cite(..args) = context {
   let cfg = cfg-state.get()
   let keys = args.pos()
@@ -358,7 +358,6 @@
   short-title: auto,
   short-authors: auto,
   // --- acmart class & \settopmatter options ---
-  // Implemented for the acmsmall (single-column journal) layout:
   review: false,          // line numbers in the margin + folios forced on
   screen: false,          // colour hyperlinks
   anonymous: false,       // blind-review author strip

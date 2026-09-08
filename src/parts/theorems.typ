@@ -1,13 +1,11 @@
-// Theorem-like environments for acmart, matching the amsthm-based acmplain /
-// acmdefinition styles. For acmsmall:
-//   acmplain (theorem/lemma/corollary/proposition/conjecture):
-//     head = small caps, body = italic, indent = parindent, .5bl above/below,
-//     head spec "Name Number (Note)." then 0.5em then body (run-in).
-//   acmdefinition (definition/example/remark):
-//     head = italic, body = roman.
-//   proof: head "Proof." small caps, roman body, trailing QED square.
-// sigplan overrides the head fonts/indents (cfg.thm, formats/sigplan.typ).
-// All share one counter, numbered within the section: 1.1, 1.2, ...
+// Theorem-like environments for acmart, matching the amsthm-based acmplain
+// (theorem/lemma/corollary/proposition/conjecture) and acmdefinition
+// (definition/example/remark) styles, plus `proof` with its trailing QED square.
+//
+// The head and body fonts and the indents are per-format data in `cfg.thm`;
+// what is fixed for every format is that all of these environments share ONE
+// counter, numbered within the section (1.1, 1.2, …), and that a head runs in
+// to the body it introduces.
 
 #import "spacing.typ": tex-skip
 #import "punct.typ": add-punct

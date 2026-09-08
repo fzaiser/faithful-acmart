@@ -1,9 +1,10 @@
 // Body elements: captions, lists, tables, code, display math, footnotes.
 //
-// acmsmall (journal) caption: sans-serif small (9pt), label and text same
-// weight, period label separator; figure named "Fig.", table caption on top.
-// The caption package's singlelinecheck centers captions that fit one line and
-// left-justifies longer ones. Enumerate labels are parenthesized: (1), (2), ...
+// Nearly every rule here branches on the format dict, so the shape of a caption
+// or a list label is read from `cfg`, not fixed in this file. The one behaviour
+// that is neither acmart's nor Typst's own is the caption package's
+// `singlelinecheck`: a caption that fits on one line is centred, a longer one is
+// justified.
 
 #import "spacing.typ": comp, tex-skip
 #import "../formats/_base.typ": tp

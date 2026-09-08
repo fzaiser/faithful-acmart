@@ -1,10 +1,12 @@
-// Title block / frontmatter for acmsmall (journal layout).
+// Title block / frontmatter: acmart's \maketitle and everything it draws —
+// title, author lines, abstract, CCS, keywords, the ACM reference format block,
+// and the page-1 footnote stack.
 //
-// Mirrors acmart's \maketitle for the journal formats: title (LARGE sans bold,
-// left aligned), author lines (large sans uppercase names + small serif
-// affiliation, grouped structurally per acmart — see group-authors), then
-// abstract / CCS / keywords /
-// ACM reference format. See the acmsmall-frontmatter-specs memory for sources.
+// The typography is per-format data; the structure is not, and the structure is
+// the hard part. Authors are grouped rather than listed (see group-authors),
+// which is what decides how many share an affiliation block and how the grid
+// splits, and the two-column formats need the title head and the title body
+// rendered separately because only the head spans the columns.
 
 #import "copyright.typ": permission-text, copyright-owner
 #import "spacing.typ": comp, tex-skip

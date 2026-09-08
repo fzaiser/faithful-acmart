@@ -1,16 +1,13 @@
 // Section heading styling for acmart.
 //
-// acmsmall uses amsart's \@startsection skips with acmart's fonts (the acmsmall
-// per-format override is empty, so the generic acmart definitions apply):
-//   section (1):       sffamily bfseries, mixed case, before .75bl, after .25bl
-//   subsection (2):    sffamily bfseries, mixed case, before .75bl, after .25bl
-//   subsubsection (3): sffamily itshape, run-in (negative afterskip), dot
-//   paragraph (4):     itshape (serif),  run-in, indented \parindent, dot
-//   subparagraph (5):  inherited amsart run-in body font, no added dot
-// where bl = \baselineskip. Section number is followed by \quad (1em). secnumdepth
-// is 3, so paragraphs (level 4) are unnumbered. The paragraph after a heading is
-// not indented (Typst handles this via first-line-indent (all: false)). (acmart
-// stopped uppercasing section titles in v2.08; the bundled class is v2.21.)
+// Only the level STRUCTURE lives here — which levels are display headings, which
+// run in, their \@startsection skips — because that part is format-independent
+// (acmart.dtx:8356). The fonts are per-format data read from `cfg.sec-fonts`
+// (acmart.dtx:8415), as is `secnumdepth`, so nothing below names a family or size.
+//
+// Two things worth knowing before reading: section titles are MIXED CASE, not
+// uppercased, and the paragraph after a heading takes no first-line indent — set
+// once, globally, by lib.typ rather than here.
 
 #import "spacing.typ": comp, tex-skip
 #import "punct.typ": add-punct
