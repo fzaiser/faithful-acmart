@@ -16,6 +16,8 @@ Presort a/b grouping \citep{grpA,grpB,grpC} and org sort \citep{OrgProc}.
 A label year the .bst had to take from a \texttt{date} field disambiguates against a plain \texttt{year} of the same value \citep{dtYear,dtDate}, and two entries with no date at all share one label year too \citep{ndOne,ndTwo}.
 The label dispatch reads the literal entry type, so an aliased one takes neither an editor nor an organization \citep{OnlOrg,ColEd,DatEd}, where a literal manual takes the organization \citep{ManOrg} and an explicit key outranks it \citep{WebKey}.
 
+Postnotes reach every form in author-year mode, including the two that drop them in numbers mode: \citep[p.~5]{jones}, \citet[p.~5]{jones}, \citeauthor[p.~5]{jones}, and \citeyear[p.~5]{jones}.
+
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{authoryear}
 

@@ -25,4 +25,6 @@ A label that merely opens with a period of its own keeps it wherever it sits #ci
 
 #cite("NzDotless", "NzDotted"): an accent over a dotless \\i is that same author too.
 
+Postnotes reach every form under acmauthoryear: #cite("NsAbe", supplement: [p.~5]), #cite("NsAbe", form: "prose", supplement: [p.~5]), #cite("NsAbe", form: "author", supplement: [p.~5]), and #cite("NsAbe", form: "year", supplement: [p.~5]).
+
 #bibliography("/tests/twins/biblatex-names-test.bib")

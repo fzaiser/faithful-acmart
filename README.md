@@ -175,6 +175,24 @@ Prior work includes @Cohen:1996:EAE and #cite(<Li:2008:PUC>, <Hollis:1999:VBD>).
 #bibliography("refs.bib")
 ```
 
+`cite` accepts Typst's `form`, each mapping to the natbib command acmart defines:
+
+| `form` | natbib | renders |
+|---|---|---|
+| `"normal"` (default) | `\cite` | `[1]` |
+| `"prose"` | `\citet` | `Harel [1]` |
+| `"author"` | `\citeauthor` | `Harel` |
+| `"year"` | `\citeyear` | `1978` |
+| `"full"` | — | the whole reference, inline |
+| `none` | `\nocite` | nothing; the entry still joins the list |
+
+A page number or other postnote goes in `supplement`, on `cite` and on the textual
+helpers alike — `@Harel78[p. 5]`, `#cite(<Harel78>, form: "prose", supplement: [p. 5])`,
+`#cite-alt(<Harel78>, supplement: [p. 5])`. Where it lands follows natbib: inside the
+brackets, on the last of several keys. In *numeric* mode natbib drops the postnote from
+the author and year forms, which the `bibtex` backend reproduces; the `biblatex` backend
+keeps it, as BibLaTeX does.
+
 Choose a backend with `bib-backend`:
 
 | Backend | Behavior |

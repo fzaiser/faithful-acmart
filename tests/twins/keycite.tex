@@ -14,6 +14,9 @@ Variants: \citet{Harel78} \citealt{Harel78} \citeyearpar{Harel78} \shortcite{Har
 The bare-key shorthand carries the same postnote: \cite[p.~5]{Harel78}.
 Typst's citation forms reach the same natbib commands: \citet{Harel78}, \citeauthor{Harel78}, \citeyear{Harel78}, and a silent \nocite{Cohen07}.
 
+Postnotes: \citet[p.~5]{Harel78}, \citealt[p.~5]{Harel78}, \citeyearpar[p.~5]{Harel78}, and across two keys \citet[p.~5]{Cohen07,Harel78}.
+In numbers mode natbib drops a postnote from the author and year forms: \citeauthor[p.~5]{Harel78} and \citeyear[p.~5]{Harel78}.
+
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{sample-base}
 

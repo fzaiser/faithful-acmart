@@ -2533,13 +2533,20 @@ ERROR_CASES: dict[str, tuple] = {
         "must use project-absolute",
         '#bibliography(("a.bib", "b.bib"))',
     ),
-    # Typst's `cite` also takes `form: "full"` and a CSL `style`, neither of which
-    # has an acmart counterpart (the style comes from the `cite-style` option).
-    # Both are rejected outright, so they cannot silently change what is printed.
-    "cite-unsupported-form": (
+    # A CSL `style` has no meaning for the ACM engines, whose style comes from
+    # acmart's own `cite-style` option, so it is rejected rather than dropped.
+    "cite-unknown-form": (
         'bib-backend: "bibtex",',
-        'does not support `form: "full"`',
-        '= Body\n#cite(<Cohen07>, form: "full")\n#bibliography("/tests/twins/sample-base.bib")',
+        'does not support `form: "footnote"`',
+        '= Body\n#cite(<Cohen07>, form: "footnote")\n#bibliography("/tests/twins/sample-base.bib")',
+    ),
+    # `form: "full"` prints the whole reference and `form: none` prints nothing;
+    # neither has anywhere to put a postnote.
+    "cite-full-supplement": (
+        'bib-backend: "bibtex",',
+        "prints the whole reference, so it takes no `supplement`",
+        '= Body\n#cite(<Cohen07>, form: "full", supplement: [p. 5])'
+        '\n#bibliography("/tests/twins/sample-base.bib")',
     ),
     "cite-unknown-argument": (
         'bib-backend: "bibtex",',

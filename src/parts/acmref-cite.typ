@@ -392,18 +392,28 @@
   }
   // link each author group to its first entry (hyperref anchors the whole citation)
   let years = g => render-years(g.years)
-  let parts = lgroups.map(g => link(entry-label(g.key),
-    if mode == "citet" { g.shown + " [" + years(g) + "]" }
-    else { g.shown + " " + years(g) }))
-  let note = if supplement != none { [, #supplement] } else { [] }
+  // \citep closes over the whole list, so its postnote sits before the final
+  // bracket; \citet/\citealt hang it off the LAST entry instead (probed:
+  // "Cohen et al. [2007]; Harel [1978, p. 5]").
+  let tail(i) = if mode != "citep" and supplement != none and i == lgroups.len() - 1 {
+    [, #supplement]
+  } else { [] }
+  let parts = lgroups.enumerate().map(((i, g)) => link(entry-label(g.key),
+    if mode == "citet" { g.shown + " [" + years(g) + tail(i) + "]" }
+    else { g.shown + " " + years(g) + tail(i) }))
+  let note = if mode == "citep" and supplement != none { [, #supplement] } else { [] }
   if mode == "citep" { "[" + parts.join("; ") + note + "]" } else { parts.join("; ") }
 }
 // natbib \citet/\citealt in NUMBERS mode: "Author et al. [N]" / "Author et al. N".
-#let numeric-textcite(p, ks, brackets: true) = {
-  cite-order(ks, p.order).map(k => {
+// A postnote hangs off the LAST entry, inside its brackets — probed against
+// LaTeX: \citet[p. 5]{a,b} gives "Cohen et al. [1], Harel [2, p. 5]".
+#let numeric-textcite(p, ks, brackets: true, supplement: none) = {
+  let ordered = cite-order(ks, p.order)
+  ordered.enumerate().map(((i, k)) => {
     let num = p.order.position(x => x == k) + 1
     let label = cite-label-content(p, k)
-    link(entry-label(k), if brackets { [#label \[#num\]] } else { [#label #num] })
+    let note = if supplement != none and i == ordered.len() - 1 { [, #supplement] } else { [] }
+    link(entry-label(k), if brackets { [#label \[#num#note\]] } else { [#label #num#note] })
   }).join(", ")
 }
 
@@ -495,15 +505,47 @@
 // nothing. This is what Typst's `#cite(<k>, form: none)` means.
 #let bbl-nocite(..keys) = with-prepared(keys.pos(), _ => none)
 
+// Typst's `#cite(<k>, form: "full")`: the whole reference, inline. It is the same
+// body the reference list draws for that entry (parts/acmref-bst.typ `handle` /
+// parts/acmref-biblatex.typ `blx-handle`), minus the list's own number label and
+// 8pt size, so it picks up the surrounding text size. acmart has no counterpart —
+// natbib's inline-entry command lives in the separate `bibentry` package, which
+// the class does not load — so this is a Typst-API completeness feature, not a
+// LaTeX one; the entry body itself is the validated one.
+#let bbl-fullcite(..keys) = {
+  let ks = keys.pos()
+  with-prepared(ks, p => {
+    let ay = cite-style-state.get() == "author-year"
+    let extras = if ay { p.extras } else { (:) }
+    ks.map(k => {
+      let e = p.db.at(k)
+      let suffix = extras.at(k, default: "")
+      if p.fmt == "biblatex" {
+        blx-handle(e, style: cite-style-state.get(), year-suffix: suffix)
+      } else {
+        // "See [N]" needs the parent's list position, which only exists once the
+        // parent is itself cited; an uncited parent leaves the cross-reference out.
+        let xr = e.fields.at("crossref", default: none)
+        let n = if xr == none { none } else { p.order.position(x => x == xr) }
+        let xref-cite = if n != none {
+          if ay { cite-ay(p, (xr,), mode: "citet") } else { [[#cite-num-link(n + 1, xr)]] }
+        }
+        handle(e, xref-cite: xref-cite, year-suffix: suffix)
+      }
+    }).join(" ")
+  })
+}
+
 // \citet: "Label [Year]" (author-year) / "Author et al. [N]" (numbers mode —
 // natbib keeps the author name in numeric \citet, dtx numbers style).
 #let bbl-citet(..keys) = {
   let ks = keys.pos()
+  let supp = keys.named().at("supplement", default: none)
   with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
-      cite-ay(p, ks, mode: "citet")
+      cite-ay(p, ks, mode: "citet", supplement: supp)
     } else {
-      numeric-textcite(p, ks)
+      numeric-textcite(p, ks, supplement: supp)
     }
   })
 }
@@ -511,11 +553,12 @@
 // \citealt: like \citet but with no brackets ("Label Year" / "Author et al. N").
 #let bbl-citealt(..keys) = {
   let ks = keys.pos()
+  let supp = keys.named().at("supplement", default: none)
   with-prepared(ks, p => {
     if cite-style-state.get() == "author-year" {
-      cite-ay(p, ks, mode: "citealt")
+      cite-ay(p, ks, mode: "citealt", supplement: supp)
     } else {
-      numeric-textcite(p, ks, brackets: false)
+      numeric-textcite(p, ks, brackets: false, supplement: supp)
     }
   })
 }
@@ -525,10 +568,12 @@
 // applies in author-year mode.
 #let bbl-citeyearpar(..keys) = {
   let ks = keys.pos()
+  let supp = keys.named().at("supplement", default: none)
   with-prepared(ks, p => {
     let extras = if cite-style-state.get() == "author-year" { p.extras } else { (:) }
+    let note = if supp != none { [, #supp] } else { [] }
     "[" + cite-order(ks, p.order).map(k =>
-      link(entry-label(k), cite-year(p, k) + extras.at(k, default: ""))).join(", ") + "]"
+      link(entry-label(k), cite-year(p, k) + extras.at(k, default: ""))).join(", ") + note + "]"
   })
 }
 
@@ -537,25 +582,34 @@
   if cite-style-state.get() == "author-year" { bbl-citeyearpar(..keys) } else { bbl-cite(..keys) }
 }
 
+// natbib silently DROPS a postnote from \citeyear/\citeauthor in NUMBERS mode,
+// while keeping it in author-year; BibLaTeX keeps it in both. Probed against
+// LaTeX, so the numbers-mode drop is replicated rather than corrected.
+#let keeps-postnote(p) = p.fmt == "biblatex" or cite-style-state.get() == "author-year"
+
 // \citeyear: just the year(s) with suffix; \citeauthor: just the label
 #let bbl-citeyear(..keys) = {
   let ks = keys.pos()
+  let supp = keys.named().at("supplement", default: none)
   with-prepared(ks, p => {
     let extras = if cite-style-state.get() == "author-year" { p.extras } else { (:) }
-    cite-order(ks, p.order).map(k => cite-year(p, k) + extras.at(k, default: "")).join(", ")
+    let note = if supp != none and keeps-postnote(p) { [, #supp] } else { [] }
+    cite-order(ks, p.order).map(k => cite-year(p, k) + extras.at(k, default: "")).join(", ") + note
   })
 }
 #let bbl-citeauthor(..keys) = {
   let ks = keys.pos()
+  let supp = keys.named().at("supplement", default: none)
   with-prepared(ks, p => {
     // \citeauthor prints `labelname` and nothing else, so under acmnumeric an
     // entry with no name list prints nothing at all — where \textcite and \cite
     // fall through to `cite:label` and show the title. acmauthoryear patches
     // \citeauthor (acmauthoryear.cbx) and does show the title there.
     let bare = p.fmt == "biblatex" and cite-style-state.get() != "author-year"
+    let note = if supp != none and keeps-postnote(p) { [, #supp] } else { [] }
     cite-order(ks, p.order)
       .filter(k => not (bare and not p.labels.at(k).at("named", default: true)))
-      .map(k => link(entry-label(k), cite-label-content(p, k))).join("; ")
+      .map(k => link(entry-label(k), cite-label-content(p, k))).join("; ") + note
   })
 }
 
