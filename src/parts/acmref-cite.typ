@@ -491,6 +491,10 @@
   })
 }
 
+// \nocite: register the keys so the entries reach the reference list, but print
+// nothing. This is what Typst's `#cite(<k>, form: none)` means.
+#let bbl-nocite(..keys) = with-prepared(keys.pos(), _ => none)
+
 // \citet: "Label [Year]" (author-year) / "Author et al. [N]" (numbers mode —
 // natbib keeps the author name in numeric \citet, dtx numbers style).
 #let bbl-citet(..keys) = {

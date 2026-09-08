@@ -2506,6 +2506,19 @@ ERROR_CASES: dict[str, tuple] = {
         "must use project-absolute",
         '#bibliography(("a.bib", "b.bib"))',
     ),
+    # Typst's `cite` also takes `form: "full"` and a CSL `style`, neither of which
+    # has an acmart counterpart (the style comes from the `cite-style` option).
+    # Both are rejected outright, so they cannot silently change what is printed.
+    "cite-unsupported-form": (
+        'bib-backend: "bibtex",',
+        'does not support `form: "full"`',
+        '= Body\n#cite(<Cohen07>, form: "full")\n#bibliography("/tests/twins/sample-base.bib")',
+    ),
+    "cite-unknown-argument": (
+        'bib-backend: "bibtex",',
+        "`cite` has no `style` argument",
+        '= Body\n#cite(<Cohen07>, style: "apa")\n#bibliography("/tests/twins/sample-base.bib")',
+    ),
     # Citing on the bibtex/biblatex backend with no acmart `#bibliography` registered
     # (here: the `#bibliography` call is simply missing) is an actionable error, not a
     # cryptic `read(none)` deep in the .bib reader — see `with-prepared`.

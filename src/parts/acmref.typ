@@ -9,4 +9,4 @@
 // Typst re-exports imported bindings, so a plain `#import` here already makes these
 // names available to importers of this facade — no re-`let` aliasing needed.
 #import "acmref-common.typ": tex-render-state
-#import "acmref-cite.typ": bbl-cite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state
+#import "acmref-cite.typ": bbl-cite, bbl-nocite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state

@@ -25,7 +25,7 @@
 #import "parts/tables.typ": tabular, toprule, midrule, bottomrule
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
-#import "parts/acmref.typ": bbl-cite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state, tex-render-state
+#import "parts/acmref.typ": bbl-cite, bbl-nocite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state, tex-render-state
 // the built-in bibtex-backend field renderer, exported so a custom `tex-render` can wrap it
 #import "parts/tex.typ": tex-to-content as default-tex-render, latex-logo, tex-logo, bibtex-logo
 
@@ -41,6 +41,12 @@
 // citations, so this variadic form is the only way to group through the bibtex/
 // biblatex backends. For "typst" it emits adjacent native cites (which Typst groups
 // itself); otherwise it renders the group through the ACM engine.
+// `form` maps Typst's citation forms onto the natbib commands acmart defines.
+// "full" has no natbib counterpart and `style` (a CSL style) has no meaning for
+// the ACM engines, whose style comes from acmart's own `cite-style` option; both
+// are rejected rather than silently dropped.
+#let _cite-form-fns = ("prose": bbl-citet, "author": bbl-citeauthor, "year": bbl-citeyear)
+
 #let cite(..args) = context {
   let cfg = cfg-state.get()
   let keys = args.pos()
@@ -50,7 +56,32 @@
   if cfg == none or cfg.bib-backend == "typst" {
     keys.map(k => std.cite(_cite-label(k), ..named)).join()
   } else {
-    bbl-cite(..keys.map(str), ..named)
+    let ks = keys.map(str)
+    for k in named.keys() {
+      assert(k in ("supplement", "form"), message:
+        "faithful-acmart: `cite` has no `" + k + "` argument on the `" + cfg.bib-backend
+        + "` backend"
+        + if k == "style" { "; the citation style follows acmart's `cite-style` option" } else { "" })
+    }
+    let form = named.at("form", default: "normal")
+    let supp = named.at("supplement", default: none)
+    if form == none {
+      // \nocite: the entry joins the reference list, nothing is typeset.
+      assert(supp == none,
+        message: "faithful-acmart: `cite` with `form: none` typesets nothing, so it takes no `supplement`")
+      bbl-nocite(..ks)
+    } else if form == "normal" {
+      bbl-cite(..ks, supplement: supp)
+    } else {
+      assert(form in _cite-form-fns, message:
+        "faithful-acmart: `cite` does not support `form: " + repr(form) + "` on the `"
+        + cfg.bib-backend + "` backend; supported forms are "
+        + ("normal", "prose", "author", "year").map(repr).join(", ") + " and `none`")
+      // natbib's textual forms have no postnote slot in acmart's styles.
+      assert(supp == none, message:
+        "faithful-acmart: `cite` with `form: " + repr(form) + "` takes no `supplement`")
+      (_cite-form-fns.at(form))(..ks)
+    }
   }
 }
 
