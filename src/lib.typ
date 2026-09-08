@@ -588,8 +588,10 @@
   // source through hayagriva at element construction — before any show rule could
   // fire — so shadowing the name is the only way to bypass hayagriva for the
   // bibtex/biblatex backends.
+  // `@key[p. 5]` carries natbib's postnote in the ref's `supplement` (`auto` when
+  // the shorthand has no bracket), so forward it the way `#cite(supplement: ...)` does.
   show ref: it => if bib-backend != "typst" and it.element == none {
-    bbl-cite(str(it.target))
+    bbl-cite(str(it.target), supplement: if it.supplement == auto { none } else { it.supplement })
   } else { it }
 
 
