@@ -1,11 +1,7 @@
-// Theorem-like environments for acmart, matching the amsthm-based acmplain
-// (theorem/lemma/corollary/proposition/conjecture) and acmdefinition
-// (definition/example/remark) styles, plus `proof` with its trailing QED square.
-//
-// The head and body fonts and the indents are per-format data in `cfg.thm`;
-// what is fixed for every format is that all of these environments share ONE
-// counter, numbered within the section (1.1, 1.2, …), and that a head runs in
-// to the body it introduces.
+// Theorem-like environments: amsthm's acmplain (theorem/lemma/corollary/
+// proposition/conjecture) and acmdefinition (definition/example/remark), plus
+// `proof` with its QED square. Fonts and indents are `cfg.thm` data; all of
+// these share ONE counter, numbered within the section.
 
 #import "spacing.typ": tex-skip
 #import "punct.typ": add-punct

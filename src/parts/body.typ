@@ -1,10 +1,4 @@
 // Body elements: captions, lists, tables, code, display math, footnotes.
-//
-// Nearly every rule here branches on the format dict, so the shape of a caption
-// or a list label is read from `cfg`, not fixed in this file. The one behaviour
-// that is neither acmart's nor Typst's own is the caption package's
-// `singlelinecheck`: a caption that fits on one line is centred, a longer one is
-// justified.
 
 #import "spacing.typ": comp, tex-skip
 #import "../formats/_base.typ": tp

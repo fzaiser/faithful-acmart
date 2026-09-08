@@ -1,12 +1,6 @@
-// Title block / frontmatter: acmart's \maketitle and everything it draws —
-// title, author lines, abstract, CCS, keywords, the ACM reference format block,
-// and the page-1 footnote stack.
-//
-// The typography is per-format data; the structure is not, and the structure is
-// the hard part. Authors are grouped rather than listed (see group-authors),
-// which is what decides how many share an affiliation block and how the grid
-// splits, and the two-column formats need the title head and the title body
-// rendered separately because only the head spans the columns.
+// acmart's \maketitle: title, authors, abstract, CCS, keywords, the ACM
+// reference format block, and the page-1 footnote stack. Authors are grouped,
+// not listed (see group-authors).
 
 #import "copyright.typ": permission-text, copyright-owner
 #import "spacing.typ": comp, tex-skip

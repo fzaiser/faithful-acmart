@@ -257,16 +257,10 @@ mistaken for faithfulness bugs.
   `[n. d.]` under acmnumeric and biblatex's `nodate` string under acmauthoryear ("N.d."
   in the reference list, "n.d." in a cite), with any `extradate` letter parenthesized
   after it. Pinned by the `biblatex-misc-test` / `biblatex-misc-numeric-test` pair.
-- **Biber's date grammar, in full.** A `date` field is more than `YYYY[-MM[-DD]]`: an
-  uncertainty or approximation marker (`2005?`, `2005~`, `2005%`) is accepted and leaves
-  no trace, trailing unspecified digits stand for the span they cover (`200X` IS
-  2000-2009, `2005-XX` is that whole year), months 21-24 are the EDTF seasons, either end
-  of a range may be open, years may be negative, and a day is checked against the real
-  calendar, leap years included. Anything biber rejects leaves the entry exactly as
-  undated as one carrying no `date` at all. Covering the whole grammar rather than a
-  subset is a deliberate choice: it is one parsing function, and `biblatex-dates-test`
-  pins every form above against real biber, so narrowing it would trade validated
-  behaviour for a few dozen lines.
+- **Biber's date grammar, in full** — markers (`2005?`), unspecified digits (`200X` IS
+  2000-2009), EDTF seasons, open range ends, negative years, and a day checked against
+  the real calendar. Deliberately not a subset: it is one parsing function, and
+  `biblatex-dates-test` pins every form against real biber.
 - **BibLaTeX field formats that cut across the drivers.** A `date` field is the only
   one that can carry a day — biber nulls a `day` field (biblatex.def:1341) — and the day
   then shows in every parenthesized date and, under acmauthoryear, in the label date

@@ -1,13 +1,6 @@
-// Section heading styling for acmart.
-//
-// Only the level STRUCTURE lives here — which levels are display headings, which
-// run in, their \@startsection skips — because that part is format-independent
-// (acmart.dtx:8356). The fonts are per-format data read from `cfg.sec-fonts`
-// (acmart.dtx:8415), as is `secnumdepth`, so nothing below names a family or size.
-//
-// Two things worth knowing before reading: section titles are MIXED CASE, not
-// uppercased, and the paragraph after a heading takes no first-line indent — set
-// once, globally, by lib.typ rather than here.
+// Section headings. Only the level STRUCTURE is here — display vs run-in, the
+// \@startsection skips — which is format-independent (acmart.dtx:8356); fonts and
+// secnumdepth are `cfg` data. Titles are MIXED CASE, not uppercased.
 
 #import "spacing.typ": comp, tex-skip
 #import "punct.typ": add-punct
