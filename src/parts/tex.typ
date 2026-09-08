@@ -356,6 +356,14 @@
   0.7 * size
 }
 
+// \textsuperscript{x} sets its body at \sf@size (latex.ltx), so name that size
+// outright. `typographic: false` is required: Typst would otherwise substitute the
+// font's own superscript glyphs for the characters that have them (digits do), which
+// are a different shape and width from the shrunk full-size glyph LaTeX draws. The
+// top-matter note marks go through the same macro (`note-super`, frontmatter.typ).
+#let script-super(body) = context super(
+  typographic: false, size: script-size(text.size), body)
+
 // \TeX = T\kern-.1667em\lower.5ex\hbox{E}\kern-.125emX (latex.ltx), where ex is the
 // current font's x-height. A `box`'s `baseline` shift is TeX's \raise/\lower: it
 // moves the glyph without touching the advance width.
@@ -581,7 +589,7 @@
       else if nm in _strong-cw { let (a, r) = _grab(tail); piece = _apply("bf", _eval(a, mode), cont); next = r }
       else if nm in _sc-cw { let (a, r) = _grab(tail); piece = _apply("sc", _eval(a, mode), cont); next = r }
       else if nm == "underline" { let (a, r) = _grab(tail); piece = _apply("ul", _eval(a, mode), cont); next = r }
-      else if nm == "textsuperscript" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { super(x) } else { x }; next = r }
+      else if nm == "textsuperscript" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { script-super(x) } else { x }; next = r }
       else if nm == "textsubscript" { let (a, r) = _grab(tail); let x = _eval(a, mode); piece = if cont { sub(x) } else { x }; next = r }
       else if nm == "texttt" { let (a, r) = _grab(tail); let s = _eval(a, "string"); piece = if cont { raw(s) } else { s }; next = r }
       else if nm == "url" { let (a, r) = _grab(tail); let u = _eval(a, "string"); piece = if cont { link(u)[#u] } else { u }; next = r }

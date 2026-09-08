@@ -67,7 +67,9 @@
 #has("\\textsl{b}", "styled")
 #has("\\textsc{acm}", "smallcaps")
 #has("\\underline{u}", "underline")
-#has("x\\textsuperscript{2}", "super")
+// \textsuperscript needs the surrounding text size to pick \sf@size, so it comes
+// back as a context block; bib-edge gates the rendered size against LaTeX.
+#has("x\\textsuperscript{2}", "context")
 #has("see \\url{http://a.b}", "link")
 #has("ref \\href{http://a.b}{text}", "link")
 #has("math $\\frac{n}{2} \\leq x^{2n}$", "equation")  // real Typst math

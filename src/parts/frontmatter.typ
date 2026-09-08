@@ -11,6 +11,7 @@
 #import "strings.typ": lang-record
 #import "body.typ": in-topmatter
 #import "punct.typ": add-punct
+#import "tex.typ": script-super
 #import "../formats/_base.typ": tp
 
 // \@fnsymbol marks, which acmart takes for \thefootnote in the top matter. They
@@ -34,14 +35,13 @@
 // \@formatdoi = \url{https://doi.org/...} (acmart.dtx:6204): the body is the URL.
 #let doi-link(doi) = link(doi.url)[#doi.url]
 
-// Match LaTeX \@textsuperscript marks. Typst's super() scales its body further.
-// The mark is wrapped in a zero-height box so its (enlarged, raised) glyph does
-// not inflate the line's ascent past the `top-edge: 1em` line box — otherwise
-// Typst grows the line to contain the superscript and a marked author/name line
-// gains ~2.6pt over TeX's rigid \baselineskip. `align(bottom, …)` keeps the
-// superscript anchored at the baseline so it prints in the identical spot.
-#let note-super(mark) = box(height: 0pt, align(bottom,
-  super(text(size: 1.22em)[#mark])))
+// A \@textsuperscript note mark: `script-super` sets it at \sf@size like LaTeX,
+// and the zero-height box keeps its (raised) glyph from inflating the line's ascent
+// past the `top-edge: 1em` line box — otherwise Typst grows the line to contain the
+// superscript and a marked author/name line gains ~2.6pt over TeX's rigid
+// \baselineskip. `align(bottom, …)` keeps the mark anchored at the baseline so it
+// prints in the identical spot.
+#let note-super(mark) = box(height: 0pt, align(bottom, script-super(mark)))
 
 // Join a list of names the ACM/amsart "andify" way ("a", "a and b",
 // "a, b, and c"). Items may be strings (author names) or content (names carrying
@@ -730,7 +730,7 @@
     // tagged-par so the title is its own <P> chunk, not fused into the author
     // head's <Span>. Translated titles are already separate paragraphs (parbreak)
     // and tag separately on their own.
-    #tagged-par[#meta.title#if mark != none { super(mark) }]
+    #tagged-par[#meta.title#if mark != none { note-super(mark) }]
     #for (l, t) in meta.translated-title {
       parbreak()
       text(lang: lang-record(l).code, t)
@@ -752,7 +752,7 @@
   block(above: lead, below: tex-skip(cfg, 0pt))[
     #set text(font: cfg.fonts.at(sf.family), weight: sf.weight, size: cfg.size.at(sf.size))
     #set par(justify: false, first-line-indent: 0pt, leading: lead, spacing: lead)
-    #tagged-par[#meta.subtitle#if mark != none { super(mark) }]
+    #tagged-par[#meta.subtitle#if mark != none { note-super(mark) }]
     #for (l, t) in meta.translated-subtitle {
       parbreak()
       v(0.51em, weak: true)

@@ -421,6 +421,12 @@ mistaken for faithfulness bugs.
   author may be the corresponding one — a second is a class error, which the port raises
   too. What differs is *ordering* — we emit mark-then-note in a fixed order, not
   source-declaration order (our model stores a boolean + note, with no declaration order).
+- **Note marks are set at `\sf@size`**, the size `\@textsuperscript` asks for
+  (`note-super`, `frontmatter.typ`), on the title, the subtitle and the author names
+  alike. LaTeX itself is inconsistent here: `\@fnsymbol{4}`, the section sign, comes
+  out at the full text size while the dagger, double dagger and pilcrow beside it
+  obey `\sf@size`, so a document with four or more distinct top-matter notes shows
+  one oversized mark in LaTeX and none in ours. Not replicated.
 - **Contact-info field order follows the author dict's key order** — acmart's
   `\@mkauthorsaddresses` replays the declared `\email`/`\affiliation` order; Typst
   dicts preserve insertion order, so writing `email:` before `affiliation:` (or vice
