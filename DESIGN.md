@@ -30,31 +30,21 @@ against acmsmall's 85/46/46/63.7); fonts and the `\ifcase\ACM@format@nr` flags a
 
 ## Architecture
 
-```
-src/lib.typ            public acmart() entry; page setup; show/set rules; re-exports
-src/formats/
-  _base.typ            shared font-size ladder + make-format() dict constructor
-  <format>.typ         one builder per format (acmsmall, sigconf, …): probed
-                       geometry + the format flags, everything else from _base
-src/parts/
-  spacing.typ          comp() / tex-skip() — the TeX→Typst baseline-grid helpers
-  headings.typ         section / run-in heading show rule
-  frontmatter.typ      title, authors, abstract, CCS, keywords, ref format, page-1 footnotes
-  copyright.typ        permission text + © owner per copyright mode (incl. CC)
-  theorems.typ         theorem/lemma/.../proof environments (+ shared counter, cfg state)
-  body.typ             captions, lists, table, code, footnote, bibliography rules
-  tables.typ           booktabs `tabular` wrapper + `toprule`/`midrule`/`bottomrule`
-```
+[`src/README.md`](src/README.md) is the file-by-file map of the package; this section
+covers only the decisions behind that shape.
 
-**Format-as-data.** A format is a dict of measurements built as a function of the
-base font size. The font-size ladder and `make-format()` constructor (the
-format-independent constants — float/list/footnote/badge geometry, fonts) live in
-`formats/_base.typ`; each `formats/<name>.typ` passes only what differs (probed
-geometry + the `\ifcase` flags: `columns`, `title-style`, `author-style`,
-`sec-fonts`, `journal`/`conf-footer`, `secnumdepth`, title/author/affiliation fonts).
-`journal` is acmart's static `\if@ACM@journal`, and `parts/options.typ` derives from it the two flags that `\acmConference` lowers: `bibstrip`, which governs the ACM bibstrip, the journal footer and the journal wording of the reference block, and `bibstrip-or-tog`, which governs the running heads, footers, folios and the contact footnote.
-A conference always lowers the first; under acmsmall it lowers the second as well, so an acmsmall conference paper takes the proceedings chrome throughout.
-`lib.typ` is format-agnostic except the two-column branch.
+**Format-as-data.** A format is a dict of measurements built as a function of the base
+font size, so `lib.typ` is format-agnostic except for the two-column branch. The
+constants that do not vary between formats live in one `make-format()` constructor, and
+each `formats/<name>.typ` passes only what differs: its probed geometry and the flags
+acmart selects on with `\ifcase`.
+
+Two of those flags are derived rather than declared. `journal` is acmart's static
+`\if@ACM@journal`; from it `parts/options.typ` derives `bibstrip`, which governs the ACM
+bibstrip, the journal footer and the journal wording of the reference block, and
+`bibstrip-or-tog`, which governs the running heads, footers, folios and the contact
+footnote. A conference always lowers the first; under acmsmall it lowers the second as
+well, so an acmsmall conference paper takes the proceedings chrome throughout.
 
 **Config plumbing.** `acmart()` collects user metadata into a `meta` dict passed to
 the part functions, alongside the format dict `cfg` — also published via `state`
@@ -391,8 +381,6 @@ mistaken for faithfulness bugs.
   rendered text, which NFKC-folds identically — but NOT in a comparison, so every
   key that decides identity (BibLaTeX name disambiguation, extradate contexts) is
   composed first and the sort keys are decomposed first, matching biber either way.
-- `edition` is lowercased with `lower()`, not brace-aware `change.case$` (differs only
-  for a braced edition).
 - Multi-token first-name tie placement may not match BibTeX exactly — inter-token
   spacing is whitespace, dropped by the char bag.
 - `url`/`doi`/`eprint` bypass the render seam (linked with the raw string; URLs rarely
@@ -401,8 +389,7 @@ mistaken for faithfulness bugs.
 - Recursion vs Typst's ~72 call-depth: the evaluator loops over the token list (field
   length unbounded); only structural nesting recurses, so overflow needs ~70+ nested
   braces/math.
-- BibTeX warnings aren't emitted (best-effort, silent); `thebibliography` label-width is
-  moot (Typst numbers natively).
+- BibTeX warnings aren't emitted (best-effort, silent).
 - `, Article N` comma is emitted unconditionally (every reachable call site is
   post-`new.block`).
 - **Caveat:** the `\LaTeX`/`\TeX` logos extract as `LATEX` in extracted text, so a
@@ -685,14 +672,18 @@ gates. `tools/test.py probe` audits the numbers in `formats/*.typ`: it compiles
 font-size steps, baselineskips, and skips (`PROBE …`/`SIZE …` lines) — every length in a
 format dict should trace to a probe line or an `acmart.dtx` macro.
 
-**Layout numbers vs content numbers.** The text gates strip *layout* numbers before
-comparing — page folios (a number line right before a page break, `_PAGE_FOLIO_LINE`)
-and the review-mode line-number ruler (≥20 standalone numbers) — via
-`_drop_layout_numbers` in [`pdf_text_tokens.py`](tools/pdf_text_tokens.py), shared by
-the sequence, word-bag, and char-bag gates. Section numbers are **kept**: they are
-content and match in both engines. (LaTeX typesets the number in its own `\@hangfrom`
-box, so it extracts on its own line, while Typst's extracts inline with the title —
-a line-break difference the order-independent bags and whitespace-collapsing sequence
-gate absorb.) An earlier version dropped *every* standalone-number line, which swept
-section numbers up too and forced the heading to keep an over-wide gap so its number
-would land on its own extracted line; distinguishing the two removed that constraint.
+**Layout numbers vs content numbers.** The only numbers the text gates strip are the
+review-mode line-number ruler, recognized as a run of standalone number lines by
+`_drop_layout_numbers` in [`pdf_text_tokens.py`](tools/pdf_text_tokens.py) and shared by
+the sequence, word-bag, and char-bag gates. Every other bare number line is compared
+like any other text, because both engines put the same ones there:
+
+- **Section numbers** are content. LaTeX typesets the number in its own `\@hangfrom`
+  box, so it extracts on its own line while Typst's extracts inline with the title —
+  a line-break difference the order-independent bags and the whitespace-collapsing
+  sequence gate absorb. An earlier version dropped every standalone-number line, which
+  swept section numbers up too and forced the heading to keep an over-wide gap so its
+  number would land on its own extracted line.
+- **Page folios** agree between the engines, so nothing is gained by dropping them.
+  PyMuPDF reads them beside the running head at the top of the page rather than at the
+  end of it, so no "last line of the page" rule would reach them consistently anyway.

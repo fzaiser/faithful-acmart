@@ -16,6 +16,18 @@ matrix in [`tools/test_matrix.py`](tools/test_matrix.py). Build through
 [`tools/tc`](tools/tc), a `typst` wrapper that points at the bundled development
 fonts in [`fonts/`](fonts/).
 
+Outside Python it needs a TeX distribution — `pdflatex`, `bibtex` and `biber` build the
+LaTeX references the twins are compared against — and, for the `package` command,
+[`typst-package-check`](https://github.com/typst/package-check).
+
+It also needs one specific Typst: the Tier 1 goldens are raster page hashes, so they
+only reproduce under the version recorded in `TYPST_VERSION` and in the header of
+[`tests/golden/typst.sha256`](tests/golden/typst.sha256). A different compiler is
+rejected by the matrix-integrity gate before any page is compared, so keep that build
+first on `PATH` while running `check`. Moving the pin is a deliberate migration —
+regenerate the hashes with `test.py accept` and inspect what moved — not a way to make
+a version mismatch go away.
+
 Common commands:
 
 ```sh
@@ -27,15 +39,10 @@ uv run python tools/test.py smoke body2-test theorem-transition-test # targeted 
 uv run python tools/test.py accept  # bless golden hashes after an intended change
 ```
 
-Building the example or running `typst init` locally needs the package linked into
-Typst's data directory. On macOS:
-
-```sh
-ln -sfn "$PWD" "$HOME/Library/Application Support/typst/packages/preview/faithful-acmart/0.1.0"
-```
-
-The matched twins import `/src/lib.typ` directly, so `uv run python tools/test.py check`
-does not need this package link.
+The matched twins import `/src/lib.typ` directly, so `check` needs no package link.
+Building the example or running `typst init` does — see
+[PUBLISHING.md](PUBLISHING.md#local-testing-the-package-symlink), which also explains
+why that link shadows the released package afterwards.
 
 ## Validation model
 

@@ -30,29 +30,16 @@ those rules were applied here so future releases don't have to re-derive them.
 - **Template packages** must declare `[template]`, at least one `category`, and a
   `thumbnail`. No large files / large numbers of files; exclude dev-only content.
 
-## Current manifest (already configured in [`typst.toml`](typst.toml))
+## What ships
 
-| Field | Value |
-|---|---|
-| `name` / `version` | `faithful-acmart` / `0.1.0` |
-| `entrypoint` | `src/lib.typ` |
-| `compiler` | `0.14.0` (stable math-symbol names for the `.bib` TeX layer; PDF tags) |
-| `license` | `MIT AND MIT-0` (+ `LICENSE`, `template/LICENSE`) |
-| `description` | `Every ACM paper format, matching LaTeX acmart.` |
-| `categories` / `disciplines` | `["paper"]` / `["computer-science"]` |
-| `[template]` | `path = "template"`, `entrypoint = "main.typ"`, `thumbnail = "thumbnail.png"` |
-
-### What ships vs. what's excluded
-
-**Ships:** `src/` (`lib.typ`, `formats/`, `parts/`, `assets/cc/`), `template/`
-(`main.typ`, `refs.bib`, `LICENSE`), `README.md`, `LICENSE`, `typst.toml`, and
-`thumbnail.png` (auto-excluded from the downloaded bundle but present for the preview).
-
-**Excluded** (dev-only, via `exclude` in `typst.toml` — add new dev docs here):
-`/.github`, `/.venv`, `/acmart`, `/fonts`, `/tests`, `/tools`, `/tmp`,
-`/.gitignore`, `/.python-version`, `/CLAUDE.md`, `/CONTRIBUTING.md`, `/DESIGN.md`,
-`/PUBLISHING.md`, `/TODO.md`, `/acmart-upstream-findings.md`, `/pyproject.toml`,
-`/uv.lock`, `/src/README.md`, `/src/assets/acm-jdslogo.png`.
+[`typst.toml`](typst.toml) is the manifest; the rules above say why each field holds
+the value it does. The bundle is everything the manifest's `exclude` list does not
+name: [`src/`](src/), [`template/`](template/), `README.md`, `LICENSE`, `typst.toml`,
+and `thumbnail.png` (which Universe uses for the preview and drops from the
+download). Everything else in the repo is development-only — the LaTeX sources, the
+validation harness, the bundled fonts, the contributor docs — so a new dev file needs
+an `exclude` entry of its own or `test.py package` fails on it. Working notes are the
+exception: they belong in `scratch/`, which is excluded already.
 
 ## Assets & fonts (the parts that need care)
 
@@ -64,13 +51,12 @@ those rules were applied here so future releases don't have to re-derive them.
 - **ACM JDS logo — not bundled.** It is ACM's trademark. The `acmcp` format takes a
   user-supplied `acmcp-logo: image(...)` and errors if it's missing; the dev copy
   `src/assets/acm-jdslogo.png` is excluded.
-- **CC badges — official, unmodified.** `src/assets/cc/cc-<type>.svg` are the official
-  Creative Commons 88×31 press-kit SVGs, downloaded directly from
-  `https://mirrors.creativecommons.org/presskit/buttons/88x31/svg/<type>.svg`
-  (`cc-zero.svg` for CC0). They are CC **trademarks** — not in the SPDX license; the
-  `cc` copyright block links each badge to its licence deed. See
-  [`src/assets/cc/README.md`](src/assets/cc/README.md). To refresh them, re-download
-  from the same URLs — do **not** re-vectorize (that counts as modifying the mark).
+- **CC badges — bundled, but not under the package license.** The badges in
+  `src/assets/cc/` do ship. They are Creative Commons trademarks, which is why the
+  README names them apart from the SPDX expression;
+  [`src/assets/cc/README.md`](src/assets/cc/README.md) records their provenance and the
+  policy that permits the use. To refresh one, re-download it from the CC press kit —
+  do **not** re-vectorize, which counts as modifying the mark.
 
 ## Local testing (the package symlink)
 
@@ -95,7 +81,7 @@ output ever disagrees with what users see.
 
 ```sh
 # 1. Harness green
-tools/venv/bin/python tools/test.py check
+uv run python tools/test.py check
 
 # 2. Thumbnail: page 1 of the example, longer edge >=1080 px, <=3 MiB
 tools/tc compile --format png --pages 1 --ppi 250 template/main.typ thumbnail.png
@@ -105,7 +91,7 @@ tools/tc compile --format png --pages 1 --ppi 250 template/main.typ thumbnail.pn
 #    allowlist, checks the README's links and @preview versions, compiles a fresh
 #    template project plus every README ```typst example from it, and runs the
 #    official linter offline:
-tools/venv/bin/python tools/test.py package
+uv run python tools/test.py package
 
 # 4. To install/update the official linter (needs rustc >= 1.85.1)
 cargo install --git https://github.com/typst/package-check --locked
@@ -132,7 +118,7 @@ in `LICENSE` / `template/LICENSE`.
    README's relative links to unshipped files to the `v<version>` tag, and writes the
    bundle only after every package check passes (note the doubled `packages/`):
    ```sh
-   tools/venv/bin/python tools/test.py package \
+   uv run python tools/test.py package \
      --out <packages checkout>/packages/preview/faithful-acmart/<version>
    ```
    Never copy a `.git` directory into the checkout; submodules are not accepted.
