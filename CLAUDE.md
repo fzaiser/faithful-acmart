@@ -87,3 +87,8 @@ straight to `main` (this overrides the usual "branch off the default branch firs
 default). **Commit proactively** after each significant, logically coherent chunk
 of work, with a descriptive message — don't wait to be asked. Only `push` when
 asked.
+
+Working notes that are **not** meant to be committed — review findings, audits,
+drafts kept around only while something is in progress — go in `scratch/`, which
+is gitignored and excluded from the package. Anywhere else in the root they break
+the package gate.

@@ -15,6 +15,10 @@ acmart/samples/*.tex
 # Visual-diff outputs
 tests/out/
 
+# Working notes kept around while something is in progress: review findings,
+# audits, drafts. Never committed, and excluded from the package in typst.toml.
+scratch/
+
 # Compiled test PDFs and scratch
 tests/*.pdf
 tests/_*

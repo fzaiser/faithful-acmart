@@ -21,8 +21,9 @@ disciplines = ["computer-science"]
 # 0.14 is also where PDF accessibility tags start being emitted.
 compiler = "0.14.0"
 # Files kept in the development repo but omitted from the published Universe bundle:
-# the LaTeX sources / validation harness / bundled dev fonts, contributor docs, and the
-# ACM JDS logo (ACM's trademark — the acmcp format takes a user-supplied `acmcp-logo:`).
+# the LaTeX sources / validation harness / bundled dev fonts, contributor docs, the
+# ACM JDS logo (ACM's trademark — the acmcp format takes a user-supplied `acmcp-logo:`),
+# and `scratch/`, which holds uncommitted working notes (see .gitignore).
 exclude = [
     "/.github",
     "/.venv",
@@ -31,6 +32,7 @@ exclude = [
     "/tests",
     "/tools",
     "/tmp",
+    "/scratch",
     "/.gitignore",
     "/.python-version",
     "/CLAUDE.md",
@@ -38,8 +40,6 @@ exclude = [
     "/DESIGN.md",
     "/PUBLISHING.md",
     "/TODO.md",
-    "/acmart-upstream-findings.md",
-    "/port-audit-2026-07.md",
     "/pyproject.toml",
     "/uv.lock",
     "/src/README.md",
