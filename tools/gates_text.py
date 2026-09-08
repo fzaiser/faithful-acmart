@@ -10,7 +10,7 @@ import difflib
 from collections import Counter
 
 import test_matrix as M
-from test_matrix import TESTS
+from test_matrix import TESTS, Test
 from pdf_text_tokens import normalize, bag_coverage, char_bag, dash_bag
 from harness import latex_pdf, typst_pdf
 from pdf_extract import pdf_text
@@ -30,11 +30,39 @@ def _first_diff(a: str, b: str) -> str:
         right = " ".join(bw[max(0, j1 - 8):min(len(bw), j2 + 12)])
         return f"{tag} at LaTeX token {i1}, Typst token {j1}\n    LaTeX: {left}\n    Typst: {right}"
     return "strings differ, but no token diff was found"
+def _check_assertions(name: str, t: Test) -> list[str]:
+    """Targeted text-layer assertions — the only part of this tier a smoke doc,
+    which has no LaTeX reference to compare against, can take part in."""
+    local: list[str] = []
+    for i, a in enumerate(t.text_assertions, 1):
+        needle = normalize(a.text, review_line_numbers=t.review_line_numbers)
+        if not needle:
+            local.append(f"{name}: text assertion {i} has empty text")
+            continue
+        for label, pdf in _assertion_targets(name, t, a):
+            haystack = normalize(
+                pdf_text(pdf, page=a.page), review_line_numbers=t.review_line_numbers)
+            scope = f" page {a.page}" if a.page is not None else ""
+            if a.kind == "contains" and needle not in haystack:
+                local.append(f"{name}: {label}{scope} missing text assertion {i}: {needle!r}")
+            elif a.kind == "absent" and needle in haystack:
+                local.append(f"{name}: {label}{scope} contains forbidden assertion {i}: {needle!r}")
+            elif a.kind not in ("contains", "absent"):
+                local.append(f"{name}: unknown text assertion kind {a.kind!r}")
+    return local
+
+
 def gate_text(report: bool = False) -> list[str]:
     """Tier 1.5 — extracted-text semantic gate."""
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
+            # Smoke docs reach only the assertion check; everything else in this
+            # tier needs a LaTeX reference to diff against.
+            local = _check_assertions(name, t)
+            if not local and not report and t.text_assertions:
+                print(f"ok   {name}")
+            failures.extend(local)
             continue
         lref, tpdf = latex_pdf(name, t), typst_pdf(name)
         if not lref.exists() or not tpdf.exists():
@@ -117,21 +145,7 @@ def gate_text(report: bool = False) -> list[str]:
         if report and t.expected_text_diffs:
             print(f"diff  {name}: {len(t.expected_text_diffs)} expected text/char diff(s) documented")
 
-        for i, a in enumerate(t.text_assertions, 1):
-            needle = normalize(a.text, review_line_numbers=t.review_line_numbers)
-            if not needle:
-                local.append(f"{name}: text assertion {i} has empty text")
-                continue
-            for label, pdf in _assertion_targets(name, t, a):
-                haystack = normalize(
-                    pdf_text(pdf, page=a.page), review_line_numbers=t.review_line_numbers)
-                scope = f" page {a.page}" if a.page is not None else ""
-                if a.kind == "contains" and needle not in haystack:
-                    local.append(f"{name}: {label}{scope} missing text assertion {i}: {needle!r}")
-                elif a.kind == "absent" and needle in haystack:
-                    local.append(f"{name}: {label}{scope} contains forbidden assertion {i}: {needle!r}")
-                elif a.kind not in ("contains", "absent"):
-                    local.append(f"{name}: unknown text assertion kind {a.kind!r}")
+        local.extend(_check_assertions(name, t))
 
         if not local and not report:
             print(f"ok   {name}")

@@ -464,6 +464,9 @@ class Test:
             raise ValueError("minimum internal-link counts cannot be negative")
         if self.review_line_numbers and self.kind != "twin":
             raise ValueError("review_line_numbers only applies to twin tests")
+        if self.kind != "twin" and any(a.engine != "typst" for a in self.text_assertions):
+            raise ValueError("a smoke test has no LaTeX reference, so its text "
+                             "assertions must use engine=\"typst\"")
 
     @property
     def subdir(self) -> str:
