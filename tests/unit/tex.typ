@@ -11,7 +11,8 @@
 // result) — so this is an oracle test against a closed, finite spec, not against
 // our own assumptions.
 
-#import "/src/parts/tex.typ": purify, change-case, tex-to-string, tex-to-content
+#import "/src/parts/tex.typ": purify, change-case, tex-to-string, tex-to-content, script-size
+#import "/src/formats/_base.typ": tp
 
 #let chk(fn, args, want) = assert.eq(fn, want,
   message: args + "\n  got:  " + repr(fn) + "\n  want: " + repr(want))
@@ -161,3 +162,15 @@
 #let _stressmath = "$" + ("a_1 + " * 200) + "b$"        // ~600 math tokens
 #assert(repr(tex-to-content(_stress300)).len() > 0)
 #assert(repr(tex-to-content(_stressmath)).contains("equation"))
+
+// ---- \sf@size, the size of the \LaTeX logo's raised A ---------------------
+// Every value is `\sf@size` after `\check@mathfonts` at that `\f@size`, read out
+// of a probe document built against the bundled class (newtxmath's table). An
+// unlisted size falls back to LaTeX's \defaultscriptratio.
+#let sf(pt) = script-size(pt * tp) / tp
+#for (size, want) in ((6, 5.5), (7, 5.5), (8, 6), (9, 6.6), (10, 7.3), (10.95, 8),
+                      (12, 8.8), (14.4, 10.5), (17.28, 12.5), (20.74, 16.1)) {
+  assert(calc.abs(sf(size) - want) < 0.001,
+    message: "sf@size at " + str(size) + "pt: got " + repr(sf(size)) + ", want " + repr(want))
+}
+#assert(calc.abs(sf(9.5) - 6.65) < 0.001, message: "unlisted size falls back to 0.7x")

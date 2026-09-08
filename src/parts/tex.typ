@@ -24,6 +24,8 @@
 // below are quoted from bibtex.web (`x_purify`, `x_change_case`, and the
 // `pre_define(... control_seq_ilk)` block) — not guessed.
 
+#import "../formats/_base.typ": tp
+
 // ---- character classes (bibtex lex_class) ---------------------------------
 // ASCII letters/digits are alpha/numeric; space & tab are white_space; tilde
 // (tie) and hyphen are sep_char; everything else (incl. `$ ^ _ { } \`) is other.
@@ -338,10 +340,45 @@
     .replace(regex("\\\\([A-Za-z]+)(\\{\\})?[ \t\n]*"),
       m => _special-letters.at(m.captures.at(0), default: m.text))
 }
-#let tex-logo = box(height: 1em)[T#h(-0.1667em)E#h(-0.125em)X]
-#let latex-logo = box(height: 1em)[L#h(-0.36em)#text(size: 0.82em)[A]#h(-0.15em)T#h(-0.1667em)E#h(-0.125em)X]
-#let bibtex-logo = box(height: 1em)[BibT#h(-0.1667em)E#h(-0.125em)X]
-#let latexe-logo = box(height: 1em)[L#h(-0.36em)#text(size: 0.82em)[A]#h(-0.15em)T#h(-0.1667em)E#h(-0.125em)X2e]
+// newtxmath's \DeclareMathSizes table (newtxmath.sty:3106-3118), which acmart
+// inherits: (text size, math script size) in TeX points. LaTeX computes an unlisted
+// size as \defaultscriptratio = 0.7 of the text size (\calculate@math@sizes,
+// latex.ltx:10742), which is also what a size given in Typst points lands on.
+#let _script-sizes = (
+  (5, 5.5), (6, 5.5), (7, 5.5), (8, 6), (9, 6.6), (10, 7.3), (10.95, 8), (11, 8),
+  (12, 8.8), (14.4, 10.5), (17.28, 12.5), (20.74, 16.1), (24.88, 18.2),
+)
+#let script-size(size) = {
+  let pt = size / tp
+  for (text-size, script) in _script-sizes {
+    if calc.abs(pt - text-size) < 0.005 { return script * tp }
+  }
+  0.7 * size
+}
+
+// \TeX = T\kern-.1667em\lower.5ex\hbox{E}\kern-.125emX (latex.ltx), where ex is the
+// current font's x-height. A `box`'s `baseline` shift is TeX's \raise/\lower: it
+// moves the glyph without touching the advance width.
+#let _tex-tail = context {
+  let ex = measure(text(top-edge: "x-height", bottom-edge: "baseline")[x]).height
+  [T#h(-0.1667em)#box(baseline: 0.5 * ex)[E]#h(-0.125em)X]
+}
+
+// \LaTeX's raised A: set at \sf@size and lifted so its cap top meets the T's — the
+// A's \hbox sits at the top of a `\vbox to\ht\z@` closed by \vss (latex.ltx), and
+// for two capitals of one font that height difference is the cap height less the
+// same cap height at the smaller size.
+#let _latex-a = context {
+  let size = text.size
+  let a-size = script-size(size)
+  let cap = measure(text(top-edge: "cap-height", bottom-edge: "baseline")[T]).height
+  box(baseline: -cap * (1 - a-size / size), text(size: a-size)[A])
+}
+
+#let tex-logo = box(height: 1em, _tex-tail)
+#let latex-logo = box(height: 1em, [L#h(-0.36em)#_latex-a#h(-0.15em)] + _tex-tail)
+#let bibtex-logo = box(height: 1em, [Bib] + _tex-tail)
+#let latexe-logo = box(height: 1em, [L#h(-0.36em)#_latex-a#h(-0.15em)] + _tex-tail + [2e])
 
 #let _logos = (LaTeX: "LATEX", TeX: "TEX", BibTeX: "BibTEX", LaTeXe: "LATEX2e")
 #let _logo-content = (LaTeX: latex-logo, TeX: tex-logo, BibTeX: bibtex-logo, LaTeXe: latexe-logo)

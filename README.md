@@ -268,7 +268,9 @@ Some differences come from Typst and LaTeX being different layout engines:
   reproduce LaTeX's bottom-of-page fill (`\flushbottom` in the two-column formats,
   stretchable bottom glue in the single-column ones) or balance the final
   two-column page.
-- Line and page breaks can differ from LaTeX on dense pages.
+- Line and page breaks can differ from LaTeX on dense pages: acmart loads
+  `microtype`, and Typst has no equivalent of its glyph-level font expansion
+  and margin protrusion, so LaTeX occasionally fits one more word on a line.
 - `sigchi-a` does not move footnotes into the margin.
 - The `"typst"` bibliography backend is convenient, but less faithful than the
   default `"bibtex"` backend.

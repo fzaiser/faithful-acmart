@@ -405,9 +405,12 @@ mistaken for faithfulness bugs.
   moot (Typst numbers natively).
 - `, Article N` comma is emitted unconditionally (every reachable call site is
   post-`new.block`).
-- **Caveat:** the `\LaTeX`/`\TeX` logos extract as `LATEX` in extracted text, so
-  logo-bearing entries don't char-match; the twins avoid them (the text is correct — a
-  glyph-extraction artifact).
+- **Caveat:** the `\LaTeX`/`\TeX` logos extract as `LATEX` in extracted text, so a
+  logo-bearing reference reads oddly in a text dump (the rendering is correct — a
+  glyph-extraction artifact). `latex-logo`/`tex-logo`/`bibtex-logo` in `parts/tex.typ`
+  reproduce the kerns, the `\lower.5ex` E and the A set at `\sf@size` and raised to the
+  T's cap height, so the logo's advance width matches LaTeX's to ~0.01pt and does not
+  disturb line breaking.
 
 ## Author top matter
 
@@ -517,11 +520,16 @@ mistaken for faithfulness bugs.
   cap-top to the top margin (the faithful `\topskip` model), whereas LaTeX places the
   baseline. Imperceptible; the sigplan twin marks its Tier-2 top check report-only.
 - **Math fidelity untuned** (Libertinus Math ≈ newtxmath, best-effort).
-- **The `\LaTeX` logo's raised A is ~1pt large.** LaTeX sets it at `\sf@size`, the math
-  script size for the surrounding text size, which the amsart ladder puts at roughly
-  0.72× the body; `latex-logo` in `parts/tex.typ` uses a fixed 0.82em, so at a 9pt body
-  ours is 7.35pt against LaTeX's 6.58pt. Recorded as font-residual evidence on every
-  twin whose text carries a logo.
+- **No microtype.** acmart loads `microtype`, so pdfTeX sets every paragraph with
+  glyph-level font expansion (±1%) and margin protrusion; Typst has neither, so a
+  line LaTeX squeezes one more word onto breaks earlier for us. On `sample-sigplan`
+  that one word decides a page: expansion is what keeps "Institute for Clarity in
+  Documentation" on a single line of the author grid, and without it the affiliation
+  wraps, the teaser figure and everything under it drop ~12pt, the first column
+  hands an abstract line to the second, and the "1 Introduction" heading no longer
+  fits on page 1. Rebuilding the reference with
+  `\microtypesetup{expansion=false,protrusion=false}` reproduces our author-grid
+  wrap, our abstract column split and our page-2 bookmark.
 - **Continuation-page first baseline** sits 1em (the base font size) below the top
   margin instead of LaTeX's fixed `\topskip` = 10pt: ~+1pt on the 9pt-base formats,
   −1/−2pt at the 11/12pt options. Typst has no per-page margin control, and shifting

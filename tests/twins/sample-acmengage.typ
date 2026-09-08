@@ -204,7 +204,7 @@ license from the following list:
 - CC BY
 
 The correct typesetting of materials under creative commons license requires the
-corresponding CC icon. A modern TEX distribution includes these icons in the package
+corresponding CC icon. A modern #tex-logo distribution includes these icons in the package
 _doclicense_ @doclicense. In case your distribution does not have them, ACM provides
 a file `ccicons.zip` with these icons. Just unzip it in the same directory where
 your document is.

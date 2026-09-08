@@ -234,20 +234,20 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
     "manuscript-pages-test": ResidualSignatures(text="13857b6c3436762b1c09a161ad0ba212a0fc064b6c149ce01b1dc4ec95b82cfd"),
     "mathfields": ResidualSignatures(font="33b5c052b30812736e907581e38b04c1be363ec608e59cd34c8a13ce193f5170"),
-    "sample-acmsmall": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="813e8881bbb6f703eb9d801fb3e671da56d1704712751ea35cb699161061575b", order="63571ea7fe48d9b439a405c7ab3b1bb383ec9e93d839d63c4816959c5db469bf"),
-    "sample-manuscript": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="2960f69bea8909ea366cb710c8997b616760064184c8dadac8c6c52148c8ad81", order="e35efb9f0fc720f589914f355ead6d5f4bf9923e8fdf8c24afa14bd20788d0f1"),
-    "sample-acmlarge": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="de0799e0057d232fca28ab2d3981a408e29352f83576a0652e1288be3fba10c8", order="367f4243c72b390a5969a6cddf713e2a9849004ae4d886298a7ef0812c4e8618"),
-    "sample-sigconf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="7b1a241f946a6824b0f185da5b9ab05b904d2985688116b6c5ad6e4ba6942de0", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-sigplan": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="a0309711e0b0b330619cfff07196b1745a9e57d37ec75136e28fbb21804a3b9c", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmsmall-submission": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="de0799e0057d232fca28ab2d3981a408e29352f83576a0652e1288be3fba10c8", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmsmall-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="813e8881bbb6f703eb9d801fb3e671da56d1704712751ea35cb699161061575b", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmtog": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="f6f037d8cc04695ed57cac15181b130824dfbcc03a1703070e82af7c96e57b05", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmtog-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="f6f037d8cc04695ed57cac15181b130824dfbcc03a1703070e82af7c96e57b05", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-sigconf-i13n": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="352ed13966ca08fe709a6e0c2da96fa8610b6dc55d1ced6a9f4076ae2cdd3edb", order="7670c039210868e04d5111c1c53fb3399558e09f012b1796727a07961be107fe"),
-    "sample-sigconf-authordraft": ResidualSignatures(text="57a4481083f7716ddac8aa384c515bbb498a2281fce9d957465ad5347493f50d", font="7b1a241f946a6824b0f185da5b9ab05b904d2985688116b6c5ad6e4ba6942de0", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
-    "sample-acmsmall-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="17351d160cc343217e4b029203348d3ccef341ab41733e6c99e31e1611e2f36c", order="7b3f516263dd09f3a6d35956cb444a6766bade5d771d04c441c57f4a1e012b01"),
-    "sample-sigconf-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="cec811655b358439f862994830fd6224db09c88d28f96cb4adc591f06e6391dd", order="a7f323c7a7739f484386e5da419133bcce258e6578a0f7007d4ff95239b07b9d"),
-    "sample-acmcp": ResidualSignatures(text="a9a95ef15c40d9c28beacacdc681edc7c834fcae0aba217e4764495993a5ac9e", font="bfbf03713dca3c452d710214279971be8ce2be9cc5ba5d5aab052587a267d893"),
+    "sample-acmsmall": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="2a99fb5013b2bc11b626ce12e789074262b58076a2442236122e2b019da27af6", order="63571ea7fe48d9b439a405c7ab3b1bb383ec9e93d839d63c4816959c5db469bf"),
+    "sample-manuscript": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="537e9d72b7c5f85e28de58a03185fa0889def171e13399aa64c85ad5a752e88d", order="e35efb9f0fc720f589914f355ead6d5f4bf9923e8fdf8c24afa14bd20788d0f1"),
+    "sample-acmlarge": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="fed7b8e33a9c7a089f485b53b3e0f99b744b14cdd85ea18802f73b03fc8f0afe", order="367f4243c72b390a5969a6cddf713e2a9849004ae4d886298a7ef0812c4e8618"),
+    "sample-sigconf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="92bbdb41398c3aa3d90f153873c4cb4cfdb2f6c43d5ecc1aaa6a7fd3f52a4e3c", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-sigplan": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="6ca344d1a37f477b4325c00120a1833d8f823d4659885c990acaf57ad0029e6b", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmsmall-submission": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="fed7b8e33a9c7a089f485b53b3e0f99b744b14cdd85ea18802f73b03fc8f0afe", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmsmall-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="2a99fb5013b2bc11b626ce12e789074262b58076a2442236122e2b019da27af6", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmtog": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="5d42788d3f875717598b73c7e3270a1b5fd3486a5db609f46f4972bdfd1c1173", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmtog-conf": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="5d42788d3f875717598b73c7e3270a1b5fd3486a5db609f46f4972bdfd1c1173", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-sigconf-i13n": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="eba33dbf91c27c83138f0c73451d58a94d20ebf49ee920b7f4fbef1235e196c2", order="7670c039210868e04d5111c1c53fb3399558e09f012b1796727a07961be107fe"),
+    "sample-sigconf-authordraft": ResidualSignatures(text="57a4481083f7716ddac8aa384c515bbb498a2281fce9d957465ad5347493f50d", font="92bbdb41398c3aa3d90f153873c4cb4cfdb2f6c43d5ecc1aaa6a7fd3f52a4e3c", order="eeb78fc9d2b4fff09d6029ef656d9f0c9c0ac12f1d6f3f3c6a754a06e628173c"),
+    "sample-acmsmall-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="b80c937cac61c01d3dd391eddbda58dab0351b6d3e551164c90065076264f7e5", order="7b3f516263dd09f3a6d35956cb444a6766bade5d771d04c441c57f4a1e012b01"),
+    "sample-sigconf-biblatex": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44", font="d7751f8c9188430c0e74dbcfeff722206b3ca1a1fa8d59730663d01e12bcde45", order="a7f323c7a7739f484386e5da419133bcce258e6578a0f7007d4ff95239b07b9d"),
+    "sample-acmcp": ResidualSignatures(text="a9a95ef15c40d9c28beacacdc681edc7c834fcae0aba217e4764495993a5ac9e"),
     "authoryear": ResidualSignatures(text="96e3b378cf8c5ff278d12ecbd1c0d5493b7700768a2fe4d380c0b98bcc8870b9", font="604e5aedfa00fd6a5f2bb7e6e0022ecf19ecd9f664ef32ec60beff88f0a76ca8"),
     "sample-acmengage": ResidualSignatures(order="e1375d589c6da53376f20ce6acd938b50f3b317e20333dd6ab48744b32034f58"),
 }
@@ -276,19 +276,17 @@ EXPECTED_LINK_DIFFS: dict[str, ExpectedLinkDiff] = {
     "manuscript-pages-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/XXXXXXX.XXXXXXX",)),
     "acmlarge-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/XXXXXXX.XXXXXXX",)),
     "acmcp-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://example.com/data",)),
-    "sample-acmsmall": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-1825-0037",), extra=("https://www.acm.org/publications/proceedings-template",)),
+    "sample-acmsmall": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-1825-0037",)),
     "sample-manuscript": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1188913.1188915", "https://doi.org/10.1145/1057270.1057278"), extra=("https://www.acm.org/publications/taps/describing-figures/",)),
     "sample-acmlarge": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1145/1057270.1057278"), extra=("https://orcid.org/0000-0002-1825-1297", "http://ccrma.stanford.edu/~jos/bayes/bayes.html")),
     "sample-sigconf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
     "sample-sigplan": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.acm.org/publications/proceedings-template", "https://doi.org/10.1145/1057270.1057278"), extra=("https://doi.org/10.48550/arXiv.1403.1349", "https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1007/3-540-65193-4_29", "https://doi.org/10.1007/3-540-09237-4", "https://doi.org/10.1137/080734467", "https://doi.org/10.945/woot07-S422", "https://doi.org/10.1145/90417.90738")),
     "language-de-sigplan-test": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://doi.org/10.1145/1219092.1219093",)),
-    "sample-acmsmall-submission": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
-    "sample-acmsmall-conf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, extra=("https://www.acm.org/publications/proceedings-template",)),
     "sample-acmtog": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-3225-0097", "https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
     "sample-acmtog-conf": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-3225-0097", "https://doi.org/10.1145/1219092.1219093", "https://doi.org/10.1137/080734467")),
     "sample-sigconf-i13n": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
     "sample-sigconf-authordraft": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1007/3-540-65193-4_29",), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm")),
-    "sample-acmsmall-biblatex": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-1825-0037", "https://doi.org/10.1145/1057270.1057278"), extra=("https://www.acm.org/publications/proceedings-template", "https://github.com/nuprl/tag-sound", "http://archive.softwareheritage.org/swh:1:dir:cd0b0abeee707e57cd699e2e2ebd075da8ebf1f7;origin=https://github.com/nuprl/tag-sound;visit=swh:1:snp:7967bc0abee8bf3bfffb9252207a07b73538525a;anchor=swh:1:rev:4cc09ca228947a99c8f4ac45eefb76e96ee96e53")),
+    "sample-acmsmall-biblatex": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-1825-0037", "https://doi.org/10.1145/1057270.1057278"), extra=("https://github.com/nuprl/tag-sound", "http://archive.softwareheritage.org/swh:1:dir:cd0b0abeee707e57cd699e2e2ebd075da8ebf1f7;origin=https://github.com/nuprl/tag-sound;visit=swh:1:snp:7967bc0abee8bf3bfffb9252207a07b73538525a;anchor=swh:1:rev:4cc09ca228947a99c8f4ac45eefb76e96ee96e53")),
     "sample-sigconf-biblatex": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://doi.org/10.1145/1188913.1188915", "https://hal.archives-ouvertes.fr/hal-02090402v1", "https://doi.org/10.1007/3-540-65193-4_29"), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://dl.acm.org/ccs/ccs.cfm", "https://github.com/scilab/scilab", "http://archive.softwareheritage.org/swh:1:cnt:43a6b232768017b03da934ba22d9cc3f2726a6c5;origin=https://github.com/rdicosmo/parmap;visit=swh:1:snp:2a6c348c53eb77d458f24c9cbcecaf92e3c45615;anchor=swh:1:rel:373e2604d96de4ab1d505190b654c5c4045db773;path=/src/parmap.ml;lines=192-228", "https://github.com/nuprl/tag-sound", "http://archive.softwareheritage.org/swh:1:dir:cd0b0abeee707e57cd699e2e2ebd075da8ebf1f7;origin=https://github.com/nuprl/tag-sound;visit=swh:1:snp:7967bc0abee8bf3bfffb9252207a07b73538525a;anchor=swh:1:rev:4cc09ca228947a99c8f4ac45eefb76e96ee96e53", "http://archive.softwareheritage.org/swh:1:rel:636541bbf6c77863908eae744610a3d91fa58855;origin=https://github.com/CGAL/cgal/", "http://video.google.com/videoplay?docid=6528042696351994555")),
     "sample-acmcp": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://orcid.org/0000-0002-1825-0197",), extra=("https://orcid.org/1234-5678-9012", "https://orcid.org/0000-2034-1825-0097", "https://orcid.org/0000-0002-1825-1297")),
     "sample-acmengage": ExpectedLinkDiff(reason=_LINK_MULTIPLICITY, missing=("https://www.engage-csedu.org/ontology", "https://doi.org/10.1145/1188913.1188915", "http://ccrma.stanford.edu/~jos/bayes/bayes.html"), extra=("https://doi.org/XXXXXXX.XXXXXXX", "https://creativecommons.org/licenses/by/4.0")),
@@ -313,19 +311,14 @@ class ExpectedOutlineDiff:
 # folding, LaTeX-depth capping), and no entry here can waive that; these record
 # page-1 targets that the documented vertical-fill gap pushes onto page 2.
 EXPECTED_OUTLINE_DIFFS: dict[str, ExpectedOutlineDiff] = {
-    "sample-acmsmall-submission": ExpectedOutlineDiff(
-        "page 1 holds one line less than LaTeX's (86 vs 87 extracted lines), so the "
-        "heading closes LaTeX's first page and opens ours: the shrinkable section "
-        "glue plus acmart's \\@textbottom fill let LaTeX take it, and Typst has no "
-        "equivalent (DESIGN.md \"Vertical fill\")",
-        moved=(("2.1 Template Styles", 1, 2),),
-    ),
     "sample-sigplan": ExpectedOutlineDiff(
-        "the abstract flows out of the first column into the second, where ours "
-        "wraps one line longer than LaTeX's, so our whole top matter sits ~1.5 "
-        "lines lower. acmart v2.21's corresponding-author footnote takes two body "
-        "lines off page 1 in both engines, which is enough to push the heading "
-        "LaTeX still fits past our page break",
+        "microtype: pdfTeX's font expansion keeps \"Institute for Clarity in "
+        "Documentation\" on one line of the author grid, and without it the "
+        "affiliation wraps, the teaser figure and everything under it drop ~12pt, "
+        "column 1 hands an abstract line to column 2, and the heading no longer fits "
+        "on page 1. Rebuilding the reference with "
+        "\\microtypesetup{expansion=false,protrusion=false} reproduces our author-grid "
+        "wrap, our column split and our page-2 bookmark (DESIGN.md \"No microtype\")",
         moved=(("1 Introduction", 1, 2),),
     ),
 }
@@ -346,7 +339,6 @@ EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
     "sample-sigconf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "sample-acmtog": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
     "sample-acmtog-conf": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=1),
-    "sample-sigplan": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-acmsmall-submission": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-acmsmall-conf": ExpectedDashDiff(_DASH_EXTRACTION, latex_only=1),
     "sample-sigconf-i13n": ExpectedDashDiff(_DASH_EXTRACTION, typst_only=2),
@@ -2017,21 +2009,22 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
                     "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
             ),
             ExpectedOrderDiff(
-                latex="a doctoral dissertation [9], a master's thesis: [4]",
-                typst="a doctoral J. ACM, Vol. 37, No. 4, Article 111. Publication "
-                      "date: August 2018. 111:8 Trovato et al. dissertation [9]",
+                latex="enter an unnumbered equation: ∞ ∑",
+                typst="enter an unnumbered equation: J. ACM, Vol. 37, No. 4, "
+                      "Article 111. Publication date: August 2018. 111:6 "
+                      "Trovato et al. ∑",
                 cause=ExtractionArtifact(
-                    "the citation-guide paragraph is split by a page break, so the "
-                    "running head lands inside its token span at a different word in "
-                    "each engine; the chunk window then loses the paragraph's tail"),
+                    "the equation paragraph is split by a page break, so the running "
+                    "head lands inside its token span at a different word in each "
+                    "engine; the chunk window then loses the paragraph's tail"),
             ),
         ),
         note="full twin of the upstream acmsmall sample.",
@@ -2043,8 +2036,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2070,8 +2063,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2099,8 +2092,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2116,8 +2109,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2142,8 +2135,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2160,8 +2153,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2178,8 +2171,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2196,8 +2189,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1",
+                typst="unnumbered equation: ∑ ∞ i=0 x+ 1",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2214,8 +2207,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2251,8 +2244,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2271,12 +2264,22 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
                     "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
+            ),
+            ExpectedOrderDiff(
+                latex="enter an unnumbered equation: ∞ ∑",
+                typst="enter an unnumbered equation: J. ACM, Vol. 37, No. 4, "
+                      "Article 111. Publication date: August 2018. 111:6 "
+                      "Trovato et al. ∑",
+                cause=ExtractionArtifact(
+                    "the equation paragraph is split by a page break, so the running "
+                    "head lands inside its token span at a different word in each "
+                    "engine; the chunk window then loses the paragraph's tail"),
             ),
             ExpectedOrderDiff(
                 latex="4. doi:10.1145/105 7270.1057278.",
@@ -2318,8 +2321,8 @@ TESTS: dict[str, Test] = {
         expected_font_diffs=_FULL_SAMPLE_FONT_EVIDENCE,
         expected_order_diffs=(
             ExpectedOrderDiff(
-                latex="enter an unnumbered equation: ∞ ∑ i=0 x+ 1",
-                typst="enter an unnumbered equation: ∑ ∞ i=0 x+ 1",
+                latex="unnumbered equation: ∞ ∑ i=0 x+ 1 and follow",
+                typst="∑ ∞ i=0 x+ 1 and follow",
                 cause=ExtractionArtifact(
                     "display-math limits before the operator: TeX draws the sum's "
                     "limits as their own boxes ahead of the ∑ glyph, so the flat "
@@ -2350,16 +2353,6 @@ TESTS: dict[str, Test] = {
     "sample-acmcp": Test(
         kind="twin", pages=1,
         text_equal="bag", rule_gate=_RULE_ACMCP_FOOT,
-        expected_font_diffs=(
-            ExpectedFontDiff(
-                latex="This document provides LATEX templates for the article",
-                typst="This document provides LATEX templates for the article",
-                cause=AcceptedTypstBehavior(
-                    "the \\LaTeX logo raises its A at \\sf@size, the math script size "
-                    "for the surrounding text size; the port scales it by a fixed "
-                    "0.82em, so the A comes out ~0.9pt large (DESIGN.md)."),
-            ),
-        ),
         expected_text_diffs=(
             ExpectedTextDiff(
                 latex="Ben Trovato, trovato@corporation.com G.K.M. Tobin,",
