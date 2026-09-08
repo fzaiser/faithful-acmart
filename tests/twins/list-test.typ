@@ -30,6 +30,16 @@ The paragraph after the enumerated list should also be indented.
   + A second nested numbered item.
 + A second top-level numbered item.
 
+- A bullet whose child is a numbered list.
+  + The nested numbered label restarts at the first enumerate level.
+  + A second nested numbered item.
+- A second top-level bullet after the mixed nesting.
+
++ A numbered item whose child is a bulleted list.
+  - The nested bullet keeps the first itemize marker.
+  - A second nested bullet item.
++ A second top-level numbered item after the mixed nesting.
+
 #quote(block: true)[
   A quoted paragraph set off from the text by the list margins on both sides,
   long enough to wrap onto a second line so both edges can be compared, with no

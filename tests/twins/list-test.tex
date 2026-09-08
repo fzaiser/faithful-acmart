@@ -48,6 +48,24 @@ The paragraph after the enumerated list should also be indented.
 \item A second top-level numbered item.
 \end{enumerate}
 
+\begin{itemize}
+\item A bullet whose child is a numbered list.
+  \begin{enumerate}
+  \item The nested numbered label restarts at the first enumerate level.
+  \item A second nested numbered item.
+  \end{enumerate}
+\item A second top-level bullet after the mixed nesting.
+\end{itemize}
+
+\begin{enumerate}
+\item A numbered item whose child is a bulleted list.
+  \begin{itemize}
+  \item The nested bullet keeps the first itemize marker.
+  \item A second nested bullet item.
+  \end{itemize}
+\item A second top-level numbered item after the mixed nesting.
+\end{enumerate}
+
 \begin{quote}
 A quoted paragraph set off from the text by the list margins on both sides,
 long enough to wrap onto a second line so both edges can be compared, with no

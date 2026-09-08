@@ -218,29 +218,39 @@
     let nested = 0.5 * labelsep + 6.5 * tp // \leftmarginii..vi = 8.5pt
     (cfg.parindent + 2 * labelsep + 6.5 * tp, nested, nested, nested, nested, nested)
   }
+  // LaTeX keeps THREE depths: \leftmargin follows the total nesting depth
+  // (\@listdepth), but the label comes from \labelenumN indexed by \@enumdepth
+  // and \labelitemN indexed by \@itemdepth. So an enumerate inside an itemize
+  // still starts at "(1)", and an itemize inside an enumerate still gets the big
+  // bullet — while both sit at the second level's margin.
   let list-depth = counter("acm-list-depth")
+  let enum-depth = counter("acm-enum-depth")
+  let item-depth = counter("acm-item-depth")
   let list-gap = tex-skip(cfg, cfg.smallskip)
-  let list-block(it) = {
+  let list-block(it, kind-depth) = {
     list-depth.update(n => n + 1)
+    kind-depth.update(n => n + 1)
     context {
       let d = list-depth.get().first()
       let inner = {
-        // Children of THIS list are at depth d+1: their level's leftmargin and
-        // llap'd label, pattern/symbol picked by depth (clamped like LaTeX,
-        // whose \@itemdepth/\@enumdepth error out past 4 — we saturate).
+        // Children of THIS list are one level deeper in each of the three
+        // counters, clamped like LaTeX — whose \@itemdepth/\@enumdepth error
+        // out past 4, where we saturate.
         let li = calc.min(d, leftmargin.len() - 1)
-        let pi = calc.min(d, 3)
+        let ei = calc.min(enum-depth.get().first(), 3)
+        let ii = calc.min(item-depth.get().first(), 3)
         set enum(indent: leftmargin.at(li) - labelsep,
-          numbering: (..ns) => llap(numbering(enum-pats.at(pi), ..ns)))
-        set list(indent: leftmargin.at(li) - labelsep, marker: llap(list-marks.at(pi)))
+          numbering: (..ns) => llap(numbering(enum-pats.at(ei), ..ns)))
+        set list(indent: leftmargin.at(li) - labelsep, marker: llap(list-marks.at(ii)))
         it
       }
       if d == 1 { env-block(inner, above: list-gap, below: list-gap) } else { inner }
     }
     list-depth.update(n => n - 1)
+    kind-depth.update(n => n - 1)
   }
-  show enum: it => list-block(it)
-  show list: it => list-block(it)
+  show enum: it => list-block(it, enum-depth)
+  show list: it => list-block(it, item-depth)
   // amsart labels are (1)/(a)/(i)/(A); sigplan redefines them to 1./a./i./A.
   // (acmart.dtx:4402-4406).
   set enum(numbering: (..ns) => llap(numbering(enum-pats.at(0), ..ns)),
