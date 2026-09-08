@@ -24,6 +24,10 @@ A semicolon-terminated run-in heading does not gain a period.
 
 #proof(name: [Sketch,])[A comma-terminated proof name does not gain a period.]
 
+= Cross References
+#theorem[A labelled statement that later text points back to.] <thm-label>
+The reference resolves to @thm-label with the environment name and its number.
+
 = Indent After Environments
 #theorem[A theorem statement whose following paragraph takes the ambient first line indent, as amsthm restores it.]
 A paragraph after the theorem is indented by the ambient parindent value here.

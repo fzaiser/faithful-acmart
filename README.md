@@ -204,6 +204,14 @@ section-scoped counter:
 ]
 ```
 
+Label a theorem to refer back to it; the reference names the environment and its
+number, as `\autoref` does in LaTeX:
+
+```typst
+#theorem[Every finite acyclic graph has a topological ordering.] <topo>
+Applying @topo to the dependency graph gives a build order.
+```
+
 Use `#acks[...]` or `#acknowledgments[...]` for the unnumbered acknowledgments
 section. It is suppressed automatically in anonymous mode.
 

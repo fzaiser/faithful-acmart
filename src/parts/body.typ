@@ -7,7 +7,7 @@
 
 #import "spacing.typ": comp, tex-skip
 #import "../formats/_base.typ": tp
-#import "theorems.typ": cfg-state
+#import "theorems.typ": cfg-state, thm-figure-kind
 #import "tables.typ": table-inset, light-rule
 
 // True while the title head renders a teaser figure: the figure show rule
@@ -102,6 +102,13 @@
     }
   }
   set figure(gap: cfg.abovecaptionskip)
+  // The theorem environments' figure wrapper exists only to give `<label>` a
+  // referenceable target (parts/theorems.typ); unwrap it so it contributes no
+  // float, caption or figure spacing of its own. Defined after the generic
+  // `show figure` above so it wins for this kind. The `set align` undoes the
+  // centring a figure frame applies outside its show rule, which would otherwise
+  // shrink-wrap and centre the theorem block.
+  show figure.where(kind: thm-figure-kind): it => { set align(start); it.body }
 
   // Tables. A bare `table.hline` draws the light rule (0.05em); a plain Typst table
   // has no rule SEPARATION, though — the `tabular` wrapper (parts/tables.typ)

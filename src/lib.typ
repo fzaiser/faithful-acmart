@@ -23,7 +23,7 @@
 #import "parts/page-chrome.typ": make-page-chrome
 #import "parts/body.typ": apply-body, sidebar, marginfigure, margintable, fulltextwidth
 #import "parts/tables.typ": tabular, toprule, midrule, bottomrule
-#import "parts/theorems.typ": cfg-state, anon-state, thm-counter
+#import "parts/theorems.typ": cfg-state, anon-state, thm-counter, thm-figure-kind, thm-ref
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
 #import "parts/acmref.typ": bbl-cite, bbl-nocite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state, tex-render-state
 // the built-in bibtex-backend field renderer, exported so a custom `tex-render` can wrap it
@@ -621,7 +621,11 @@
   // bibtex/biblatex backends.
   // `@key[p. 5]` carries natbib's postnote in the ref's `supplement` (`auto` when
   // the shorthand has no bracket), so forward it the way `#cite(supplement: ...)` does.
-  show ref: it => if bib-backend != "typst" and it.element == none {
+  // A theorem's referenceable target is a `figure` wrapper (parts/theorems.typ),
+  // whose own numbering is not the \thesection.\arabic one the head prints.
+  show ref: it => if it.element != none and it.element.func() == figure and it.element.kind == thm-figure-kind {
+    thm-ref(it)
+  } else if bib-backend != "typst" and it.element == none {
     bbl-cite(str(it.target), supplement: if it.supplement == auto { none } else { it.supplement })
   } else { it }
 

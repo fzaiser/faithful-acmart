@@ -21,22 +21,50 @@
 // acmart() so body-level environments can suppress identity-revealing content.
 #let anon-state = state("acmart-anon", false)
 
-#let thm-counter = counter("acm-thm")
+// Every theorem-like environment is wrapped in a `figure` of this kind, purely so
+// that `#theorem[...] <t>` leaves something Typst can reference: only figures,
+// headings, equations and footnotes are referenceable, and a label on a bare
+// sequence fails to compile. `apply-body` strips the wrapper back to its body,
+// and `thm-ref` renders the reference, so nothing of the figure survives into the
+// output.
+#let thm-figure-kind = "acm-theorem"
 
-// Mirror LaTeX's \thesection: the first-level section counter formatted with
-// whatever heading numbering is currently active. Reading the pattern from the
+// The shared theorem counter IS the wrapper figure's counter, so the number in
+// the head and the number a reference prints can never drift apart. `acmart()`
+// resets it on every numbered section, matching \newtheorem{theorem}[section].
+#let thm-counter = counter(figure.where(kind: thm-figure-kind))
+
+// Mirror LaTeX's \thesection at `loc`: the first-level section counter formatted
+// with whatever heading numbering is active there. Reading the pattern from the
 // nearest preceding heading (rather than using the bare integer) makes theorems
 // in an appendix print "A.5", not "1.5", tracking `set heading(numbering: "A.1")`.
 // Must be called inside a `context`. Unnumbered headings do not change
 // \thesection in LaTeX, so skip them and retain the most recent numbered
 // level-one section. Returns `none` only when no numbered section exists yet.
-#let _section-number() = {
-  let h = counter(heading).get()
+#let _section-number(loc) = {
+  let h = counter(heading).at(loc)
   if h.len() == 0 { return none }
-  let prev = query(selector(heading.where(level: 1)).before(here()))
+  let prev = query(selector(heading.where(level: 1)).before(loc))
     .filter(it => it.numbering != none)
   if prev.len() == 0 { return none }
   numbering(prev.last().numbering, h.first())
+}
+
+// \thetheorem = \thesection.\arabic: before any numbered section (or when
+// secnumdepth suppresses section numbering entirely, as in sigchi-a/acmcp)
+// \thesection is the untouched counter — LaTeX prints "Theorem 0.1".
+#let _thm-number(loc) = {
+  let sec = _section-number(loc)
+  let n = thm-counter.at(loc).first()
+  if sec != none { [#sec.#n] } else { [0.#n] }
+}
+
+// `@t` on a theorem, in Typst's reference form: the supplement (the environment's
+// displayed name, so a `title:` override carries through) then the number.
+#let thm-ref(it) = context {
+  let loc = it.element.location()
+  let sup = if it.supplement == auto { it.element.supplement } else { it.supplement }
+  link(loc, if sup in (none, []) { _thm-number(loc) } else [#sup#sym.space.nobreak#_thm-number(loc)])
 }
 
 // Apply an amsthm head-font name to content.
@@ -73,16 +101,11 @@
   // `kind` picks the amsthm style ("plain" or "definition"); `title` overrides
   // the displayed environment name; it defaults to the env's own name
   // (default-name is captured from the enclosing scope).
-  (body, name: none, title: default-name) => {
-    thm-counter.step()
+  (body, name: none, title: default-name) => figure(
+    kind: thm-figure-kind, supplement: title, numbering: "1", outlined: false,
     context {
       let cfg = cfg-state.get()
-      let sec = _section-number()
-      let n = thm-counter.get().first()
-      // \thetheorem = \thesection.\arabic: before any numbered section (or when
-      // secnumdepth suppresses section numbering entirely, as in sigchi-a/acmcp)
-      // \thesection is the untouched counter — LaTeX prints "Theorem 0.1".
-      let number = if sec != none { [#sec.#n] } else { [0.#n] }
+      let number = _thm-number(here())
 
       let hf = if kind == "plain" { cfg.thm.plain-head } else { cfg.thm.def-head }
       // \thm@headfont{name number}\thm@notefont{ (note)}\thm@headpunct: the
@@ -97,8 +120,8 @@
       // above/below" (.5bl); the baseline pitch is \baselineskip + \topsep, so
       // tex-skip() converts it to the block gap (cf. \@startsection headings).
       thm-block(cfg, head, if kind == "plain" { emph(body) } else { body }, indent: cfg.thm.indent)
-    }
-  }
+    },
+  )
 )
 
 // acmplain environments
