@@ -461,7 +461,10 @@
   let t = blx-visible-tail(raw)
   t != "" and t.last() in (".", "!", "?", ":", ";", ",")
 }
-#let blx-booktitle(e, with-in: false, style: "numeric") = {
+// \usebibmacro{booktitle}. The proceedings drivers follow it with the series,
+// number and article number of the volume; the other container drivers print the
+// title alone, which is what `blx-booktitle-simple` is.
+#let blx-booktitle(e, with-in: false, style: "numeric", volume-tail: true) = {
   // \usebibmacro{in:} is printed by the driver, not by the booktitle: an
   // entry with no booktitle still opens its container block with it.
   let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
@@ -489,52 +492,26 @@
     c += render(fld(e, "booktitleaddon"))
     last = fld(e, "booktitleaddon")
   }
-  if has(e, "series") {
-    c += " (" + render(fld(e, "series")) + ")"
-    last = "(" + fld(e, "series") + ")"
-  }
-  if has(e, "number") {
-    c += " " + render(fld(e, "number"))
-    last = fld(e, "number")
-  }
-  if articleno-of(e) != none {
-    c += " Article " + articleno-of(e)
-    last = articleno-of(e)
+  if volume-tail {
+    if has(e, "series") {
+      c += " (" + render(fld(e, "series")) + ")"
+      last = "(" + fld(e, "series") + ")"
+    }
+    if has(e, "number") {
+      c += " " + render(fld(e, "number"))
+      last = fld(e, "number")
+    }
+    if articleno-of(e) != none {
+      c += " Article " + articleno-of(e)
+      last = articleno-of(e)
+    }
   }
   // the container title keeps its own terminal punctuation, and \DeclareFieldFormat
   // {booktitle} (biblatex.def:564) adds no \isdot, so that stop is a sentence one
   (c: pre + c, p: blx-punctuated(last), sentence-punct: true)
 }
-#let blx-booktitle-simple(e, with-in: false, style: "numeric") = {
-  // \usebibmacro{in:} is printed by the driver, not by the booktitle: an
-  // entry with no booktitle still opens its container block with it.
-  let pre = if not with-in { [] } else if style == "author-year" { [In: ] } else { [In ] }
-  // With nothing behind it the macro's own colon (or its bare "In") is the last
-  // punctuation of the block — no separator period follows it, and the space that
-  // would have led into the title belongs to the block break instead.
-  let has-book = has(e, "booktitle") or has(e, "booksubtitle") or has(e, "booktitleaddon")
-  if not has-book {
-    if not with-in { return none }
-    return (c: if style == "author-year" { [In:] } else { [In] }, p: true, ends-colon: true)
-  }
-  // \mkbibemph wraps the container title AND its subtitle, with the same unit
-  // between them the entry title uses; the addon sits outside the emphasis.
-  let inner = ""
-  if has(e, "booktitle") { inner = fld(e, "booktitle") }
-  if has(e, "booksubtitle") {
-    if inner != "" { inner += if blx-punctuated(inner) { " " } else { ". " } }
-    inner += fld(e, "booksubtitle")
-  }
-  let c = if inner == "" { [] } else { it(render(inner)) }
-  // \printfield{booktitleaddon} follows with no unit between it and the title —
-  // the ACM styles leave the separator out, so the two run together.
-  let last = inner
-  if has(e, "booktitleaddon") {
-    c += render(fld(e, "booktitleaddon"))
-    last = fld(e, "booktitleaddon")
-  }
-  (c: pre + c, p: blx-punctuated(last), sentence-punct: true)
-}
+#let blx-booktitle-simple(e, with-in: false, style: "numeric") = blx-booktitle(
+  e, with-in: with-in, style: style, volume-tail: false)
 #let blx-title-format(e, style: "numeric") = {
   let t = e.entry-type
   if style == "author-year" {
@@ -1422,8 +1399,6 @@
 #let blx-patent(e, style: "numeric", suffix: "") = {
   let locations = if has(e, "location") {
     split-list-and(fld(e, "location"), trim: true, filter-empty: true).map(render).join(", ")
-  } else if has(e, "location") {
-    split-list-and(fld(e, "location"), trim: true, filter-empty: true).map(render).join(", ")
   } else { none }
   let identification = []
   let ty = blx-type(e)
@@ -1671,38 +1646,17 @@
   [ (Coord.by #render(blx-join-names(e.names.editor)))]
 } else { [] }
 
-// software.bbx: \newbibmacro*{swtitleauthoreditoryear}
-#let blx-swtitleauthoreditoryear(e, style) = {
-  let c = []
-  if has(e, "author") { c += render(blx-join-names(e.names.author)) + ", " }
-  c += blx-sw-title(e, style)
-  c += blx-sw-version(e)
-  c += blx-sw-editor(e)
-  c += blx-sw-date(e)
-  (c: c, p: false)
-}
-
 #let blx-sw-subtitle(e) = if has(e, "subtitle") {
   "\u{201C}" + render(fld(e, "subtitle")) + ",\u{201D}"
 } else { [] }
 
-// software.bbx: \newbibmacro*{swsubtitleauthoreditoryear}
-#let blx-swsubtitleauthoreditoryear(e, style) = {
+// software.bbx's \newbibmacro*{swtitleauthoreditoryear} and its two subtitle
+// variants (swsubtitle… and codefragmenttitle…), which differ only in the phrase
+// that joins the subtitle to the title.
+#let blx-sw-title-macro(e, style, subtitle-join: none) = {
   let c = []
   if has(e, "author") { c += render(blx-join-names(e.names.author)) + ", " }
-  if has(e, "subtitle") { c += blx-sw-subtitle(e) + " part of " }
-  c += blx-sw-title(e, style)
-  c += blx-sw-version(e)
-  c += blx-sw-editor(e)
-  c += blx-sw-date(e)
-  (c: c, p: false)
-}
-
-// software.bbx: \newbibmacro*{codefragmenttitleauthoreditoryear}
-#let blx-codefragmenttitleauthoreditoryear(e, style) = {
-  let c = []
-  if has(e, "author") { c += render(blx-join-names(e.names.author)) + ", " }
-  if has(e, "subtitle") { c += blx-sw-subtitle(e) + " from " }
+  if subtitle-join != none and has(e, "subtitle") { c += blx-sw-subtitle(e) + subtitle-join }
   c += blx-sw-title(e, style)
   c += blx-sw-version(e)
   c += blx-sw-editor(e)
@@ -1748,9 +1702,8 @@
 }
 
 #let blx-software-driver(e, kind, style: "numeric") = {
-  let body = if kind == "software" { blx-swtitleauthoreditoryear(e, style) }
-    else if kind == "codefragment" { blx-codefragmenttitleauthoreditoryear(e, style) }
-    else { blx-swsubtitleauthoreditoryear(e, style) }
+  let body = blx-sw-title-macro(e, style, subtitle-join: if kind == "software" { none }
+    else if kind == "codefragment" { " from " } else { " part of " })
   let labelled = (c: blx-software-labels.at(kind) + " " + body.c, p: body.p)
   blx-blocks(
     labelled,
