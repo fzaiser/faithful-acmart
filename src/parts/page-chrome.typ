@@ -113,60 +113,15 @@
     }
   }
 
-  // Page one has no running head; continuation pages alternate title/authors and
-  // folio/conference content according to each format's fancyhdr setup.
-  let st = if short-title == auto { meta.title } else { short-title }
-  let sa = if meta.anonymous {
-    if meta.submission-id != none [Anon. Submission Id: #meta.submission-id] else [Anon.]
-  } else if short-authors == auto {
-    if meta.authors.len() == 0 { none } else { andify(meta.authors.map(a => a.name)) }
-  } else { short-authors }
-  let header = context {
-    if here().page() <= 1 {
-      if badges != none { return make-badges(badges) }
-      return
-    }
-    let p = counter(page).get().first()
-    let hf = if cfg.name == "manuscript" {
-      (cfg.fonts.body, cfg.size.normalsize)
-    } else {
-      (cfg.fonts.sans, cfg.size.footnotesize)
-    }
-    set text(font: hf.first(), size: hf.last())
-    let ap = article-page(p)
-    let odd = calc.odd(p)
-    let head = if not cfg.bibstrip-or-tog {
-      let conf = conference-line
-      if odd or cfg.name == "sigchi-a" {
-        grid(columns: (1fr, 1fr), align(left, st), align(right, if not meta.nonacm { conf }))
-      } else {
-        grid(columns: (1fr, 1fr), align(left, if not meta.nonacm { conf }), align(right, sa))
-      }
-    } else if cfg.name == "manuscript" {
-      if odd { grid(columns: (1fr, auto), align(left, st), align(right, if print-folios { [#p] })) }
-      else { grid(columns: (auto, 1fr), align(left, if print-folios { [#p] }), align(right, sa)) }
-    } else if cfg.name == "acmsmall" {
-      if odd { grid(columns: (1fr, auto), align(left, st), align(right, ap)) }
-      else { grid(columns: (auto, 1fr), align(left, ap), align(right, sa)) }
-    } else if cfg.name in ("acmlarge", "acmtog") {
-      if odd { align(right, [#st#h(1em)•#h(1em)#ap]) }
-      else { align(left, [#ap#h(1em)•#h(1em)#sa]) }
-    } else {
-      none
-    }
-    if cfg.head.offset != 0pt { pad(left: -cfg.head.offset, head) } else { head }
-  }
-
-  let watermark-text = if meta.author-draft {
-    [Unpublished working draft.\ Not for distribution.]
-  } else if cfg.name == "sigchi-a" and not meta.nonacm {
-    [Legacy document.\ Not for publication in an\ ACM venue]
-  }
-  let watermark = if watermark-text != none {
-    rotate(-45deg, reflow: false, text(size: 0.5in, fill: luma(90%))[
-      #set par(leading: 0.2em, justify: false)
-      #align(center, watermark-text)
-    ])
+  // \fancyhead[L] chrome. acmart hangs the review ruler and acmcp's rotated
+  // article-type label off the running head (acmart.dtx:8107/8204/8333), so both
+  // vanish with it under \pagestyle{empty}; they live in the Typst header for the
+  // same reason. Each is `place`d at an absolute page position, so it offsets
+  // against `here().position()` — the header box's own origin moves with the
+  // running head's height, and these must not.
+  let at-page(x, y, body) = context {
+    let origin = here().position()
+    place(top + left, dx: x - origin.x, dy: y - origin.y, body)
   }
 
   let acmcp-label = if cfg.name == "acmcp" {
@@ -174,8 +129,8 @@
     let lbl = rotate(-90deg, reflow: true, box(fill: acmcp-art.color, inset: 3 * tp,
       text(font: cfg.fonts.body, size: cfg.size.normalsize, fill: white,
         top-edge: "ascender", bottom-edge: "descender")[#article-type Article]))
-    context place(top + left, dx: 0pt,
-      dy: cfg.margin.top - measure(lbl).height / 2 + 0.2 * textheight * acmcp-art.nr,
+    context at-page(0pt,
+      cfg.margin.top - measure(lbl).height / 2 + 0.2 * textheight * acmcp-art.nr,
       lbl)
   }
 
@@ -194,20 +149,76 @@
         set par(leading: bls - cfg.size.scriptsize, justify: false)
         range(first, first + n).map(str).join(linebreak())
       })
-    let dy = cfg.margin.top + 8.43 * tp - cfg.size.scriptsize
-    place(top + left, dx: ml - 26 * tp, dy: dy, ruler(start))
+    let y = cfg.margin.top + 8.43 * tp - cfg.size.scriptsize
+    at-page(ml - 26 * tp, y, ruler(start))
     if two-sided-ruler {
-      place(top + left, dx: cfg.paper.width - mr + 20 * tp, dy: dy, ruler(start + n))
+      at-page(cfg.paper.width - mr + 20 * tp, y, ruler(start + n))
     }
   } }
+
+  // Page one has no running head; continuation pages alternate title/authors and
+  // folio/conference content according to each format's fancyhdr setup.
+  let st = if short-title == auto { meta.title } else { short-title }
+  let sa = if meta.anonymous {
+    if meta.submission-id != none [Anon. Submission Id: #meta.submission-id] else [Anon.]
+  } else if short-authors == auto {
+    if meta.authors.len() == 0 { none } else { andify(meta.authors.map(a => a.name)) }
+  } else { short-authors }
+  let header = {
+    acmcp-label
+    review-ruler
+    context {
+      if here().page() <= 1 {
+        if badges != none { return make-badges(badges) }
+        return
+      }
+      let p = counter(page).get().first()
+      let hf = if cfg.name == "manuscript" {
+        (cfg.fonts.body, cfg.size.normalsize)
+      } else {
+        (cfg.fonts.sans, cfg.size.footnotesize)
+      }
+      set text(font: hf.first(), size: hf.last())
+      let ap = article-page(p)
+      let odd = calc.odd(p)
+      let head = if not cfg.bibstrip-or-tog {
+        let conf = conference-line
+        if odd or cfg.name == "sigchi-a" {
+          grid(columns: (1fr, 1fr), align(left, st), align(right, if not meta.nonacm { conf }))
+        } else {
+          grid(columns: (1fr, 1fr), align(left, if not meta.nonacm { conf }), align(right, sa))
+        }
+      } else if cfg.name == "manuscript" {
+        if odd { grid(columns: (1fr, auto), align(left, st), align(right, if print-folios { [#p] })) }
+        else { grid(columns: (auto, 1fr), align(left, if print-folios { [#p] }), align(right, sa)) }
+      } else if cfg.name == "acmsmall" {
+        if odd { grid(columns: (1fr, auto), align(left, st), align(right, ap)) }
+        else { grid(columns: (auto, 1fr), align(left, ap), align(right, sa)) }
+      } else if cfg.name in ("acmlarge", "acmtog") {
+        if odd { align(right, [#st#h(1em)•#h(1em)#ap]) }
+        else { align(left, [#ap#h(1em)•#h(1em)#sa]) }
+      } else {
+        none
+      }
+      if cfg.head.offset != 0pt { pad(left: -cfg.head.offset, head) } else { head }
+    }
+  }
+
+  let watermark-text = if meta.author-draft {
+    [Unpublished working draft.\ Not for distribution.]
+  } else if cfg.name == "sigchi-a" and not meta.nonacm {
+    [Legacy document.\ Not for publication in an\ ACM venue]
+  }
+  let watermark = if watermark-text != none {
+    rotate(-45deg, reflow: false, text(size: 0.5in, fill: luma(90%))[
+      #set par(leading: 0.2em, justify: false)
+      #align(center, watermark-text)
+    ])
+  }
 
   (
     header: header,
     footer: footer,
-    background: {
-      acmcp-label
-      review-ruler
-      if watermark != none { align(center + horizon, watermark) }
-    },
+    background: if watermark != none { align(center + horizon, watermark) },
   )
 }

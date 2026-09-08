@@ -862,6 +862,27 @@ TESTS: dict[str, Test] = {
              "LaTeX; the faithful default \"bibtex\" backend is validated by keycite / crossref "
              "/ bib-all / sample-* twins.",
     ),
+    "review-ruler-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="Body"),
+            # "37" can only be a ruler number here: the body has no numerals and
+            # the section number is 1.
+            Assertion(engine="typst", text="37", kind="absent"),
+        ),
+        note="review ruler follows the running head: suppressing the head takes the "
+             "ruler with it, as \\pagestyle{empty} does in acmart (it hangs off "
+             "\\fancyhead[LO], acmart.dtx:8107). review-ruler-on-test is the control.",
+    ),
+    "review-ruler-on-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="Body"),
+            Assertion(engine="typst", text="37"),
+        ),
+        note="control for review-ruler-test: the same document with its running head "
+             "left in place still draws the ruler.",
+    ),
     "bib-cite-links": Test(
         kind="smoke", pages=1,
         text_assertions=(
