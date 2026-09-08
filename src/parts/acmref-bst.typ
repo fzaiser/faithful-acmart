@@ -292,7 +292,7 @@
   if bt == none { return none }
   let c = [In ] + bt.c + format-city(e)
   if has(e, "editor") {
-    c = c + ", " + join-names(e.names.editor) + eds-suffix(e.names.editor)
+    c = c + ", " + render(join-names(e.names.editor) + eds-suffix(e.names.editor))
   }
   (c: c, p: false)
 }
