@@ -70,11 +70,12 @@
   let inset-at(x, y) = {
     let value = if type(caller-inset) == function { caller-inset(x, y) } else { caller-inset }
     if type(value) == dictionary {
+      // A sides dictionary resolves each side from its own key, then the axis
+      // key, then `rest` — the same order Typst applies.
+      let side(name, axis) = value.at(name, default: value.at(axis, default: value.at("rest", default: 0pt)))
       (
-        left: value.at("left", default: value.at("x", default: 0pt)),
-        right: value.at("right", default: value.at("x", default: 0pt)),
-        top: value.at("top", default: value.at("y", default: 0pt)),
-        bottom: value.at("bottom", default: value.at("y", default: 0pt)),
+        left: side("left", "x"), right: side("right", "x"),
+        top: side("top", "y"), bottom: side("bottom", "y"),
       )
     } else { (left: value, right: value, top: value, bottom: value) }
   }
@@ -106,7 +107,20 @@
   let header-safe = "columns" in args.named()
   let header-start = none
   let header-end = none
+  // A caller's own `table.header`/`table.footer` holds the row's cells inside
+  // itself; the walk has to see those cells, or the wrapper counts as a single
+  // cell and every rule below it is attributed to the wrong row. Wrapping is off
+  // whenever the caller supplied a header, so only the rule bookkeeping (and the
+  // `plain` check, which sees the wrapper's own index) depends on this.
+  let walk = ()
   for (index, c) in args.pos().enumerate() {
+    if c.func() == std.table.header or c.func() == std.table.footer {
+      for inner in c.fields().at("children", default: ()) { walk.push((index, inner)) }
+    } else {
+      walk.push((index, c))
+    }
+  }
+  for (index, c) in walk {
     if c.func() == std.table.hline {
       let y-field = c.fields().at("y", default: auto)
       let y = if y-field == auto { calc.quo(cursor, ncols) } else { y-field }

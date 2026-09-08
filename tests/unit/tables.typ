@@ -1,6 +1,6 @@
 // Structural tests for tabular's drop-in arguments and row-boundary inference.
 
-#import "/src/parts/tables.typ": tabular, toprule, midrule, bottomrule, aboverulesep, belowrulesep
+#import "/src/parts/tables.typ": tabular, toprule, midrule, bottomrule, aboverulesep, belowrulesep, table-inset
 
 // `tabular` wraps its std.table in a non-breakable block (LaTeX tabulars never
 // split across a page); the underlying table element is the block's body.
@@ -31,6 +31,17 @@
 #assert.eq(inset(1, 1), (
   left: 3pt, right: 3pt,
   top: 2pt + belowrulesep, bottom: 2pt + aboverulesep,
+))
+
+// A sides dictionary resolves each side from its own key, then the axis key,
+// then `rest` — the fallback `table` itself applies.
+#let rested = tabular(columns: 2, inset: (top: 1pt, x: 3pt, rest: 6pt), [A], [B])
+#assert.eq(inner(rested).fields().at("inset")(0, 0), (
+  left: 3pt, right: 3pt, top: 1pt, bottom: 6pt,
+))
+#let rest-only = tabular(columns: 2, header-rows: 0, inset: (rest: 6pt), [A], [B])
+#assert.eq(inner(rest-only).fields().at("inset")(0, 0), (
+  left: 6pt, right: 6pt, top: 6pt, bottom: 6pt,
 ))
 
 // Per-cell inset functions and explicitly positioned cells use the same path.
@@ -122,6 +133,23 @@
 
 // (e) a caller's own header is kept as-is, not re-wrapped
 #assert.eq(headers(tabular(columns: 2, table.header([H1], [H2]), [a], [b])).len(), 1)
+
+// A caller's own header holds the row's cells inside itself. The row-boundary
+// walk has to look through it, or the wrapper counts as one cell and the rules
+// below it are attributed to the wrong rows — which shows up as misplaced
+// booktabs separation, i.e. a table of a different height.
+#let own-header = tabular(
+  columns: 2,
+  toprule(), table.header(repeat: false, [H1], [H2]), midrule(), [a], [b], bottomrule(),
+)
+#same-size(own-header, tabular(
+  columns: 2,
+  toprule(), [H1], [H2], midrule(), [a], [b], bottomrule(),
+))
+#assert.eq(inner(own-header).fields().at("inset")(0, 1), (
+  left: table-inset.left, right: table-inset.right,
+  top: table-inset.top + belowrulesep, bottom: table-inset.bottom + aboverulesep,
+))
 
 // A footer that follows a normal first row is fine: the header stops at the
 // first body cell, well before it.
