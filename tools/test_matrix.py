@@ -2235,7 +2235,10 @@ TESTS: dict[str, Test] = {
                     "stream reads ∞ ∑, while the Formula chunk reads ∑ ∞"),
             ),
         ),
-        note="upstream sigconf authordraft sample: draft watermark, line numbers, timestamp.",
+        note="upstream sigconf authordraft sample: draft watermark, line numbers, timestamp. "
+             "Also the only fixture with lists under `authordraft`, whose list geometry is "
+             "acmart's own — authordraft raises review mode without the `review` key "
+             "handler's begin-document hook (list-test / list-plain-test cover the other two).",
     ),
     "sample-acmsmall-biblatex": Test(
         kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,

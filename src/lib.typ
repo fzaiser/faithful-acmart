@@ -631,10 +631,10 @@
 
 
   // review/nonacm flip the class's list geometry to amsart's values (an upstream
-  // hook-ordering bug; see parts/body.typ). The proof environment's label
-  // separation follows the same flag (trivlist \labelsep 4pt vs amsart 5pt), so
-  // publish it on cfg for parts/theorems.typ.
-  let amsart-lists = review or nonacm
+  // hook-ordering bug; see parts/body.typ and the resolver). The proof
+  // environment's label separation follows the same flag (trivlist \labelsep 4pt
+  // vs amsart 5pt), so publish it on cfg for parts/theorems.typ.
+  let amsart-lists = options.amsart-lists
   cfg-state.update(cfg + (amsart-lists: amsart-lists)) // publish config for theorem environments
   anon-state.update(anonymous) // publish anonymity for the acks environment
   if start-page != none {

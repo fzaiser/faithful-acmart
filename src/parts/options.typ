@@ -116,6 +116,13 @@
   }
   let print-folios = print-folios or data.review
 
+  // The same hook-ordering accident decides the list geometry (parts/body.typ):
+  // amsart's \settowidth values win only when acmart registered a begin-document
+  // hook from an option handler BEFORE \LoadClass{amsart}, which `review` and
+  // `nonacm` do and `authordraft` — raising the switch directly — does not. So
+  // this reads the option as written, not review mode as it ends up.
+  let amsart-lists = data.review or nonacm
+
   let article = if cfg.name == "acmcp" {
     assert(article-type in acmcp-article-types,
       message: "faithful-acmart: Article Type must be Research, Review, Discussion, Invited, or Position")
@@ -147,6 +154,7 @@
     timestamp: timestamp,
     review: review,
     print-folios: print-folios,
+    amsart-lists: amsart-lists,
     article: article,
   )
 }
