@@ -147,10 +147,11 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
     problems = _latex_final_problems(logtext)
     if _latex_rerun_needed(logtext):
         problems.append("reference/page state did not converge within six reruns")
-    if problems:
-        raise SystemExit(f"ERROR: {base}: {'; '.join(dict.fromkeys(problems))} (see {log}).")
     if "Temporary page" in pdf_text(pdf):
-        raise SystemExit(f"ERROR: {pdf} still contains a 'Temporary page'.")
+        problems.append("output still contains a 'Temporary page'")
+    if problems:
+        pdf.unlink(missing_ok=True)
+        raise SystemExit(f"ERROR: {base}: {'; '.join(dict.fromkeys(problems))} (see {log}).")
     return page_count(pdf)
 # Include shared bibliography and image inputs when invalidating cached references.
 _shared_inputs_mtime_cache: float | None = None
