@@ -1,5 +1,5 @@
 // Journal macros and canonical abbreviations from ACM-Reference-Format.bst.
-// The source-data gate checks them against that file.
+
 #let journal-macros = (
   "cie": "ACM Computers in Entertainment",
   "csur": "ACM Computing Surveys",

@@ -1,4 +1,4 @@
-// Fixed strings from acmart.dtx and Babel's caption definitions.
+// Language settings and localized labels from acmart and Babel.
 
 #let _langs = (
   english: (code: "en",

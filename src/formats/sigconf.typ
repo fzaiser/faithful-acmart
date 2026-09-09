@@ -1,3 +1,5 @@
+// Layout and typography for ACM conference proceedings.
+
 #import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let sigconf(font-size: 9pt) = make-format(

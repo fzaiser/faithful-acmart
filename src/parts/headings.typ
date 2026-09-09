@@ -1,3 +1,5 @@
+// Render numbered and unnumbered headings with ACM typography and spacing.
+
 #import "spacing.typ": comp, tex-skip
 #import "punct.typ": add-punct
 

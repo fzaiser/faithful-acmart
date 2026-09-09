@@ -1,3 +1,5 @@
+// Layout and typography for the ACM cover-page format.
+
 #import "_base.typ": tp, size-ladder, make-format, bottom-margin
 
 #let acmcp(font-size: 9pt) = make-format(

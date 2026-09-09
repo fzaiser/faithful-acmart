@@ -1,3 +1,5 @@
+// Render titles, authors, and publication metadata for each format.
+
 #import "copyright.typ": permission-text, copyright-owner
 #import "spacing.typ": comp, tex-skip
 #import "strings.typ": lang-record

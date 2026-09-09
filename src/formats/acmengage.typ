@@ -1,3 +1,5 @@
+// Layout and typography for EngageCSEdu articles.
+
 #import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let acmengage(font-size: 10pt) = make-format(

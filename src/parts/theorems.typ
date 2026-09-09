@@ -1,3 +1,5 @@
+// Theorem environments and references, proofs, and acknowledgments.
+
 #import "spacing.typ": tex-skip
 #import "punct.typ": add-punct
 #import "../formats/_base.typ": tp

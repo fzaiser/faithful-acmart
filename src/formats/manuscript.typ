@@ -1,3 +1,5 @@
+// Layout and typography for manuscript submissions.
+
 #import "_base.typ": tp, size-ladder, make-format, bottom-margin
 
 #let manuscript(font-size: 9pt) = make-format(

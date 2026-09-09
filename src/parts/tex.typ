@@ -1,3 +1,5 @@
+// Interpret TeX syntax in bibliography fields for rendering, labels, and sorting.
+
 #import "../formats/_base.typ": tp
 
 #let _lex(c) = {

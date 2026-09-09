@@ -1,3 +1,5 @@
+// Public package API and document-wide style setup.
+
 #import "formats/_base.typ": tp
 #import "parts/colors.typ": acm-orange, acm-purple
 #import "parts/spacing.typ": comp, tex-skip

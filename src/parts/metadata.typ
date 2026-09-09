@@ -1,3 +1,5 @@
+// Normalize paper metadata and derive publication defaults before rendering.
+
 #import "frontmatter.typ": normalize-author, parse-ccs
 #import "journals.typ": lookup-journal
 #import "strings.typ": lang-record

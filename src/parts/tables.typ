@@ -1,4 +1,4 @@
-// A wrapper avoids recursive table show rules while adding the space that horizontal strokes cannot reserve.
+// Booktabs-style tables with rule spacing and header tagging.
 
 // The row strut is set through text metrics in body.typ, leaving vertical inset for rule spacing.
 #let table-inset = (left: 0.6em, right: 0.6em, top: 0pt, bottom: 0pt)
@@ -16,6 +16,7 @@
 #let midrule(..a) = std.table.hline(stroke: light-rule, ..a)
 #let bottomrule(..a) = std.table.hline(stroke: heavy-rule, ..a)
 
+// A wrapper avoids recursive table show rules while adding the space that horizontal strokes cannot reserve.
 // Resolved hline row positions are unavailable here, so infer them from cell occupancy.
 #let tabular(header-rows: 1, ..args) = {
   let cols = args.named().at("columns", default: 1)

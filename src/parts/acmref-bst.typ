@@ -1,3 +1,5 @@
+// Format and sort references according to ACM-Reference-Format.bst.
+
 #import "bib-data.typ": journal-canon
 #import "tex.typ": purify, change-case
 #import "acmref-common.typ": render, ends-punct, V, it, fld, is-others, join-names, dashify, von-last, nolinkurl

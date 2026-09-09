@@ -1,3 +1,5 @@
+// Layout and typography for legacy SIGCHI extended abstracts.
+
 #import "_base.typ": tp, size-ladder, make-format
 
 #let sigchia(font-size: 10pt) = make-format(

@@ -1,3 +1,5 @@
+// Scan TeX strings for balanced delimiters and brace-protected list separators.
+
 #let ws = (" ", "\n", "\t", "\r")
 
 #let match-delim(cp, i, open: "{", close: "}") = {

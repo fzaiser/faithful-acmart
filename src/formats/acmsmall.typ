@@ -1,3 +1,5 @@
+// Layout and typography for the small ACM journal format.
+
 #import "_base.typ": tp, size-ladder, make-format, bottom-margin
 
 #let acmsmall(font-size: 10pt) = make-format(

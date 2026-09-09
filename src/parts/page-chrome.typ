@@ -1,3 +1,5 @@
+// Build page headers and footers, including folios and review markings.
+
 #import "../formats/_base.typ": tp
 #import "spacing.typ": comp
 #import "frontmatter.typ": make-badges, pub-date, doi-link, andify

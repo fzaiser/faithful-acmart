@@ -1,3 +1,5 @@
+// Field access and rendering helpers shared by the custom bibliography backends.
+
 #import "tex.typ": tex-to-content
 #import "theorems.typ": cfg-state
 

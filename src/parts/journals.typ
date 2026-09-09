@@ -1,4 +1,6 @@
-// acmart.dtx, \acmJournal: issn is \@permissionCodeTwo, falling back to \@permissionCodeOne.
+// Journal metadata and option overrides from acmart.dtx, \acmJournal.
+
+// issn uses \@permissionCodeTwo, falling back to \@permissionCodeOne.
 #let journals = (
   ACMJCSS: (name: "ACM Journal on Computing and Sustainable Societies", short: "ACM J. Comput. Sustain. Soc.", issn: "2834-5533"),
   ACMJDS: (name: "ACM Journal of Data Science", short: "ACM J. Data Sci.", issn: "3069-3497"),

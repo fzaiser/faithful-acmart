@@ -1,3 +1,5 @@
+// Citations and reference lists for the BibTeX and BibLaTeX backends.
+
 #import "bibtex.typ": read-bib, parse-bib, parse-names
 #import "tex.typ": tex-to-string
 #import "acmref-common.typ": fld, has, is-others, von-last, it

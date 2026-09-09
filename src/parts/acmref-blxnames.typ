@@ -1,3 +1,5 @@
+// Build and disambiguate BibLaTeX citation names using Biber's rules.
+
 #import "tex.typ": tex-to-string, decode-chars
 #import "acmref-common.typ": is-others
 

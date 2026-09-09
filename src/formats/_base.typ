@@ -1,3 +1,5 @@
+// Shared format defaults and font-size-dependent layout calculations.
+
 // Convert TeX points (1/72.27 inch) to Typst points (1/72 inch).
 #let tp = 72.0 / 72.27 * 1pt
 

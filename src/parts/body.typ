@@ -1,3 +1,5 @@
+// Apply ACM styles to body content and place material in the margins.
+
 #import "spacing.typ": comp, tex-skip
 #import "../formats/_base.typ": tp
 #import "theorems.typ": cfg-state, thm-figure-kind

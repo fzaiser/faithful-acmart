@@ -1,3 +1,5 @@
+// Resolve document options into the active format configuration.
+
 #import "../formats/acmsmall.typ": acmsmall
 #import "../formats/manuscript.typ": manuscript
 #import "../formats/acmlarge.typ": acmlarge

@@ -1,3 +1,5 @@
+// Reproduce LaTeX's \@addpunct rules for terminal punctuation.
+
 // \@addpunct tests TeX's space factor.
 // An uppercase letter followed by a period still permits an added period: "UK..".
 

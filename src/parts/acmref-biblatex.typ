@@ -1,3 +1,5 @@
+// ACM .bbx styles and biblatex-software drivers; function names follow their upstream macros.
+
 #import "bibtex.typ": parse-names
 #import "scan.typ": match-brace, split-list-and, remove-outer
 #import "tex.typ": foreign-purify, decode-chars, _special-letters as special-letters
@@ -7,7 +9,6 @@
 #let V(text, c: none) = (c: render(if c == none { text } else { c }), p: blx-ends-punct(text))
 #let fV(e, name) = if has(e, name) { V(fld(e, name)) } else { none }
 
-// ACM .bbx styles and biblatex-software drivers; function names follow their upstream macros.
 #let blx-maxbibnames = 9
 #let blx-minbibnames = 1
 #let blx-join-names(people) = {

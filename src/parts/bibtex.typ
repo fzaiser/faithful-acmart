@@ -1,3 +1,5 @@
+// Read BibTeX entries and names while preserving TeX field syntax.
+
 #import "bib-data.typ": journal-macros
 #import "scan.typ": match-brace, match-delim, split-list-and, ws
 

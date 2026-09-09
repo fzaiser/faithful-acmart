@@ -1,3 +1,5 @@
+// Layout and typography for SIGPLAN proceedings.
+
 #import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let sigplan(font-size: 10pt) = make-format(

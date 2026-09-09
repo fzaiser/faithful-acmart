@@ -1,3 +1,5 @@
+// Layout and typography for ACM Transactions on Graphics.
+
 #import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let acmtog(font-size: 9pt) = make-format(

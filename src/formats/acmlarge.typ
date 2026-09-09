@@ -1,3 +1,5 @@
+// Layout and typography for the large ACM journal format.
+
 #import "_base.typ": tp, size-ladder, make-format, bottom-margin, generic-sec-fonts
 
 #let acmlarge(font-size: 10pt) = make-format(
