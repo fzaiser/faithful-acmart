@@ -66,6 +66,12 @@
 #assert.eq(decode-chars("{\\ae}-Paul"), "{æ}-Paul")
 #assert.eq(name-initials("{\\ae}-Paul"), "æ.-P.")
 
+// @string macros carry from one bibliography file to the next, as in BibTeX.
+#import "/src/parts/acmref-cite.typ": read-merged
+#assert.eq(
+  read-merged(("/tests/unit/merge-abbrev.bib", "/tests/unit/merge-refs.bib")).key1.fields.journal,
+  "A Shared Journal")
+
 // A name-supplied label must not trigger title conversion, which panics on math titles.
 #import "/src/parts/acmref-cite.typ": blx-lab-label
 #assert.eq(blx-lab-label(

@@ -1,6 +1,6 @@
 // Citations and reference lists for the BibTeX and BibLaTeX backends.
 
-#import "bibtex.typ": read-bib, parse-bib, parse-names
+#import "bibtex.typ": parse-bib, parse-names
 #import "tex.typ": tex-to-string
 #import "acmref-common.typ": fld, has, is-others, von-last, it
 #import "acmref-bst.typ": handle, sort-key, has as bst-has, year-value as bst-year-value
@@ -16,9 +16,7 @@
 #let read-merged(paths) = {
   if type(paths) == arguments { return parse-bib(read(..paths)) }
   let ps = if type(paths) == array { paths } else { (paths,) }
-  let db = (:)
-  for p in ps { db = db + read-bib(p) }
-  db
+  parse-bib(ps.map(p => read(p)).join("\n"))
 }
 
 #let min-crossrefs = 2
