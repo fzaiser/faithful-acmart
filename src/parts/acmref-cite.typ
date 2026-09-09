@@ -5,7 +5,7 @@
 #import "acmref-common.typ": fld, has, is-others, von-last, it
 #import "acmref-bst.typ": handle, sort-key, has as bst-has, year-value as bst-year-value
 #import "acmref-biblatex.typ": blx-handle, blx-biber-datamodel, blx-sort-key, blx-np-lengths, blx-label-year
-#import "acmref-blxnames.typ": name-list, disambiguate, list-label, list-context, list-namehash, list-punct-initial
+#import "acmref-blxnames.typ": name-list, disambiguate, list-label, list-context, list-namehash
 #import "../formats/_base.typ": tp
 
 #let cited-state = state("acmref-cited", ())
@@ -212,7 +212,6 @@
       text: blx-lab-label(e, if named { list-label(by-key.at(k), dis.at(k), useprefix: useprefix) }, style),
       italic: blx-label-title-italic(e, style),
       named: named,
-      punct-initial: named and list-punct-initial(by-key.at(k), dis.at(k), useprefix: useprefix),
     ))
     hashes.insert(k, if named { list-namehash(by-key.at(k), dis.at(k)) } else { "\u{0}" + k })
     // An entry with neither labelname nor labeltitle needs a unique context to prevent year lettering.
@@ -251,12 +250,9 @@
   else { bst-year-value(p.db.at(k), nodate: "[n.\u{2009}d.]").c }
 }
 #let cite-label(p, k) = p.labels.at(k).text
-// A punctuation-only initial does not re-arm BibLaTeX's punctuation tracker, so its added dot depends on preceding content.
-#let cite-label-content(p, k, first: true) = {
+#let cite-label-content(p, k) = {
   let label = p.labels.at(k)
-  let generated = label.at("punct-initial", default: false)
-  let text = if first or not generated { label.text } else { label.text.replace(".", "", count: 1) }
-  if label.italic { it(text) } else { text }
+  if label.italic { it(label.text) } else { label.text }
 }
 
 #let entry-label(key) = label("acmref:" + key)
@@ -268,7 +264,7 @@
   for k in ks {
     // authoryear-comp groups by namehash, which can distinguish identical printed labels.
     let lbl = if "hashes" in p { p.hashes.at(k) } else { cite-label(p, k) }
-    let shown = cite-label-content(p, k, first: lgroups.len() == 0)
+    let shown = cite-label-content(p, k)
     let yr = (base: cite-year(p, k), suf: p.extras.at(k, default: ""))
     if lgroups.len() > 0 and lgroups.at(-1).label == lbl { lgroups.at(-1).years.push(yr) }
     else { lgroups.push((label: lbl, shown: shown, years: (yr,), key: k)) }

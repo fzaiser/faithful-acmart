@@ -235,15 +235,6 @@
     render-name(f, dis.levels.at(i), useprefix: useprefix)),
   dis.truncated)
 
-// Generated punctuation-only initials depend on the punctuation tracker; literal title punctuation does not.
-#let list-punct-initial(lst, dis, useprefix: false) = {
-  if dis.visible == 0 or lst.names.len() == 0 { return false }
-  if dis.levels.first() != 1 { return false }
-  let f = lst.names.first()
-  let lead = if f.giveni != "" { f.giveni } else if useprefix and f.prefixi != "" { f.prefixi } else { "" }
-  lead != "" and not lead.trim(".", at: end).contains(regex("[\\p{L}\\p{N}]"))
-}
-
 // Biber's _getnamehash uses full visible names, even when their printed labels coincide.
 #let list-namehash(lst, dis) = {
   let one = f => f.prefix + f.family + f.given + f.suffix

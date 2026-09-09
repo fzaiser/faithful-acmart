@@ -17,7 +17,7 @@ A character command is one letter here too #cite-author("NiChar") #cite-author("
 An initial that opens with a diacritic takes the letter behind it as well #cite-author("NiAli") #cite-author("NiWard").
 Two such marks are two characters to biber and one quote once typeset, and a third is left out of the count #cite-author("NiAliTwo") #cite-author("NiXuThree") #cite-author("NiXu").
 An initial of nothing but that quote keeps its period in an ordinary citation too #cite("NiAliTwo", "NiAli", "NiWard").
-It keeps that period only where nothing precedes it, and loses it behind an earlier entry #cite("NsAbe", "NiAliTwo").
+The same initial also appears after an earlier entry #cite("NsAbe", "NiAliTwo").
 A label that merely opens with a period of its own keeps it wherever it sits #cite("NzBang", "NzDotNet").
 
 #heading(numbering: none, level: 1)[Spelling]

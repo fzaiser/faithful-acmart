@@ -84,6 +84,7 @@ Keep that coverage tied to executable comparisons with Biber when changing the p
 - BibLaTeX sorting approximates Unicode collation.
   Ordering can differ for accent-only ties, punctuation, and unsupported character commands.
 - BibLaTeX citation disambiguation can expand name lists, but that expansion does not propagate to long reference-list names or sort keys.
+- Punctuation-only initials retain their period throughout a grouped citation; BibLaTeX can omit it after a preceding entry.
 - The TeX field renderer supports a subset of bibliography commands and inline math.
   In math, `/` becomes a fraction and `\left`/`\right` do not resize delimiters.
   URLs bypass TeX rendering, and inline math is unsupported in plain-text citation labels.

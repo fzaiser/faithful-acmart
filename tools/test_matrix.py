@@ -133,6 +133,7 @@ class ResidualSignatures:
 
 
 EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
+    "biblatex-names-test": ResidualSignatures(text="0fea833515e40ab0da35e185f5f9263e736bed8a0f21cdaa3305b94b9c97b1c8"),
     "head-test": ResidualSignatures(text="e61c9d8eb269cb52ade4868fba91b818e0f3f792f0902c8e95e2454a72551a75", font="2671b03db39c20ed5865d5f0284006c62af694b45b74bbd62e229b0cf97bbc6b"),
     "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
     "manuscript-pages-test": ResidualSignatures(text="13857b6c3436762b1c09a161ad0ba212a0fc064b6c149ce01b1dc4ec95b82cfd"),
@@ -853,7 +854,15 @@ TESTS: dict[str, Test] = {
         note="BibLaTeX numeric report sourcemap plus translator and patent drivers.",
     ),
     "biblatex-names-test": Test(
-        kind="twin", pages=2, text_equal=True,
+        kind="twin", pages=2, text_equal=False,
+        expected_text_diffs=(
+            ExpectedTextDiff(
+                latex="[Abe 2001; “ Ward 2018]",
+                typst="[Abe 2001; “. Ward 2018]",
+                cause=AcceptedTypstBehavior(
+                    "punctuation-only initials retain their period regardless of citation position"),
+            ),
+        ),
         text_assertions=(
             Assertion(engine="both",
                       text="[Abe 2001; Æ-Zed 2001; Fox 2001; al-Hakim 2001; de-Zed 2001]"),
@@ -871,7 +880,8 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="‘A. Ward B. Ward"),
             Assertion(engine="both", text="left out of the count “. Ward “. Xu B. Xu"),
             Assertion(engine="both", text="[“. Ward 2018; ‘A. Ward 2016; B. Ward 2017]"),
-            Assertion(engine="both", text="[Abe 2001; “ Ward 2018]"),
+            Assertion(engine="latex", text="[Abe 2001; “ Ward 2018]"),
+            Assertion(engine="typst", text="[Abe 2001; “. Ward 2018]"),
             Assertion(engine="both",
                       text="[!Bang at the front 2044; .NET at the front 2043]"),
             Assertion(engine="both", text="[Normalize 2019a,b]"),
