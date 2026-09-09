@@ -1,9 +1,4 @@
-// longtable-test — a booktabs tabular that lands near a page boundary.
-// Matched twin: longtable-test.tex. A LaTeX `tabular` is a single unbreakable
-// box: when it does not fit in the space left on page 1 it moves WHOLE to page 2
-// rather than splitting across the boundary. Typst tables break across regions
-// by default, so parts/tables.typ pins `tabular` non-breakable to match LaTeX.
-// This twin guards that pin — both engines keep the table whole on one page.
+// Place a tabular near a page boundary to check that it moves intact.
 #import "/src/lib.typ": acmart, tabular, toprule, midrule, bottomrule
 #show: acmart.with(format: "acmsmall", nonacm: true)
 

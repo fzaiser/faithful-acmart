@@ -1,8 +1,3 @@
-"""Vector recolour-overlay machinery (gs + qpdf + pdfjam, no rasterization).
-
-Per-twin ``<name>-overlay.pdf`` (Typst red over LaTeX blue) and
-``<name>-side-by-side.pdf`` (LaTeX | Typst, 2-up), keeping selectable vector text."""
-
 from __future__ import annotations
 
 import subprocess
@@ -14,30 +9,18 @@ from harness import ROOT, LATEX, DIFF, typst_pdf, default_jobs, _pmap
 from pdf_extract import page_count
 
 
-# --- Vector recolor-overlay primitives (gs + qpdf + pdfjam, no rasterization) ---
-
 def _qpdf(argv: list[str]) -> None:
-    # qpdf exits 3 on warnings (e.g. a recovered xref); only treat worse as fatal.
+    # qpdf exit code 3 denotes warnings.
     p = subprocess.run(["qpdf", *argv], capture_output=True, text=True)
     if p.returncode not in (0, 3):
         raise RuntimeError(f"qpdf {argv}: {p.stderr.strip()}")
 
 
 def _gs_recolor(src: Path, dst: Path, rgb: tuple[float, float, float], tmp: Path) -> None:
-    """Recolor `src`'s device-colour vector ink to the flat colour `rgb` (0-1), losslessly.
+    """Recolor device-color ink, preserving near-white backgrounds.
 
-    PDF colour operators (rg/g/k) aren't PostScript-level, so a `-c` override can't
-    intercept them when gs reads a PDF directly; lowering to PostScript first (ps2write)
-    turns them into setrgbcolor/setgray/setcmykcolor, which the second pass overrides.
-    `bind` captures the *original* operators inside each redefinition, so the forced
-    colour is set without recursing. Near-white is left alone so page backgrounds /
-    knockouts aren't tinted.
-
-    Coverage gap: ink set through a spot/ICC colourspace (`setcolor`, e.g. acmart's
-    JDS cover panel and its text) and embedded images keep their original colours —
-    intercepting `setcolor` generically needs per-colourspace operand counting that
-    isn't worth the fragility. Typst output uses only device colours, so Typst always
-    recolours fully; the gap only shows on a couple of LaTeX cover pages."""
+    Convert to PostScript first so color operators can be overridden; bind retains the original operators to avoid recursion.
+    Spot colors, ICC colors, and embedded images retain their original colors."""
     ps = tmp / f"{src.stem}.ps"
     subprocess.run(["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=ps2write", "-o", str(ps), str(src)],
                    check=True, capture_output=True)
@@ -53,14 +36,10 @@ def _gs_recolor(src: Path, dst: Path, rgb: tuple[float, float, float], tmp: Path
 
 
 def _vector_overlay(name: str, ref: Path, ours: Path, tmp: Path, out: Path) -> Path:
-    """Typst ink recoloured red, stacked on top of LaTeX ink recoloured blue, into `out`.
+    """Overlay red Typst ink on blue LaTeX ink.
 
-    Typst (red) is always the overlay and LaTeX (blue) the base: Typst pages don't
-    paint an opaque background, so red sits on top without hiding LaTeX, while LaTeX's
-    panels/cover fills stay underneath. Normal blend (not alpha), so on exact overlap
-    red wins and any drift leaves a blue halo. If page counts differ, qpdf overlays
-    the shared prefix and LaTeX's extra pages show solo (the side-by-side shows the
-    rest)."""
+    Typst goes on top because it has no opaque page background.
+    Normal blending makes exact overlaps red; extra LaTeX pages remain visible."""
     blue, red = tmp / f"{name}-blue.pdf", tmp / f"{name}-red.pdf"
     _gs_recolor(ref, blue, (0, 0, 1), tmp)
     _gs_recolor(ours, red, (1, 0, 0), tmp)
@@ -69,8 +48,6 @@ def _vector_overlay(name: str, ref: Path, ours: Path, tmp: Path, out: Path) -> P
 
 
 def _vector_sidebyside(name: str, ref: Path, ours: Path, tmp: Path, out: Path) -> Path:
-    """LaTeX | Typst into `out`: collate the two page-for-page, then 2-up each pair
-    onto one framed landscape page (qpdf --collate + pdfjam)."""
     inter = tmp / f"{name}-inter.pdf"
     _qpdf(["--collate", "--empty", "--pages", str(ref), str(ours), "--", str(inter)])
     subprocess.run(["pdfjam", "--quiet", "--nup", "2x1", "--landscape", "--frame", "true",
@@ -79,15 +56,8 @@ def _vector_sidebyside(name: str, ref: Path, ours: Path, tmp: Path, out: Path) -
 
 
 def cmd_overlay(args) -> int:
-    """Per-twin vector <name>-overlay.pdf + <name>-side-by-side.pdf (no raster).
-
-    <name>-overlay.pdf: Typst ink recoloured red over LaTeX ink recoloured blue (gs+qpdf).
-    <name>-side-by-side.pdf: LaTeX | Typst, 2-up per page (qpdf+pdfjam). Both keep
-    selectable vector text; per-twin work runs in parallel."""
     stems = args.stems or [n for n, t in TESTS.items() if t.kind == "twin"]
     DIFF.mkdir(parents=True, exist_ok=True)
-    # The previous combined bundles are superseded by the per-twin files; drop them
-    # so the directory doesn't carry stale, misleading output.
     for stale in ("overlay.pdf", "side-by-side.pdf"):
         (DIFF / stale).unlink(missing_ok=True)
 

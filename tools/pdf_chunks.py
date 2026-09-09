@@ -1,32 +1,6 @@
-"""Structure-aware text extraction + intra-chunk order check.
+"""Compare reading order within tagged Typst chunks against the untagged LaTeX text stream.
 
-The two engines are asymmetric and we lean into it: Typst PDFs are *tagged*, so
-their structure tree gives logical chunks (the title, each author line, the
-contact-info block, the CCS list, ...) with their tokens in *logical* reading
-order. LaTeX references are *flat* (untagged) — the extractor gives only a single
-token stream in content-stream order.
-
-So this is a TREE-vs-FLAT comparison. We don't need LaTeX to be tagged: the Typst
-tree tells us what the logical groups are and what order their tokens belong in;
-the flat LaTeX stream only has to *contain* those tokens in a consistent order,
-and order is a 1-D property a flat stream is enough to verify against.
-
-Two things the global word/char bags (tools/test.py) can't see, but this can:
-  * a chunk's tokens going missing/appearing, *localized* to that chunk; and
-  * a chunk's elements emitted in the WRONG order (affiliation<->email swap,
-    reordered citation fields, flipped author order) — caught as LCS disorder
-    against the flat stream.
-
-Crucially, INTER-chunk order is NOT checked: Typst emits footnote/contact chunks
-first in the tree even though they render at the page bottom, so tag-tree order
-disagrees with the flat stream's order by design. Only the order WITHIN each
-chunk is gated; the chunk is matched as a sub-sequence of the stream, so other
-content may interpose between its tokens (robust to reflow, unlike bigrams).
-
-Tokenization is shared with tools/test.py's word bag via pdf_text_tokens.py, so
-chunk tokens and global text tokens always agree on URL, symbol, dash, and PDF
-extraction cleanup.
-"""
+Chunks are checked independently: footnotes and floats can appear in different positions in the two extraction orders."""
 
 from __future__ import annotations
 
@@ -39,9 +13,8 @@ from pdf_extract import pdf_text
 from pdf_text_tokens import tokenize
 
 
-# --- Typst side: decode the tagged structure tree --------------------------
 def load_tounicode(font) -> dict:
-    """{byte-code -> unicode-str} from a font's /ToUnicode CMap (bf char/range)."""
+    """Return the font CMap's {byte code: Unicode text} mapping."""
     import pikepdf
     m: dict = {}
     tu = font.get("/ToUnicode")
@@ -63,7 +36,7 @@ def load_tounicode(font) -> dict:
 
 
 def _page_mcid_text(page) -> dict:
-    """{MCID -> decoded text} for one page, parsing its content stream + ToUnicode."""
+    """Return {MCID: decoded text} for a page."""
     import pikepdf
     fonts: dict = {}
     res = page.get("/Resources", {})
@@ -95,30 +68,18 @@ def _page_mcid_text(page) -> dict:
                 if not isinstance(c, pikepdf.String):
                     continue
                 raw = bytes(c)
-                for i in range(0, len(raw) - 1, 2):     # 2-byte CID codes
+                for i in range(0, len(raw) - 1, 2):  # Two-byte CID codes.
                     s += tomap.get(raw[i] << 8 | raw[i + 1], "")
             out[cur_mcid] = out.get(cur_mcid, "") + s
     return out
 
 
-# Block-level roles that are their own logical chunk even when nested inside a
-# text-bearing element, because they are physically RELOCATED away from it: a
-# footnote (Note) renders at the page bottom, a caption beside its float. Merged
-# into the parent they would scramble the parent's reading order against the flat
-# stream. Everything else (Strong/Em/Link/Span/Lbl/Code-inline/...) is inline and
-# merges into its parent chunk.
+# Relocated blocks need separate chunks to preserve their parent's reading order.
 _BLOCK_BREAK = {"Note", "Caption", "Figure", "Table", "Formula"}
 
-# Generated marker labels (footnote/endnote marks, list bullets/numbers) — like a
-# heading number or page folio, layout not content, and extracted inconsistently:
-# the rendered superscript mark has no space before it, so the extractor glues it to
-# the preceding word ("footnote1") while the structure tree keeps it a separate
-# Lbl element. Dropped from chunk text so that asymmetry isn't read as disorder.
+# Generated labels can join neighboring words in flat extraction; exclude them from order matching.
 _DROP = {"Lbl"}
 
-# Auto-generated heading numbering ("1", "2.3") — a layout label, not content,
-# that the flat stream carries in an unstable position (like a page folio); stripped
-# from heading chunks so the order check sees only the title words.
 _HEADING = {"H", "H1", "H2", "H3", "H4", "H5", "H6"}
 _NUMBERING = re.compile(r"^\d+(\.\d+)*$")
 
@@ -138,11 +99,7 @@ def _role(elem) -> str:
 
 
 def _flatten(elem, mcid_text, pdf, pi_default) -> str:
-    """In-order text of a structure element's subtree, so inline children
-    (Strong/Em/Link/Span) merge at the position they actually occur — preserving
-    the chunk's reading order (the naive 'texts then children' walk loses it).
-    Block-break children (footnotes, captions) are skipped: they're relocated and
-    emitted as their own chunks by ``typst_chunks``."""
+    """Merge inline descendants in place, leaving relocated block content for separate chunks."""
     import pikepdf
     pg = elem.get("/Pg")
     pi = pi_default
@@ -159,19 +116,12 @@ def _flatten(elem, mcid_text, pdf, pi_default) -> str:
             parts.append(mcid_text.get(mp, {}).get(int(it["/MCID"]), ""))
         elif (isinstance(it, pikepdf.Dictionary) and "/S" in it
               and _role(it) not in _BLOCK_BREAK and _role(it) not in _DROP):
-            # Pad a child element with spaces: it abuts sibling text at a word
-            # boundary whose rendered space sits outside both marked-content runs
-            # ("ACM Reference Format:" + "Ben Trovato" -> "Format:Ben" without it).
-            # MCID runs (the int/MCR branches above) are joined RAW, because a
-            # word hyphenated at a line break splits across two MCIDs of the same
-            # element ("amplifi-" + "carique") and must stay one token to rejoin.
+            # Separate child elements at word boundaries, but retain raw MCID joins within hyphenated words.
             parts.append(" " + _flatten(it, mcid_text, pdf, pi) + " ")
     return "".join(parts)
 
 
 def _block_break_descendants(elem):
-    """Yield block-break elements nested anywhere under a text-bearing element, so
-    they become their own chunks instead of being swallowed by the parent."""
     import pikepdf
     k = elem.get("/K")
     items = k if isinstance(k, pikepdf.Array) else ([k] if k is not None else [])
@@ -184,7 +134,6 @@ def _block_break_descendants(elem):
 
 
 def _has_direct_text(elem) -> bool:
-    """True if the element owns text (MCID/MCR in its K), vs. a pure container."""
     import pikepdf
     k = elem.get("/K")
     items = k if isinstance(k, pikepdf.Array) else ([k] if k is not None else [])
@@ -204,13 +153,7 @@ def _index_of_page(pdf, pg) -> int:
 
 
 def typst_chunks(pdf_path: Path) -> list[tuple[str, list[str]]]:
-    """Logical chunks of a tagged Typst PDF, in tag-tree order.
-
-    A chunk is the smallest text-bearing structure element (one that owns MCID
-    text); pure containers (Document/Sect/Div with only child elements) are
-    recursed into, so each leaf P/Span/Hn/TD/Caption becomes its own chunk with
-    its inline descendants merged in reading order. Returns [(role, tokens)].
-    """
+    """Return (role, tokens) chunks in tag-tree order, merging each text-bearing element with its inline descendants."""
     import pikepdf
     pdf = pikepdf.Pdf.open(str(pdf_path))
     root = pdf.Root.get("/StructTreeRoot")
@@ -227,9 +170,9 @@ def typst_chunks(pdf_path: Path) -> list[tuple[str, list[str]]]:
             toks = _strip_generated_heading_number(role, toks)
             if toks:
                 chunks.append((role, toks))
-            for bb in _block_break_descendants(elem):   # relocated footnotes etc.
+            for bb in _block_break_descendants(elem):
                 visit(bb)
-            return                      # inline descendants already merged in
+            return
         k = elem.get("/K")
         items = k if isinstance(k, pikepdf.Array) else ([k] if k is not None else [])
         for it in items:
@@ -246,23 +189,12 @@ def _page_index(pdf, elem) -> int:
     return _index_of_page(pdf, pg) if pg is not None else 0
 
 
-# --- LaTeX side: flat reading-order token stream ---------------------------
 def latex_stream(pdf_path: Path) -> list[str]:
-    """The untagged LaTeX PDF as one flat token stream, in content-stream order."""
     return tokenize(pdf_text(pdf_path))
 
 
-# --- intra-chunk order check (LCS alignment) -------------------------------
 def _lcs_len(a: list[str], b: list[str]) -> int:
-    """Length of the longest common subsequence of two token lists (rolling DP).
-
-    LCS, not Kendall-tau-on-positions, is what makes the order check robust: it
-    finds the OPTIMAL monotone matching, so a repeated common word ("the", "of")
-    or a single missing/extra token can't cascade into spurious disorder the way
-    k-th-occurrence position matching does. A genuine reorder (an affiliation/
-    email swap, a flipped citation field) still forces dropping the smaller of
-    the two swapped groups, so it surfaces as disorder; in-order prose scores 0.
-    """
+    """Longest common subsequence length; repeated words can match without cascading position errors."""
     if not a or not b:
         return 0
     prev = [0] * (len(b) + 1)
@@ -275,30 +207,13 @@ def _lcs_len(a: list[str], b: list[str]) -> int:
 
 
 def _locate_window(chunk: list[str], pos: dict, n_stream: int) -> tuple[int, int]:
-    """Stream span holding the chunk's region, sized to the chunk and centred where
-    it actually maps. A logical chunk is laid out contiguously in LaTeX too
-    (interposition happens BETWEEN chunks — footnotes, columns — not within), so
-    localizing here is what stops common words ("the", "of", repeated names) from
-    matching far-away duplicates and manufacturing disorder.
+    """Locate a chunk using the densest cluster of anchor-token offsets.
 
-    The offset of the chunk within the stream is estimated from its anchor tokens:
-    each anchor at chunk index ``ci`` occurring at stream position ``sp`` implies a
-    region origin ``sp - ci``. A correctly aligned chunk has ALL its anchors agree
-    on one origin (within a little slack for interposed tokens), so the right origin
-    is the one where the most anchor occurrences CLUSTER — not the median, which a
-    token duplicated in another chunk (an author name reused in the contact line) or
-    a paragraph reused verbatim drags away from the true cluster. Voting for the
-    densest cluster also makes a reused paragraph self-correct: its copies form
-    several equal clusters, any of which is an in-order match. The window is the
-    chunk-length span from that origin plus slack, fixed to the chunk so it never
-    reaches into neighbouring paragraphs.
-    """
+    Local matching prevents repeated words elsewhere in the document from creating false disorder."""
     present = [(i, t) for i, t in enumerate(chunk) if t in pos and len(pos[t]) <= 20]
     if not present:
         return 0, n_stream - 1
     origins = sorted(sp - ci for ci, t in present for sp in pos[t])
-    # Densest cluster: slide a small window over the sorted origins and take the
-    # span holding the most (ties -> earliest, which an in-order copy satisfies).
     tol = 4
     best_o, best_n, lo = origins[0], 0, 0
     for hi in range(len(origins)):
@@ -312,26 +227,12 @@ def _locate_window(chunk: list[str], pos: dict, n_stream: int) -> tuple[int, int
 
 
 def _reconcile_boundaries(chunk: list[str], window: list[str]) -> list[str]:
-    """Reconcile chunk/stream token-boundary disagreements before LCS.
+    """Join or split chunk tokens to match consecutive stream tokens before alignment.
 
-    Word boundaries are unrecoverable from the tag tree: a line break renders no
-    space and drops the hyphenation hyphen, so consecutive marked-content runs
-    abut ("Group"+"Hekla" -> "GroupHekla", "USA"+email -> "USAemail"). The flat
-    stream splits them. A chunk token that is ABSENT from the window but equals a
-    concatenation of consecutive window tokens (greedy longest-prefix over the
-    window vocabulary) is replaced by those tokens. This is the "sub-token prefix"
-    rule, done at word granularity — so unlike a char-level match it neither
-    re-flags content reorders the bags already own nor reacts to a single stray
-    char. The inverse also happens: URL/ISBN fragments and letter-spaced words can
-    be separate structure-tree tokens but one stream token ("4"+"555" vs
-    "4555", "l e v e l" vs "level"). Merge those consecutive chunk tokens to the
-    stream token before the split pass. Its payoff: an email glued onto an
-    affiliation line is un-glued, and a line-broken identifier is not mistaken for
-    a local reorder.
-    """
+    Tagged runs can omit spaces at line breaks or split words across elements."""
     vocab = set(window)
     remaining = Counter(window)
-    by_len = sorted(vocab, key=len, reverse=True)   # longest-prefix first
+    by_len = sorted(vocab, key=len, reverse=True)
     out: list[str] = []
     i = 0
     def consume(toks: list[str]) -> None:
@@ -377,18 +278,10 @@ def _reconcile_boundaries(chunk: list[str], window: list[str]) -> list[str]:
 
 
 def chunk_order(chunk: list[str], stream: list[str]) -> dict:
-    """Project a chunk's ordered tokens onto the flat stream and measure order.
+    """Align a localized chunk with the flat stream.
 
-    The chunk is first localized to its region of the stream (``_locate_window``);
-    glued tokens are then reconciled to the window's tokenization
-    (``_reconcile_boundaries``) and the result aligned to the window by LCS.
-    ``disorder`` is the number of present chunk tokens that LCS had to drop to keep
-    the match monotone — i.e. tokens that appear out of order relative to the
-    stream; 0 means the chunk's tokens occur in the stream in the chunk's own order
-    (other content may interpose). Tokens absent from the window are reported as
-    ``missing`` (a content gap, or an extraction artifact) and excluded from the
-    order measure. ``norm`` is disorder / present in [0,1].
-    """
+    disorder counts present tokens dropped to preserve order; missing counts tokens absent from the window.
+    norm is disorder divided by the number of present tokens."""
     fullpos: dict = {}
     for i, t in enumerate(stream):
         fullpos.setdefault(t, []).append(i)
@@ -416,7 +309,6 @@ def chunk_order(chunk: list[str], stream: list[str]) -> dict:
     return local
 
 
-# --- CLI: inspect chunks + order vs the LaTeX twin -------------------------
 def _main(argv: list[str]) -> int:
     root = Path(__file__).resolve().parent.parent
     if not argv:

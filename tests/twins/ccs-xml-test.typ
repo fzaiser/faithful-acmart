@@ -1,6 +1,3 @@
-// ccs-xml-test — CCS concepts supplied as the ACM CCS tool's <ccs2012> XML.
-// Matched twin: ccs-xml-test.tex, which typesets the equivalent \ccsdesc lines.
-// Exercises the XML input path end-to-end: grouping of an interleaved repeated area, the 500 (bold) / 300 (italic) / default-100 (roman) significance styles, and a trailing area-only repeat (Networks) whose only visible effect is acmart's @concepts counter quirk: the list ends "; " instead of ".".
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

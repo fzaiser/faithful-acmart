@@ -1,6 +1,4 @@
-// ccs-forms-test — a document whose `ccs` is the ACM CCS tool's output pasted into a raw block (backslashes stay literal there, unlike in a string), locking the paste → parse-ccs → render pipeline into the golden.
-// The paste's XML deliberately disagrees with its \ccsdesc line (300 vs 500): the \ccsdesc precedence shows in the golden as a BOLD specific, and the trailing area-only \ccsdesc ends the line in "; ".
-// The parse-ccs input-form asserts live in tests/unit/frontmatter.typ; the rejection paths are ERROR_CASES in the matrix.
+// The XML and ccdesc significance disagree so the output exposes which input takes precedence.
 #import "/src/lib.typ": acmart
 
 #let paste = ```

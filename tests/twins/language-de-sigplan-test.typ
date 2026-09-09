@@ -1,7 +1,3 @@
-// language-de-sigplan-test — German proceedings paper (acmart `language=german` on sigplan).
-// Matched twin: language-de-sigplan-test.tex.
-// Proceedings formats print the abstract heading ("Zusammenfassung") that journal formats omit, and every format heads the bibliography with babel's refname ("Literatur").
-// Also covers keywordsname ("Schlagwörter"), proofname ("Beweis") and acksname ("Danksagungen").
 #import "/src/lib.typ": *
 
 #show: acmart.with(

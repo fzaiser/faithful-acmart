@@ -1,9 +1,3 @@
-%% longtable-test — a booktabs tabular that lands near a page boundary.
-%% LaTeX twin of longtable-test.typ. A plain `tabular` is a single unbreakable
-%% box: when it does not fit in the space left on page 1 it moves WHOLE to page 2
-%% (it never splits across the boundary). Typst tables break across regions by
-%% default, so parts/tables.typ pins `tabular` non-breakable to match; this twin
-%% guards that pin — both engines must keep the table whole on the same page.
 \documentclass[acmsmall,nonacm]{acmart}
 \pagestyle{empty}
 \settopmatter{printacmref=false}

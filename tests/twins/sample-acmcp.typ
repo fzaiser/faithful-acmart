@@ -1,14 +1,7 @@
-// sample-acmcp — port of the upstream acmart sample (acmart/samples,
-// docstrip option `all,acmcp`). The ACM Journal of Data Science (JDS) cover-page
-// format: single-column, rotated article-type banner, cover infobox on the right
-// with code/data links and author contributions. No abstract, CCS, keywords, or
-// bibliography in this variant. Diffed against out/latex/acmcp.pdf.
 #import "/src/lib.typ": acmart, latex-logo
 
 #show: acmart.with(
   format: "acmcp",
-  // The JDS logo ships with the LaTeX acmart class but is ACM's trademark, so the
-  // package no longer bundles it; the twin points at the repo's dev copy.
   acmcp-logo: image("/src/assets/acm-jdslogo.png"),
   keywords: ("Do", "Not", "Use", "This", "Code", "Put", "the", "Correct",
             "Terms", "for", "Your", "Paper"),
@@ -27,9 +20,8 @@
     conducted the experiments, BR, HC, CP and JS analyzed the results,
     JPK developed analytical predictions, all authors participated in
     writing the manuscript.],
-  // acmcp omits \authornote / \authornotemark (acmart.dtx:%<!acmcp> guards)
   authors: (
-    // Trovato is given TWO \orcid commands in samples.dtx; the last wins.
+    // The upstream sample redefines this ORCID; the last value wins.
     (name: "Ben Trovato",
      email: "trovato@corporation.com", orcid: "1234-5678-9012"),
     (name: "G.K.M. Tobin", orcid: "0000-0012-1825-0097",

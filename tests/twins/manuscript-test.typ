@@ -1,6 +1,3 @@
-// manuscript-test — single-column draft format (acmart default).
-// Matched twin: manuscript-test.tex. Exercises geometry, the journal @i title
-// block, and the generic (sans-bold) section fonts at the 9pt manuscript default.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

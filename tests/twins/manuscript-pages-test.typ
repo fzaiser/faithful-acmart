@@ -1,4 +1,3 @@
-// manuscript-pages-test — continuation-page running heads/footers.
 #import "/src/lib.typ": acmart
 
 #let fill = [
@@ -9,8 +8,6 @@
 
 #show: acmart.with(
   format: "manuscript",
-  // timestamp: on pages >=2 the "Manuscript submitted to ACM" slug prints at
-  // [RO,LE] and the timestamp at [LO,RE] (opposite corners, parity-swapped).
   timestamp: true,
   title: "A Manuscript Running Head Sample",
   short-title: "Manuscript Heads",

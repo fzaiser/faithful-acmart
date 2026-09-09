@@ -1,4 +1,3 @@
-%% manuscript-pages-test — continuation-page running heads/footers.
 \documentclass[manuscript,timestamp]{acmart}
 
 \setcopyright{acmlicensed}
@@ -31,8 +30,7 @@ A short abstract for a continuation-page manuscript test.
 
 \keywords{running heads, folios}
 
-% Set \shortauthors AFTER \author: acmart accumulates each \author onto
-% \shortauthors, so a preamble \renewcommand would be appended to, not replaced.
+% Set this after \author, which appends to \shortauthors.
 \renewcommand{\shortauthors}{Lovelace and Hopper}
 
 \maketitle

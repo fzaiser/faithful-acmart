@@ -1,7 +1,3 @@
-// sigconf-test — two-column proceedings format.
-// Matched twin: sigconf-test.tex. Exercises the two-column layout: the spanning
-// centered conference title, the centered author grid, the first-column copyright
-// block (conference info + permission + ISBN), and the serif-bold Large sections.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

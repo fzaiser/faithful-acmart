@@ -1,15 +1,4 @@
-// Direct unit tests for the TeX-string semantics module (src/parts/tex.typ).
-//
-// These run WITHOUT the LaTeX/pdftotext harness: the file compiles, and a failing
-// #assert.eq aborts the Typst compile. Run standalone
-//   tools/tc compile tests/unit/tex.typ /dev/null
-// or via the harness as the "unit" tier (tools/test.py unit / test.py check).
-//
-// `purify` and `change-case` are exact ports of BibTeX's purify$ / change.case$.
-// Every expected value below is the LITERAL output of the real bibtex binary on
-// the same input (a .bst that calls purify$ / change.case$ and write$s the
-// result) — so this is an oracle test against a closed, finite spec, not against
-// our own assumptions.
+// Expected purify$ and change.case$ values come from the BibTeX binary.
 
 #import "/src/parts/tex.typ": purify, change-case, tex-to-string, tex-to-content, script-size
 #import "/src/formats/_base.typ": tp
@@ -17,20 +6,18 @@
 #let chk(fn, args, want) = assert.eq(fn, want,
   message: args + "\n  got:  " + repr(fn) + "\n  want: " + repr(want))
 
-// ---- purify$ --------------------------------------------------------------
 #chk(purify("Hello World"),          "purify Hello World",          "Hello World")
 #chk(purify("\\lambda-calculus"),    "purify \\lambda-calculus",    "lambda calculus")
-#chk(purify("$x^2 + \\alpha_i$"),    "purify $x^2 + \\alpha_i$",    "x2  alphai")  // math is invisible
+#chk(purify("$x^2 + \\alpha_i$"),    "purify $x^2 + \\alpha_i$",    "x2  alphai")
 #chk(purify("S{\\o}rensen"),         "purify S{\\o}rensen",         "Sorensen")
 #chk(purify("{\\relax Ch}ristopher"), "purify {\\relax Ch}ristopher", "Christopher")
-#chk(purify("{\\lambda}-calc"),      "purify {\\lambda}-calc",      " calc")  // unknown cs dropped
-#chk(purify("{\\ss}{\\oe}{\\aa}"),   "purify {\\ss}{\\oe}{\\aa}",   "ssoea")  // \ss->ss \oe->oe \aa->a
-#chk(purify("{\\o foo}"),            "purify {\\o foo}",            "ofoo")   // ws dropped in special char
+#chk(purify("{\\lambda}-calc"),      "purify {\\lambda}-calc",      " calc")
+#chk(purify("{\\ss}{\\oe}{\\aa}"),   "purify {\\ss}{\\oe}{\\aa}",   "ssoea")
+#chk(purify("{\\o foo}"),            "purify {\\o foo}",            "ofoo")
 #chk(purify("{ACM} Press"),          "purify {ACM} Press",          "ACM Press")
-#chk(purify("Foo~Bar-Baz"),          "purify Foo~Bar-Baz",          "Foo Bar Baz")  // tie & hyphen -> space
+#chk(purify("Foo~Bar-Baz"),          "purify Foo~Bar-Baz",          "Foo Bar Baz")
 #chk(purify(""),                     "purify empty",                "")
 
-// ---- change.case$ ---------------------------------------------------------
 #chk(change-case("The Foo Of Bar", "t"), "change-case t",  "The foo of bar")
 #chk(change-case("The Foo Of Bar", "l"), "change-case l",  "the foo of bar")
 #chk(change-case("The Foo Of Bar", "u"), "change-case u",  "THE FOO OF BAR")
@@ -40,9 +27,7 @@
 #chk(change-case("title with {Nested {deep}}", "t"), "change-case t nested", "title with {Nested {deep}}")
 #chk(change-case("Research Note", "t"), "change-case t simple", "Research note")
 
-// ---- tex-to-string (raw TeX -> plain string: tokenizer + string evaluator) -
-// Exact output (accents compose as combining sequences, which the text gate's
-// NFKC folds; here we pin the literal codepoints).
+// Assert literal codepoints here; PDF text comparisons normalize combining accents.
 #chk(tex-to-string("h\\'el\\`ene"),   "accents h'el`ene",  "he\u{0301}le\u{0300}ne")
 #chk(tex-to-string("P\\'erez {ACM}"), "accent + braces",   "Pe\u{0301}rez ACM")
 #chk(tex-to-string("{\\oe}uvre"),      "special letter oe", "œuvre")
@@ -56,9 +41,7 @@
   "formatting dropped to text", "a x y z w")
 #chk(tex-to-string("\\noopsort{aaa}Smith"), "noopsort discarded", "Smith")
 
-// ---- tex-to-content (tokenizer + content evaluator): structural checks -----
-// (content equality carries empty-sequence wrappers; assert the element kind via
-// repr instead.) Each names the Typst element the command must produce.
+// Inspect element kinds through repr because content equality retains empty sequence wrappers.
 #let has(s, sub) = assert(repr(tex-to-content(s)).contains(sub),
   message: "tex-to-content(" + repr(s) + ") should contain a " + sub + " element\n  got: " + repr(tex-to-content(s)))
 #has("x \\textbf{y}", "strong")
@@ -67,27 +50,20 @@
 #has("\\textsl{b}", "styled")
 #has("\\textsc{acm}", "smallcaps")
 #has("\\underline{u}", "underline")
-// \textsuperscript needs the surrounding text size to pick \sf@size, so it comes
-// back as a context block; bib-edge gates the rendered size against LaTeX.
+// \textsuperscript needs context to read the surrounding text size.
 #has("x\\textsuperscript{2}", "context")
 #has("see \\url{http://a.b}", "link")
 #has("ref \\href{http://a.b}{text}", "link")
-#has("math $\\frac{n}{2} \\leq x^{2n}$", "equation")  // real Typst math
+#has("math $\\frac{n}{2} \\leq x^{2n}$", "equation")
 
-// Multi-letter math runs: Typst reads `ab` as ONE (undefined) identifier and
-// errors, so the math evaluator must split a run into separate atoms. These would
-// panic ("unknown variable: ab" / "x2") if the run were emitted whole; reaching
-// the asserts proves it doesn't, and the atoms stay separate.
+// Typst treats a multi-letter math run as one identifier; the renderer must split it into atoms.
 #has("$ab$", "[a]")
 #has("$ab$", "[b]")
-#has("$x_{ab}$", "attach")        // multi-letter subscript, was a crash
-#has("$x2$", "equation")          // letter+digit run, was "unknown variable: x2"
-// \ensuremath switches to math (was routed to text mode -> \alpha panicked).
+#has("$x_{ab}$", "attach")
+#has("$x2$", "equation")
 #has("\\ensuremath{\\alpha}", "equation")
 
-// Exhaust the transcribed math command tables. Representative equations would
-// miss a typo in an otherwise unused Typst symbol identifier; evaluating every
-// entry makes each mapping prove that it names a real math symbol/function.
+// Evaluate every command mapping to catch invalid Typst symbol names.
 #let math-symbols = (
   "alpha", "beta", "gamma", "delta", "epsilon", "varepsilon", "zeta", "eta",
   "theta", "vartheta", "iota", "kappa", "lambda", "mu", "nu", "xi", "omicron",
@@ -134,41 +110,26 @@
   has("$a\\" + symbol + "b$", "equation")
 }
 
-// Declaration *switches* restyle the REST of the group, not just the next char:
-// `{\it a b}` -> italic over the whole "a b" (the old arg-grab gave italic over
-// "a" only). `[a b]` as one leaf inside the styled content is the discriminator.
 #has("{\\it a b} c", "styled")
 #has("{\\it a b} c", "[a b]")
 #has("x {\\bf y z}", "strong")
 #has("{\\sc a b}", "smallcaps")
 #chk(tex-to-string("{\\it a b} c"), "switch drops formatting in string mode", "a b c")
-// ...but \textit/\textbf are argument-takers: only the braced group is styled.
 #chk(tex-to-string("\\textit{a} b"), "arg-form styles only its argument", "a b")
 
-// Robustness (compile-only): these must not crash the generated math source.
-//   - \text{..} with an embedded " and \ (must be escaped, not injected)
-//   - the math spacing control symbols \, \: \; \! \(space) and ~
 #let _esc = tex-to-content("$\\text{a\"b\\c} + 1$")
 #let _spc = tex-to-content("$a\\,b\\;c\\!d\\:e\\ f~g$")
 
-// regression: an accent grabbing the LAST char of a run (run = 1 cluster) — the
-// tail `().join("")` is `none`, which once built a `value: none` text token.
 #chk(tex-to-string("Caf\\'e"), "accent at end of field", "Cafe\u{0301}")
 #chk(tex-to-string("a\\'e"),   "accent on lone trailing char", "ae\u{0301}")
 
-// regression: the linear token walk is a LOOP, so a field with FAR more tokens
-// than Typst's ~72 call-depth limit must not stack-overflow. These would error
-// ("maximum function call depth exceeded") under the old head+recurse walk — the
-// unit gate compiles this file, so reaching here at all is the assertion.
-#let _stress300 = "x" + ("\\'e" * 300)                 // ~300 accent tokens (text)
-#let _stressmath = "$" + ("a_1 + " * 200) + "b$"        // ~600 math tokens
+// Exceed Typst's call-depth limit to check that token processing remains iterative.
+#let _stress300 = "x" + ("\\'e" * 300)
+#let _stressmath = "$" + ("a_1 + " * 200) + "b$"
 #assert(repr(tex-to-content(_stress300)).len() > 0)
 #assert(repr(tex-to-content(_stressmath)).contains("equation"))
 
-// ---- \sf@size, the size of the \LaTeX logo's raised A ---------------------
-// Every value is `\sf@size` after `\check@mathfonts` at that `\f@size`, read out
-// of a probe document built against the bundled class (newtxmath's table). An
-// unlisted size falls back to LaTeX's \defaultscriptratio.
+// Expected \sf@size values come from probes against the bundled class (newtxmath).
 #let sf(pt) = script-size(pt * tp) / tp
 #for (size, want) in ((6, 5.5), (7, 5.5), (8, 6), (9, 6.6), (10, 7.3), (10.95, 8),
                       (12, 8.8), (14.4, 10.5), (17.28, 12.5), (20.74, 16.1)) {

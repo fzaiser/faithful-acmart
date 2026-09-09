@@ -1,42 +1,7 @@
 #!/usr/bin/env python3
-"""typst-acmart test & build harness — the one command runner.
+"""Build and validate faithful-acmart.
 
-This is the Python-owned replacement for the old Makefile + shell scripts. The
-test data lives in `tools/test_matrix.py`; this file turns it into commands.
-
-Run through uv (it has Pillow/numpy/fonttools/PyMuPDF/pikepdf for the visual
-and PDF-structure gates):
-
-    uv run python tools/test.py <command> [args]
-
-Commands
---------
-  build            build the LaTeX references, every Typst test PDF, and the example
-  smoke [names]    build and page-check selected matrix tests (default: all)
-  check            run all regression gates (smoke / unit / golden / text / errors / metrics)
-  unit             run the pure-Typst unit tests in tests/unit/*.typ (no LaTeX needed)
-  sweep            compile a representative doc across every active format × base size (no LaTeX)
-  accept           rebuild Typst PDFs and refresh the Tier 1 golden hashes
-  overlay [stems]  per-twin vector <name>-overlay.pdf + <name>-side-by-side.pdf vs LaTeX (all twins, or given stems)
-  report [stems]   self-contained HTML LaTeX-vs-Typst page comparison (tests/out/report/); default: twins that failed the last check
-  validate [names] copyright/option variants vs LaTeX, page-1 mismatch %
-  probe            dump a format's ground-truth dimensions from the bundled class (--format)
-  example          build the Typst example (template/main.typ)
-  list             print the test matrix
-  clean            remove all generated output (tests/out/)
-  metrics          print the Tier 2 layout-metric table for every page (no gating)
-  structure        report tagged-PDF roles, language, and image alternatives
-  source-data      compare transcribed tables with bundled acmart.dtx and ACM-Reference-Format.bst
-  linepitch FILE   measure baseline pitch / first-line position in a PDF (--dpi, --page)
-  text FILE        print a PDF's extracted text exactly as the text gates see it (--page)
-  bib-oracle       compare the pure-Typst .bib reader with real bibtex on well-formed input (on-demand)
-
-External tools required: Typst and TeX Live (pdflatex, bibtex, biber), plus
-qpdf, pdfjam and Ghostscript (gs) for the `overlay` command and the report's
-overlay column. PDF reading (text, rasters, geometry, metadata, structure) is
-done in Python by the uv-pinned PyMuPDF and pikepdf, so every machine extracts
-identically. All generated output lives under tests/out/ (gitignored).
-"""
+Run with: uv run python tools/test.py <command> [args]"""
 
 from __future__ import annotations
 
@@ -73,9 +38,6 @@ from bib_oracle import cmd_bib_oracle
 from report import cmd_report, record_check_status
 
 
-# ---------------------------------------------------------------------------
-# Commands
-# ---------------------------------------------------------------------------
 def _run_gate(title: str, failures: list[str]) -> bool:
     if failures:
         print(f"\n{title} FAILED:", file=sys.stderr)
@@ -89,8 +51,6 @@ def cmd_build(args) -> int:
     build_all_latex(jobs=args.jobs, force=args.force)
     print("Compiling Typst test PDFs…")
     compiled = compile_all_typst()
-    # Warnings fail the build, consistent with gate_smoke: a clean compile emits
-    # nothing on stderr, so any Typst warning here is a regression.
     bad = _compile_failures(compiled)
     warned = [f"{name}: {stderr.strip()}" for name, (rc, stderr) in compiled.items()
               if rc == 0 and "warning" in stderr.lower()]
@@ -152,10 +112,8 @@ def cmd_package(args) -> int:
         print(failure, file=sys.stderr)
     return 1 if failures else 0
 def cmd_min_version(_args) -> int:
-    """Compile the compatibility fixtures under the manifest's minimum Typst."""
     return _compat(expect=M.MIN_TYPST_VERSION)
 def cmd_compat(_args) -> int:
-    """Compile the compatibility fixtures under whatever Typst is on PATH."""
     return _compat(expect=None)
 def _compat(expect: str | None) -> int:
     proc = subprocess.run([str(TC), "--version"], capture_output=True, text=True)
@@ -189,12 +147,7 @@ def _compat(expect: str | None) -> int:
         print(failure, file=sys.stderr)
     return 1 if failures else 0
 def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
-    """Ordered (slug, tier title, thunk) for every `check` gate.
-
-    The slug is the stable name used by `--gates`; the thunk closes over the
-    already-built LaTeX refs / compiled Typst so a gate is invoked identically
-    whether the run is full or filtered.
-    """
+    """Ordered (slug, display title, callable) entries; slugs are the names accepted by --gates."""
     return [
         ("matrix-integrity", "Tier 0.1 (matrix integrity)", gate_matrix_integrity),
         ("source-data",      "Tier 0.15 (source data)",     gate_source_data),
@@ -248,8 +201,6 @@ def cmd_check(args) -> int:
         failures = thunk()
         gate_failures[slug] = failures
         ok &= _run_gate(title, failures)
-    # Record which gates flagged which twin so `test.py report` (with no stems)
-    # can default to the failing twins. Written into tests/out/ (gitignored).
     record_check_status(gate_failures)
     return 0 if ok else 1
 def cmd_accept(_args) -> int:
@@ -273,7 +224,6 @@ def cmd_example(_args) -> int:
     print(f"Built {TYPST / 'main.pdf'}")
     return rc
 def cmd_probe(args) -> int:
-    """Dump a format's ground-truth dimensions from the BUNDLED acmart class."""
     LATEX.mkdir(parents=True, exist_ok=True)
     fmt = args.format
     src = (TOOLS / "probe.tex").read_text().replace("format=acmsmall", f"format={fmt}")
@@ -282,7 +232,7 @@ def cmd_probe(args) -> int:
     try:
         latex_build(probe)
     except SystemExit:
-        pass  # the probe \typeout lines are what we want; a non-clean build is fine
+        pass  # The probe can emit its \typeout measurements before a build failure.
     log = (LATEX / f"probe-{fmt}.log").read_text(errors="replace")
     for line in log.splitlines():
         if line.startswith(("PROBE ", "SIZE ")):
@@ -386,7 +336,6 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    # Shared by the LaTeX-building commands (build / check / validate).
     par = argparse.ArgumentParser(add_help=False)
     par.add_argument("-j", "--jobs", type=int, default=default_jobs(),
                      help=f"parallel LaTeX build jobs (default {default_jobs()} = cpu-2)")

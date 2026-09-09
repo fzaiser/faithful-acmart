@@ -1,9 +1,3 @@
-// language-test — multilingual paper (acmart `language` option).
-// Matched twin: language-test.tex. Main language French, with English secondary
-// title/abstract/keywords (the `translations` argument). Exercises the localized
-// fixed strings — keywordsname ("Mots Clés et Phrases Supplémentaires"),
-// proofname ("Démonstration"), acksname ("Remerciements") — plus French
-// hyphenation (text lang "fr").
 #import "/src/lib.typ": acmart, proof, acks
 
 #show: acmart.with(

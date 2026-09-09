@@ -1,9 +1,3 @@
-// sample-manuscript — port of the upstream acmart sample (acmart/samples,
-// docstrip option `all,proceedings,manuscript`). Shares the authors/abstract/
-// CCS/body with the other `all` samples (see _sample-common.typ); only the
-// preamble differs: the `manuscript` review style with screen+review options and
-// proceedings (conference) metadata. Diffed page-by-page against
-// out/latex/manuscript.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

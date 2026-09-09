@@ -1,11 +1,3 @@
-%% options-test — class/topmatter option toggles (LaTeX twin of options-test.typ).
-%% Exercises options with a visible effect in the single-column acmsmall layout:
-%%   nonacm           -> drops the ACM journal footer, the ACM reference format,
-%%                       and (for non-cc copyright) the whole page-1 copyright block
-%%   printccs=false   -> suppresses the CCS Concepts block in the title
-%%   printfolios=false-> no folios in the running head (visible on page 2)
-%% plus the single-column no-ops balance=false / natbib=false (accepted for parity).
-%% Two pages so the page-2 running head shows the folio suppression.
 \documentclass[acmsmall,nonacm,balance=false,natbib=false]{acmart}
 \settopmatter{printccs=false,printfolios=false}
 

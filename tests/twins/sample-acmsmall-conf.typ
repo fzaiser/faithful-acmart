@@ -1,8 +1,3 @@
-// sample-acmsmall-conf — port of the upstream acmart sample (acmart/samples,
-// docstrip option `all,proceedings,acmsmall,conf`). The acmsmall journal format
-// used for a sponsored event: conference metadata (ISBN/booktitle) replaces the
-// journal metadata, so the first page carries the conference copyright block.
-// Diffed against out/latex/acmsmall-conf.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

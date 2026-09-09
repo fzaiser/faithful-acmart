@@ -1,7 +1,3 @@
-// acmcp-acmref-test — Fix A4.1: acmcp flips the ACM-reference DEFAULT to false,
-// but an explicit `print-acm-reference: true` still WINS (matching a post-\begin
-// \settopmatter{printacmref=true} in LaTeX; verified by probe). Package policy:
-// explicit arguments override format defaults (see DESIGN.md).
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

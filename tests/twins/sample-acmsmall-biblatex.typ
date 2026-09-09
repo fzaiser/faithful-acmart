@@ -1,8 +1,3 @@
-// sample-acmsmall-biblatex — port of the upstream acmart sample (acmart/samples,
-// docstrip option `all,acmsmall,biblatex`). The acmsmall journal format with the
-// BibLaTeX acmauthoryear style (author-year citations), including the
-// biblatex-software artifact entries from software.bib.
-// Diffed against out/latex/acmsmall-biblatex.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

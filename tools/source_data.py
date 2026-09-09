@@ -1,10 +1,3 @@
-"""Transcribed-source consistency gates.
-
-Reparse the journal / bibliography / copyright tables out of the bundled
-acmart.dtx and ACM-Reference-Format.bst and diff them against the Typst source
-(``gate_source_data``), plus the manifest allowlist / fresh-package build
-(``gate_package``)."""
-
 from __future__ import annotations
 
 import json
@@ -21,12 +14,10 @@ from harness import ROOT, ACMART, TESTS_DIR, TEST_CLOCK_ENV
 
 
 def _compact_tex_text(value: str) -> str:
-    """Normalize whitespace-only TeX source formatting in literal data fields."""
     return re.sub(r"\s+", " ", value.replace("~", " ").replace(r"\&", "&")).strip()
 
 
 def _latex_journal_records() -> dict[str, dict]:
-    """Extract the journal choice arms directly from the bundled acmart.dtx."""
     source = (ACMART / "acmart.dtx").read_text()
     start = source.index(r"\ifcase\@journalCode@nr", source.index("{acmJournal}"))
     end = source.index(r"\else % FACMP", start)
@@ -55,7 +46,6 @@ def _latex_journal_records() -> dict[str, dict]:
 
 
 def _typst_journal_records() -> dict[str, dict]:
-    """Extract the intentionally regular one-record-per-line Typst table."""
     records: dict[str, dict] = {}
     pattern = re.compile(
         r'^\s*([A-Z0-9]+): \(name: "([^"]*)", short: "([^"]*)", '
@@ -93,7 +83,6 @@ _QUOTED_STRING = r'"((?:\\.|[^"\\])*)"'
 
 
 def _unique_mapping(pairs: list[tuple[str, str]], label: str) -> dict[str, str]:
-    """Turn parsed key/value pairs into a map while rejecting hidden duplicates."""
     result: dict[str, str] = {}
     for key, value in pairs:
         if key in result:
@@ -103,7 +92,6 @@ def _unique_mapping(pairs: list[tuple[str, str]], label: str) -> dict[str, str]:
 
 
 def _latex_bib_data() -> dict[str, dict[str, str]]:
-    """Extract the journal macro and canonical-abbreviation tables from the BST."""
     source = (ACMART / "ACM-Reference-Format.bst").read_text()
 
     macro_start = source.index("%%% ACM journal names")
@@ -144,7 +132,7 @@ def _latex_bib_data() -> dict[str, dict[str, str]]:
 
 
 def _typst_string_mapping(source: str, variable: str) -> dict[str, str]:
-    """Parse a regular quoted-string Typst mapping without evaluating Typst."""
+    """Parse a quoted-string mapping without evaluating Typst."""
     marker = f"#let {variable} = ("
     start = source.index(marker) + len(marker)
     end_match = re.search(r"^\)\s*$", source[start:], re.M)
@@ -171,39 +159,28 @@ def _typst_bib_data() -> dict[str, dict[str, str]]:
     }
 
 
-# --- Copyright / permission source-data oracle -----------------------------
-#
-# The first-page copyright block's permission paragraph and owner string for all
-# 16 \setcopyright modes, plus the Creative Commons name/version/URL tables, are
-# transcribed into src/parts/copyright.typ. These helpers reparse them out of the
-# bundled acmart.dtx and out of the Typst source so the gate can diff both — the
-# same parse-the-dtx-and-diff mechanism used for the journal choice table.
-
 def _fold_quotes(text: str) -> str:
     return (text.replace("’", "'").replace("‘", "'")
                 .replace("“", '"').replace("”", '"'))
 
 
 def _normalize_dtx_copyright(text: str) -> str:
-    """Reduce a dtx \\ifcase arm to comparable plain text (TeX stripped)."""
-    text = re.sub(r"%.*", "", text)                 # drop label + line-cont comments
-    text = text.replace(r"\hspace*{.5pt}", "")      # thin-space slash kern
-    text = text.replace(r"\@", "")                  # sentence-spacing hint
+    text = re.sub(r"%.*", "", text)
+    text = text.replace(r"\hspace*{.5pt}", "")
+    text = text.replace(r"\@", "")
     text = text.replace("~", " ").replace(r"\&", "&")
     return re.sub(r"\s+", " ", _fold_quotes(text)).strip()
 
 
 def _normalize_typst_copyright(value: str) -> str | None:
-    """Reduce a Typst `_mode(...)` argument (`none` or `[content]`) to plain text."""
     if value == "none":
         return None
-    inner = value.strip()[1:-1]                     # strip the [ ] content brackets
+    inner = value.strip()[1:-1]
     inner = inner.replace(r"\/", "/").replace(r"\@", "@").replace(r"\&", "&")
     return re.sub(r"\s+", " ", _fold_quotes(inner)).strip()
 
 
 def _dtx_copyright_modes() -> list[str]:
-    """The authoritative ordered mode names from the \\define@choicekey list."""
     source = (ACMART / "acmart.dtx").read_text()
     match = re.search(r"\]\{none,%\s*(.*?)\}\{%", source, re.S)
     body = re.sub(r"%", "", "none," + match.group(1))
@@ -211,7 +188,6 @@ def _dtx_copyright_modes() -> list[str]:
 
 
 def _dtx_ifcase_arms(macro: str) -> list[str]:
-    """Split a `\\def\\<macro>{\\ifcase\\acm@copyrightmode ...}` into its arms."""
     source = (ACMART / "acmart.dtx").read_text()
     start = source.index(r"\ifcase\acm@copyrightmode\relax", source.index("\\def\\" + macro + "{"))
     block = source[start:source.index(r"\fi}", start)]
@@ -229,7 +205,7 @@ def _latex_copyright_data() -> dict[str, object]:
             f"{len(perm_arms)} permission arms")
     owner = {m: _normalize_dtx_copyright(a) or None for m, a in zip(modes, owner_arms)}
     permission = {m: _normalize_dtx_copyright(a) or None for m, a in zip(modes, perm_arms)}
-    # The `cc` permission arm is the badge/link machinery, compared via the CC tables.
+    # Compare the CC permission branch through its badge and license tables.
     permission["cc"] = None
 
     source = (ACMART / "acmart.dtx").read_text()
@@ -329,11 +305,7 @@ def _compare_transcribed_mapping(
 
 
 def gate_source_data(report: bool = False) -> list[str]:
-    """Ensure transcribed data still matches the bundled LaTeX/BibTeX sources.
-
-    PACMNET's long name is the one deliberate correction: upstream says
-    "Networkng", while this port intentionally publishes "Networking".
-    """
+    """Compare transcribed data with upstream, allowing the PACMNET spelling correction."""
     failures: list[str] = []
     try:
         expected = _latex_journal_records()
@@ -405,7 +377,6 @@ def _package_manifest() -> dict:
 
 
 def _package_files() -> list[Path]:
-    """Files selected by typst.toml's root-relative exclude list."""
     manifest = _package_manifest()
     excluded = tuple(item.lstrip("/").rstrip("/") for item in manifest["package"]["exclude"])
 
@@ -424,7 +395,6 @@ _IMAGE_SUFFIXES = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 
 def _relative_link_targets(text: str) -> list[str]:
-    """Markdown link targets that are repository paths (no URLs, no pure anchors)."""
     return [
         target for target in (m.group(1) for m in _MD_LINK_RE.finditer(text))
         if ":" not in target and not target.startswith("#")
@@ -435,22 +405,14 @@ _FENCE_RE = re.compile(r"(`{3,}|~{3,})(.*)")
 
 
 def _split_markdown(text: str) -> tuple[str, str]:
-    """(prose, code): fenced-block lines and inline code spans go to `code`.
-
-    The staging rewrite and the reference checks treat the two differently, so
-    the gate needs the split even though it is a line-based approximation of
-    CommonMark, not a parse.
-    """
+    """Split prose from fenced blocks and inline code for separate reference checks."""
     prose_lines: list[str] = []
     code_parts: list[str] = []
-    fence = None  # (char, length) of the open fence
+    fence = None  # (character, length)
     for line in text.splitlines():
         m = _FENCE_RE.fullmatch(line.strip())
         if fence is not None:
-            # Only a fence of the same character, at least as long, and with
-            # nothing after it closes the block (CommonMark); a shorter fence
-            # line is content, so a ```` block may embed ``` lines (the
-            # README's raw-block `ccs` example does).
+            # A shorter fence can be content inside a longer fenced block.
             if (m and m.group(1)[0] == fence[0] and len(m.group(1)) >= fence[1]
                     and not m.group(2).strip()):
                 fence = None
@@ -471,13 +433,7 @@ def _is_shipped(target: str, rels: set[str]) -> bool:
 
 
 def _release_readme(text: str, manifest: dict, rels: set[str]) -> str:
-    """Pin the relative links whose targets do not ship to the release tag.
-
-    The repository README links relatively throughout; in the release copy,
-    links into the bundle stay relative and everything else becomes an
-    immutable tag URL — raw.githubusercontent.com for images, so they render
-    on Typst Universe.
-    """
+    """Rewrite links to unshipped files using the release tag; use raw URLs for images."""
     package = manifest["package"]
     repository = package["repository"]
     tag = f"v{package['version']}"
@@ -512,7 +468,6 @@ def _stage_package(package_dir: Path) -> list[str]:
 
 
 def _compile_against_packages(main: Path, package_root: Path) -> subprocess.CompletedProcess:
-    """Compile a document that imports the staged bundle from `package_root`."""
     return subprocess.run(
         ["typst", "compile", str(main), str(main.with_name("out.pdf")),
          "--package-path", str(package_root), "--root", str(main.parent),
@@ -522,11 +477,7 @@ def _compile_against_packages(main: Path, package_root: Path) -> subprocess.Comp
 
 
 def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]:
-    """Manifest allowlist, fresh-package compile, and official offline lint.
-
-    With `out_dir`, a passing run additionally writes the staged bundle there,
-    ready to commit into a typst/packages checkout.
-    """
+    """Validate the distributable files, examples, and offline lint; write out_dir only on success."""
     failures: list[str] = []
     manifest = _package_manifest()
     package = manifest["package"]
@@ -568,8 +519,7 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
         if any(f"{repository}/{view}/main/" in source_readme for view in ("blob", "tree")):
             failures.append(
                 "repository README must use relative links, not main-branch URLs")
-        # The staging rewrite parses only plain inline `](target)` links; a titled,
-        # angle-bracketed, or reference-style link would silently escape it.
+        # The release rewrite supports plain inline links only.
         sloppy = [m.group(0) for m in re.finditer(r"\]\([^)]*\s[^)]*\)", source_readme)]
         if re.search(r"(?m)^ {0,3}\[(?!\^)[^\]]+\]:", source_readme):
             sloppy.append("a reference-style link definition")
@@ -600,12 +550,7 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
                 f"staged README links to unshipped paths (expected {release_tag} URLs): "
                 + ", ".join(unshipped))
 
-        # Every token starting `@preview/` must read exactly `name:version` for
-        # this package. Whole-token matching is what makes a typo'd name, a
-        # missing colon, a short `:0.1`, or a suffixed/garbled version fail
-        # instead of slipping past. Prose may close its sentence right after
-        # the token; in code spans, fences, and the template the token is part
-        # of a command or import, so nothing may follow it.
+        # Allow sentence punctuation after package references in prose; code references must match exactly.
         token_re = re.compile(r"@preview/[^\s\"'`)\]]*")
         exact = rf"@preview/{re.escape(package['name'])}:{re.escape(package['version'])}"
         strict_ref = re.compile(exact + r"\Z")
@@ -630,8 +575,7 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
                 (compile_proc.stderr + compile_proc.stdout).strip())
 
         fences = re.findall(r"^```typst\n(.*?)^```$", source_readme, re.M | re.S)
-        # CommonMark also accepts indented, longer, or tilde fences; those would
-        # silently skip compilation, so require the one canonical form.
+        # Require fences recognized by the example compiler.
         loose_fences = re.findall(r"(?mi)^ {0,3}(?:`{3,}|~{3,})[ \t]*typst\b", source_readme)
         if len(loose_fences) != len(fences):
             failures.append(
@@ -639,8 +583,6 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
                 "the canonical form the gate compiles (```typst at column 0)")
         if not fences:
             failures.append("README has no ```typst example to compile")
-        # Fragment examples (no import of their own) are compiled under the
-        # quick-start context: the package import plus a minimal show rule.
         preamble = (
             f'#import "@preview/{package["name"]}:{package["version"]}": *\n'
             "#show: acmart.with(\n"
@@ -681,10 +623,7 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
                 d.get("code") == "compile/warning"
                 and "current font is not designed for math" in d.get("message", "")
             )]
-            # The offline checker does not load the repository's excluded dev
-            # fonts, so its bundled compiler reports the documented Libertinus
-            # Math absence. Package rules prohibit shipping that font; accept
-            # only this exact warning and reject every other lint/compile issue.
+            # The offline checker lacks the excluded development fonts; allow only the missing math-font warning.
             if unexpected or (check_proc.returncode != 0 and not diagnostics):
                 failures.append(
                     "typst-package-check failed:\n" +

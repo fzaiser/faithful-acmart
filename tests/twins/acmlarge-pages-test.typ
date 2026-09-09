@@ -1,4 +1,3 @@
-// acmlarge-pages-test — continuation-page running heads/footers.
 #import "/src/lib.typ": acmart
 
 #let fill = [

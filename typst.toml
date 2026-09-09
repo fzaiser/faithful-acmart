@@ -16,14 +16,8 @@ keywords = [
 ]
 categories = ["paper"]
 disciplines = ["computer-science"]
-# Minimum compiler: the math symbol names the .bib TeX layer emits (`partial`, `planck` for
-# ℏ, `inter`, `plus.o`, ...) are the stable, non-deprecated names from Typst 0.14 on, and
-# 0.14 is also where PDF accessibility tags start being emitted.
+# Required for the math symbol names and PDF tagging used by the package.
 compiler = "0.14.0"
-# Files kept in the development repo but omitted from the published Universe bundle:
-# the LaTeX sources / validation harness / bundled dev fonts, contributor docs, the
-# ACM JDS logo (ACM's trademark — the acmcp format takes a user-supplied `acmcp-logo:`),
-# and `scratch/`, which holds uncommitted working notes (see .gitignore).
 exclude = [
     "/.github",
     "/.venv",
@@ -42,7 +36,6 @@ exclude = [
     "/TODO.md",
     "/pyproject.toml",
     "/uv.lock",
-    "/src/README.md",
     "/src/assets/acm-jdslogo.png",
 ]
 

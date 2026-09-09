@@ -1,10 +1,3 @@
-"""Core self-consistency and compile gates.
-
-Matrix integrity, Tier 0 smoke (page counts / parity), the Typst self-golden
-raster snapshots, expected compile errors, the unit tests, and the format×size
-compile sweep. These lean on the golden file and the compiled PDFs rather than a
-cross-engine text comparison."""
-
 from __future__ import annotations
 
 import os
@@ -23,7 +16,6 @@ from pdf_extract import page_count, page_hashes, rasterize, extractor_version
 
 
 def gate_matrix_integrity(report: bool = False) -> list[str]:
-    """Ensure test files, matrix entries, residuals, goldens, and engine agree."""
     failures: list[str] = []
     matrix_twins = {name for name, t in TESTS.items() if t.kind == "twin"}
     matrix_smokes = {name for name, t in TESTS.items() if t.kind == "smoke"}
@@ -113,10 +105,6 @@ def gate_matrix_integrity(report: bool = False) -> list[str]:
     return failures
 def gate_smoke(
         compiled: dict[str, tuple[int, str]], names: list[str] | None = None) -> list[str]:
-    """Tier 0 — compile cleanliness, page counts, twin page-count parity.
-
-    Uses the already-captured compile results (no recompilation).
-    """
     failures: list[str] = []
     items = TESTS.items() if names is None else ((name, TESTS[name]) for name in names)
     for name, t in items:
@@ -180,7 +168,6 @@ def write_golden() -> None:
 
 
 def read_golden_extractor() -> str | None:
-    """The PDF extractor recorded when the goldens were last accepted, if any."""
     if not GOLDEN_FILE.exists():
         return None
     for line in GOLDEN_FILE.read_text().splitlines():
@@ -202,7 +189,6 @@ def read_golden() -> dict[str, dict[int, str]]:
 
 
 def gate_golden() -> list[str]:
-    """Tier 1 — Typst self-golden raster snapshots."""
     golden = read_golden()
     if not golden:
         return ["no golden file — run `test.py accept` first"]
@@ -237,8 +223,6 @@ def gate_golden() -> list[str]:
                         "then `test.py accept` if intended.")
     return failures
 def _error_source(extra_arg: str, body: str = "= Body\nText.") -> str:
-    # Cases that exercise a bad/other format supply their own `format:` in the
-    # extra argument; omit the default acmsmall line then so it is not a duplicate.
     format_line = "" if "format:" in extra_arg else '  format: "acmsmall",\n'
     return f"""#import "/src/lib.typ": *
 
@@ -253,7 +237,6 @@ def _error_source(extra_arg: str, body: str = "= Body\nText.") -> str:
 
 
 def gate_errors() -> list[str]:
-    """Tier 1.6 — expected compile-error gate."""
     ERROR.mkdir(parents=True, exist_ok=True)
     failures: list[str] = []
     for name, case in M.ERROR_CASES.items():
@@ -275,9 +258,6 @@ def gate_errors() -> list[str]:
         else:
             print(f"ok   {name}")
     return failures
-# A single representative document (title + author + abstract + section + list +
-# table + inline/display math + footnote) rendered across every format×size in
-# the sweep. `{extra}` injects per-format required options (acmcp's logo).
 _SWEEP_DOC = '''#import "/src/lib.typ": acmart
 #show: acmart.with(
   format: "{fmt}",
@@ -308,12 +288,8 @@ _SWEEP_EXTRA = {
 
 
 def gate_format_sweep(report: bool = False) -> list[str]:
-    """Tier 0.8 — compile one representative document across every active
-    format × allowed base size (45 combos), failing on any error or warning.
-    No goldens: this is a cheap breadth net for the size-ladder / per-format
-    geometry paths the single-size twins don't each visit."""
     combos = [(fmt, size) for fmt in M.ACTIVE_FORMATS for size in M.SWEEP_FONT_SIZES]
-    # tc pins --root at the repo, so the source must live under it (not /tmp).
+    # The compiler root is the repository, so generated sources must live inside it.
     sweep_dir = OUT / "sweep"
     sweep_dir.mkdir(parents=True, exist_ok=True)
 
@@ -334,10 +310,6 @@ def gate_format_sweep(report: bool = False) -> list[str]:
             print(f"ok   {fmt} @ {size}pt")
     return failures
 def gate_unit(report: bool = False) -> list[str]:
-    """Tier 0.5 — pure-Typst unit tests (tests/unit/*.typ). These import a module
-    and assert on its output via #assert.eq, so a failure aborts the compile with
-    a diagnostic. No LaTeX or text extraction involved — they test parsing/logic directly.
-    """
     failures: list[str] = []
     unit_dir = TESTS_DIR / "unit"
     srcs = sorted(unit_dir.glob("*.typ")) if unit_dir.is_dir() else []

@@ -1,9 +1,3 @@
-// sigconf-authors-per-row-test — conference author grid with an EXPLICIT
-// authors-per-row override. Matched twin: sigconf-authors-per-row-test.tex.
-// Five affiliation groups forced to two per row produce 2 + 2 + a final row of
-// one; the grid centers every row including the partial final one. Sibling of
-// sigconf-authors-test, which keeps the default auto 3-per-row layout, so the
-// two twins together cover both the auto and the explicit row-count paths.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

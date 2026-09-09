@@ -1,5 +1,3 @@
-// sigchi-a-test — landscape SIGCHI extended-abstract format (best-effort).
-// Sans default, wide left margin, 2pt-rule title, unnumbered sections. Golden-smoke.
 #import "/src/lib.typ": acmart, sidebar, marginfigure, margintable, fulltextwidth, tabular, toprule, midrule, bottomrule
 
 #show: acmart.with(

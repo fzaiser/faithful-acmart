@@ -1,7 +1,3 @@
-// siggraph-test — obsolete public option that aliases to sigconf.
-// Typst-only alias compile check (no LaTeX twin): asserts that `format: "siggraph"`
-// compiles warning-free down the sigconf path. The rendered proceedings layout is
-// covered by sigconf-test; this just guards the alias mapping.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

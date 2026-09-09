@@ -1,51 +1,18 @@
-"""Test matrix — the single source of truth for the regression harness.
-
-`tools/test.py` is the command runner; this module is its data. Everything the
-gates need lives here as typed Python: the test list (one `Test` per stem), the
-text assertions, the Tier 2 metric tolerances, the expected compile-error cases,
-the copyright/option validation variants, the pinned Typst version, and the
-golden raster DPI.
-
-Test kinds
-----------
-- ``twin``  matched ``NAME.tex`` (real LaTeX acmart) + ``NAME.typ`` (ours),
-            compared page-by-page; assets (bib, images) in ``tests/twins/``.
-- ``smoke`` Typst-only doc with no LaTeX twin: compiled (warning-free) and,
-            when deterministic, golden-hashed. Alias/feature paths the
-            matched twins don't cover.
-
-The Tier 1 goldens are captured with `TYPST_VERSION` + the bundled fonts at
-`GOLDEN_DPI`, rendered by the uv-pinned PyMuPDF (recorded in the golden header);
-bumping either means regenerating them (`tools/test.py accept`).
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# The engine the Tier 1 goldens were captured with. Bumping Typst means
-# regenerating the golden hashes (`tools/test.py accept`).
 TYPST_VERSION = "0.14.2"
 MIN_TYPST_VERSION = "0.14.0"
 
-# Raster resolution (dpi) for the Tier 1 page-hash snapshots.
 GOLDEN_DPI = 150
 
-# The nine active (non-alias) acmart formats and the base font sizes acmart
-# accepts (acmart.dtx:3063). The format×size compile sweep renders one small
-# representative document across every combination (45), asserting a clean,
-# warning-free compile — a cheap regression net for size-ladder / geometry code
-# paths that the twins (each at one size) don't individually visit.
 ACTIVE_FORMATS = (
     "manuscript", "acmsmall", "acmlarge", "acmtog", "sigconf",
     "sigplan", "acmengage", "sigchi-a", "acmcp",
 )
 SWEEP_FONT_SIZES = (8, 9, 10, 11, 12)
 
-# PDF document-information fields emitted by Typst's native `document` metadata.
-# acmart also sets PDF Subject from CCS concepts, but Typst currently exposes no
-# document-level subject field, so that one intentional engine limitation is not
-# listed here.
 METADATA_EXPECTATIONS: dict[str, dict[str, str]] = {
     "title-test": {
         "Title": "The Name of the Title Is Hope",
@@ -60,8 +27,6 @@ METADATA_EXPECTATIONS: dict[str, dict[str, str]] = {
         "Author": "Anonymous Author(s)",
         "Keywords": "datasets, anonymity",
     },
-    # Multilingual path: the PDF metadata carries the MAIN-language (French) title
-    # and keywords, not the English translation, and the sole author's name.
     "language-test": {
         "Title": "Une note sur la complexité de calcul",
         "Author": "Jean Dupont",
@@ -69,73 +34,33 @@ METADATA_EXPECTATIONS: dict[str, dict[str, str]] = {
     },
 }
 
-# Cross-engine semantic-metadata exemptions (Tier 1.55). Each entry maps a twin
-# to {field: reason} where LaTeX populates the field but Typst legitimately
-# diverges. Follows the house rule: a set-but-passing exemption fails. acmart
-# emits only /Title cross-engine and it matches everywhere, so this is empty.
+# Map fixture names to {metadata field: reason} for cross-engine exemptions.
 METADATA_CROSS_EXEMPTIONS: dict[str, dict[str, str]] = {}
 
-# Tier 2 gate tolerances (PDF points; both engines emit 1/72in big points).
-# Only robust, renderer-agnostic invariants are gated. Right margin and line
-# count depend on cross-engine line-breaking, so metrics report them but does
-# not gate on them.
-#
-# Right-margin ablation (2026-07, single-column justified twins, per page):
-# |Δright| median 0.29pt, p90 1.40pt, MAX 11.50pt; only 94/110 pages agree
-# within 1pt and 103/110 within 2pt. The `right` metric is the gap to the single
-# rightmost glyph on the page, so it is set by whatever juts furthest right — and
-# on ~15% of pages that is a RAGGED element (a figure/caption, a display
-# equation, or a paragraph's short last line) that legitimately differs across
-# engines (worst: sample-* p4 L=32.5 vs T=44.0 = 11.5pt). Gating it would need a
-# ~16-entry allowance table that would itself mask real regressions, so the right
-# margin stays report-only. (`left` is gated because the text block's LEFT edge is
-# pinned by every full line, not a lone ragged glyph.)
+# Lengths are PDF points.
+# Right margins and line counts are report-only because they depend on line breaking.
 METRICS_TOLERANCE = {
-    "left": 1.0,   # text-block left edge — true horizontal invariant, gated tightly
-    "top": 4.5,    # first baseline — loose: absorbs title-page variance, still
-                   # catches gross shifts
-    "pitch": 0.6,  # median baseline-to-baseline pitch — gated only with metrics_uniform_pitch
-    "line_pitch": 0.8,  # max single-line pitch deviation — gated with metrics_uniform_pitch
-                        # whose lines break identically across engines (so the per-line
-                        # pitch sequences align). Catches one mis-spaced line that the
-                        # median absorbs; skipped when line counts diverge.
-    "width": 0.5,   # MediaBox page width — a true cross-engine invariant, gated tightly
-    "height": 0.5,  # MediaBox page height — same
+    "left": 1.0,
+    "top": 4.5,
+    "pitch": 0.6,
+    "line_pitch": 0.8,
+    "width": 0.5,
+    "height": 0.5,
 }
 
-# Horizontal-rule gate (opt-in via Test.rule_gate). Each stroked/filled
-# horizontal rule the two engines draw is normalized to (thickness, colour,
-# x-midpoint, x-width) and bijectively matched per page. Vertical POSITION is
-# deliberately not gated: where a rule sits follows content flow, which golden /
-# metrics / word-position already own — this gate pins the rule's weight, colour,
-# and extent (booktabs \heavyrulewidth/\lightrulewidth, the footnote rule, the
-# acmcp foot rule). Thickness is matched with a 0.05pt tolerance rather than
-# rounded to a bucket, so a real weight difference (≥0.1pt, e.g. a swapped
-# heavy/light constant) is caught while sub-perceptual em-scaling noise (measured
-# 0.013pt on manuscript-stretch \cmidrules) is absorbed without a bucket-boundary
-# split.
-RULE_THICKNESS_TOL = 0.05  # pt — separates 0.45/0.72 weights, absorbs em-scale noise
-RULE_XMID_TOL = 1.5        # pt — a rule's horizontal centre is a tight invariant
-RULE_XWIDTH_TOL = 8.0      # pt — loose: absorbs cross-engine column-width jitter
-                           # (measured ≤6.8pt) while catching partial-vs-full rules
+RULE_THICKNESS_TOL = 0.05
+RULE_XMID_TOL = 1.5
+RULE_XWIDTH_TOL = 8.0
 
-# Per-word position gate (opt-in via Test.word_positions). Maximum tolerated
-# |Δx0| and, after subtracting each page's median vertical offset, |Δbaseline| over the
-# aligned word streams of the two engines. 1.25pt clears the measured floor on
-# every opted-in fixture (worst observed: fontsize-12 Δx 1.21pt, fn-test Δy
-# 0.65pt) while a lost indent/centering (≥ a space width) or a mis-spaced line
-# (≥ half a baseline) blows straight past it.
+# Allows measured font-metric drift while catching lost indents and shifted lines.
 WORD_POSITION_TOLERANCE = 1.25
 
 
 @dataclass(frozen=True)
 class Assertion:
-    """A targeted text-layer assertion for a noisy twin (Tier 1.5).
+    """A text assertion on a 1-based page, or the whole document when page is None.
 
-    ``engine``: which PDF(s) to scan — ``typst``, ``latex``, or ``both``.
-    ``kind``:   ``contains`` (text must be present) or ``absent`` (must not be).
-    ``page``:   1-based page to scan, or ``None`` for the whole document.
-    """
+    engine accepts typst, latex, or both; kind accepts contains or absent."""
 
     text: str
     kind: str = "contains"
@@ -145,21 +70,21 @@ class Assertion:
 
 @dataclass(frozen=True)
 class ExtractionArtifact:
-    """A tolerated mismatch caused by PDF extraction or layout-stream asymmetry."""
+    """A mismatch caused by PDF extraction."""
 
     reason: str
 
 
 @dataclass(frozen=True)
 class AcceptedTypstBehavior:
-    """A documented Typst-vs-LaTeX behavior difference we explicitly accept."""
+    """An accepted difference between the layout engines."""
 
     reason: str
 
 
 @dataclass(frozen=True)
 class TypstBug:
-    """A documented Typst-vs-LaTeX behavior difference that should be fixed."""
+    """A known implementation gap that still needs a fix."""
 
     reason: str
 
@@ -170,12 +95,7 @@ DIFF_CAUSE_TYPES = (ExtractionArtifact, AcceptedTypstBehavior, TypstBug)
 
 @dataclass(frozen=True)
 class ExpectedTextDiff:
-    """A documented, validated text fragment pair for an intentional mismatch.
-
-    These are for twins whose whole-document word or char bags cannot be exact:
-    ``latex`` and ``typst`` are coherent snippets from the extracted PDF text.
-    ``cause`` carries both the category and the local, human-readable reason.
-    """
+    """Extracted text fragments that locate and explain a known mismatch."""
 
     latex: str
     typst: str
@@ -185,12 +105,7 @@ class ExpectedTextDiff:
 
 @dataclass(frozen=True)
 class ExpectedFontDiff:
-    """A documented, validated fragment pair anchoring a font-gate exemption.
-
-    The snippets identify the content whose rendered font/size/shape differs.
-    They may normalize to the same text, because font differences often affect
-    the same glyphs rather than the extracted characters.
-    """
+    """Fragments identifying a font mismatch; the text itself may be identical."""
 
     latex: str
     typst: str
@@ -200,11 +115,7 @@ class ExpectedFontDiff:
 
 @dataclass(frozen=True)
 class ExpectedOrderDiff:
-    """A documented, validated fragment pair anchoring an order-gate exemption.
-
-    The snippets should show the LaTeX flat extraction order and the Typst
-    extracted/logical order that the harness intentionally tolerates.
-    """
+    """Fragments showing the differing extraction orders."""
 
     latex: str
     typst: str
@@ -214,21 +125,13 @@ class ExpectedOrderDiff:
 
 @dataclass(frozen=True)
 class ResidualSignatures:
-    """Exact hashes of accepted gate residuals for one twin.
-
-    Human-readable Expected*Diff entries explain and anchor a difference; these
-    hashes ensure that exemption accepts only the measured char/font/order delta,
-    not any future mismatch in the same document.
-    """
+    """Hashes restrict exemptions to the measured differences explained by Expected*Diff entries."""
 
     text: str = ""
     font: str = ""
     order: str = ""
 
 
-# Populated below the test matrix. Keeping signatures separate makes their role
-# explicit: they are machine snapshots, while Test.expected_*_diff is reviewable
-# evidence and rationale.
 EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
     "head-test": ResidualSignatures(text="e61c9d8eb269cb52ade4868fba91b818e0f3f792f0902c8e95e2454a72551a75", font="2671b03db39c20ed5865d5f0284006c62af694b45b74bbd62e229b0cf97bbc6b"),
     "acmcp-test": ResidualSignatures(text="1391876e63685b7da0e6a923dc6c4c106590930a70cdf4665088614cae243c44"),
@@ -255,7 +158,6 @@ EXPECTED_RESIDUALS: dict[str, ResidualSignatures] = {
 
 @dataclass(frozen=True)
 class ExpectedLinkDiff:
-    """Exact external-link multiset residual plus its rationale."""
 
     reason: str
     missing: tuple[str, ...] = ()
@@ -264,7 +166,6 @@ class ExpectedLinkDiff:
 
 @dataclass(frozen=True)
 class ExpectedDashDiff:
-    """Exact normalized dash-count residual plus its rationale."""
 
     reason: str
     latex_only: int = 0
@@ -294,22 +195,12 @@ EXPECTED_LINK_DIFFS: dict[str, ExpectedLinkDiff] = {
 
 @dataclass(frozen=True)
 class ExpectedOutlineDiff:
-    """Exact page-1 bookmark-target residual plus its rationale (Tier 1.95).
-
-    `moved` names every (bookmark title, LaTeX page, Typst page) triple the gate
-    accepts. Nothing else is waived: bookmark titles still have to match exactly,
-    any other page-1 bookmark leaving page 1 still fails, and a listed heading
-    that stops moving fails too, so the entry cannot outlive its cause.
-    """
+    """Accepted (title, LaTeX page, Typst page) moves for bookmarks anchored on page 1."""
 
     reason: str
     moved: tuple[tuple[str, int, int], ...]
 
 
-# Legitimate section-bookmark differences vs LaTeX (Tier 1.95). Bookmark TITLES
-# agree for every twin by construction (numbered-section restriction, quote
-# folding, LaTeX-depth capping), and no entry here can waive that; these record
-# page-1 targets that the documented vertical-fill gap pushes onto page 2.
 EXPECTED_OUTLINE_DIFFS: dict[str, ExpectedOutlineDiff] = {
     "sample-sigplan": ExpectedOutlineDiff(
         "microtype: pdfTeX's font expansion keeps \"Institute for Clarity in "
@@ -351,7 +242,7 @@ EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
 
 @dataclass(frozen=True)
 class MetricAllowance:
-    """One expected out-of-tolerance metric with a hard maximum delta."""
+    """An expected metric difference with a maximum permitted delta."""
 
     page: int
     key: str
@@ -370,53 +261,16 @@ EXPECTED_METRIC_DIFFS: dict[str, tuple[MetricAllowance, ...]] = {
 
 @dataclass(frozen=True)
 class Test:
-    """One test stem and how the gates treat it.
+    """A document fixture and its gate configuration.
 
-    Twin page counts must match unless ``expected_page_count_diff`` documents a
-    known mismatch. ``metrics_page1_only`` documents why Tier 2 metrics compare
-    only page 1 instead of all shared pages. ``metrics_uniform_pitch`` documents
-    why baseline pitch is meaningful enough to gate. ``text_equal`` /
-    ``expected_text_diffs`` / ``text_assertions`` drive Tier 1.5. ``note`` is
-    documentation only. Expected diff entries explain their cause with
-    ``ExtractionArtifact("...")`` for PDF extraction noise,
-    ``AcceptedTypstBehavior("...")`` for intentionally accepted Typst-vs-LaTeX
-    differences, or ``TypstBug("...")`` for known Typst-vs-LaTeX gaps that
-    should still be fixed.
+    kind is twin for a LaTeX/Typst pair or smoke for a Typst-only document.
+    text_equal selects normalized sequence equality (True), word-bag equality ("bag"), an explained exemption (False), or no selection (None).
+    Character, dash, font, link, and reading-order comparisons also run independently.
 
-    ``text_equal`` selects the Tier 1.5 whole-document text gate:
-    ``True`` exact normalized-sequence equality; ``"bag"`` exact word multiset
-    equality for extraction-order noise; ``False`` exempt with
-    ``expected_text_diffs``; ``None`` unset.
-
-    Independently of ``text_equal``, EVERY twin is also gated by exact character
-    and normalized-dash multisets. Expected differences carry both reviewable
-    evidence and an exact residual signature/count, so no exemption is blanket.
-
-    EVERY twin is ALSO gated by the Tier 1.8 per-letter FONT check (``font_bag``,
-    via PyMuPDF): each alphabetic character must render in the same family (serif/
-    sans/mono), weight, italic, size, and colour as LaTeX. ``expected_font_diffs``
-    exempt known font/content/math gaps and anchor them to PDF fragments.
-
-    EVERY twin is ALSO gated by the Tier 1.9 per-chunk reading-ORDER check
-    (``pdf_chunks``, via pikepdf): the tagged Typst PDF's logical chunks (title,
-    each author line, contact-info, headings, bib entries) must appear in the flat
-    LaTeX stream in the same intra-chunk order — catching an element emitted out of
-    order (an affiliation/email swap, a reordered citation field) that the
-    order-independent word/char bags cannot see. ``expected_order_diffs`` exempt
-    known extraction-order asymmetries and anchor them to PDF fragments.
-
-    EVERY twin's external hyperlink annotation multiset is compared against
-    LaTeX. ``EXPECTED_LINK_DIFFS`` records exact missing/extra multiplicities for
-    known differences.
-    Any test may also set minimum internal-link counts for targeted regressions;
-    those checks normalize LaTeX named /GoTo actions and Typst direct /Dest arrays.
-
-    EVERY twin's Tier 2 layout metrics are gated. ``expected_metrics_diff`` gives
-    the rationale while ``EXPECTED_METRIC_DIFFS`` names the exact page/key
-    failures and caps each accepted delta.
-    ``golden_exempt`` removes a test from the Typst raster golden set, and must
-    explain why the rendered PDF is not golden-pinned.
-    """
+    Expected differences require a cause, supporting fragments or counts, and a bounded residual.
+    They must fail if the difference disappears or exceeds its allowance.
+    metrics_uniform_pitch and metrics_page1_only carry reasons for restricting layout comparisons.
+    golden_exempt explains why a document cannot use raster goldens; note is descriptive only."""
 
     kind: str
     pages: int
@@ -462,15 +316,9 @@ class Test:
 
     @property
     def subdir(self) -> str:
-        """Tests live in tests/<subdir>/: ``twins`` for the matched
-        ``NAME.tex``+``NAME.typ`` pairs, ``typst-only`` for everything else
-        (smoke docs and the upstream-ref port, which have no local ``.tex``)."""
         return "twins" if self.kind == "twin" else "typst-only"
 
 
-# Full bundled samples are broad integration fixtures. Focused twins above gate
-# the exact geometry, fonts, order, and bibliography details; these samples keep
-# only the gates that are meaningful for their current extraction profile.
 _FULL_SAMPLE_FONT_EVIDENCE = (
     ExpectedFontDiff(
         latex="A formula that appears in the running text",
@@ -481,10 +329,7 @@ _FULL_SAMPLE_FONT_EVIDENCE = (
     ),
 )
 
-# The CCS concept list separates an area from its specifics with
-# "\textrightarrow\ " (acmart.dtx:6076) — a math arrow with an ordinary space on
-# each side, exactly what the port emits. PyMuPDF glues LaTeX's space onto the
-# arrow's math box and drops it, so the arrow and the following word arrive fused.
+# PDF extraction can fuse the CCS arrow with the following word when it loses the intervening space.
 _CCS_ARROW_TEXT_EVIDENCE = (
     ExpectedTextDiff(
         latex="Do Not Use This Code →Generate the Correct Terms",
@@ -539,14 +384,8 @@ _ALIAS_GOLDEN_EXEMPT = (
     "Compile-only alias smoke; sigconf-test owns the rendered layout golden."
 )
 
-# --- The test matrix -------------------------------------------------------
-#
-# Order is the run/report order. Twins come first, then smoke-only docs.
 TESTS: dict[str, Test] = {
-    # Not word_positions-opted: Typst and TeX pack this justified paragraph with
-    # slightly different line breaks (a word wraps a line early/late, measured Δx
-    # up to 379pt), an accepted engine difference; the uniform-pitch metric gate
-    # still pins its baseline grid.
+    # Word positions are unsuitable here because line breaks differ across engines.
     "body-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_UNIFORM_PITCH_METRICS,
         text_equal=True,
@@ -588,9 +427,7 @@ TESTS: dict[str, Test] = {
         kind="twin", pages=1, rule_gate=_RULE_BOOKTABS,
         note="figure & table captions, theorems (plain/definition/proof+QED), lists",
     ),
-    # Not word_positions-opted: a theorem-body line sits ~6pt off the page's
-    # median vertical offset (the known amsthm head/indent gap, DESIGN.md), so the
-    # per-word residual-y check would flag an already-documented approximation.
+    # The theorem baseline residual exceeds the word-position tolerance.
     "theorem-transition-test": Test(
         kind="twin", pages=1, text_equal=True,
         note="theorem numbering survives section-star/acks; add-punct honors ,;:",
@@ -649,11 +486,6 @@ TESTS: dict[str, Test] = {
     ),
     "manuscript-pages-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
-        # timestamp mode: LaTeX embeds the compile HH:MM in the footer, which Typst
-        # (no wall-clock access) omits — so the word bag cannot be exact. The char
-        # residual + the page-2 slug assertion still gate the footer content: with
-        # timestamp on, the "Manuscript submitted to ACM" slug on page 2 comes from
-        # the timestamp branch ([RO,LE]), so that assertion guards it.
         text_equal=False,
         expected_text_diffs=(
             ExpectedTextDiff(
@@ -815,9 +647,7 @@ TESTS: dict[str, Test] = {
         word_positions=_WORD_POSITIONS, text_equal=True,
         note="Base font-size option `9pt`.",
     ),
-    # fontsize-11-test is NOT word_positions-opted: the "LaTeX" logo in its body
-    # wraps to a different line than LaTeX (measured Δx up to 366pt), an accepted
-    # engine line-break difference the per-word gate cannot absorb.
+    # The logo can wrap to a different line, preventing word-position comparison.
     "fontsize-11-test": Test(
         kind="twin", pages=1, metrics_uniform_pitch=_FONT_SIZE_PITCH_METRICS,
         text_equal=True,
@@ -858,8 +688,7 @@ TESTS: dict[str, Test] = {
         kind="smoke", pages=1,
         text_assertions=(
             Assertion(engine="typst", text="Body"),
-            # "37" can only be a ruler number here: the body has no numerals and
-            # the section number is 1.
+            # This number can only come from the review ruler.
             Assertion(engine="typst", text="37", kind="absent"),
         ),
         note="review ruler follows the running head: suppressing the head takes the "
@@ -879,7 +708,6 @@ TESTS: dict[str, Test] = {
         kind="smoke", pages=1,
         text_assertions=(
             Assertion(engine="typst", text="References"),
-            # numbers must resolve (regression: the convergence edge left them "?")
             Assertion(engine="typst", text="[1]"),
             Assertion(engine="typst", text="[8]"),
         ),
@@ -917,7 +745,6 @@ TESTS: dict[str, Test] = {
     "biblatex-uniquename": Test(
         kind="twin", pages=2, text_equal=True,
         text_assertions=(
-            # uniquename: nothing / initials / the whole given name, picked per name.
             Assertion(engine="both", text="[E. Doe 2008; J. Doe 2008]"),
             Assertion(engine="both", text="[Kaur 2014; P. Kaur 2014]"),
             Assertion(engine="both", text="[Rita Fox 2012; Robert Fox 2012]"),
@@ -926,9 +753,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="[J. Fig and M. Fig 2019]"),
             Assertion(engine="both", text="[Delta 2021; Zulu et al. 2021]"),
             Assertion(engine="both", text="[J. Nutmeg 2016; S. Nutmeg et al. 2016]"),
-            # …and the year letter that is used when no name part disambiguates.
             Assertion(engine="both", text="[Brown 2010a,b]"),
-            # uniquelist: widen past maxcitenames, but only as far as it takes.
             Assertion(engine="both", text="[Vogel, Acid, et al. 2001; Vogel, Beast, and "
                       "Garble 2000; Vogel, Beast, and Tremble 2000]"),
             Assertion(engine="both", text="[Prime and Quartz 2018; Prime, Quartz, et al. 2018]"),
@@ -936,11 +761,9 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="[Coral et al. 2022a,b]"),
             Assertion(engine="both", text="[Ackee, Balsa, and Cocoa 2024a,b; Ackee, Balsa, "
                       "Cocoa, and Dill 2024]"),
-            # the two features feeding each other, in both directions
             Assertion(engine="both", text="[Jane Hill et al. 2005; John Hill et al. 2005]"),
             Assertion(engine="both", text="[Oak, Pine, and C. Quill 2003; Oak, Pine, and "
                       "D. Quill 2003]"),
-            # a list the .bib truncated with "and others"
             Assertion(engine="both", text="[Alpha, Beta, et al. 2005; Chi, Drum, Eta, et al. "
                       "2006; Chi, Drum, Eta, and Phi 2006]"),
             Assertion(engine="both", text="[Lime et al. 2020; O. Nib 2020]"),
@@ -966,43 +789,27 @@ TESTS: dict[str, Test] = {
                       "\"A carefully specified widget.\" (May 4, 2020). "
                       "Utility Patent Patent No. US-123456"),
             Assertion(engine="both", text="Holding Company. Filed electronically. doi:10.1000/patent"),
-            # a list field prints with the list's own punctuation: an "and" between
-            # two items, commas and a final "and" beyond that
             Assertion(engine="both", text="A book with several publishers. First Press and "
                       "Second Press, Bern, Basel, and Bonn."),
             Assertion(engine="both", text="A report from several institutions. Tech. rep. "
                       "First Institute, Second Institute, and Third Institute, Kiel"),
-            # a case-protecting brace hides no punctuation: the tracker reads the
-            # last VISIBLE character, in the entry title, the booktitle and the
-            # maintitle alike
             Assertion(engine="both", text="Ann Protect. 2022. “A title ending in protected "
                       "JSON: The continuation.” J."),
             Assertion(engine="both", text="In: A doubled book title: The book continuation, 1–9."),
             Assertion(engine="both", text="Cleo Mainline, (Ed.) . 2022. A main title ending in "
                       "protected XML: Component."),
-            # a container title ending in a stop keeps the next separator out — and
-            # that stop is a sentence one, so the pages' comma gives way too
             Assertion(engine="both", text="In: Proceedings of the Example Conf. "
                       "Ed. by Emil Chair. Conf Press."),
             Assertion(engine="both", text="In: Proceedings of the Example Conf. 1–9."),
-            # a canonical language identifier prints as its localization string; one
-            # with no string of its own prints literally
             Assertion(engine="both", text="A proceedings in two languages. English and klingon."),
-            # an organization leading an entry is a list like any other
             Assertion(engine="both", text="First Society, Second Society, and Third Society . 2024. "
                       "An organization-led manual."),
-            # with no author the report and thesis drivers lead with the LABEL
-            # title and print the date behind it; the quoted title swallows that
-            # separator whole, so the year sits against the closing quote
             Assertion(engine="both", text="A nameless report. 2025. Tech. rep. Nameless Institute."),
             Assertion(engine="both", text="“A nameless thesis. ”2025. “With a subtitle of its own.” "
                       "Ph.D. Dissertation. Nameless University."),
-            # the label title is the short title when there is one, and the full
-            # title is left for the driver's own stage
             Assertion(engine="both", text="Short report. 2025. A report with a long title. "
                       "Tech. rep. Short Institute."),
             Assertion(engine="both", text="[Short report 2025]"),
-            # …and that date is the label date, missing or lettered like any other
             Assertion(engine="both", text="A dateless report. N.d. Tech. rep. Dateless Institute."),
             Assertion(engine="both", text="A shared report title. 2026a. Tech. rep. First Institute."),
             Assertion(engine="both", text="A shared report title. 2026b. Tech. rep. Second Institute."),
@@ -1023,13 +830,10 @@ TESTS: dict[str, Test] = {
                       "Trans. by Tina Translator."),
             Assertion(engine="both", text="Pat Inventor. 2020. A carefully specified widget. "
                       "(May 4, 2020). Utility Patent Patent No. US-123456"),
-            # the same list punctuation under the numeric style; the patent's own
-            # country list above keeps its bare commas
             Assertion(engine="both", text="A book with several publishers. First Press and "
                       "Second Press, Bern, Basel, and Bonn."),
             Assertion(engine="both", text="A report from several institutions. Tech. rep. "
                       "First Institute, Second Institute, and Third Institute,"),
-            # the same punctuation reading under the numeric style
             Assertion(engine="both", text="Ann Protect. 2022. A title ending in protected "
                       "JSON: The continuation. J."),
             Assertion(engine="both", text="In A doubled book title: The book continuation, 1–9."),
@@ -1040,8 +844,6 @@ TESTS: dict[str, Test] = {
                       "(2023)."),
             Assertion(engine="both", text="First Society, Second Society, and Third Society. 2024. "
                       "An organization-led manual."),
-            # the numeric style leads with the year wherever the name is missing,
-            # so these entries are untouched by the author-year label-title lead
             Assertion(engine="both", text="2025. A nameless report. Tech. rep. Nameless Institute."),
             Assertion(engine="both", text="2025. A nameless thesis. With a subtitle of its own. "
                       "Ph.D. Dissertation. Nameless University."),
@@ -1053,48 +855,25 @@ TESTS: dict[str, Test] = {
     "biblatex-names-test": Test(
         kind="twin", pages=2, text_equal=True,
         text_assertions=(
-            # nosort: a two-letter dash-joined prefix leaves the name part before
-            # biber compares it, whatever its case, so each files under the stem
             Assertion(engine="both",
                       text="[Abe 2001; Æ-Zed 2001; Fox 2001; al-Hakim 2001; de-Zed 2001]"),
             Assertion(engine="both", text="[Ibn-Sina 2001]"),
-            # …and a dash the braces protect is not that pattern's dash at all
             Assertion(engine="both", text="[Abe 2001; de-Wolf 2001; Fox 2001]"),
-            # …and the filter is scoped to name lists, so a title keeps its prefix
-            # and files under it, between Abe and Fox
             Assertion(engine="both",
                       text="de-Zulu keeps its prefix in a title. (2001). ínigo Dotless."),
             Assertion(engine="both", text="Alice de-Zed. 2001."),
-            # noinit: the initial is read off the raw name, after a LOWERCASE
-            # dash-joined prefix goes
             Assertion(engine="both", text="P. Quirk R. Quirk D.-P. Rho D. Rho"),
-            # a braced given name is one word, a braced hyphen does not split it,
-            # and a plain hyphen does
             Assertion(engine="both", text="J. Sage K. Sage"),
             Assertion(engine="both", text="H. Tell O. Tell"),
             Assertion(engine="both", text="J.-P. Vane K. Vane"),
-            # a character command is one letter to both filters, so it keeps the
-            # prefix nosort would take and becomes the initial itself
             Assertion(engine="both", text="æ.-P. Zeta R. Zeta"),
-            # …and so is an accent, whichever braces protect it
             Assertion(engine="both", text="Ö.-P. Yew R. Yew"),
-            # an initial opening with a diacritic takes the letter behind it too
             Assertion(engine="both", text="‘A. Ward B. Ward"),
-            # …but two marks are two characters to biber, and the one quote
-            # they typeset as is the whole initial; a third is never counted
             Assertion(engine="both", text="left out of the count “. Ward “. Xu B. Xu"),
-            # the period belongs to the initial in an ordinary citation too,
-            # where biblatex prints \bibinitperiod exactly as \citeauthor does
             Assertion(engine="both", text="[“. Ward 2018; ‘A. Ward 2016; B. Ward 2017]"),
-            # …and loses it behind an earlier entry, where the punctuation the
-            # separator left standing is what biblatex's \adddot reads
             Assertion(engine="both", text="[Abe 2001; “ Ward 2018]"),
-            # …while a label that merely OPENS with a period — a title, not a
-            # generated initial — keeps it wherever it sits
             Assertion(engine="both",
                       text="[!Bang at the front 2044; .NET at the front 2043]"),
-            # one name spelled two ways is one author, lettered a/b — including
-            # an accent over a dotless \i, which is the dotted letter accented
             Assertion(engine="both", text="[Normalize 2019a,b]"),
             Assertion(engine="both", text="[Dotless 2020a,b]"),
             Assertion(engine="both", text="Fay Æ-Zed. 2001."),
@@ -1104,17 +883,13 @@ TESTS: dict[str, Test] = {
     "biblatex-names-numeric-test": Test(
         kind="twin", pages=2, text_equal=True,
         text_assertions=(
-            # the same sort order, read off the numeric labels
             Assertion(engine="both", text="[3, 4, 31, 8, 7]"),
             Assertion(engine="both", text="[3, 5, 7]"),
             Assertion(engine="both", text="[9]"),
             Assertion(engine="both", text="[4] Fay Æ-Zed."),
             Assertion(engine="both", text="[31] Alice de-Zed."),
-            # the two spellings still sort and number as two entries; only the
-            # author they share is one, which acmnumeric never has to show
             Assertion(engine="both", text="[13, 12]"),
             Assertion(engine="both", text="[10, 11]"),
-            # acmnumeric disambiguates no cite label, so no initial is printed
             Assertion(engine="both", text="Quirk Quirk Rho Rho"),
             Assertion(engine="both", text="Zeta Zeta"),
             Assertion(engine="both", text="Yew Yew"),
@@ -1124,21 +899,17 @@ TESTS: dict[str, Test] = {
     "biblatex-fields-test": Test(
         kind="twin", pages=4, text_equal=True,
         text_assertions=(
-            # a `date` field carries its day everywhere, including the label date
             Assertion(engine="both", text='Ada Adams. June 14, 2026. "An article dated to '
                       'the day." Journal of Dates, (June 14, 2026).'),
             Assertion(engine="both", text="Gus Grant. Jan. 5, 2026. A misc dated in an "
                       "abbreviated month. (Jan. 5, 2026)."),
             Assertion(engine="both", text="Eve Ellis. June 2026. A misc dated to the month. "
                       "(June 2026)."),
-            # …but a `day` FIELD does not: biber nulls it
             Assertion(engine="both", text="Fay Foster. June 2026. A misc with a day field "
                       "biber drops. (June 2026)."),
-            # a `date` OUTRANKS the legacy year and month, component by component
             Assertion(engine="both", text="[Ingle 2026]"),
             Assertion(engine="both", text="Ivy Ingle. June 14, 2026. A date beside the legacy "
                       "fields it overwrites. (June 14, 2026)."),
-            # a range prints both ends, each dropping what the other already says
             Assertion(engine="both",
                       text="[Joyner 2024; Kirby 2024–2025; Mabry 2020–2022]"),
             Assertion(engine="both", text="[Lyman 2025–]"),
@@ -1146,26 +917,20 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Kay Kirby. Jan. 2, 2024–Mar. 4, 2025."),
             Assertion(engine="both", text="Lou Lyman. May 6, 2025–."),
             Assertion(engine="both", text="Mel Mabry. 2020–2022."),
-            # an open START leaves the year empty rather than missing, and a
-            # range open at both ends is no date at all
             Assertion(engine="both", text="[Nesbit –2025]"),
             Assertion(engine="both", text="[Orwell n.d.]"),
             Assertion(engine="both", text="Nan Nesbit. –May 6, 2025. A range with an open "
                       "start. (–May 6, 2025)."),
             Assertion(engine="both", text="Ott Orwell. N.d. A range open at both ends. ()."),
-            # …but a legacy year answers that start, and the range closes
             Assertion(engine="both", text="[Pruitt 1999–2026]"),
             Assertion(engine="both", text="Pia Pruitt. Jan. 1999–June 14, 2026. An open start "
                       "the legacy fields answer. (Jan. 1999–June 14, 2026)."),
-            # a legacy MONTH reaches an open start without closing it…
             Assertion(engine="both", text="[Quayle –2026]"),
             Assertion(engine="both", text="Rex Quayle. Jan. –June 14, 2026. An open start a "
                       "legacy month reaches. (Jan. –June 14, 2026)."),
-            # …and a date string biber cannot read is ignored, range and all
             Assertion(engine="both", text="[Rhodes 1998]"),
             Assertion(engine="both", text="Sal Rhodes. Mar. 1998. A date field that is not one. "
                       "(Mar. 1998)."),
-            # a `type` field naming a localization string prints that string
             Assertion(engine="both", text="A techreport with no type of its own. Tech. rep. "
                       "Type Institute, Kiel."),
             Assertion(engine="both", text="A report with no type of its own. Type Institute, Kiel."),
@@ -1178,55 +943,37 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text='"A patent typed as a US patent." (2001). U.S. pat. '
                       "Patent No. US-2."),
             Assertion(engine="both", text="A report with a free-text type. Working Note."),
-            # the editor and organization leads acmauthoryear leaves a space before
             Assertion(engine="both", text="Uma Upton, (Ed.) . 2001. A book led by one editor."),
             Assertion(engine="both", text="Van Vance and Wes Walton, (Eds.) . 2001."),
             Assertion(engine="both", text="Lead Org . Mar. 2001. A manual led by an organization."),
-            # …and the drivers whose name macro cannot reach an editor at all
             Assertion(engine="both", text='"An article whose editor cannot lead." Journal of '
                       "Leads. Ed. by Ana Abbott."),
             Assertion(engine="both", text="Xia Xu. 2001. A book with an author and an editor. "
                       "Ed. by Yin Young."),
-            # maxbibnames: nine names in full, ten cut to the first plus "et al."
             Assertion(engine="both", text="Ann Ash, Bo Birch, Cy Cedar, Di Dogwood, Ed Elm, "
                       "Fay Fir, Gus Gum, Hal Holly, and Ivy Ivy. 2001."),
             Assertion(engine="both", text='Jo Juniper et al.. 2001. "Ten authors cut to one."'),
             Assertion(engine="both", text="Cam Cherry et al., (Eds.) . 2001. Ten editors cut to one."),
             Assertion(engine="both", text="Zed Zelkova, Abe Alder, Bea Beech, et al.. 2001."),
-            # a truncated list ends in a stop of its own, in every list a driver
-            # prints — here only acmauthoryear's own literal period follows it
             Assertion(engine="both", text="Ann Alpha et al.. 2001. A truncated dataset name list."),
             Assertion(engine="both", text="Trans. by Pat Pi et al. Journal of Names."),
             Assertion(engine="both", text="Patent No. US-9. Rex Rho et al."),
             Assertion(engine="both", text="Tia Tau et al. A Host Book."),
-            # a character macro sorts as the character, between its two anchors
-            # (in two halves: a page folio falls between them in the text layer)
             Assertion(engine="both", text="[Adept anchors the ae expansion 2001; æsop expands to "
                       "ae 2001; Alpha closes the a run 2001; Lima anchors the l expansion 2001; "
                       "łodz expands to l 2001; Luna closes the l run 2001; Smith anchors the ss "
                       "expansion"),
             Assertion(engine="both", text="ßmith expands to ss 2001; Szabo closes the s run 2001]"),
-            # the delimiter whitespace belongs to the command, so the key is
-            # "aespace…" and files behind "aesop…", not ahead of "adept…"
             Assertion(engine="both", text="[æspace delimits the command 2001]"),
-            # …and the case the macro carries is the tertiary difference biber
-            # resolves, uppercase first
             Assertion(engine="both", text="[Æon files by macro case 2001; æon files by "
                       "macro case 2001]"),
-            # whitespace between an accent or character command and what follows
-            # it is the delimiter, not a character of the title
             Assertion(engine="both", text='Abe Ashby. 2001. "ßtrasse DATA behind a space."'),
-            # the type strings the table used to be missing
             Assertion(engine="both", text='"A thesis typed as a bachelor thesis." BA thesis.'),
             Assertion(engine="both", text='"A patent typed as a plain request." (2001). Pat. req.'),
             Assertion(engine="both", text='"A patent typed as a US request." (2001). U.S. pat. req.'),
-            # uniquename and uniquelist are on here, and the prefix is dropped
-            # a "??" value is the .bst's missing-value marker, not biblatex's:
-            # the BibLaTeX drivers print it like any other field text
             Assertion(engine="both", text="Vic Vance. 2001. A field the .bst would call "
                       "unknown. Real value. ??unknown."),
             Assertion(engine="both", text="a missing-value marker [Vic Vance 2001]"),
-            # …and a nameless entry labels on that title, marker and all
             Assertion(engine="both",
                       text="still labels its own citation [??unknown 2013]"),
             Assertion(engine="both", text="References ??unknown. (2013)."),
@@ -1240,8 +987,6 @@ TESTS: dict[str, Test] = {
     "biblatex-fields-numeric-test": Test(
         kind="twin", pages=3, text_equal=True,
         text_assertions=(
-            # \MakeSentenceCase*: the FIRST character is uppercased and every other
-            # letter lowercased, so a title opening with anything else keeps none.
             Assertion(engine="both", text="Dan Doyle. 2001. 3 ways of counting things."),
             Assertion(engine="both", text="Eli Emery. 2001. 3d rendering explained again."),
             Assertion(engine="both", text="Fern Floyd. 2001. 3D rendering explained once more."),
@@ -1251,12 +996,8 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Joy Jenkins. 2001. One two three four five."),
             Assertion(engine="both", text="Kit Kramer. 2001. A study. another sentence entirely."),
             Assertion(engine="both", text="Lou Lawson. 2001. The ACM way of doing things."),
-            # a control symbol that IS a character takes the first-character slot,
-            # so the word behind it is lowercased like any other
             Assertion(engine="both", text="Ann Amper. 2001. & data at the front."),
             Assertion(engine="both", text="Bud Percy. 2001. % data at the front."),
-            # the numeric lead is the start year alone; the range lives in the
-            # parenthesized date
             Assertion(engine="both", text="Ivy Ingle. 2026. A date beside the legacy fields it "
                       "overwrites. (June 14, 2026)."),
             Assertion(engine="both", text="Jan Joyner. 2024. A range inside one year. "
@@ -1266,8 +1007,6 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Lou Lyman. 2025. A range with an open end. "
                       "(May 6, 2025–)."),
             Assertion(engine="both", text="Mel Mabry. 2020. A range of bare years. (2020–2022)."),
-            # the empty year field prints as nothing, where a missing date
-            # prints the "[n. d.]" stand-in
             Assertion(engine="both", text="Nan Nesbit. A range with an open start. "
                       "(–May 6, 2025)."),
             Assertion(engine="both", text="Ott Orwell. [n. d.] A range open at both ends. ()."),
@@ -1277,19 +1016,13 @@ TESTS: dict[str, Test] = {
                       "(Jan. –June 14, 2026)."),
             Assertion(engine="both", text="Sal Rhodes. 1998. A date field that is not one. "
                       "(Mar. 1998)."),
-            # a command that prints nothing, or only a space, leaves the
-            # first-character slot to the word behind it
             Assertion(engine="both", text="Cleo Ryder. 2001. Data at the front."),
             Assertion(engine="both", text="Dot Sawyer. 2001. Data at the front."),
             Assertion(engine="both", text="Eli Tanner. 2001. Data at the front."),
             Assertion(engine="both", text="Fitz Usher. 2001. Data at the front."),
             Assertion(engine="both", text="Mae Mendez. 2001. Étude on accented starts."),
-            # acmnumeric's \labelnamepunct is absorbed after an editor lead, so the
-            # space acmauthoryear leaves there is not doubled by a period here
             Assertion(engine="both", text="Uma Upton, (Ed.) 2001. A book led by one editor."),
             Assertion(engine="both", text="[37] Jo Juniper et al. 2001. Ten authors cut to one."),
-            # a letter-named accent leaves the letter behind it to be cased, and a
-            # command that IS a character takes the slot and is cased with it
             Assertion(engine="both", text="Tao Tucker. 2001. Čase data every minute."),
             Assertion(engine="both", text="Uma Ulrich. 2001. Çedilla data every second."),
             Assertion(engine="both", text="Quin Quill. 2001. Æsop fable every year."),
@@ -1297,7 +1030,6 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Sal Sutton. 2001. Italic data every month."),
             Assertion(engine="both", text="Val Vernon. 2001. Data čase and æsop every so often."),
             Assertion(engine="both", text="Wyn Waller. 2001. æsop fable every decade."),
-            # …and the same truncation and expansion, sentence-cased
             Assertion(engine="both", text="Ann Alpha et al. A truncated dataset name list."),
             Assertion(engine="both", text="Trans. by Pat Pi et al. Journal of Names."),
             Assertion(engine="both", text="Patent No. US-9. Rex Rho et al."),
@@ -1311,12 +1043,9 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Yan Yeager. 2001. Æsop fable behind a space."),
             Assertion(engine="both", text="Zoe Zamora. 2001. Öpen data behind a space."),
             Assertion(engine="both", text="Abe Ashby. 2001. Sstrasse data behind a space."),
-            # an accent is a character wherever the braces sit, and a control
-            # WORD in braces stays protected
             Assertion(engine="both", text="Nia Newton. 2001. Öpen data every day."),
             Assertion(engine="both", text="Oli Osgood. 2001. Öpen data every night."),
             Assertion(engine="both", text="Pia Prewitt. 2001. ßpen data every hour."),
-            # acmnumeric enables neither uniquename nor uniquelist, and keeps the prefix
             Assertion(engine="both", text="Vic Vance. 2001. A field the .bst would call "
                       "unknown. Real value. ??unknown."),
             Assertion(engine="both", text="a missing-value marker [87]"),
@@ -1330,50 +1059,38 @@ TESTS: dict[str, Test] = {
     "biblatex-sort-test": Test(
         kind="twin", pages=2, text_equal=True,
         text_assertions=(
-            # useprefix off: a prefix files under the family name and only
-            # breaks a tie behind the given name and the suffix.
             Assertion(engine="both", text="Bo Bachman. 2001. “Bachman on prefixes.” J. "
                       "Ludwig van Beethoven. 2001. “Beethoven on prefixes.” J. "
                       "Al Berg. 2001. “Berg on prefixes.” J. "
                       "Jan Berg. 2001. “Another Berg on prefixes.” J. "
                       "Jan van Berg. 2001. “A third Berg on prefixes.” J."),
-            # the suffix key part, and the extradate letters the order hands out
             Assertion(engine="both", text="Martin King. 2001a. “King without a suffix.” J. "
                       "Martin King Jr.. 2001b. “King the younger.” J. "
                       "Martin King Sr.. 2001c. “King the elder.” J."),
             Assertion(engine="both", text="[King 2001a; King 2001b; King 2001c]"),
-            # name part padding: the second name decides both comparisons
             Assertion(engine="both", text="Al Ash and Cy Bo. 2001. “Padding with two names.” J. "
                       "Alan Ash. 2001. “Padding with one name.” J. "
                       "Zed Ash and Dee Cy. 2001. “Padding a shorter family name.” J. "
                       "Zed Ashby. 2001. “Padding a longer family name.” J."),
-            # presort, then the `key` field as sortkey, then sorttitle, then sortname
             Assertion(engine="both", text="Mid Mid. 2001. “Filed first by its presort.” J. "
                       "Zebra opening on a tie. (2001). "
                       "Shelved by the key Aaa, not by this. (2001). "
                       "Ranged by a sorttitle of Aab. (2001). "
                       "Zed Zeta. 2001. “Filed under its sortname.” J."),
-            # a tie weighs below the letters, as every symbol does under the UCA
             Assertion(engine="both", text="“Filed first by its presort.” J. Zebra opening on a tie."),
-            # the integer slots: signed, then falling back on `year` for a "0",
-            # then the sentinel for a value that is no number at all
             Assertion(engine="both", text="Ivo Int. 2101. “An integer tie-breaker.” J. "
                       "Ivo Int. 2102. “An integer tie-breaker.” J. "
                       "Ivo Int. 2103. “An integer tie-breaker.” J. "
                       "Ivo Int. 2104. “An integer tie-breaker.” J."),
-            # a nameless entry files under its title, among the named ones
             Assertion(engine="both", text="Middle of the pack, another nameless entry. (2001). "
                       "Nia Noe. 2001. “Noe among the nameless.” J."),
-            # a translator is not a labelname, so the title stands in
             Assertion(engine="both", text="Sy Sort. 2009. “Filed under its sortyear.” J. "
                       "The one with a sortyear of its own. "
                       "Sy Sort. 2001. “Filed under its sortyear.” J. "
                       "The one falling back on its year. "
                       "Sorted under its title, not its translator."),
-            # punctuation stays in the key and weighs below the letters
             Assertion(engine="both", text="[O’BrienStudy with an apostrophe 2001; "
                       "ObrienStudy without punctuation 2001]"),
-            # year and volume as integers: roman resolved, missing sorts last
             Assertion(engine="both", text="Vi Vol. 2001a. “A volume tie-breaker.” J. "
                       "Vi Vol. 2001b. “A volume tie-breaker.” J, 2. "
                       "Vi Vol. 2001c. “A volume tie-breaker.” J, IV. "
@@ -1382,7 +1099,6 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Yo Year. 2001. “A year tie-breaker.” J. "
                       "Yo Year. 2003. “A year tie-breaker.” J. "
                       "Yo Year. N.d. “A year tie-breaker.” J."),
-            # case separates what nothing else can, uppercase first
             Assertion(engine="both", text="Zebracrossing. (2001). zebracrossing. (2001)."),
         ),
         note="biber's nty sorting template under acmauthoryear, where a name "
@@ -1391,8 +1107,6 @@ TESTS: dict[str, Test] = {
     "biblatex-sort-numeric-test": Test(
         kind="twin", pages=2, text_equal=True,
         text_assertions=(
-            # useprefix ON: the same names file under their prefix instead, so
-            # every "van" lands past Valois at the end of the V run.
             Assertion(engine="both", text="[11] Bo Bachman. 2001. Bachman on prefixes. J. "
                       "[12] Al Berg. 2001. Berg on prefixes. J. "
                       "[13] Jan Berg. 2001. Another berg on prefixes. J. "
@@ -1401,9 +1115,7 @@ TESTS: dict[str, Test] = {
                       "[37] Ludwig van Beethoven. 2001. Beethoven on prefixes. J."),
             Assertion(engine="both", text="[38] Jan van Berg. 2001. A third berg on prefixes. J."),
             Assertion(engine="both", text="[39] Ann van Zorn. 2001. Zorn on prefixes. J."),
-            # acmnumeric prints ACM's own undated stand-in and no extradate letters
             Assertion(engine="both", text="[48] Yo Year. [n. d.] A year tie-breaker. J."),
-            # the tie files second, right behind the entry a presort pulls first
             Assertion(engine="both", text="[2] 2001. zebra opening on a tie."),
         ),
         note="the same fixtures under acmnumeric, which inherits useprefix=true "
@@ -1412,48 +1124,33 @@ TESTS: dict[str, Test] = {
     "biblatex-stages-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(
-            # the title addon rides with its title; the container's runs straight
-            # on, which is what the ACM styles do
             Assertion(engine="both", text="Fay Addon. 2001. “A titled article.” "
                       "Extended abstract. J."),
             Assertion(engine="both", text="In: A host bookExtended proceedings, 1–9."),
-            # a main title leads and takes the volume with it
             Assertion(engine="both", text="A main title. Vol. 3.B: A subtitle-bearing "
                       "proceedings. Ti Press, Bern."),
-            # the language and translator stages, and an addon-only event, which
-            # author-year prints
             Assertion(engine="both", text="A translated proceedings. French. "
                       "Trans. by Xena Xavier."),
             Assertion(engine="both", text="An addon-only event. Special Session."),
-            # a comma follows an abbreviation dot only through a starred unit
             Assertion(engine="both", text="Comput. Society. Pn Press."),
             Assertion(engine="both", text="A series that ends in a dot. Ser Series."),
-            # \\mkpagetotal: an integer takes the page string, anything else none
             Assertion(engine="both", text="A pagetotal with a leading zero. 01 p."),
             Assertion(engine="both", text="A pagetotal that is no integer. 1-1."),
-            # an event with no title of its own is the parentheses alone
             Assertion(engine="both", text="A venue and nothing else (Paris)."),
-            # a title family prints whatever components it has
             Assertion(engine="both", text="Bob Add. 2004. An addon with no title."),
             Assertion(engine="both", text="Ann Sub. 2003. A subtitle with no title."),
-            # the maintitle hierarchy: a period without a volume, a colon with
-            # one, an addon riding along, and one copy of an equal title
             Assertion(engine="both", text="Mia Marsh, (Ed.) . 2006. Main. Component."),
             Assertion(engine="both", text="Nia Nolan, (Ed.) . 2007. Main. Vol. 2: Component."),
             Assertion(engine="both", text="Pia Pike, (Ed.) . 2009. Main. Main addon. Component."),
             Assertion(engine="both", text="Ola Owens, (Ed.) . 2008. Same. Vol. 2."),
-            # a language field is a list, and an addon behind a colon takes a space
             Assertion(engine="both", text="Three languages. English, French, and German."),
             Assertion(engine="both", text="Kim Colon. 2014. Title: Addon."),
-            # a title component that ends in a colon takes a space where another
-            # takes a period, and adds no stop of its own inside the quotes
             Assertion(engine="both", text="Ann Kolon. 2017. “A title ending in a colon:” J."),
             Assertion(engine="both", text="Bob Sable. 2018. “A title ending in a colon: "
                       "The continuation.” J."),
             Assertion(engine="both", text="Cy Vega. 2019. “A paper.” In: A book ending in a "
                       "colon: The book continuation, 1–9."),
             Assertion(engine="both", text="Dot Wren, (Ed.) . 2020. A main ending in a colon: Part."),
-            # an organization is a list, and the buffer sees its last item
             Assertion(engine="both", text="A main ending in a colon: Part. Two Society and "
                       "Three Society."),
             Assertion(engine="both", text="Gus Zorn, (Ed.) . 2022. Three organizers. One Society, "
@@ -1464,11 +1161,8 @@ TESTS: dict[str, Test] = {
     "biblatex-stages-numeric-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(
-            # the numeric guard skips an event that is nothing but an addon
             Assertion(engine="both", text="Ad Elder, (Ed.) An addon-only event, (2005)."),
             Assertion(engine="both", kind="absent", text="An addon-only event. Special Session"),
-            # …and here the starred unit's comma shows, where the sentence period
-            # keeps the next separator out
             Assertion(engine="both", text="An organization that ends in a dot, (2006). "
                       "Comput. Society., Pn Press."),
             Assertion(engine="both", text="A series that ends in a dot, Ser Series. (2007)."),
@@ -1476,18 +1170,13 @@ TESTS: dict[str, Test] = {
                       "Trans. by Xena Xavier, (2004)."),
             Assertion(engine="both", text="A main title. Vol. 3.B: A subtitle-bearing "
                       "proceedings. Bern, (2003). Ti Press."),
-            # the numeric guard skips an event whose date it cannot read
             Assertion(engine="both", text="Gil Gray, (Ed.) A guarded event, (2013)."),
             Assertion(engine="both", kind="absent", text="A guarded event. Special Session"),
-            # an equal title is printed once, and the volume goes back to the
-            # driver's own stage
             Assertion(engine="both", text="Ola Owens, (Ed.) Same, vol. 2, (2008)."),
             Assertion(engine="both", text="A series and a number, number 4 in Series. (2016)."),
-            # the colon carries the same space through the numeric title format
             Assertion(engine="both", text="Ann Kolon. 2017. A title ending in a colon: J."),
             Assertion(engine="both", text="Cy Vega. 2019. A paper. In A book ending in a colon: "
                       "The book continuation, 1–9."),
-            # the organization list prints after the parenthesized date here
             Assertion(engine="both", text="Dot Wren, (Ed.) A main ending in a colon: Part, (2020). "
                       "Two Society and Three Society."),
             Assertion(engine="both", text="Gus Zorn, (Ed.) Three organizers, (2022). One Society, "
@@ -1498,18 +1187,13 @@ TESTS: dict[str, Test] = {
     "bst-periodical-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(
-            # the date opens its block: one space behind the title, not two
             Assertion(engine="both", text="Bare Society 2001. A bare periodical. (2001)."),
             Assertion(engine="both", text="Vn Society 2002. A periodical with two numbers. "
                       "7, 2 (2002)."),
-            # add.period$ leaves a title's own ! or ? alone
             Assertion(engine="both", text="Bang Society 2003. A periodical that ends in a bang! "
                       "(2003)."),
-            # with a journal in front of it the date keeps its space, as any other
-            # piece of the block does
             Assertion(engine="both", text="J Society 2004. A periodical with a journal. "
                       "J. Periodicals 9 (2004)."),
-            # the same block opens an unpublished draft and a journal-less article
             Assertion(engine="both", text="Cy Author. 2005. An unpublished draft. (March 2005). "
                       "In preparation."),
             Assertion(engine="both", text="Dot Author. 2006. An article with no journal. "
@@ -1522,34 +1206,22 @@ TESTS: dict[str, Test] = {
     "biblatex-label-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(
-            # the label stands where the name would, in the lead and in the cite
-            # label alike, and the title family behind it is left untouched
             Assertion(engine="both", text="Project Atlas. 2038. A report carrying an explicit "
                       "label. Tech. rep. Atlas Institute."),
             Assertion(engine="both", text="[Project Atlas 2038]"),
-            # it outranks a short title, which then prints nowhere
             Assertion(engine="both", text="Project Beta. 2039. A report with a label and a short "
                       "title. Tech. rep. Beta Institute."),
             Assertion(engine="both", kind="absent", text="Short beta"),
-            # a name outranks the label, which then prints nowhere
             Assertion(engine="both", text="Ada Marker. 2040. A named report with a label."),
             Assertion(engine="both", text="[Marker 2040]"),
             Assertion(engine="both", kind="absent", text="Project Gamma"),
-            # the label has no field format of its own, so it prints plainly even
-            # where the title beside it is quoted
             Assertion(engine="both", text="Project Delta. 2041. “A thesis carrying a label.” "
                       "Ph.D. Dissertation."),
-            # the extradate letter counts the labeltitle, not the label: two
-            # entries sharing a label and a year take no letters
             Assertion(engine="both", text="[Project Echo 2042; Project Echo 2042]"),
             Assertion(engine="both", text="Project Echo. 2042. The first echo report."),
             Assertion(engine="both", text="Project Echo. 2042. The second echo report."),
-            # a driver that leads with something other than a name never prints the
-            # label, but the citation still uses it
             Assertion(engine="both", text="[Project Golf 2044]"),
             Assertion(engine="both", text="A misc carrying a label. (2044)."),
-            # a textual cite goes through the same chain, so the label stands there
-            # too — plainly, where a title fallback would be quoted or emphasized
             Assertion(engine="both", text="Project Atlas [2038], Project Beta [2039], "
                       "Marker [2040], Project Delta [2041], and Project Golf"),
         ),
@@ -1558,17 +1230,12 @@ TESTS: dict[str, Test] = {
     "biblatex-label-numeric-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(
-            # the numeric style cites by number and leads with the year, so the
-            # label is invisible from end to end
             Assertion(engine="both", text="2038. A report carrying an explicit label. "
                       "Tech. rep. Atlas Institute."),
             Assertion(engine="both", text="2039. A report with a label and a short title."),
             Assertion(engine="both", text="2041. A thesis carrying a label. Ph.D. Dissertation."),
             Assertion(engine="both", text="Ada Marker. 2040. A named report with a label."),
             Assertion(engine="both", kind="absent", text="Project"),
-            # acmnumeric's textual cite (numeric.cbx:26) has no label step at all:
-            # with no name it prints the LABELTITLE, in the citetitle format — the
-            # short title when there is one, emphasized, or quoted for a thesis
             Assertion(engine="both", text="A report carrying an explicit label [2], Short beta [3], "
                       "Marker [5], “A thesis carrying a label” [4], and"),
             Assertion(engine="both", text="A misc carrying a label [1]."),
@@ -1578,33 +1245,23 @@ TESTS: dict[str, Test] = {
     "biblatex-dates-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(
-            # the markers leave no trace, an unspecified digit IS its span, and a
-            # month past twelve is a season
             Assertion(engine="both", text="Ann Query. 2005. An uncertain year. (2005)."),
             Assertion(engine="both", text="Bob Tilde. 2005. An approximate year. (2005)."),
             Assertion(engine="both", text="Cy Ex. 2000–2009. An unspecified digit. (2000–2009)."),
             Assertion(engine="both", text="Dot Season. Spr. 2005. A season month. (Spr. 2005)."),
-            # a day outside its month is no date, a leap day is, and a malformed
-            # endpoint leaves the start rather than opening the range
             Assertion(engine="both", text="Hal Feb. June 7, 1975. “A day that is not in that "
                       "month.”"),
             Assertion(engine="both", text="Jon Leap. Feb. 29, 2004. “A day that is.”"),
             Assertion(engine="both", text="Kim End. 2005. “A malformed endpoint.”"),
-            # exactly one marker is read and left behind; two reject the value
             Assertion(engine="both", text="Eli Pct. 2005. A percent marker. (2005)."),
             Assertion(engine="both", text="Dot Double. 1999. A doubled marker. (1999)."),
-            # an unspecified month or day is the span it covers
             Assertion(engine="both", text="Fay MonthX. Jan.–Dec. 2005. An unspecified month. "
                       "(Jan.–Dec. 2005)."),
             Assertion(engine="both", text="Gus DayX. May 1–31, 2005. An unspecified day. "
                       "(May 1–31, 2005)."),
-            # a malformed START rejects the value; a span on each side keeps the
-            # start's own, and a span at the end costs only the range
             Assertion(engine="both", text="Hal Start. Mar. 1999. A malformed start."),
             Assertion(engine="both", text="Ivy Span. 1990–1999. A span on each side. (1990–1999)."),
             Assertion(engine="both", text="Jon XEnd. 2005. A span at the end. (2005)."),
-            # a negative year prints with a minus and without its padding, while
-            # the LABEL keeps the padding it was given
             Assertion(engine="both", text="Ann Neg. −100. A negative year. (−100)."),
             Assertion(engine="both", text="Fay Early. 100. An early year, zero-padded. (100)."),
             Assertion(engine="both", text="Bob Range. −100– −50. A negative range. (−100– −50)."),
@@ -1618,8 +1275,6 @@ TESTS: dict[str, Test] = {
     "biblatex-dates-numeric-test": Test(
         kind="twin", pages=1, text_equal=True,
         text_assertions=(
-            # the numeric lead is the start year alone; the span lives in the
-            # parenthesized date
             Assertion(engine="both", text="Cy Ex. 2000. An unspecified digit. (2000–2009)."),
             Assertion(engine="both", text="Dot Season. 2005. A season month. (Spr. 2005)."),
             Assertion(engine="both", text="Jon Leap. 2004. A day that is."),
@@ -1627,7 +1282,6 @@ TESTS: dict[str, Test] = {
                       "(Jan.–Dec. 2005)."),
             Assertion(engine="both", text="Ivy Span. 1990. A span on each side. (1990–1999)."),
             Assertion(engine="both", text="Hal Start. 1999. A malformed start. (Mar. 1999)."),
-            # the numeric lead prints the digits alone, unsigned
             Assertion(engine="both", text="Ann Neg. 100. A negative year. (−100)."),
             Assertion(engine="both", text="Cy Cross. 50. A range across the era. (−50–50)."),
         ),
@@ -1636,28 +1290,18 @@ TESTS: dict[str, Test] = {
     "biblatex-misc-test": Test(
         kind="twin", pages=2, text_equal=True,
         text_assertions=(
-            # \DeclareFieldFormat{version} (biblatex.def:589), in each of the six
-            # drivers that print one - and in neither of the two that do not.
             Assertion(engine="both", text="“An article carrying a version.” "
                       "Version v3. Journal of Versions"),
             Assertion(engine="both", text="Handbook. Version 2.1."),
-            # software inheritance: a child's own date blocks the parent's, and a
-            # date that starts open supplies an empty year that blocks it too
             Assertion(engine="both", text="Pat Parent, A parent carrying a date version 2.0, "
                       "–June 2025."),
             Assertion(engine="both", text="Pat Parent, A parent carrying a date version 3.0, "
                       "Jan. 1999."),
-            # mincrossrefs: two cited versions put their parent in the list
-            # uncited, where it takes an extradate letter with the child that
-            # inherited its year — and one cited version does not
             Assertion(engine="both", text="[Parent 1999a, –2025]"),
             Assertion(engine="both", text="version 3.0, Jan. 1999. [SW] Pat Parent, A parent "
                       "carrying a date Jan. 1999."),
             Assertion(engine="both", text="[Ward 2024]"),
             Assertion(engine="both", kind="absent", text="[SW] Wren Ward"),
-            # crossref inheritance: the child takes the parent's fields, and the
-            # parent's TITLE arrives in the slot its own type asks for — and the
-            # two of them promote the parent into the list beside them
             Assertion(engine="both", text="[Ashby 2001; Boyle 2001]"),
             Assertion(engine="both", text="Ada Ashby. 2001. “A first shared paper.” In: A shared "
                       "proceedings parent. Ed. by Eve Editor. Inherit Press, Oslo, 1–9."),
@@ -1667,53 +1311,33 @@ TESTS: dict[str, Test] = {
                       "Inherit Press, Oslo."),
             Assertion(engine="both", text="Cy Colby. 1995b. “An article in it.” A periodical "
                       "parent, 3–7. Ed. by Pia Press."),
-            # the driver sourcemap's field and type aliases: a child's own
-            # `journal`/`address` blocks what the parent passes down, and a
-            # @conference is an @inproceedings by the time inheritance looks
             Assertion(engine="both", text="Cy Colby. 1995a. “A child article.” Child Journal, 3–7. "
                       "Ed. by Pia Press."),
             Assertion(engine="both", text="Dot Doyle. 2001. “A conference child.” In: A parent "
                       "proceedings. Ed. by Eve Editor. Al Press, Child City, 1–9."),
-            # every component of the parent's date travels, day and range alike…
             Assertion(engine="both", text="Fay Foster. Aug. 17, 2003. “A day-dated child.”"),
-            # …and a date of the child's own that biber cannot read blocks none of it
             Assertion(engine="both", text="Gus Grant. 1990–1992. “A range-dated child.”"),
-            # the container macro prints its own "In" with no booktitle behind it
             Assertion(engine="both", text="Ida Irwin. 2010. “A standalone paper.” In: 1–5."),
-            # pages alone join the publisher with a comma (a chapter takes a stop)
             Assertion(engine="both", text="“A chapter of its own.” Lee Larson. A whole book. "
                       "Pg Press, Bern, 5–9."),
-            # a legacy spelling is renamed, never allowed to overwrite the canonical
             Assertion(engine="both", text="Ann Able. 2001. “Both spellings of a field.” "
                       "Canonical Journal. CanonArch: 1234.5678 (canon.cls)."),
-            # …every stage of the author-year proceedings driver, in its order
             Assertion(engine="both", text="A full proceedings. The Big Event (Reykjavik, "
                       "Mar. 4, 2000). Vol. 7.2. 3 vols. Proc Series 9. A closing note. Proc Org. "
                       "Full Press, Oslo. 321 pp."),
-            # a date biber cannot read blocks no inheritance…
             Assertion(engine="both", text="Bo Bogus. 1990–1992. “A bogus-dated child.”"),
-            # …while one it can read stops its parent's range where it stands
             Assertion(engine="both", text="Dot Doyle. 2005. “An undated grandchild.”"),
-            # pages take their comma with no publisher ahead of them
             Assertion(engine="both", text="“A chapter with no publisher.” A host book, 5–9."),
-            # an archive of its own parenthesizes the class where arXiv brackets it
             Assertion(engine="both", text="Hal Hooper. 2005. “A custom archive.” J. "
                       "Custom Archive: 9876.5432 (custom.class)."),
-            # and the colon of a bare container leaves the editor lowercase
             Assertion(engine="both", text="Jon Jarvis. 2007. “A containerless paper.” In: ed. by "
                       "Eve Elder, 1–5."),
-            # the event's addon and its own date range
             Assertion(engine="both", text="Event full. Annual Event. Special Session "
                       "(Paris, Apr. 2–3, 2000)."),
-            # a part prints without a volume, dot and all
             Assertion(engine="both", text="Part only. .B. Pt Press, Bern."),
-            # a date biber rejects leaves the parent's to be inherited
             Assertion(engine="both", text="Cy Thirteen. Aug. 17, 2003. “A month biber rejects.”"),
-            # an open end does not outlive the child that dates itself
             Assertion(engine="both", text="Dot Doyle. 2005. “An undated grandchild.”"),
-            # an empty canonical spelling keeps the legacy one out
             Assertion(engine="both", text="Ivy Empty. 2007. “An empty canonical spelling.”"),
-            # …and one page is one
             Assertion(engine="both", text="One page. Pg Press, Oslo. 1 p."),
             Assertion(engine="both", text="On a blog. Working note. Version v2."),
             Assertion(engine="both", text="An online carrying a version. Version v5."),
@@ -1722,23 +1346,18 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="“A thesis carrying a version.” "
                       "Ph.D. Dissertation. Thesis University"),
             Assertion(engine="both", text="Software with a version and no date version v9."),
-            # misc: organization+location+date, always parenthesized, and
-            # doi+eprint+url dropping the URL for a DOI.
             Assertion(engine="both", text="A misc with a year and a month. (June 2011)."),
             Assertion(engine="both", text="Berlin: Misc Org, (May 2002)."),
             Assertion(engine="both", text="Vienna: Authorless Org, (Feb. 2023)."),
             Assertion(engine="both", text="A misc with a doi and a url. (Sept. 2003). "
                       "doi:10.1000/miscdoiurl."),
             Assertion(engine="both", text="(July 2007). http://ex.org/me arXiv: 2402.00002."),
-            # online: no howpublished/type, no DOI, a URL even with one, and a
-            # date only when the entry has a month.
             Assertion(engine="both", text="An online with a doi and a url. Retrieved "
                       "December 8, 2026 from http://ex.org/od."),
             Assertion(engine="both", text="An online with a doi and no url."),
             Assertion(engine="both", text="An online with howpublished type and "
                       "organization. Online Org. (Oct. 2035)."),
             Assertion(engine="both", text="A www entry. http://ex.org/ww."),
-            # presentation / underreview have no driver and alias to misc
             Assertion(engine="both", text="A presentation with a date. (Mar. 2027)."),
             Assertion(engine="both", text="A paper under review. (2025)."),
         ),
@@ -1748,36 +1367,27 @@ TESTS: dict[str, Test] = {
     "biblatex-misc-numeric-test": Test(
         kind="twin", pages=2, text_equal=True,
         text_assertions=(
-            # acmnumeric prints ACM's own `year` bibmacro stand-in, whose bracket
-            # ends the sentence, where acmauthoryear prints biblatex's `nodate`.
             Assertion(engine="both", text="Tom Tate. [n. d.] An article with no date."),
             Assertion(engine="both", text="Val Vale. [n. d.] A misc with no date. ()."),
-            # …and the same inheritance, where an open start leaves no year to lead with
             Assertion(engine="both", text="Pat Parent, A parent carrying a date version 2.0, "
                       "–June 2025."),
             Assertion(engine="both", text="Wren Ward, Another parent carrying a date version 4.0, "
                       "May 2024."),
-            # the promoted parent is numbered in the list like any other entry
             Assertion(engine="both", text="[SW] Pat Parent, A parent carrying a date Jan. 1999."),
             Assertion(engine="both", kind="absent", text="[SW] Wren Ward"),
-            # …and the same inheritance, a periodical title in the journal slot
             Assertion(engine="both", text="Cy Colby. 1995. An article in it. A periodical "
                       "parent, 3–7. Pia Press, (Ed.)"),
-            # the numeric @proceedings driver is trad-standard's, not the book one
             Assertion(engine="both", text="Eve Editor, (Ed.) A shared proceedings parent. "
                       "Oslo, (2001). Inherit Press."),
             Assertion(engine="both", text="Ida Irwin. 2010. A standalone paper. In 1–5."),
             Assertion(engine="both", text="A chapter of its own. Lee Larson. A whole book. "
                       "Pg Press, Bern, 5–9."),
-            # every stage of the numeric proceedings driver, note last of all
             Assertion(engine="both", text="A full proceedings. The Big Event (Reykjavik, "
                       "Mar. 4, 2000), vol. 7.2 of number 9 in Proc Series, 3 vols. Oslo, "
                       "(2nd ed.), (2001). Proc Org, Full Press. 321 pp."),
             Assertion(engine="both", text="Jon Jarvis. 2007. A containerless paper. In "
                       "Eve Elder, (Ed.), 1–5."),
             Assertion(engine="both", text="A chapter with no publisher. A host book, 5–9."),
-            # the numeric driver's pending separators: the comma the absent
-            # stages pass along, and the mid-sentence bibstring with no volume
             Assertion(engine="both", text="Min Elder, (Ed.) Proceedings with pages, (2004), 1–9."),
             Assertion(engine="both", text="Ser Elder, (Ed.) Proceedings with a series, number 7 "
                       "in Ser Series, (2002)."),
@@ -1786,7 +1396,6 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Pat Part, (Ed.) Part only, .B. Bern, (2006). Pt Press."),
             Assertion(engine="both", text="One Elder, (Ed.) One page. Oslo, (2008). Pg Press. 1 p."),
             Assertion(engine="both", text="Wes Webb. [n. d.] An online with no date."),
-            # the dataset driver has no `year` macro at all, so it shows none
             Assertion(engine="both", text="Sam Stone. A dataset with no date whatsoever."),
             Assertion(engine="both", text="Zoe Zane. A dataset with a month but no year. ()."),
         ),
@@ -1800,64 +1409,49 @@ TESTS: dict[str, Test] = {
     "bib-edge": Test(
         kind="twin", pages=1,
         note="BST backend edge cases: DOI/pages/key fallback, macros, strings, names, accents.",
-        # Word-level guards for things the whitespace-free char bag can't see.
         text_assertions=(
-            Assertion(engine="both", text="Tech Press, Ltd."),       # concat keeps the space
-            Assertion(engine="both", text="Comput. Surveys"),        # csur macro -> canon.abbrev
-            Assertion(engine="both", text="Submitted to Mind"),      # @unpublished note
-            Assertion(engine="both", text="Maria de la Cruz"),       # von-name parsing
-            Assertion(engine="both", kind="absent", text="doi.acm.org"),  # strip.doi drops the host prefix
-            Assertion(engine="both", text="Article 17"),             # articleno path
-            Assertion(engine="both", text="9:1"),                    # reduce.pages keeps n:1--n:m verbatim
-            Assertion(engine="both", text="250 book pages"),         # format.bookpages
-            Assertion(engine="both", text="Issue 7"),                # issue field
-            Assertion(engine="both", text="Preprint"),               # howpublished in @article
-            Assertion(engine="both", text="Jan von der Berg"),       # comma von-name
-            Assertion(engine="both", text="Ludwig van Beethoven"),   # no-comma von-name
-            # 2026-07 bst audit fixes (char-bag is order-blind, so these guard order):
-            Assertion(engine="both", text="23 Oct."),                # day-before-month (bst:520)
-            Assertion(engine="both", text="Article 7"),              # unpublished + articleno
-            Assertion(engine="both", text="Article 5"),              # strip.articleno.or.eid: {Article 5} -> 5
-            Assertion(engine="both", kind="absent", text="Article Article"),  # strip prefix
-            Assertion(engine="both", text="Fifth ed."),              # braced edition keeps its case (change.case l)
+            Assertion(engine="both", text="Tech Press, Ltd."),
+            Assertion(engine="both", text="Comput. Surveys"),
+            Assertion(engine="both", text="Submitted to Mind"),
+            Assertion(engine="both", text="Maria de la Cruz"),
+            Assertion(engine="both", kind="absent", text="doi.acm.org"),
+            Assertion(engine="both", text="Article 17"),
+            Assertion(engine="both", text="9:1"),
+            Assertion(engine="both", text="250 book pages"),
+            Assertion(engine="both", text="Issue 7"),
+            Assertion(engine="both", text="Preprint"),
+            Assertion(engine="both", text="Jan von der Berg"),
+            Assertion(engine="both", text="Ludwig van Beethoven"),
+            Assertion(engine="both", text="23 Oct."),
+            Assertion(engine="both", text="Article 7"),
+            Assertion(engine="both", text="Article 5"),
+            Assertion(engine="both", kind="absent", text="Article Article"),
+            Assertion(engine="both", text="Fifth ed."),
         ),
     ),
     "crossref": Test(
         kind="twin", pages=1,
         note="BibTeX crossref inheritance, listing threshold, key fallback, and distinct URL fields.",
         text_assertions=(
-            Assertion(engine="both", text="See ["),                  # crossref "See [N]"
-            Assertion(engine="both", text="Workshop on Small Things"),  # inherited booktitle (excluded parent)
-            Assertion(engine="both", text="GangOfFour"),             # proceedings org->key fallback
+            Assertion(engine="both", text="See ["),
+            Assertion(engine="both", text="Workshop on Small Things"),
+            Assertion(engine="both", text="GangOfFour"),
         ),
     ),
     "authoryear": Test(
         kind="twin", pages=1,
         note="BST backend author-year labels, year disambiguation, citations, and unnumbered references.",
         text_assertions=(
-            Assertion(engine="both", text="2020a"),                  # \natexlab suffix
-            Assertion(engine="both", text="Jones et al."),           # >2-author short label (\citet)
-            # Presort a/b grouping (bst forward/reverse pass over presort order):
-            # grpB/grpA share the "Smith et al." 2020 label, split by grpC in the
-            # final name/title sort — only presort grouping still assigns a/b.
+            Assertion(engine="both", text="2020a"),
+            Assertion(engine="both", text="Jones et al."),
             Assertion(engine="both", text="2020b"),
-            Assertion(engine="both", text="IEEE Task Force"),        # editor.organization.sort label
-            # calc.basic.label dispatches on the literal type$: the .bst's own
-            # formatter aliases never reach it, so an @online or @dataset gets
-            # neither its organization nor its editor — just the key prefix
+            Assertion(engine="both", text="IEEE Task Force"),
             Assertion(engine="both", text="[Onl 2001; Col 2002; Dat 2005]"),
-            # …while a literal @manual does take the organization, and an explicit
-            # key outranks it
             Assertion(engine="both", text="[Manual Society 2003]"),
             Assertion(engine="both", text="[Webkey 2004]"),
-            # the rendering dispatch is a separate thing and still follows the
-            # aliases: the online entry is bodied like a manual, organization first
             Assertion(engine="both", text="Online Society 2001. An online with an organization. "
                       "Online Society."),
             Assertion(engine="both", text="Eve Editor (Ed.). 2002. A collection with an editor."),
-            # The a/b pass keys on the label year the .bst had to take from `date`
-            # (2.20's calc.basic.label; 2.18 read the `year` field alone and let a
-            # date-only entry escape disambiguation).
             Assertion(engine="both", text="[Vance 2015a,b]"),
             Assertion(engine="both", text="Ivo Wren. [n. d.]a. Undated alpha."),
         ),
@@ -1906,7 +1500,7 @@ TESTS: dict[str, Test] = {
         ),
         note="BST reference-field math rendering, including operators, scripts, blackboard, and overrides.",
         text_assertions=(
-            Assertion(engine="both", text="-calculus"),              # $\lambda$-calculus
+            Assertion(engine="both", text="-calculus"),
         ),
     ),
     "keycite": Test(
@@ -1988,11 +1582,6 @@ TESTS: dict[str, Test] = {
         note="acmengage under a German main language: babel's \"Zusammenfassung\" "
              "heads the abstract, not acmengage's \"Synopsis\"",
     ),
-    # Full twins of the bundled acmart samples (acmart/samples/*.tex).
-    # Each has a matched .tex/.typ pair in tests/twins/; assets (sample-base.bib,
-    # sample-franklin.png, sampleteaser.*) are vendored into tests/twins/ so the
-    # build does not depend on the acmart/ reference folder. They share one body via
-    # _sample-common.typ; only the preamble (format + options) differs.
     "sample-acmsmall": Test(
         kind="twin", pages=11, expected_metrics_diff=_FULL_SAMPLE_METRICS_DIFF,
         text_equal=False,
@@ -2390,7 +1979,6 @@ TESTS: dict[str, Test] = {
         ),
         note="upstream acmengage sample: EngageCSEdu layout, synopsis, metadata, and CC license.",
     ),
-    # Smoke-only docs (no LaTeX twin).
     "siggraph-test": Test(
         kind="smoke", pages=1, golden_exempt=_ALIAS_GOLDEN_EXEMPT,
         note="obsolete `siggraph` option aliases to sigconf; compile-only smoke.",
@@ -2403,9 +1991,6 @@ TESTS: dict[str, Test] = {
     "draft-test": Test(
         kind="smoke", pages=1,
         text_assertions=(
-            # The inner-edge timestamp footer prints "Submission ID: <id>. <date>.
-            # Page N of M." — assert the id and the folio prose around the pinned
-            # compile date.
             Assertion(engine="typst", text="Submission ID: 123-A56-BU3"),
             Assertion(engine="typst", text="Page 1 of"),
         ),
@@ -2456,12 +2041,7 @@ TESTS: dict[str, Test] = {
 }
 
 
-# --- Tier 1.6: expected compile-error cases --------------------------------
-#
-# Each case compiles a tiny acmsmall document with the bad option spliced in and
-# asserts the compile fails with a diagnostic containing the expected substring.
-# name -> (extra acmart.with(...) argument, expected diagnostic substring)
-# name -> (extra acmart.with arg, expected substring[, custom body]).
+# name -> (extra acmart arguments, expected diagnostic[, custom body]).
 ERROR_CASES: dict[str, tuple] = {
     "bad-copyright": ('copyright: "definitely-not-a-mode",', "unsupported copyright mode"),
     "bad-cc-type": ('copyright: "cc", cc-type: "by-mystery",', "unsupported Creative Commons type"),
@@ -2489,11 +2069,7 @@ ERROR_CASES: dict[str, tuple] = {
         'format: "acmcp", article-type: "Bogus", acmcp-logo: none,',
         "Article Type must be Research",
     ),
-    # acmcp with a valid article type but no journal logo: the cover infobox
-    # errors with an actionable message rather than a bare image(none) failure.
     "missing-acmcp-logo": ('format: "acmcp",', "acmcp` cover format needs a journal logo"),
-    # acmart v2.21 makes the second \correspondingauthor a class error, since the
-    # asterisk mark and its footnote belong to one author (acmart.dtx:5487).
     "two-corresponding-authors": (
         'authors: ((name: "Ada Lovelace", corresponding: true, '
         'affiliation: (institution: "Analytical Engine Institute", country: "UK")), '
@@ -2509,32 +2085,22 @@ ERROR_CASES: dict[str, tuple] = {
         'nonacm: true, authors: ((name: "Ada Lovelace", affiliation: (institution: "Analytical Engine Institute")),),',
         "every author affiliation must include a nonempty `country`",
     ),
-    # the "bst" backend errors on an unsupported TeX command rather than passing
-    # it through silently, pointing the user at the tex-render callback.
     "bst-unknown-cmd": (
         "",
         "unsupported TeX command",
         '#import "/src/lib.typ": default-tex-render\n'
         '#default-tex-render("a \\\\frobnicate{x} title")',
     ),
-    # A SINGLE relative .bib works on every backend (bib-relative-test), but MULTIPLE
-    # files force the shadow to index into the arguments, dropping each path's origin
-    # — so a multi-file relative bibliography on the engine backends is rejected with a
-    # clear message asking for absolute paths, rather than a confusing "file not found".
     "bibtex-relative-multi": (
         'bib-backend: "bibtex",',
         "must use project-absolute",
         '#bibliography(("a.bib", "b.bib"))',
     ),
-    # A CSL `style` has no meaning for the ACM engines, whose style comes from
-    # acmart's own `cite-style` option, so it is rejected rather than dropped.
     "cite-unknown-form": (
         'bib-backend: "bibtex",',
         'does not support `form: "footnote"`',
         '= Body\n#cite(<Cohen07>, form: "footnote")\n#bibliography("/tests/twins/sample-base.bib")',
     ),
-    # `form: "full"` prints the whole reference and `form: none` prints nothing;
-    # neither has anywhere to put a postnote.
     "cite-full-supplement": (
         'bib-backend: "bibtex",',
         "prints the whole reference, so it takes no `supplement`",
@@ -2546,9 +2112,6 @@ ERROR_CASES: dict[str, tuple] = {
         "`cite` has no `style` argument",
         '= Body\n#cite(<Cohen07>, style: "apa")\n#bibliography("/tests/twins/sample-base.bib")',
     ),
-    # Citing on the bibtex/biblatex backend with no acmart `#bibliography` registered
-    # (here: the `#bibliography` call is simply missing) is an actionable error, not a
-    # cryptic `read(none)` deep in the .bib reader — see `with-prepared`.
     "cite-without-bibliography": (
         'bib-backend: "bibtex",',
         "faithful-acmart: cited a key but no bibliography is registered",
@@ -2557,13 +2120,7 @@ ERROR_CASES: dict[str, tuple] = {
 }
 
 
-# --- Copyright / option validation variants --------------------------------
-#
-# A representative visual suite (NOT exhaustive): for each variant `validate`
-# builds a matched LaTeX + Typst page and reports a page-1 mismatch %. The acmart
-# package supports every copyright mode; this suite samples the common ones plus
-# the document options whose effect shows on page 1.
-# name -> (LaTeX class options, LaTeX preamble, Typst acmart.with args)
+# name -> (LaTeX class options, LaTeX preamble, Typst acmart arguments).
 VARIANTS: dict[str, tuple[str, str, str]] = {
     "acmlicensed":    ("", r"\setcopyright{acmlicensed}",    '  copyright: "acmlicensed",\n'),
     "acmcopyright":   ("", r"\setcopyright{acmcopyright}",   '  copyright: "acmcopyright",\n'),
@@ -2572,29 +2129,17 @@ VARIANTS: dict[str, tuple[str, str, str]] = {
     "usgovmixed":     ("", r"\setcopyright{usgovmixed}",     '  copyright: "usgovmixed",\n'),
     "cc-by-nc-sa":    ("", "\\setcopyright{cc}\n\\setcctype{by-nc-sa}",
                        '  copyright: "cc", cc-type: "by-nc-sa",\n'),
-    # A non-CC "published under CC-BY" conference mode: no badge, its own
-    # permission paragraph + IW3C2 owner line (acmart.dtx:6187/6346).
     "iw3c2w3":        ("", r"\setcopyright{iw3c2w3}",           '  copyright: "iw3c2w3",\n'),
-    # CC0: the public-domain badge + "CC0 1.0 Universal" special case, exercising
-    # the badge-image layout with the version-independent name/URL.
     "cc-zero":        ("", "\\setcopyright{cc}\n\\setcctype{zero}",
                        '  copyright: "cc", cc-type: "zero",\n'),
     "screen":    (",screen", r"\setcopyright{acmlicensed}", '  screen: true,\n'),
     "review":    (",review", r"\setcopyright{acmlicensed}", '  review: true,\n'),
     "anonymous": (",anonymous", r"\setcopyright{acmlicensed}", '  anonymous: true,\n'),
-    # nonacm drops the journal footer line and, for non-cc copyright, the whole
-    # page-1 copyright/permission block (acmart.dtx:6599) — both visible on page 1.
     "nonacm":    (",nonacm", r"\setcopyright{acmlicensed}", '  nonacm: true,\n'),
-    # authorversion swaps the page-1 copyright block: no permission text, and the
-    # ACM bibstrip becomes the "author's version ... Version of Record" notice
-    # naming the full journal + DOI (acmart.dtx:6612/6634).
     "authorversion": (",authorversion", r"\setcopyright{acmlicensed}",
                       '  author-version: true,\n'),
 }
 
-# Maximum allowed page-1 raster mismatch percentages for the validation variants.
-# These are deliberately a little above the current measured values, so `check`
-# catches real drift without turning harmless renderer noise into churn.
 VARIANT_MISMATCH_MAX: dict[str, float] = {
     "acmlicensed": 4.75,
     "acmcopyright": 4.50,

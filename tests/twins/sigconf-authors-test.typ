@@ -1,15 +1,9 @@
-// sigconf-authors-test — conference author grid with a PARTIAL last row.
-// Matched twin: sigconf-authors-test.tex. Five affiliation groups at 3-per-row
-// produce a full first row of 3 + a final row of 2; the fix for the partial last
-// row centers that final row (acmart centers every row) instead of left-aligning
-// it. Isolates make-authors-grid's row chunking/centering.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(
   format: "sigconf",
   title: "Five Authors, Two Rows",
-  // No booktitle: the reference's booktitle is derived from the conference,
-  // matching acmart's \acmBooktitle auto-derivation.
+  // Omit booktitle to exercise its derivation from conference metadata.
   conference: (name: "ACM Conference", short: "Conference'17", venue: "Washington, DC, USA"),
   isbn: "978-1-4503-XXXX-X/2018/06",
   doi: "XXXXXXX.XXXXXXX",

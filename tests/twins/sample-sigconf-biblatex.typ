@@ -1,8 +1,3 @@
-// sample-sigconf-biblatex — port of the upstream acmart sample (acmart/samples,
-// docstrip option `all,proceedings,sigconf,biblatex`). The sigconf proceedings
-// format with the BibLaTeX acmnumeric style (numbered citations, default),
-// including the biblatex-software artifact entries from software.bib.
-// Diffed against out/latex/sigconf-biblatex.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

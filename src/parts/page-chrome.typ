@@ -1,5 +1,3 @@
-// Running heads, footers, page backgrounds, and review/draft overlays.
-
 #import "../formats/_base.typ": tp
 #import "spacing.typ": comp
 #import "frontmatter.typ": make-badges, pub-date, doi-link, andify
@@ -19,11 +17,7 @@
       if print-folios [#meta.acm-article:#p] else [#meta.acm-article]
     } else if print-folios [#p]
   }
-  // LaTeX prints \@journalNameShort, Vol. V, No. N, Article A. Publication date: D.
-  // UNCONDITIONALLY for the journal formats (acmart.dtx:8256): an empty \@acmArticle
-  // yields "Article ." (the upstream blemish, replicated), a missing journal an empty
-  // name prefix — the footer still prints. Gated only by `nonacm` (the caller already
-  // restricts this to journal formats).
+  // acmart prints the journal footer even with missing fields, including an empty article number.
   let journal-footer = {
     let journal = meta.journal
     if not meta.nonacm {
@@ -34,8 +28,6 @@
   let manuscript-footer = if not meta.nonacm [Manuscript submitted to ACM]
   let conference-line = {
     if cfg.name == "acmengage" {
-      // \@formatdoi is \url{...} (acmart.dtx:6204), so the head DOI is a live
-      // link, styled upright roman by acmengage's \urlstyle{rm}.
       [EngageCSEdu.#if meta.doi != none { text(font: cfg.fonts.body)[ #doi-link(meta.doi)] }]
     } else if meta.conference != none {
       let short = meta.conference.at("short", default: meta.conference.at("name", default: none))
@@ -50,8 +42,6 @@
     align(left, l), align(center, c), align(right, r),
   )
 
-  // The journal bibstrip sits on the outer edge; the optional timestamp sits on
-  // the inner edge. Folio parity follows the page counter, including start-page.
   let footer = context {
     set text(font: cfg.fonts.body, size: cfg.size.footnotesize)
     set par(leading: comp(cfg, sz: "footnotesize"))
@@ -63,7 +53,6 @@
         [#meta.journal.name, Volume #meta.acm-volume, Issue #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta))#if meta.doi != none { linebreak(); doi-link(meta.doi) }]
       }
     } else if not cfg.bibstrip-or-tog {
-      // proceedings chrome: a centered folio and no bibstrip
     } else if cfg.name == "acmtog" and not cfg.bibstrip {
       [#conference-line.]
     } else if cfg.name in ("acmsmall", "acmlarge", "acmtog") {
@@ -73,9 +62,7 @@
     }
     let folio = if print-folios { [#pageno] }
     if cfg.name == "acmcp" {
-      // acmcp's foot (\fancyfoot[L,C]{}\fancyfoot[R]{bib}, acmart.dtx:8129) clears
-      // any timestamp slot and keeps the foot rule + bib on every page — so acmcp
-      // is handled BEFORE the timestamp branch (LaTeX wipes the stamp on acmcp).
+      // acmcp clears the timestamp footer, so this branch must precede timestamp handling.
       place(top + left, dy: -(8.35 * tp - cfg.size.footnotesize) - 0.1 * tp,
         line(length: 100%, stroke: 0.1 * tp))
       footer-row(r: bib)
@@ -86,14 +73,10 @@
       let ts = [#if meta.submission-id != none { [Submission ID: #meta.submission-id. ] }#date. Page #pageno of #{start}--#{total}.]
       if cfg.name == "manuscript" {
         if first-page {
-          // Page 1: timestamp and slug share one corner (verified exact), folio opposite.
           let ts = if not meta.nonacm [#ts#h(1em)Manuscript submitted to ACM] else { ts }
           let folio = if folio != none { text(size: cfg.size.small, folio) }
           if odd { footer-row(l: ts, r: folio) } else { footer-row(l: folio, r: ts) }
         } else {
-          // Pages >=2: LaTeX keeps the "Manuscript submitted to ACM" slug at
-          // \fancyfoot[RO,LE] and the timestamp at [LO,RE] — both print, opposite
-          // corners, parity-swapped (acmart.dtx:7938/7945).
           if odd { footer-row(l: ts, r: manuscript-footer) } else { footer-row(l: manuscript-footer, r: ts) }
         }
       } else if not cfg.bibstrip-or-tog {
@@ -113,12 +96,8 @@
     }
   }
 
-  // \fancyhead[L] chrome. acmart hangs the review ruler and acmcp's rotated
-  // article-type label off the running head (acmart.dtx:8107/8204/8333), so both
-  // vanish with it under \pagestyle{empty}; they live in the Typst header for the
-  // same reason. Each is `place`d at an absolute page position, so it offsets
-  // against `here().position()` — the header box's own origin moves with the
-  // running head's height, and these must not.
+  // Keep the ruler and article label in the header so suppressing it also removes them.
+  // Their page positions must remain fixed when the header height changes.
   let at-page(x, y, body) = context {
     let origin = here().position()
     place(top + left, dx: x - origin.x, dy: y - origin.y, body)
@@ -156,8 +135,6 @@
     }
   } }
 
-  // Page one has no running head; continuation pages alternate title/authors and
-  // folio/conference content according to each format's fancyhdr setup.
   let st = if short-title == auto { meta.title } else { short-title }
   let sa = if meta.anonymous {
     if meta.submission-id != none [Anon. Submission Id: #meta.submission-id] else [Anon.]

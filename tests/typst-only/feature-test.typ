@@ -1,7 +1,3 @@
-// Smoke test for the newly modelled top-matter features: titlenote/subtitlenote,
-// teaser, received, badges, the acks environment, \anon, \grantsponsor/\grantnum,
-// and \part. Not a matched twin — just exercises every code path so it compiles
-// and renders sensibly.
 #import "/src/lib.typ": acmart, acks, anon, grantsponsor, grantnum, part, noindentparagraph
 
 #show: acmart.with(

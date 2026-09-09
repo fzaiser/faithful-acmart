@@ -1,45 +1,19 @@
-// Shared machinery for the per-format builders in this directory.
-//
-// Every acmart format is `\LoadClass[<size>]{amsart}` (acmart.dtx:3090) with a
-// per-format default size, then geometry/columns/fonts layered on top. The font
-// ladder and the amsart skip derivation are therefore identical across formats;
-// only the chosen base size and the geometry differ. This file holds the shared
-// pieces so each `formats/<name>.typ` is just its measurements + format flags.
-
-// LaTeX lengths are TeX points (1pt = 1/72.27in); Typst's pt is a PostScript
-// point (1/72in). `tp` converts a TeX-point count into a Typst length so the
-// geometry matches exactly. Paper sizes use `in` directly.
+// Convert TeX points (1/72.27 inch) to Typst points (1/72 inch).
 #let tp = 72.0 / 72.27 * 1pt
 
-// --- Font-size ladder (amsart's \@typesizes; amsart.cls) -------------------
-//
-// amsart's `\@typesizes` table is a clamped 11-entry window into a single master
-// font ladder, with `normalsize` at the entry for the chosen base. The master
-// ladder's (size, baselineskip) pairs, in TeX points (sizes are the
-// \@viipt…\@xxvpt step macros: 10.95/14.4/17.28/20.74/24.88), 0-indexed:
+// amsart.cls, \@typesizes: each base size selects a clamped window of this ladder.
 #let _ladder-size = (5, 6, 7, 8, 9, 10, 10.95, 12, 14.4, 17.28, 20.74, 24.88)
 #let _ladder-bls = (6, 7, 8, 10, 11, 12, 13, 14, 17, 20, 24, 30)
-// Our 9 named steps are amsart \@typesizes indices 3..11, i.e. offsets -3..+5
-// from `normalsize`. (Indices 1/2 — Tiny/tiny — are unused here.)
 #let _step-offset = (
   scriptsize: -3, footnotesize: -2, small: -1, normalsize: 0,
   large: 1, Large: 2, LARGE: 3, huge: 4, Huge: 5,
 )
 
-// Resolve the amsart size ladder for a base font size (one of "8pt".."12pt").
-// Returns the `size`/`bls` step dicts, the resolved normalsize font-size and
-// baselineskip, and the amsart \small/\med/\bigskip (0.7x the article values,
-// via amsart's \@adjustvertspacing). `baseline-stretch` models LaTeX's
-// \baselinestretch after the font-size table is resolved: sizes stay unchanged,
-// but every effective baselineskip and derived vertical skip is multiplied.
-// `allowed` names the sizes a given format accepts (acmsmall takes the full
-// 8..12 range).
 #let size-ladder(
   font-size,
   format: "",
   baseline-stretch: 1,
 ) = {
-  // acmart's supported base sizes (acmart.dtx:3063); no caller overrides this set.
   let allowed = (8pt, 9pt, 10pt, 11pt, 12pt)
   assert(
     type(font-size) == length and font-size in allowed,
@@ -48,8 +22,7 @@
       + (if format != "" { " for the " + format + " format" } else { "" })
       + " (got " + repr(font-size) + ").",
   )
-  let base = int(calc.round(font-size / 1pt)) // 10pt -> 10
-  // 0-based index of `normalsize` in the master ladder (10pt -> index 5 = 10/12).
+  let base = int(calc.round(font-size / 1pt))
   let ni = base - 5
   let pick(arr, step) = arr.at(calc.clamp(ni + _step-offset.at(step), 0, _ladder-size.len() - 1))
   let size = (:)
@@ -58,17 +31,14 @@
     size.insert(step, pick(_ladder-size, step) * tp)
     bls.insert(step, baseline-stretch * pick(_ladder-bls, step) * tp)
   }
-  // amsart's \@adjustvertspacing derives the skips from the normalsize
-  // baselineskip: \bigskip = .7\baselineskip, \medskip = \bigskip/2,
-  // \smallskip = \medskip/2. At 10pt (bls 12) this is 8.4 / 4.2 / 2.1.
+  // amsart.cls, \@adjustvertspacing.
   let bigskip = 0.7 * bls.normalsize
   (
     size: size,
     bls: bls,
     font-size: size.normalsize,
     baselineskip: bls.normalsize,
-    // the normalsize baselineskip WITHOUT \baselinestretch — the review ruler
-    // steps by this even under manuscript's \onehalfspacing (measured).
+    // The review ruler uses the baseline interval before manuscript line stretching.
     baselineskip-unstretched: bls.normalsize / baseline-stretch,
     bigskip: bigskip,
     medskip: bigskip / 2,
@@ -76,90 +46,45 @@
   )
 }
 
-// The generic acmart section fonts (acmart.dtx:8415, the definitions that apply
-// when a format's \ifcase branch is empty — e.g. acmsmall/manuscript). family is
-// a role into `fonts`; size is a step name in `size`. Per-format builders pass a
-// modified copy (e.g. sf `large` headings for acmlarge/acmtog, serif `Large`
-// bold for sigconf).
 #let generic-sec-fonts = (
   section:       (family: "sans", weight: "bold", style: "normal", size: "normalsize"),
   subsection:    (family: "sans", weight: "bold", style: "normal", size: "normalsize"),
   subsubsection: (family: "sans", weight: "regular", style: "italic", size: "normalsize"),
-  // run-in paragraph heading inherits the default body family (\itshape only, no
-  // family switch) — serif for journals, sans under sans-default (sigchi-a).
   paragraph:     (family: "body", weight: "regular", style: "italic", size: "normalsize"),
 )
 
-// geometry's `heightrounded` rounds \textheight down to \topskip + n·\baselineskip
-// of the CHOSEN base size, so the bottom margin depends on the font-size option.
-// Each format passes its per-size \textheight table (TeX points), probed from the
-// bundled class (\the\textheight for every format × 8pt..12pt).
+// geometry's heightrounded rounds text height to the baseline grid.
+// The per-size tables are measurements from the bundled class.
 #let bottom-margin(font-size, paper-h, top, th-by-size) = {
   let key = str(int(calc.round(font-size / 1pt)))
   (paper-h - top - th-by-size.at(key)) * tp
 }
 
-// A heading numbering pattern for a given secnumdepth (acmart.dtx:8419). secnum
-// depth 3 numbers through subsubsection; deeper paragraphs stay unnumbered (the
-// show rule omits level-4 numbers). <=0 means no section numbers at all.
 #let numbering-for-depth(depth) = if depth <= 0 { none } else { ("1", "1.1", "1.1.1").at(calc.min(depth, 3) - 1) }
 
-// Assemble a full format dict from the per-format distinctions plus the shared,
-// format-independent constants (float spacing, list geometry, footnote rules,
-// badges, fonts). Every acmart format is amsart with geometry/columns layered on
-// (acmart.dtx:3090/3754); only the named arguments below actually differ.
 #let make-format(
   name: none,
-  // Coarse layout family: "journal" (manuscript / acmsmall / acmlarge / acmtog),
-  // "proceedings" (sigconf / sigplan / acmengage / sigchi-a), or "cover" (acmcp).
-  // Only the conference default reads it (a proceedings format gets acmart's
-  // untouched placeholder \acmConference line); the chrome dispatches on the
-  // resolved bibstrip flags, and per-format head layouts on `name`.
   kind: "journal",
-  ladder: none,            // result of size-ladder()
+  ladder: none,
   paper: none,
-  margin: none,            // dict: top/bottom + inside/outside (or left/right)
-  foot-skip: 24 * tp,      // \footskip
-  // \fancyheadoffset[L]: how far the running head extends LEFT into the margin
-  // (sigchi-a: \marginparsep + \marginparwidth over its margin-note column,
-  // acmart.dtx:8115; 0 elsewhere — acmcp's 46pt label offset is drawn as a
-  // page-background element instead).
+  margin: none,
+  foot-skip: 24 * tp,
   head-offset: 0pt,
-  // \marginparwidth/\marginparsep for the formats with a usable margin-note
-  // column (sigchi-a: 170pt/72pt in the 314pt left margin, \reversemarginpar,
-  // acmart.dtx:3810-3815). none = sidebar/marginfigure/margintable unavailable.
   marginpar: none,
   columns: 1,
-  // \columnsep — the LaTeX default 10pt for the single-column formats (only
-  // user-authored columns() see it there); two-column formats pass 2pc,
-  // sigchi-a 20pt (acmart.dtx:3811).
   columnsep: 10 * tp,
   parindent: 10 * tp,
-  title-style: "journal-left", // \@mktitle@i / @iii / @iv
-  // \@titlefont / \@subtitlefont per format (acmart.dtx:6911/6946). family is a
-  // role into `fonts`; size is a step name. Default = the journal @i style
-  // (\LARGE\sffamily\bfseries title, \normalsize\mdseries subtitle).
+  title-style: "journal-left",
   title-font: (family: "sans", weight: "bold", size: "LARGE"),
   subtitle-font: (family: "sans", weight: "regular", size: "normalsize"),
-  // \@authorfont / \@affiliationfont (acmart.dtx:7191/7199). Default = acmart's
-  // generic \Large\sffamily name / \normalsize\normalfont affiliation (used by
-  // acmlarge + manuscript); acmsmall and the conference formats override.
   author-font: (family: "sans", weight: "regular", size: "Large"),
   affil-font: (family: "serif", weight: "regular", size: "normalsize"),
-  journal: true,               // \if@ACM@journal: the static format family flag
+  journal: true, // \if@ACM@journal is the static format family flag.
   sans-default: false,
   urlstyle-sans: false,
   secnumdepth: 3,
-  // acmcp narrows the @i title by 6pc to clear the top-right cover infobox
-  // (\advance\hsize by -6pc, acmart.dtx:6988); 0 for every other format.
   title-width-reduction: 0pt,
   sec-fonts: generic-sec-fonts,
-  // amsthm styles (acmart.dtx:8525-8761). `plain-head`/`def-head` are the
-  // acmplain/acmdefinition head fonts, `indent` the head indent (auto =
-  // \parindent), `note-inherits-head` whether the "(note)" keeps the head font
-  // (\thm@notefont is empty by default), `proof-head`/`proof-indent` the
-  // \@proofnamefont/\@proofindent pair. sigplan overrides every field
-  // (acmart.dtx:8566-8570, 8639-8643, 8740-8742).
   thm: (
     plain-head: "smallcaps", def-head: "italic", indent: auto,
     note-inherits-head: true, proof-head: "smallcaps", proof-indent: auto,
@@ -173,35 +98,25 @@
     columnsep: columnsep,
     paper: paper,
     margin: margin,
-    // acmart's paper-top -> head-top distance (\topmargin) is captured in each
-    // format's `margin.top` comment; Typst positions the running head via head.sep,
-    // so only the head-baseline separation is stored here.
     head: (sep: 14 * tp, offset: head-offset),
     marginpar: marginpar,
     foot: (skip: foot-skip),
-    // typography (scales with the base font size)
     font-size: l.font-size,
     baselineskip: l.baselineskip,
     baselineskip-unstretched: l.at("baselineskip-unstretched"),
     size: l.size,
     bls: l.bls,
     smallskip: l.smallskip, medskip: l.medskip, bigskip: l.bigskip,
-    // float spacing, list geometry, footnote rules and badges are
-    // format-independent (acmart.dtx:3906/4426/5581).
     intextsep: 12 * tp, abovecaptionskip: 12 * tp,
     footnote-rule-short: 4 * 12 * tp,
     footnote-rule-kern-above: 3 * tp, footnote-rule-kern-below: 2.6 * tp,
     footins-skip: 7 * tp,
     parindent: parindent,
     parskip: 0pt,
-    // List geometry lives in parts/body.typ: amsart derives it from rendered
-    // label widths at begin-document (probed), so it cannot be a static dict
-    // entry here.
     runin-sep: 3.5 * tp,
     badge-width: 3 * 12 * tp,
     heading-numbering: numbering-for-depth(secnumdepth),
     secnumdepth: secnumdepth,
-    // format-specific layout flags (the acmart \ifcase\ACM@format@nr switch)
     title-style: title-style,
     title-font: title-font,
     subtitle-font: subtitle-font,
@@ -216,14 +131,8 @@
     fonts: (
       serif: "Libertinus Serif",
       sans: "Libertinus Sans",
-      mono: "Inconsolatazi4", // acmart uses zi4 (Inconsolata) for \texttt
+      mono: "Inconsolatazi4",
       math: "Libertinus Math",
-      // The document's DEFAULT body family. acmart sets \sffamily as the document
-      // default for sigchi-a (acmart.dtx:4073), so its whole body — abstract, CCS,
-      // footnotes, footer, run-in headings — is sans, not just the section titles.
-      // Any component rendering default body text should use this role (not `serif`
-      // directly) so `sans-default` propagates by construction; reach for `serif`/
-      // `sans` only when a specific family is required regardless of format.
       body: if sans-default { "Libertinus Sans" } else { "Libertinus Serif" },
     ),
   )

@@ -1,7 +1,3 @@
-// title-wrap-test — a title long enough to wrap onto a second line.
-// Matched twin: title-wrap-test.tex.
-// Every line of a multi-line title sits one title baselineskip below the previous one.
-// The port hangs the first line from its cap top, so its leading has to be derived from the cap height rather than the font size.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

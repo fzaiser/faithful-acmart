@@ -1,10 +1,7 @@
-// acmcp-test — ACM cover-page format (best-effort, golden-smoke).
-// Single-column, unnumbered sections (secnumdepth -1), no ACM reference format.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(
   format: "acmcp",
-  // The ACM JDS logo is ACM's trademark and no longer bundled; point at the repo's dev copy.
   acmcp-logo: image("/src/assets/acm-jdslogo.png"),
   title: "An acmcp Cover Sample",
   journal: "JACM",
@@ -24,8 +21,6 @@
     draft geometry and section typography between the LaTeX and Typst renderings.
   ],
   keywords: ("datasets", "neural networks", "gaze detection"),
-  // acmcp renders CCS via the real \section* form (sans-bold heading + 9pt body),
-  // NOT the journals' run-in line — keywords stay in the cover infobox.
   ccs: (
     (500, "Computing methodologies", "Massively parallel algorithms"),
     (300, "Computing methodologies", "Concurrent algorithms"),

@@ -1,20 +1,6 @@
-// Pure-Typst BibTeX reader for the "bst" bibliography backend.
-//
-// Parses a .bib file (via read()) into the field-dict shape the ACM-Reference-
-// Format engine consumes:
-//   (<key>: (entry-type: str, fields: (name: value), names: (author: (..), editor: (..))))
-// where each parsed name is (first:, von:, last:, jr:).
-//
-// Handles: source-ordered @string macros (seeded with the .bst's built-in month
-// + journal MACROs), "quoted" and {braced} values with correct brace-depth
-// nesting, `#` concatenation, and BibTeX name syntax ("First von Last" /
-// "von Last, Jr, First", joined by " and "). Nested braces are KEPT in values
-// (TeX-significant: {ACM} casing, \url{...}); the formatter's tx() resolves them.
-
 #import "bib-data.typ": journal-macros
 #import "scan.typ": match-brace, match-delim, split-list-and, ws
 
-// ACM journal-style month macros (full name if <=5 letters, else abbreviated)
 #let months = (
   jan: "Jan.", feb: "Feb.", mar: "March", apr: "April", may: "May", jun: "June",
   jul: "July", aug: "Aug.", sep: "Sept.", oct: "Oct.", nov: "Nov.", dec: "Dec.",
@@ -25,11 +11,7 @@
   i
 }
 
-// Like skip-ws, but also swallows `%...\n` line comments between fields (biblatex
-// supports them; bibtex doesn't treat `%` specially, so silently dropping the rest
-// of an entry — the old behaviour — was the worst of both). Only runs in the
-// field-structure scan, never inside a braced/quoted value, so a literal `%` in a
-// value is preserved.
+// Allow BibLaTeX line comments between fields; preserve percent signs inside values.
 #let skip-ws-comment(cp, i) = {
   i = skip-ws(cp, i)
   while i < cp.len() and cp.at(i) == "%" {
@@ -39,8 +21,6 @@
   i
 }
 
-// Read a (possibly #-concatenated) value starting at `i`; resolve bare tokens via
-// `macros`. Returns (value-string, next-index). Quoted values respect brace depth.
 #let read-value(cp, i, macros) = {
   i = skip-ws(cp, i)
   let parts = ()
@@ -51,7 +31,7 @@
       let j = i + 1
       let depth = 0
       while j < cp.len() and not (cp.at(j) == "\"" and depth == 0) {
-        if cp.at(j) == "\\" { j += 2; continue }   // escaped char (\" \{ \})
+        if cp.at(j) == "\\" { j += 2; continue }
         if cp.at(j) == "{" { depth += 1 } else if cp.at(j) == "}" { depth -= 1 }
         j += 1
       }
@@ -65,9 +45,7 @@
       let j = i
       while j < cp.len() and not (cp.at(j) in (",", "}", "#") or cp.at(j) in ws) { j += 1 }
       let tok = cp.slice(i, j).join("").trim()
-      // A bare decimal is a BibTeX literal; every other bare token is a string
-      // macro. Undefined macros contribute the empty string (BibTeX warns but
-      // continues), rather than leaking their identifier into the bibliography.
+      // BibTeX expands undefined string macros to the empty string.
       parts.push(if tok.match(regex("^\d+$")) != none {
         tok
       } else {
@@ -78,24 +56,13 @@
     i = skip-ws(cp, i)
     if i < cp.len() and cp.at(i) == "#" { i = skip-ws(cp, i + 1) } else { more = false }
   }
-  // return RAW (no collapse/trim): @string fragments rely on exact inner spaces
-  // for `#` concatenation ("Tech " # "Press"); whitespace is normalized per-field.
+  // Preserve spaces until concatenation is complete: "Tech " # "Press" needs its internal space.
   let v = parts.join("")
   (if v == none { "" } else { v }, i)
 }
 
 #let collapse-ws(s) = s.replace(regex("\s+"), " ").trim()
 
-// ---- name parsing ----
-// Split a name list on the keyword "and" that sits at brace depth 0 and is
-// bounded by whitespace on BOTH sides (any whitespace, incl. newlines — real
-// .bib files put "and" on its own line). A leading/trailing "and" is not a
-// separator (it has no whitespace on the outer side); two consecutive "and"s
-// yield an empty name in between. Matches biblatex's split_token_lists_with_kw.
-// Split `s` at every char in `seps` that sits at brace depth 0; brace groups are
-// kept intact, so "{de la}" stays one token and "{Robert and Sons, Inc.}" keeps
-// its comma. Matches biblatex's split_at_normal_char (commas/spaces inside braces
-// are verbatim, not structural).
 #let split-top(s, seps) = {
   let parts = ()
   let cur = ""
@@ -110,17 +77,8 @@
   parts
 }
 
-// BibTeX `von_token_found`: a token is a "von" (lowercase) token iff its first
-// *brace-level-0* cased letter is lowercase. Only letters outside braces, and the
-// recognized foreign-letter commands inside a `{\..}` special character, count:
-//   * `Stra\ss`        -> "S" (level 0)        -> upper, not von
-//   * `de`             -> "d"                  -> lower, von
-//   * `{de la}`        -> braced group SKIPPED -> no level-0 letter -> not von
-//   * `{Barnes & Co.}` -> skipped              -> not von
-//   * `{\oe}uvre`      -> \oe foreign letter   -> lower, von
-// (A regular `{group}` is skipped whole; a `{\cs..}` special character commits —
-// foreign cs gives the case, else its inner letters do.) Mirrors bibtex.web's
-// von_token_found / Check-special-character / Skip-over-stuff modules.
+// bibtex.web, von_token_found: case comes from a top-level letter or a {\control} special character.
+// Ordinary brace groups do not determine case.
 #let _ascii-alpha(c) = (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
 #let _foreign-lower = ("i", "j", "o", "l", "oe", "ae", "aa", "ss")
 #let _foreign-upper = ("O", "L", "OE", "AE", "AA")
@@ -132,22 +90,22 @@
     let c = cp.at(i)
     if c == "{" {
       i += 1
-      if i < n and cp.at(i) == "\\" {     // special character {\cs..}
+      if i < n and cp.at(i) == "\\" {
         i += 1
         let x = i
         while i < n and _ascii-alpha(cp.at(i)) { i += 1 }
         let cs = cp.slice(x, i).join("")
         if cs in _foreign-lower { return true }
         if cs in _foreign-upper { return false }
-        let bl = 1                         // unknown cs: first inner cased letter wins
+        let bl = 1 // Unknown control sequence: use the first inner cased letter.
         while i < n and bl > 0 {
           let d = cp.at(i)
           if d == "}" { bl -= 1 } else if d == "{" { bl += 1 }
           else if lower(d) != upper(d) { return d == lower(d) }
           i += 1
         }
-        return false                       // closed without a letter
-      } else {                             // regular group: skip to its close
+        return false
+      } else {
         let bl = 1
         while i < n and bl > 0 {
           if cp.at(i) == "{" { bl += 1 } else if cp.at(i) == "}" { bl -= 1 }
@@ -155,16 +113,13 @@
         }
       }
     } else if c == "}" { i += 1 }
-    else if lower(c) != upper(c) { return c == lower(c) }   // level-0 cased letter
+    else if lower(c) != upper(c) { return c == lower(c) }
     else { i += 1 }
   }
   false
 }
 
-// BibTeX `von_name_ends_and_last_name_starts_stuff`: scanning down from the token
-// before Last, von ends right after the LAST lowercase token that still leaves a
-// non-empty Last. Everything in [von-start, von-end) is von (it may include
-// UPPERCASE tokens, e.g. "De la"); [von-end, last-end) is Last.
+// bibtex.web, von_name_ends_and_last_name_starts_stuff: von may include uppercase tokens before its final lowercase token.
 #let von-end(toks, von-start, last-end) = {
   let ve = last-end - 1
   while ve > von-start {
@@ -174,12 +129,7 @@
   von-start
 }
 
-// Join the tokens of ONE name part the way BibTeX's format.name$ does: a tie
-// (`~`, -> nbsp) before the LAST token and after a single-letter token, a space
-// otherwise — e.g. "de~la", "Stra\ss~e", "Charles Louis Xavier~Joseph". The tie
-// matters: a control-word accent (\ss, \ae, ...) swallows a following *space* but
-// not a *tie*, so BibTeX (and we) keep the gap by tying. Matches the `~`s BibTeX
-// writes straight into the .bbl.
+// format.name$ inserts ties that survive TeX control-word spacing, such as Stra\ss~e.
 #let tie-join(toks) = {
   if toks.len() == 0 { return "" }
   let n = toks.len()
@@ -191,16 +141,12 @@
   out
 }
 
-// "von Last" (comma form: the part before the first comma; von-start = 0).
 #let split-von-last(toks) = {
   if toks.len() == 0 { return ("", "") }
   let ve = von-end(toks, 0, toks.len())
   (tie-join(toks.slice(0, ve)), tie-join(toks.slice(ve)))
 }
 
-// "First von Last" (no comma). von-start = first lowercase token (BibTeX scans up
-// while von-start < last-1); First = tokens before it; if none, there is no von
-// and Last is the final token, First the rest.
 #let split-first-von-last(toks) = {
   let n = toks.len()
   let vs = 0
@@ -223,23 +169,17 @@
       (first: first, von: von, last: last, jr: "")
     }
   } else {
-    // "von Last, [Jr,] First": tokenize and tie-join the Jr/First parts too, the
-    // way BibTeX's format.name$ does (so "Harcourt Fenton" -> "Harcourt~Fenton").
     let (von, last) = split-von-last(toks)
     let part = i => tie-join(split-top(parts.at(i), ws).filter(t => t != ""))
     let jr = if parts.len() > 2 { part(1) } else { "" }
     let first = if parts.len() > 2 { part(2) } else { part(1) }
     (first: first, von: von, last: last, jr: jr)
   }
-  // `().join(" ")` is `none` in Typst, so an empty part can come back as none;
-  // coerce to "" so every part is a string (matches the reference; avoids a
-  // downstream `string + none` in the sort key for all-lowercase names).
   r.pairs().map(((k, v)) => (k, if v == none { "" } else { v })).to-dict()
 }
 
 #let parse-names(raw) = split-list-and(raw).map(parse-one-name)
 
-// ---- one entry: "@type{key, f = v, ...}" / "@type(key, f = v, ...)" ----
 #let parse-entry(block, macros) = {
   let m = block.match(regex("(?s)^@(\w+)\s*[\{\(]\s*([^,]+),"))
   if m == none { return none }
@@ -249,47 +189,32 @@
   let fields = (:)
   let i = 0
   while i < cp.len() {
-    // next field name (or end of entry)
     let k = skip-ws-comment(cp, i)
     let s = k
     while s < cp.len() and (cp.at(s).match(regex("[A-Za-z0-9_-]")) != none) { s += 1 }
-    if s == k { break }                       // no identifier -> done (trailing })
+    if s == k { break }
     let name = lower(cp.slice(k, s).join(""))
     let eq = skip-ws(cp, s)
     if eq >= cp.len() or cp.at(eq) != "=" { break }
     let (val, ni) = read-value(cp, eq + 1, macros)
-    // store the RAW TeX value (collapse whitespace only); decoding to Unicode and
-    // rendering to content happen later, in tex.typ, so the raw TeX survives the
-    // pipeline (BibTeX-style). Names tokenize on the RAW string too — exactly like
-    // BibTeX's format.name$ (brace/case rules in parse-names), so "Stra\ss e" and
-    // "{Barnes and Noble}" split the way bibtex splits them.
     let val = collapse-ws(val)
-    // An empty value is kept as an empty FIELD: it prints as nothing either way
-    // (`has` reads it as absent in both backends), but the entry does carry the
-    // name — which is what lets "journaltitle = {}" beside a legacy "journal"
-    // keep the legacy spelling from taking the canonical one's place.
+    // Keep empty fields: an explicit empty canonical field must block inheritance from its legacy alias.
     fields.insert(name, val)
     i = skip-ws-comment(cp, ni)
     while i < cp.len() and cp.at(i) == "," { i = skip-ws-comment(cp, i + 1) }
   }
   let names = (:)
-  // Parse every name-list role in the ACM data model. `translator` is not yet
-  // rendered by our backends, but the upstream ACM BibLaTeX drivers do print it
-  // (acmnumeric/acmauthoryear.bbx `translator+others`), so keep it in the parsed
-  // data model rather than dropping it on the floor; `sortname` is never printed
-  // at all, but it heads biber's `nty` name slot.
   for role in ("author", "editor", "bookauthor", "translator", "holder", "sortname") {
     if role in fields { names.insert(role, parse-names(fields.at(role))) }
   }
   (key: key, entry: (entry-type: etype, fields: fields, names: names))
 }
 
-// span of every top-level @...{...} or @...(...) block
 #let scan-blocks(cp) = {
   let out = ()
   let i = 0
   while i < cp.len() {
-    if cp.at(i) == "%" {            // top-level line comment: skip to EOL
+    if cp.at(i) == "%" {
       while i < cp.len() and cp.at(i) != "\n" { i += 1 }
       continue
     }
@@ -309,9 +234,7 @@
 #let parse-bib(text) = {
   let cp = text.codepoints()
   let blocks = scan-blocks(cp)
-  // BibTeX reads the database as a stream. An entry sees only @string definitions
-  // that precede it; redefining a macro affects later entries but cannot rewrite
-  // an earlier one. Built-in month/journal macros seed that stream.
+  // Macro redefinitions affect only entries that follow them in the source.
   let macros = (:)
   for (k, v) in journal-macros { macros.insert(lower(k), v) }
   for (k, v) in months { macros.insert(k, v) }
@@ -322,9 +245,7 @@
       let inner = cp.slice(blk.brace + 1, blk.end)
       let k = skip-ws(inner, 0)
       let s = k
-      // BibTeX identifiers are broader than regex `\w`: hyphens and several
-      // punctuation characters are legal. The assignment delimiter, whitespace,
-      // and the enclosing block are the structural boundaries here.
+      // BibTeX identifiers allow punctuation beyond \w.
       while s < inner.len() and inner.at(s) != "=" and inner.at(s) not in ws { s += 1 }
       if s > k {
         let name = lower(inner.slice(k, s).join("").trim())

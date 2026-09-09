@@ -1,15 +1,9 @@
-// Example acmsmall (ACM journal) paper using the faithful-acmart template.
-//
-// The wildcard import brings in `acmart`, the theorem environments, the citation
-// helpers (cite-text/cite-year/cite-author), and the `cite`/`bibliography` shadows
-// that route through the active `bib-backend`.
 #import "@preview/faithful-acmart:0.1.0": *
 
 #show: acmart.with(
   format: "acmsmall",
   title: "The Name of the Title Is Hope",
 
-  // Publication metadata
   journal: "JACM",
   acm-volume: 37,
   acm-number: 4,
@@ -20,8 +14,6 @@
   copyright: "acmlicensed",
   copyright-year: 2018,
 
-  // Authors (identical note content shares one author-note mark; consecutive
-  // authors sharing an affiliation are grouped on one line)
   authors: (
     (
       name: "Ben Trovato",
@@ -54,7 +46,6 @@
     letting you write idiomatic Typst.
   ],
 
-  // CCS concepts: (significance, area, concept). >=500 bold, >=300 italic, else roman.
   ccs: (
     (500, "Computing methodologies", "Massively parallel algorithms"),
     (300, "Computing methodologies", "Concurrent algorithms"),
@@ -128,6 +119,4 @@ We can also use lists:
 + Write your paper
 + Submit
 
-// A single relative bibliography path works on every backend. (Multiple .bib files on
-// the `bibtex`/`biblatex` backends must use project-absolute paths, e.g. "/refs.bib".)
 #bibliography("refs.bib")

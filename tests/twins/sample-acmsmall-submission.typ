@@ -1,8 +1,3 @@
-// sample-acmsmall-submission — port of the upstream acmart sample (acmart/
-// samples, docstrip option `all,acmsmall,submission`). The acmsmall journal
-// format in double-anonymous review mode (screen+anonymous+review): anonymized
-// author strip and margin line numbers. Diffed against
-// out/latex/acmsmall-submission.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

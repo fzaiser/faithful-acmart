@@ -1,34 +1,5 @@
-// TeX-string semantics for the "bst" bibliography backend.
-//
-// This module is the single home for *TeX text handling*, split by purpose from
-// the .bib parser (bibtex.typ) and the .bst formatter (acmref.typ):
-//
-//   * the LOGIC layer — `purify` and `change-case`, exact ports of BibTeX's
-//     `purify$` and `change.case$` built-ins (string -> string, math-blind,
-//     brace/special-character aware). BibTeX carries the RAW TeX string through
-//     its whole pipeline and only ever applies these two transforms for sort
-//     keys and display case; we follow it literally. Verified against the real
-//     bibtex binary (see tests/unit/tex.typ), which is a closed, finite spec.
-//
-//   * the PRESENTATION layer — one TeX *tokenizer* feeding mode-aware
-//     *evaluators*: `tex-to-content` (raw TeX -> content: accents/special letters
-//     -> Unicode, inline math -> real Typst equations, \emph/\textbf/... -> styled
-//     content, \url/\href -> links) and `tex-to-string` (raw TeX -> plain string,
-//     for sort/cite labels). `tex-to-content` is what the acmart() `tex-render`
-//     option overrides; the logic layer is never user-overridable (it would
-//     corrupt sorting). Unknown commands raise an error rather than passing
-//     through silently — the user is expected to handle them in a `tex-render`
-//     callback that falls back to `default-tex-render`.
-//
-// The 13-entry foreign-character table and the brace/special-character rules
-// below are quoted from bibtex.web (`x_purify`, `x_change_case`, and the
-// `pre_define(... control_seq_ilk)` block) — not guessed.
-
 #import "../formats/_base.typ": tp
 
-// ---- character classes (bibtex lex_class) ---------------------------------
-// ASCII letters/digits are alpha/numeric; space & tab are white_space; tilde
-// (tie) and hyphen are sep_char; everything else (incl. `$ ^ _ { } \`) is other.
 #let _lex(c) = {
   if c == " " or c == "\t" or c == "\n" or c == "\r" { "ws" }
   else if c == "~" or c == "-" { "sep" }
@@ -37,38 +8,23 @@
   else { "other" }
 }
 
-// ---- the 13 predefined foreign-character control sequences -----------------
-// bibtex.web pre_define(... control_seq_ilk): the ONLY control sequences BibTeX
-// recognizes as foreign letters. `purify$` maps each to the first alphabetic
-// char of its name, plus the second only for \oe \OE \ae \AE \ss (hence \aa->a
-// but \ss->ss). Anything else inside a special character is dropped.
+// bibtex.web, pre_define(control_seq_ilk): the foreign letters recognized by purify$.
 #let foreign-purify = (
   i: "i", j: "j", o: "o", O: "O", l: "l", L: "L",
   oe: "oe", OE: "OE", ae: "ae", AE: "AE", aa: "a", AA: "A", ss: "ss",
 )
-// change.case$ flips only the recognized foreign LETTER commands in place
-// (backslash + name kept): lowering touches the upper ones, uppercasing the
-// lower ones; \i \j \ss are never case-flipped.
 #let _foreign-lower = (L: "l", O: "o", OE: "oe", AE: "ae", AA: "aa")
 #let _foreign-upper = (l: "L", o: "O", oe: "OE", ae: "AE", aa: "AA")
 
-// ---- purify$ ---------------------------------------------------------------
-// `@<Purify a special character@>`: inside `{\...}`, emit the table value for a
-// recognized control sequence (nothing for an unknown one), then the trailing
-// alphanumerics; whitespace inside a special character is dropped (not spaced).
-// `cp` is the codepoint array, `p` sits on the opening brace. Returns the
-// appended text and the index of the closing brace (caller advances past it).
+// bibtex.web, x_purify: special-character groups have their own whitespace and control-sequence rules.
 #let _purify-special(cp, n, p) = {
   let out = ""
   let bl = 1
-  p += 1                                   // skip "{"
+  p += 1
   while p < n and bl > 0 {
-    p += 1                                 // skip "\"
+    p += 1
     let y = p
     while p < n and _lex(cp.at(p)) == "alpha" { p += 1 }
-    // A control SYMBOL (`\'e`, `\"o`, …) has no alpha name, so the slice is empty
-    // and array.join returns none; treat it as the unrecognized cs "" (drop the
-    // accent, keep the trailing letter), matching BibTeX purify$.
     let cs = if p > y { cp.slice(y, p).join("") } else { "" }
     if cs in foreign-purify { out += foreign-purify.at(cs) }
     while p < n and bl > 0 and cp.at(p) != "\\" {
@@ -79,13 +35,9 @@
       p += 1
     }
   }
-  (out, p - 1)                             // decr: leave p on the closing brace
+  (out, p - 1)
 }
 
-// `@<Perform the purification@>`: keep letters/digits; turn each white_space or
-// sep_char (`~`,`-`) into a single space; drop everything else (so `$ ^ _` and a
-// bare backslash vanish, but a bare `\cmd`'s letters survive as plain text);
-// `{` at level 1 followed by `\` enters the special-character branch.
 #let purify(s) = {
   let cp = s.codepoints()
   let n = cp.len()
@@ -111,19 +63,14 @@
   out
 }
 
-// ---- change.case$ ----------------------------------------------------------
 #let _conv-str(s, ct) = if ct == "u" { upper(s) } else { lower(s) }
 
-// `@<Convert a special character@>`: keep the braces and backslash; case-flip a
-// recognized foreign letter command in place; convert the trailing noncontrol
-// sequence with lower/upper. `p` sits on the opening brace; returns the
-// converted text and the index of the closing brace.
 #let _change-special(cp, n, p, ct) = {
   let out = "{"
   let bl = 1
-  p += 1                                   // skip "{"
+  p += 1
   while p < n and bl > 0 {
-    p += 1                                 // skip "\"
+    p += 1
     let x = p
     while p < n and _lex(cp.at(p)) == "alpha" { p += 1 }
     let cs = cp.slice(x, p).join("")
@@ -142,10 +89,7 @@
   (out, p - 1)
 }
 
-// `@<Perform the case conversion@>` + `@<Convert a brace_level = 0 character@>`.
-// `ct` is "t" (title: lower all but the first char and the first after ": "),
-// "l" (all lower) or "u" (all upper). Only brace-level-0 chars are converted, so
-// `{ACM}` is protected; a `{\foreign}` at level 1 is case-flipped in place.
+// bibtex.web, x_change_case: braces protect case except within special-character groups.
 #let change-case(s, ct) = {
   let cp = s.codepoints()
   let n = cp.len()
@@ -186,29 +130,10 @@
   out
 }
 
-// ===========================================================================
-// PRESENTATION layer: tokenizer -> mode-aware evaluators.
-// ===========================================================================
-// BibTeX never decodes to Unicode — TeX does, at typeset time. We replicate
-// "what TeX renders": a single mode-independent tokenizer turns raw TeX into a
-// token tree, then evaluators interpret it (text -> content, text -> string,
-// math -> a Typst-math source string that is `eval`'d). Field values flow
-// through the whole pipeline as RAW TeX and only become content here.
-
 #let _unsupported(what) = panic(
   "tex-render: unsupported TeX " + what + ". Supply a `tex-render` callback "
   + "that handles this case and falls back to `default-tex-render` for the rest.")
 
-// ---- tokenizer -------------------------------------------------------------
-// Token kinds (a nested tree; groups/math carry sub-token lists):
-//   (kind: "text",    value: <run>)         maximal run, excludes \ { } $ ~ ^ _
-//   (kind: "cw",      name:  <letters>)      control word \foo (swallows spaces)
-//   (kind: "cs",      name:  <one char>)     control symbol \& \" \, ...
-//   (kind: "group",   body:  (..tokens))     { ... }
-//   (kind: "math",    body:  (..tokens))     $ ... $
-//   (kind: "special", char:  "~"|"^"|"_")    catcode-special single chars
-// Mode-independent: `^`/`_` are emitted as `special` regardless of mode; the
-// evaluators give them meaning (scripts in math, an error bare in text).
 #let _is-alpha(c) = (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
 #let _is-num(c) = c >= "0" and c <= "9"
 #let _is-alnum(c) = _is-alpha(c) or _is-num(c)
@@ -229,7 +154,7 @@
         while j < n and _is-alpha(cp.at(j)) { j += 1 }
         toks.push((kind: "cw", name: cp.slice(i, j).join("")))
         i = j
-        while i < n and cp.at(i) == " " { i += 1 }   // control word swallows spaces
+        while i < n and cp.at(i) == " " { i += 1 }
       } else {
         toks.push((kind: "cs", name: d))
         i += 1
@@ -249,7 +174,7 @@
       toks.push((kind: "special", char: c))
       i += 1
     } else if c == "}" {
-      i += 1                                  // unmatched close: drop (TeX errors)
+      i += 1
     } else {
       run += c
       i += 1
@@ -260,11 +185,7 @@
 }
 #let _lex-tokens(s) = _tokenize(s.codepoints(), 0, none).at(0)
 
-// Grab one TeX argument from the front of a token list: a {group}'s body, or a
-// single token — and for a text run, just its FIRST grapheme (TeX's unbraced
-// single-token rule), slicing the tail back so the rest stays text. Leading
-// spaces are skipped (accents/commands take the next non-space). Returns
-// (arg-tokens, remaining-tokens).
+// An unbraced TeX argument consumes one token, so split text runs at their first grapheme.
 #let _grab(rest) = {
   let r = rest
   while r.len() > 0 and r.first().kind == "text" {
@@ -279,8 +200,6 @@
   if h.kind == "group" { return (h.body, r.slice(1)) }
   if h.kind == "text" {
     let cl = h.value.clusters()
-    // `().join("")` is `none`, not "" — so guard the single-cluster case (an accent
-    // grabbing the last char of a run, e.g. a title ending in "Caf\'e").
     let remaining = if cl.len() <= 1 { r.slice(1) }
       else { ((kind: "text", value: cl.slice(1).join("")),) + r.slice(1) }
     return (((kind: "text", value: cl.first()),), remaining)
@@ -288,15 +207,12 @@
   ((h,), r.slice(1))
 }
 
-// ---- command tables --------------------------------------------------------
-// Combining diacritics. What comes out is DECOMPOSED, so anything that compares
-// two names has to compose first: a .bib may type the character whole instead,
-// and the two forms are one name to biber.
-#let _accent-cs = (                        // control symbols: \"o \'e \^o ...
+// Accents produce decomposed Unicode; normalize before comparing names written in different forms.
+#let _accent-cs = (
   "\"": "\u{0308}", "'": "\u{0301}", "`": "\u{0300}", "^": "\u{0302}",
   "~": "\u{0303}", "=": "\u{0304}", ".": "\u{0307}",
 )
-#let _accent-cw = (                        // control words: \H{o} \v s ...
+#let _accent-cw = (
   H: "\u{030B}", v: "\u{030C}", u: "\u{0306}", r: "\u{030A}",
   k: "\u{0328}", c: "\u{0327}", b: "\u{0331}", d: "\u{0323}",
 )
@@ -305,22 +221,9 @@
   o: "ø", O: "Ø", l: "ł", L: "Ł", i: "ı", j: "ȷ",
 )
 
-// Biber LaTeX-decodes every field before it parses a name or builds a sort key
-// (Input/file/bibtex.pm:1723), so a character command is one CHARACTER by the
-// time any of its filters sees it. This decodes exactly that much — the accents
-// and the foreign letters — and leaves the rest of the syntax alone. Braces
-// above all: they are what tells biber's initialler which parts of a name may
-// be split, so a decoder that dropped them (`tex-to-string`) cannot be used
-// ahead of it. Whitespace behind a control word is the delimiter, so a decoded
-// letter absorbs it the way TeX does ("\ae sop" is one "æ" and then "sop").
-//
-// A brace is only ever consumed together with its partner, and biber decides
-// which pairs go: the braces protecting an ACCENT leave with it ("M{\"u}ller"
-// is "Müller"), while the ones around a letter macro stay ("{\ae}-Paul" is
-// "{æ}-Paul", which the initialler then splits at the dash all the same).
+// Biber decodes characters before name parsing while preserving structural braces.
+// Accent-protecting braces disappear; braces around letter commands remain.
 #let _accent-of(name) = _accent-cs.at(name, default: _accent-cw.at(name, default: none))
-// An accent goes over the DOTTED letter: "\i" and "\j" exist to carry one, and
-// TeX, biber and this renderer all spell the result "í", never a dotless "ı́".
 #let _dotted(t) = t.replace("ı", "i").replace("ȷ", "j")
 #let _accented = m => {
   let d = _accent-of(m.captures.at(0))
@@ -329,7 +232,6 @@
   _dotted(if a.starts-with("\\") { _special-letters.at(a.slice(1)) } else { a }) + d
 }
 #let _cs-or-cw = "([A-Za-z]+|[\"'`^~=.])"
-// what an accent may sit on: a letter, or the dotless-letter command
 #let _acc-arg = "(\\p{L}|\\\\[ij])"
 #let decode-chars(s) = {
   s
@@ -340,10 +242,7 @@
     .replace(regex("\\\\([A-Za-z]+)(\\{\\})?[ \t\n]*"),
       m => _special-letters.at(m.captures.at(0), default: m.text))
 }
-// newtxmath's \DeclareMathSizes table (newtxmath.sty:3106-3118), which acmart
-// inherits: (text size, math script size) in TeX points. LaTeX computes an unlisted
-// size as \defaultscriptratio = 0.7 of the text size (\calculate@math@sizes,
-// latex.ltx:10742), which is also what a size given in Typst points lands on.
+// newtxmath.sty, \DeclareMathSizes; unlisted sizes use LaTeX's \defaultscriptratio.
 #let _script-sizes = (
   (5, 5.5), (6, 5.5), (7, 5.5), (8, 6), (9, 6.6), (10, 7.3), (10.95, 8), (11, 8),
   (12, 8.8), (14.4, 10.5), (17.28, 12.5), (20.74, 16.1), (24.88, 18.2),
@@ -356,26 +255,17 @@
   0.7 * size
 }
 
-// \textsuperscript{x} sets its body at \sf@size (latex.ltx), so name that size
-// outright. `typographic: false` is required: Typst would otherwise substitute the
-// font's own superscript glyphs for the characters that have them (digits do), which
-// are a different shape and width from the shrunk full-size glyph LaTeX draws. The
-// top-matter note marks go through the same macro (`note-super`, frontmatter.typ).
+// \textsuperscript scales ordinary glyphs; disable Typst's substitution of dedicated superscript glyphs.
 #let script-super(body) = context super(
   typographic: false, size: script-size(text.size), body)
 
-// \TeX = T\kern-.1667em\lower.5ex\hbox{E}\kern-.125emX (latex.ltx), where ex is the
-// current font's x-height. A `box`'s `baseline` shift is TeX's \raise/\lower: it
-// moves the glyph without touching the advance width.
+// latex.ltx, \TeX: baseline shifts preserve glyph advance widths.
 #let _tex-tail = context {
   let ex = measure(text(top-edge: "x-height", bottom-edge: "baseline")[x]).height
   [T#h(-0.1667em)#box(baseline: 0.5 * ex)[E]#h(-0.125em)X]
 }
 
-// \LaTeX's raised A: set at \sf@size and lifted so its cap top meets the T's — the
-// A's \hbox sits at the top of a `\vbox to\ht\z@` closed by \vss (latex.ltx), and
-// for two capitals of one font that height difference is the cap height less the
-// same cap height at the smaller size.
+// latex.ltx, \LaTeX: the smaller A's cap top aligns with the T.
 #let _latex-a = context {
   let size = text.size
   let a-size = script-size(size)
@@ -390,16 +280,13 @@
 
 #let _logos = (LaTeX: "LATEX", TeX: "TEX", BibTeX: "BibTEX", LaTeXe: "LATEX2e")
 #let _logo-content = (LaTeX: latex-logo, TeX: tex-logo, BibTeX: bibtex-logo, LaTeXe: latexe-logo)
-// Argument-taking inline formatting: \textit{x}, \emph{x}, \textbf{x}, \textsc{x}.
-// LaTeX \emph toggles emphasis, but \textit/\textsl force an italic/slanted shape.
+// \emph toggles emphasis; \textit and \textsl force an italic shape.
 #let _emph-cw = ("emph",)
 #let _italic-cw = ("textit", "textsl")
 #let _strong-cw = ("textbf",)
 #let _sc-cw = ("textsc",)
 #let _id-cw = ("textrm", "textsf", "textnormal", "textup", "textmd", "mbox", "text")
-// Declaration *switches* (NO argument): they restyle the REST of the enclosing
-// group — `{\it a b}` italicizes "a b", not just the next char. Name -> styler tag
-// (em/bf/sc/tt, or id = a font *reset*, which we approximate as identity).
+// Declarations apply to the rest of the enclosing group.
 #let _switch-cw = (
   it: "it", itshape: "it", sl: "it", slshape: "it", em: "em",
   bf: "bf", bfseries: "bf",
@@ -413,8 +300,7 @@
 #let _cs-space = (" ": " ", ",": "\u{2009}", ";": " ", ":": " ")
 #let _noop-cs = ("/", "-", "!", "@")
 
-// TeX *input* ligatures (NOT font ligatures, which Typst applies itself; these
-// are markup-level in Typst and so are NOT applied to interpolated strings).
+// Typst does not apply markup substitutions to interpolated strings.
 #let _render-run(s) = {
   s = s.replace("---", "\u{2014}").replace("--", "\u{2013}")
   s = s.replace("``", "\u{201C}").replace("''", "\u{201D}")
@@ -422,11 +308,7 @@
   s
 }
 
-// In math, each letter is its OWN italic identifier and a digit-run is a number.
-// Typst reads consecutive letters as one (usually undefined) identifier and ERRORS
-// (`$ab$` -> "unknown variable: ab"; `$x2$` likewise), so a raw run must be split:
-// insert a space between adjacent alphanumerics unless both are digits (keeping a
-// multi-digit number intact). Non-alphanumerics (operators, parens) pass through.
+// Separate math letters so Typst does not parse adjacent letters as one identifier.
 #let _math-run(s) = {
   let out = ""
   let prev = none
@@ -440,9 +322,6 @@
   out
 }
 
-// ---- math: tokens -> Typst-math source string ------------------------------
-// Symbols map to Typst math identifiers; one-/two-arg functions to Typst math
-// functions; LaTeX `^{..}`/`_{..}` grouping becomes Typst `^(..)`/`_(..)`.
 #let _math-sym = (
   alpha: "alpha", beta: "beta", gamma: "gamma", delta: "delta", epsilon: "epsilon",
   varepsilon: "epsilon.alt", zeta: "zeta", eta: "eta", theta: "theta", vartheta: "theta.alt",
@@ -484,16 +363,11 @@
 #let _math-fn2 = (frac: "frac", tfrac: "frac", dfrac: "frac", binom: "binom")
 #let _math-noop = ("left", "right", "displaystyle", "textstyle", "scriptstyle",
   "limits", "nolimits", "bigl", "bigr", "big", "Big", "biggl", "biggr")
-// Math spacing control symbols: a literal " " is IGNORED by Typst math, so each
-// maps to a real spacing keyword. \, = thin, \: \> = medium, \; = thick,
-// \(space) = normal, \! = negative thin (LaTeX's are 3/4/5/-3 of 18mu = 1/6 em).
 #let _math-cs-space = (
   ",": "thin", ":": "med", ">": "med", ";": "thick", " ": "space",
   "!": "#h(-(1em)/6)",
 )
 
-// Apply a formatting tag to already-evaluated inner content `x` (content mode
-// only — in string/math modes formatting is dropped and `x` passes through).
 #let _apply(tag, x, cont) = {
   if not cont { x }
   else if tag == "em" { emph(x) }
@@ -504,18 +378,8 @@
   else { x }
 }
 
-// ---- the evaluator: tokens -> content / string / math-source ---------------
-// ONE recursive function over three modes, so every call is self-referential
-// (Typst has no late binding between separate module-level `#let`s, which rules
-// out mutual recursion). `mode`:
-//   "content" -> content (the default tex-render: styled, real equations, links)
-//   "string"  -> plain string (sort/cite labels: formatting dropped)
-//   "math"    -> a Typst-math SOURCE string (later eval'd inside $...$)
-// The LINEAR walk over the token list is a LOOP (reassigning `rest`), so its depth
-// is O(1) in field length — Typst's call-depth limit is ~72, and a field can have
-// dozens of tokens. Only the STRUCTURAL descent (group/arg/math bodies, via the
-// recursive `_eval` calls below) recurses, and that is bounded by brace/math
-// nesting depth (a handful), not token count.
+// One evaluator permits recursive mode changes without mutual recursion, which Typst cannot bind.
+// Iterate over tokens so field length does not consume call depth.
 #let _eval(toks, mode) = {
   let cont = mode == "content"
   let math = mode == "math"
@@ -524,16 +388,14 @@
   while rest.len() > 0 {
     let t = rest.first()
     let tail = rest.slice(1)
-    let next = tail                    // commands that take arguments override this
+    let next = tail
     let piece = if cont { [] } else { "" }
 
     if t.kind == "text" {
       piece = if math { _math-run(t.value) + " " } else { _render-run(t.value) }
     } else if t.kind == "group" {
       let g = _eval(t.body, mode)
-      // A `{group}` is invisible grouping (NOT parentheses); in math we just inline
-      // the body. (A following ^/_ then attaches to the body's last atom, not the
-      // whole group — an accepted approximation; explicit scripts use `^{..}`.)
+      // Flattening math groups makes later scripts attach to the last atom; this is an approximation.
       piece = if math { g + " " } else { g }
     } else if t.kind == "math" {
       if cont { piece = eval(_eval(t.body, "math"), mode: "math") }
@@ -541,7 +403,6 @@
       else { _unsupported("inline math in a name/label field") }
     } else if t.kind == "special" {
       if math {
-        // `~` in math is a (non-breaking) interword space; a literal " " is ignored.
         if t.char == "~" { piece = "space.nobreak " }
         else {
           let (a, r) = _grab(tail)
@@ -563,8 +424,6 @@
           next = r2
         }
         else if nm == "text" or nm == "mbox" or nm == "textrm" {
-          // \text{..} -> a quoted Typst string literal; escape \ and " so the
-          // generated math source can't be broken by the field's own characters.
           let (a, r) = _grab(tail)
           let s = _eval(a, "string").replace("\\", "\\\\").replace("\"", "\\\"")
           piece = "\"" + s + "\" "; next = r
@@ -579,7 +438,7 @@
       }
       else if nm in _accent-cw { let (a, r) = _grab(tail); piece = _dotted(_eval(a, "string")) + _accent-cw.at(nm); next = r }
       else if nm in _id-cw { let (a, r) = _grab(tail); piece = _eval(a, mode); next = r }
-      else if nm in _switch-cw {                  // declaration switch: restyle REST of group
+      else if nm in _switch-cw {
         let tag = _switch-cw.at(nm); next = ()
         if tag == "tt" { let s = _eval(tail, "string"); piece = if cont { raw(s) } else { s } }
         else { piece = _apply(tag, _eval(tail, mode), cont) }
@@ -615,6 +474,5 @@
   out
 }
 
-// ---- public entry points ---------------------------------------------------
 #let tex-to-content(s) = if type(s) != str { s } else { _eval(_lex-tokens(s), "content") }
 #let tex-to-string(s) = if type(s) != str { s } else { _eval(_lex-tokens(s), "string") }

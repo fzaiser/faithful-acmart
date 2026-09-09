@@ -1,8 +1,3 @@
-// authorversion-test — the author's-version copyright block.
-// Matched twin: authorversion-test.tex. author-version suppresses the permission
-// text and replaces the ACM bibstrip in the page-1 copyright footnote with the
-// "author's version ... Version of Record was published in <journal>, <doi>"
-// notice (acmart.dtx:6612/6634).
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

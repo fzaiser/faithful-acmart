@@ -1,10 +1,3 @@
-// sample-sigconf-authordraft — port of the upstream acmart sample (acmart/
-// samples, docstrip option `all,proceedings,sigconf,authordraft`). The sigconf
-// proceedings format in authordraft mode: the "Unpublished working draft"
-// watermark over the copyright block, margin line numbers (review), and the
-// inner-edge draft timestamp (deterministic under the harness's pinned clock,
-// so the pages are golden-hashed).
-// Diffed against out/latex/sigconf-authordraft.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

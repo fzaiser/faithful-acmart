@@ -1,8 +1,3 @@
-"""Cross-engine layout-geometry gates.
-
-Tier 2 metrics (margins, line count, baseline pitch, page size), Tier 2.5 per-word
-placement, and Tier 2.6 horizontal-rule weight/colour/extent."""
-
 from __future__ import annotations
 
 import difflib
@@ -20,20 +15,13 @@ def _metrics_for(pdf: Path) -> dict:
 
 
 def _line_pitch_drift(a: list[float], b: list[float]) -> tuple[float, int]:
-    """(worst per-line pitch difference, #lines compared) for two pitch sequences.
-
-    Returns (0.0, 0) when the sequences can't be paired one-to-one — i.e. the two
-    engines broke the page into a different number of text lines, so position i in
-    one isn't the same line as position i in the other. The caller then leans on
-    the median-pitch gate instead.
-    """
+    """Return (maximum pitch difference, line count), or (0.0, 0) if the sequences cannot align."""
     if not a or len(a) != len(b):
         return 0.0, 0
     return max(abs(x - y) for x, y in zip(a, b)), len(a)
 
 
 def gate_metrics(report: bool = False) -> list[str]:
-    """Tier 2 — cross-engine layout metrics."""
     tol = M.METRICS_TOLERANCE
     failures: list[str] = []
     for name, t in TESTS.items():
@@ -44,16 +32,13 @@ def gate_metrics(report: bool = False) -> list[str]:
             failures.append(f"{name}: missing PDF ({'LaTeX' if not lref.exists() else 'Typst'})")
             continue
         lm, tm = _metrics_for(lref), _metrics_for(tpdf)
-        lw, tw = words(lref), words(tpdf)  # cached; carries per-page MediaBox size
+        lw, tw = words(lref), words(tpdf)
         pages = [1] if t.metrics_page1_only else sorted(set(lm) & set(tm))
         gated = [("left", tol["left"], "left margin"), ("top", tol["top"], "top margin")]
         if t.metrics_uniform_pitch:
             gated.append(("pitch", tol["pitch"], "baseline pitch"))
 
-        # Per-line pitch is gated only on single-page uniform-pitch twins. A
-        # multi-page doc's page 1 is full, so acmsmall's \@textbottom rubber glue
-        # stretches its paragraph gaps to the bottom margin (the documented fill we
-        # can't replicate) — gating per-line spacing there would chase that drift.
+        # Restrict line-pitch checks to avoid full-page stretching by LaTeX.
         line_pitch = bool(t.metrics_uniform_pitch) and t.pages == 1
         gated_summary = "L/T"
         if t.metrics_uniform_pitch:
@@ -86,15 +71,12 @@ def gate_metrics(report: bool = False) -> list[str]:
                 d = abs(a[key] - b[key])
                 if d > lim:
                     observed[(p, key)] = d
-            # Cross-engine page geometry: MediaBox width/height must agree tightly.
             lpg, tpg = lw.get(p), tw.get(p)
             if lpg and tpg:
                 for dim, key in (("w", "width"), ("h", "height")):
                     d = abs(lpg[dim] - tpg[dim])
                     if d > tol[key]:
                         observed[(p, key)] = d
-            # Per-line pitch: only when the line-break structure matches (aligned
-            # pitch sequences); otherwise the median pitch above is the gate.
             if lpd and lpd[1] and lpd[0] > tol["line_pitch"]:
                 observed[(p, "line_pitch")] = lpd[0]
         if report:
@@ -137,16 +119,9 @@ def gate_metrics(report: bool = False) -> list[str]:
 
 
 def _align_words(lwords: list, twords: list) -> list[tuple[float, float, str]]:
-    """Pair the two engines' word streams and return (dx, dy, text) per match.
+    """Return (dx, baseline dy, text) for words aligned by text.
 
-    Alignment is difflib's longest-matching-block over the word TEXT (autojunk
-    off, so common short words are not dropped). Only positionally-aligned
-    matches are returned; words that one engine split differently (ligature or
-    hyphenation segmentation) simply don't match and are ignored by construction
-    — so this gate measures placement, never text coverage (the char/word bags
-    own that). dy is the signed baseline difference; the caller removes the page's
-    median dy so Tier 2 'top' keeps ownership of the gross first-baseline offset.
-    """
+    Unmatched words are excluded; text coverage is checked separately."""
     lt = [w[4] for w in lwords]
     tt = [w[4] for w in twords]
     matcher = difflib.SequenceMatcher(a=lt, b=tt, autojunk=False)
@@ -159,13 +134,7 @@ def _align_words(lwords: list, twords: list) -> list[tuple[float, float, str]]:
 
 
 def gate_word_positions(report: bool = False) -> list[str]:
-    """Tier 2.5 — per-word placement on opt-in (``word_positions``) twins.
-
-    For each opted-in twin whose two engines break into the same lines, align the
-    word streams per page and gate max |Δx0| and max |Δy−median(Δy)| (y = the
-    baseline) against ``WORD_POSITION_TOLERANCE``. Subtracting the per-page median
-    Δy cancels the engines' first-baseline offset (Tier 2 'top' owns that value), so
-    what survives is a lost indent/centering or a single mis-spaced line."""
+    """Compare aligned word positions after removing each page's median vertical offset."""
     tol = M.WORD_POSITION_TOLERANCE
     failures: list[str] = []
     for name, t in TESTS.items():
@@ -203,8 +172,7 @@ def gate_word_positions(report: bool = False) -> list[str]:
                   f"Δx {worst['dx'][0]:.2f}pt / Δy {worst['dy'][0]:.2f}pt")
     return failures
 def _match_rules(lrules: list[tuple], trules: list[tuple]) -> tuple[list, list]:
-    """Bijectively pair rules by colour (exact), thickness/x-mid/x-width (toleranced).
-    Returns (LaTeX-only, Typst-only) rules that found no partner."""
+    """Pair rules by color and toleranced geometry; return unpaired LaTeX and Typst rules."""
     used = [False] * len(trules)
     unmatched_l = []
     for a in lrules:
@@ -230,9 +198,6 @@ def _fmt_rule(r: tuple) -> str:
 
 
 def gate_horizontal_rules(report: bool = False) -> list[str]:
-    """Tier 2.6 — horizontal-rule weight/colour/extent on opt-in (``rule_gate``)
-    twins. Each LaTeX rule must find a distinct Typst rule of matching colour,
-    thickness (±0.05pt), x-midpoint (±1.5pt) and x-width (±8pt), and vice versa."""
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin" or not t.rule_gate:

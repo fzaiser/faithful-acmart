@@ -1,4 +1,3 @@
-// sigconf-pages-test — continuation-page proceedings running heads/folios.
 #import "/src/lib.typ": acmart
 
 #let fill = [

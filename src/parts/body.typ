@@ -1,42 +1,21 @@
-// Body elements: captions, lists, tables, code, display math, footnotes.
-
 #import "spacing.typ": comp, tex-skip
 #import "../formats/_base.typ": tp
 #import "theorems.typ": cfg-state, thm-figure-kind
 #import "tables.typ": table-inset, light-rule
 
-// True while the title head renders a teaser figure: the figure show rule
-// below must not add its \intextsep float spacing or the paragraph-indent shim
-// there — \@mkteasers places the figure with its own \bigskip/\medskip skips
-// (set by parts/frontmatter.typ's teaser-figure).
+// Teasers have their own \@mkteasers spacing, so suppress ordinary float spacing and the indent shim.
 #let in-topmatter = state("acm-in-topmatter", false)
 
-// The rules below need measure() for the amsart list-label geometry, so the
-// whole body scope is one context block. `amsart-lists` selects the list
-// geometry model (see the list section): true under review/nonacm, where an
-// acmart hook-ordering bug lets amsart's begin-document values win.
 #let apply-body(cfg, body, amsart-lists: false) = context {
-  // Figure/table supplements and caption separator. Journals use "Fig.";
-  // proceedings keep caption's default "Figure" name. The table name follows the
-  // main language, as in acmart's babel caption hooks.
   show figure.where(kind: image): set figure(supplement: if cfg.journal { [Fig.] } else { [Figure] })
   show figure.where(kind: table): set figure(supplement: cfg.strings.table)
   show figure.where(kind: table): set figure.caption(position: top)
-  // In LaTeX, figure/table environments are floats unless the source opts into a
-  // non-floating placement. Typst's figure() is in-flow by default, so give ACM
-  // body figures a floating default and let special wrappers opt out explicitly.
   set figure(placement: auto)
   set figure.caption(separator: if cfg.journal or cfg.name == "sigplan" { [. ] } else { [: ] })
 
-  // Caption typography + singlelinecheck (center if one line, else left-justify).
-  // The label ("Figure 1.") and text can carry different weights (sigplan:
-  // labelfont={bf}, textfont={normalfont}, acmart.dtx:4211-4213), so the caption
-  // is assembled from its fields rather than rendered wholesale.
   show figure.caption: it => context {
     let cap-font = if cfg.journal { cfg.fonts.sans } else { cfg.fonts.body }
     let cap-weight = if cfg.journal or cfg.name == "sigplan" { "regular" } else { "bold" }
-    // sigchi-a captions are {bf, small} (acmart.dtx:4220-4223), one size step
-    // below the other proceedings formats' bold normalsize.
     let cap-step = if cfg.journal or cfg.name == "sigchi-a" { "small" } else { "normalsize" }
     let label-weight = if cfg.name == "sigplan" { "bold" } else { cap-weight }
     set text(font: cap-font, weight: cap-weight, size: cfg.size.at(cap-step))
@@ -52,35 +31,16 @@
       if w <= size.width {
         align(center, cap)
       } else {
-        // A justified paragraph does NOT stretch to the container under align() —
-        // its box shrinks to the natural line-break width, ending up a few pt
-        // narrow on each side. Pin it to the full column so it justifies
-        // edge-to-edge, matching acmart's `margin=\z@` caption (acmart.dtx:4197).
-        // align(left) overrides the figure's ambient centering so the justified
-        // paragraph's LAST line is ragged-left (as LaTeX's justified caption is),
-        // not ragged-centre — while the full-width block still stretches line 1.
+        // Use the full column width for justification and left-align the final caption line.
         block(width: 100%, align(left, { set par(justify: true); cap }))
       }
     })
   }
 
-  // Float spacing: \intextsep (12pt) around [h] floats, \abovecaptionskip (12pt)
-  // between figure body and caption. (Floats sit on \lineskip, not \baselineskip,
-  // so unlike text blocks they take no line-box compensation.)
   let env-block(it, above: 0pt, below: 0pt) = {
     block(above: above, below: 0pt, it)
-    // LaTeX environments such as list/quote end with normal paragraph
-    // indentation enabled. The h() shim forms an invisible zero-height
-    // paragraph after the block, which makes the NEXT paragraph take the
-    // native first-line-indent ("follows a paragraph"). The shim also owns
-    // the whole below-gap as its par `spacing`: measured, a block's `below`
-    // and the follower's own above-spacing ADD across the shim (so a nonzero
-    // `below` here double-counts), while the shim's spacing collapses by max
-    // against whatever follows — exactly LaTeX's \addvspace semantics for
-    // consecutive \topsep-carrying environments.
-    // If the next item is a heading, this does not visibly indent it: display
-    // headings are blocks, and run-in headings cancel/adjust the ambient indent
-    // in parts/headings.typ.
+    // A zero-height paragraph restores indentation after the environment.
+    // Its spacing collapses with the following gap, as \addvspace does; block below-spacing would add to it.
     {
       set par(spacing: below)
       h(cfg.parindent)
@@ -88,7 +48,6 @@
   }
   show figure: it => context {
     if in-topmatter.get() {
-      // teaser figures carry \@mkteasers' own skips (frontmatter.typ)
       it
     } else {
       set block(above: cfg.intextsep, below: cfg.intextsep)
@@ -97,27 +56,10 @@
     }
   }
   set figure(gap: cfg.abovecaptionskip)
-  // The theorem environments' figure wrapper exists only to give `<label>` a
-  // referenceable target (parts/theorems.typ); unwrap it so it contributes no
-  // float, caption or figure spacing of its own. Defined after the generic
-  // `show figure` above so it wins for this kind. The `set align` undoes the
-  // centring a figure frame applies outside its show rule, which would otherwise
-  // shrink-wrap and centre the theorem block.
+  // Remove the reference wrapper's float behavior and its inherited centering.
   show figure.where(kind: thm-figure-kind): it => { set align(start); it.body }
 
-  // Tables. A bare `table.hline` draws the light rule (0.05em); a plain Typst table
-  // has no rule SEPARATION, though — the `tabular` wrapper (parts/tables.typ)
-  // restores booktabs' \aboverulesep/\belowrulesep and supplies
-  // \toprule/\midrule/\bottomrule. The strut inset is shared with tabular so plain
-  // and booktabs tables have identical rows.
-  //
-  // Row strut: LaTeX's \@arstrut makes every row 0.7\baselineskip tall + 0.3 deep
-  // (array \arraystretch is 1). Model it in the cell TEXT box rather than the inset,
-  // because the global top-edge:1em leading would otherwise reserve a full em above
-  // the baseline (~1.2× too much) and can't be undone by inset alone. top-edge
-  // 0.7bls / bottom-edge -0.3bls makes the single-line box exactly \baselineskip
-  // (baseline 0.3bls up from the bottom); leading 0 keeps a wrapped/multi-line cell
-  // at one \baselineskip per line, so an n-line cell is n·bls — matching LaTeX.
+  // Model \@arstrut through text metrics: inset alone cannot shrink the global one-em ascent.
   show table: it => {
     set text(top-edge: 0.7 * cfg.baselineskip, bottom-edge: -0.3 * cfg.baselineskip)
     set par(leading: 0pt)
@@ -126,80 +68,24 @@
   set table(inset: table-inset, stroke: none)
   set table.hline(stroke: light-rule)
 
-  // Display equations in acmart/amsart are numbered by default and carry
-  // generous \abovedisplayskip/\belowdisplayskip. Typst's native display math is
-  // visually too tight, so wrap only block equations in TeX-like vertical space.
   set math.equation(numbering: "(1)")
-  // Deliberately NO trailing indent shim here (unlike lists/figures/quotes): a
-  // display equation is frequently a mid-paragraph continuation (the official ACM
-  // samples set text right after \end{equation} with no blank line, which LaTeX
-  // does NOT indent), and Typst cannot tell that apart from a blank-line-separated
-  // new paragraph (which LaTeX would indent) — a block equation always ends the
-  // paragraph either way. Auto-indenting would regress the common continuation
-  // case, so the port leaves post-equation paragraphs un-indented and users add an
-  // explicit indent where wanted. The below-gap is also measured from the ink bbox
-  // (descender leak) and amsart's short-display skips are unmodelled — see DESIGN.md.
+  // Equations and code blocks may continue a paragraph; Typst cannot detect a LaTeX-style blank line after them.
   show math.equation.where(block: true): set block(
     above: tex-skip(cfg, cfg.medskip),
     below: tex-skip(cfg, cfg.medskip),
   )
 
-  // --- List geometry (PROBED from the live class; OPTION-DEPENDENT!) --------
-  //
-  // acmart registers its list dimensions in an \AtBeginDocument block
-  // (acmart.dtx:4425): \labelsep 4pt, \leftmargini = \parindent + 2\labelsep +
-  // 6.5pt (24.5pt), \leftmarginii..vi = 8.5pt. amsart registers its own block
-  // (deps/amsart.cls:942): \labelsep 5pt and \settowidth-derived margins —
-  // \leftmargini = width of the level's enum label at counter 13 + \labelsep
-  // (+ \normalparindent at level 1), \leftmarginv/vi = 10pt.
-  //
-  // WHICH block wins depends on the CLASS OPTIONS (an upstream acmart bug):
-  // `review` and `nonacm` run \AtBeginDocument inside their \DeclareOption
-  // code, BEFORE \LoadClass{amsart} — the LaTeX kernel merges each class's
-  // hook code into one labeled chunk ordered by first registration, so the
-  // whole acmart chunk (list block included) then executes before amsart's
-  // and amsart's \settowidth values overwrite it. Probed: plain/screen
-  // acmsmall gives labelsep 4pt / leftmargini 24.5pt; review or nonacm gives
-  // 5pt / 30.26pt (verified with \ShowHook{begindocument}: execution order
-  // "acmart, amsart, ..." under nonacm, the reverse without). The port
-  // replicates the class bug-for-bug via `amsart-lists`.
-  //
-  // Labels are \llap'd in both models: right-aligned ending \labelsep before
-  // the body, overhanging leftward when wide. Typst's enum/list reserve the
-  // widest marker instead, so every marker is drawn as a zero-width box with
-  // the label overhanging left, and the body pinned at indent + body-indent =
-  // the level's \leftmargin.
-  //
-  // Vertical spacing (same in both models): level-1 \topsep = \listisep =
-  // \smallskipamount with \itemsep = \parsep = 0 (items sit one \baselineskip
-  // apart); level-2+ \topsep = 0, so nested lists add NO gap and only the
-  // outermost list carries the \listisep block gap + the post-environment
-  // paragraph indent.
+  // Zero-width markers reproduce \llap, keeping the body indent independent of label width.
   let enum-pats = if cfg.name == "sigplan" { ("1.", "a.", "i.", "A.") } else { ("(1)", "(a)", "(i)", "(A)") }
-  // Level-1 marker is amsart's math \bullet (deps/amsart.cls:881), not \textbullet.
-  // newtxmath's \bullet disc renders ~1.65x the diameter of Libertinus Math's, so
-  // enlarge it to match LaTeX's rendered disc (a deliberate visual compensation for
-  // the known math-font design difference). The enlarged glyph is `place`d inside a
-  // box sized to the NATURAL bullet, so the marker's layout footprint is unchanged:
-  // llap still right-aligns on the natural width (exact horizontal position) and the
-  // item's line height is not inflated (a plain `text(size: 1.65em)` or `scale`
-  // would push the next item down). `dy: -0.2em` raises the disc to the math axis:
-  // `place`-centering pins the disc to the BOX centre, not the glyph's own axis, and
-  // that centre — a function of the box height, which the global top-edge:1em inflates
-  // — lands ~2pt too low (measured: disc 0.47pt above the baseline vs LaTeX's ~2.5pt).
-  // -0.2em (font-relative) lifts it back to the axis (~0.25em above the baseline),
-  // where LaTeX renders it, and `place`'s dy is out of flow so the item is not pushed
-  // down. (Merely resetting top-edge for the marker does NOT fix it — the disc then
-  // overshoots ABOVE the axis, because the position tracks box height either way; the
-  // shift is the accurate correction.) Levels 2-4 already match (bold en-dash/∗/·).
+  // Enlarge Libertinus Math's bullet to match newtxmath, preserving its layout box.
+  // The vertical shift aligns the enlarged disc with the math axis.
   let big-bullet = context box(
     width: measure($bullet$).width, height: measure($bullet$).height,
     place(right + horizon, dy: -0.2em, text(size: 1.65em)[$bullet$]))
   let list-marks = (big-bullet, text(weight: "bold")[–], [∗], [·])
   let llap(c) = context { h(-measure(c).width); c }
   let labelsep = if amsart-lists { 5 * tp } else { 4 * tp }
-  // \leftmargin per (1-based) level; the amsart model measures like \settowidth
-  // at counter 13.
+  // amsart derives margins with \settowidth at counter 13 (amsart.cls, list setup).
   let label-w(k) = measure(numbering(enum-pats.at(k), 13)).width
   let leftmargin = if amsart-lists {
     (
@@ -210,14 +96,10 @@
       10 * tp, 10 * tp,
     )
   } else {
-    let nested = 0.5 * labelsep + 6.5 * tp // \leftmarginii..vi = 8.5pt
+    let nested = 0.5 * labelsep + 6.5 * tp
     (cfg.parindent + 2 * labelsep + 6.5 * tp, nested, nested, nested, nested, nested)
   }
-  // LaTeX keeps THREE depths: \leftmargin follows the total nesting depth
-  // (\@listdepth), but the label comes from \labelenumN indexed by \@enumdepth
-  // and \labelitemN indexed by \@itemdepth. So an enumerate inside an itemize
-  // still starts at "(1)", and an itemize inside an enumerate still gets the big
-  // bullet — while both sit at the second level's margin.
+  // Margins follow total list depth; marker styles follow the nesting depth of their own list kind.
   let list-depth = counter("acm-list-depth")
   let enum-depth = counter("acm-enum-depth")
   let item-depth = counter("acm-item-depth")
@@ -228,9 +110,6 @@
     context {
       let d = list-depth.get().first()
       let inner = {
-        // Children of THIS list are one level deeper in each of the three
-        // counters, clamped like LaTeX — whose \@itemdepth/\@enumdepth error
-        // out past 4, where we saturate.
         let li = calc.min(d, leftmargin.len() - 1)
         let ei = calc.min(enum-depth.get().first(), 3)
         let ii = calc.min(item-depth.get().first(), 3)
@@ -246,8 +125,6 @@
   }
   show enum: it => list-block(it, enum-depth)
   show list: it => list-block(it, item-depth)
-  // amsart labels are (1)/(a)/(i)/(A); sigplan redefines them to 1./a./i./A.
-  // (acmart.dtx:4402-4406).
   set enum(numbering: (..ns) => llap(numbering(enum-pats.at(0), ..ns)),
     indent: leftmargin.at(0) - labelsep, body-indent: labelsep,
     spacing: comp(cfg))
@@ -255,10 +132,6 @@
     indent: leftmargin.at(0) - labelsep, body-indent: labelsep,
     spacing: comp(cfg))
 
-  // quote (amsart, deps/amsart.cls:900-905): a label-less list — leftmargin =
-  // \leftmargini, rightmargin = leftmargin, \topsep = \listisep, no paragraph
-  // indent. (Typst's quote maps to LaTeX's `quote`; the 3pc-margin `quotation`
-  // variant with indented paragraphs is not modelled.)
   show quote.where(block: true): it => env-block(
     above: list-gap, below: list-gap,
     block(width: 100%, inset: (left: leftmargin.at(0), right: leftmargin.at(0)), {
@@ -268,19 +141,10 @@
     }),
   )
 
-  // Monospace (Inconsolata/zi4) for inline and block code. Typst's raw default
-  // is smaller than LaTeX \texttt/verbatim; force it back to the surrounding
-  // font size, and give display code the same smallskip-style breathing room as
-  // LaTeX's verbatim/trivlist.
+  // Compensate for Typst raw text's built-in size reduction to retain the surrounding font size.
   show raw: it => {
     set text(font: cfg.fonts.mono, size: 1.25em)
     if it.block {
-      // Deliberately NO trailing indent shim (see the display-equation note above):
-      // like a display equation, a verbatim block often continues a paragraph with
-      // no blank line (LaTeX's \@doendpe then suppresses the next paragraph's
-      // indent), and Typst cannot distinguish that from the blank-line case LaTeX
-      // WOULD indent. Un-indenting matches the common continuation case and the
-      // official ACM samples (which add an explicit indent where wanted).
       block(above: tex-skip(cfg, cfg.smallskip), below: tex-skip(cfg, cfg.smallskip))[
         #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: 0pt)
         #it.lines.map(l => l.body).join(linebreak())
@@ -290,19 +154,12 @@
     }
   }
 
-  // Bibliography (fires only on the "typst" backend): Typst's built-in ACM CSL,
-  // footnotesize (8pt), headed by \refname in the document language. The faithful
-  // default is the "bibtex" backend (the ACM-Reference-Format.bst port); "typst" is
-  // the CSL approximation.
   set bibliography(style: "association-for-computing-machinery", title: cfg.strings.references)
   show bibliography: set text(size: cfg.size.footnotesize)
   show bibliography: set par(leading: comp(cfg, sz: "footnotesize"))
 
-  // Footnotes: footnotesize (8pt), short 4pc rule (\footnoterule).
   set footnote.entry(
     separator: line(length: cfg.footnote-rule-short, stroke: 0.4pt),
-    // \skip\footins (7pt) of glue, then \footnoterule's \kern-3pt pulls the rule
-    // up, so the body-to-rule gap is ~4pt; \kern2.6pt below the rule = gap.
     clearance: cfg.footins-skip - cfg.footnote-rule-kern-above,
     gap: cfg.footnote-rule-kern-below,
     indent: 0pt,
@@ -313,32 +170,16 @@
   body
 }
 
-// --- sigchi-a margin notes (acmart.dtx:4266-4341) --------------------------
-//
-// sidebar / marginfigure / margintable set their body in a \marginpar: a
-// \small box of \marginparwidth in the wide left margin (\reversemarginpar
-// puts it there), \marginparsep left of the text edge, top-aligned with the
-// invocation point. marginfigure/margintable centre their content; captions
-// come from the user's own figure() (kind: image/table, or kind: "sidebar"
-// with supplement [Sidebar] for a captioned sidebar). The in-topmatter flag
-// suppresses the body float spacing + indent shim inside the note, like the
-// teaser path.
 #let _marginpar(body, centering: false) = context {
   let cfg = cfg-state.get()
   let mp = cfg.marginpar
   assert(mp != none, message: "faithful-acmart: sidebar/marginfigure/margintable need a margin-note column (format: \"sigchi-a\")")
-  // horizontal alignment only: the note's TOP stays at the invocation point in
-  // the flow (a `top` alignment would pin it to the container top instead).
-  // dy is MATCHED TO OUTPUT: \marginpar aligns the note's first baseline with
-  // the line it attaches to; measured on sigchi-a-test p2 the Typst place
-  // anchor sits 14.65tp below LaTeX's note baseline (281.3bp in both after
-  // this shift).
+  // Horizontal alignment keeps the note anchored in the flow.
+  // The vertical offset aligns its first baseline with LaTeX's margin-note anchor.
   place(left, dx: -(mp.width + mp.sep), dy: -14.65 * tp, box(width: mp.width, {
     set text(size: cfg.size.small)
     set par(leading: comp(cfg, sz: "small"), spacing: comp(cfg, sz: "small"), justify: false, first-line-indent: 0pt)
-    // Re-render figures bare — body + \abovecaptionskip + caption (table
-    // captions on top) — replacing the figure element entirely so the global
-    // float show rule (\intextsep + indent shim) never fires inside the note.
+    // Render note figures directly to bypass the body float spacing and indent shim.
     show figure: it => block(width: 100%, spacing: 0pt, {
       if it.kind == table and it.caption != none { it.caption; v(cfg.abovecaptionskip) }
       it.body
@@ -352,11 +193,6 @@
 #let marginfigure(body) = _marginpar(body, centering: true)
 #let margintable(body) = _marginpar(body, centering: true)
 
-// \fulltextwidth (acmart.dtx:4337): sigchi-a's figure*/table* span the text
-// PLUS the margin column (textwidth + marginparsep + marginparwidth),
-// extending leftward. Wrap a figure to give it that width. (LaTeX's figure*
-// additionally floats to the page top; place the wrapper where the figure
-// should sit.)
 #let fulltextwidth(body) = context {
   let cfg = cfg-state.get()
   let mp = cfg.marginpar

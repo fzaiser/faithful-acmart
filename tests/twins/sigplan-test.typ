@@ -1,7 +1,3 @@
-// sigplan-test — two-column proceedings format (twin).
-// Matched twin: sigplan-test.tex. Exercises the two-column layout: the spanning
-// centered conference title, the centered author grid, the first-column copyright
-// block (conference info + permission + ISBN), and the serif-bold Large sections.
 #import "/src/lib.typ": acmart, theorem, definition, proof
 
 #show: acmart.with(
@@ -65,4 +61,3 @@ The sigplan style overrides several defaults: enumerate labels are _1._/_a._, th
 
 = Method
 A second top-level section. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim aeque doleamus animo, cum corpore dolemus, fieri tamen permagna accessio potest, si aliquod aeternum et infinitum impendere malum nobis opinemur. Quod idem licet transferre in voluptatem, ut postea variari voluptas distinguique possit, augeri amplificarique non possit. At etiam Athenis, ut e patre audiebam facete et urbane Stoicos irridente, statua est in quo a nobis philosophia defensa et collaudata est, cum id, quod maxime placeat, facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet, ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum.
-

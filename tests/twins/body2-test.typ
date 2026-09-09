@@ -49,8 +49,6 @@ code line two
 ```
 Text after the verbatim block continues at the margin with no added indent.
 
-// \appendix: acmart letters the sections (A, A.1, ...); a theorem here must track
-// \thesection and number "A.1", not "1.1" (regression for the appendix fix).
 #counter(heading).update(0)
 #set heading(numbering: "A.1")
 = Supplementary material

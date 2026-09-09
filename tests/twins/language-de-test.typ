@@ -1,9 +1,3 @@
-// language-de-test — German multilingual paper (acmart `language=german`).
-// Matched twin: language-de-test.tex. Verifies the German fixed strings —
-// keywordsname ("Zusätzliche Schlagwörter und Phrasen"), proofname ("Beweis"),
-// acksname ("Danksagungen"), tablename ("Tabelle") — while the figure label
-// stays "Fig." (acmart sets it globally, not per language). Includes an English
-// translated title/keywords and German (de) hyphenation.
 #import "/src/lib.typ": acmart, proof, acks, tabular, toprule, midrule, bottomrule
 
 #show: acmart.with(

@@ -1,7 +1,3 @@
-// acmart's \maketitle: title, authors, abstract, CCS, keywords, the ACM
-// reference format block, and the page-1 footnote stack. Authors are grouped,
-// not listed (see group-authors).
-
 #import "copyright.typ": permission-text, copyright-owner
 #import "spacing.typ": comp, tex-skip
 #import "strings.typ": lang-record
@@ -10,9 +6,7 @@
 #import "tex.typ": script-super
 #import "../formats/_base.typ": tp
 
-// \@fnsymbol marks, which acmart takes for \thefootnote in the top matter. They
-// are math-mode glyphs, so the asterisks are U+2217 — unlike the corresponding
-// author's \textsuperscript{*}, which is the text asterisk.
+// \@fnsymbol uses a math asterisk; \correspondingauthor uses a text asterisk.
 #let fnsymbols = ("∗", "†", "‡", "§", "¶", "‖", "∗∗", "††", "‡‡")
 #let corresponding-mark = "*"
 
@@ -21,27 +15,13 @@
   "July", "August", "September", "October", "November", "December",
 )
 
-// acm-month/acm-year always carry a value (acmart defaults \acmMonth/\acmYear to
-// the current date; see acmart() in lib.typ), so no presence check is needed.
-// Assembled as content (not a joined string) so the year int renders directly.
 #let pub-date(meta) = [#month-names.at(meta.acm-month - 1) #meta.acm-year]
 
-// acmart renders the DOI as \url{https://doi.org/<doi>} (a live link). `doi` is the
-// resolved record (meta.doi, with `.url` and `.bare`); callers guard on `meta.doi != none`.
-// \@formatdoi = \url{https://doi.org/...} (acmart.dtx:6204): the body is the URL.
 #let doi-link(doi) = link(doi.url)[#doi.url]
 
-// A \@textsuperscript note mark: `script-super` sets it at \sf@size like LaTeX,
-// and the zero-height box keeps its (raised) glyph from inflating the line's ascent
-// past the `top-edge: 1em` line box — otherwise Typst grows the line to contain the
-// superscript and a marked author/name line gains ~2.6pt over TeX's rigid
-// \baselineskip. `align(bottom, …)` keeps the mark anchored at the baseline so it
-// prints in the identical spot.
+// The zero-height box prevents superscript marks from increasing line height.
 #let note-super(mark) = box(height: 0pt, align(bottom, script-super(mark)))
 
-// Join a list of names the ACM/amsart "andify" way ("a", "a and b",
-// "a, b, and c"). Items may be strings (author names) or content (names carrying
-// superscript note marks); the result is content in either case.
 #let andify(items) = {
   let n = items.len()
   if n == 0 { return none }
@@ -50,16 +30,10 @@
   (items.slice(0, n - 1).join([, ]), items.at(n - 1)).join([, and ])
 }
 
-// An author's `affiliation` may be a single dict or an array of dicts (a person
-// with several affiliations, like LaTeX's repeated \affiliation). Normalize to a
-// list of dicts; none -> empty list. This precedes normalize-author because that
-// helper also enforces acmart's required country field.
 #let affil-list(aff) = {
   if aff == none { () } else if type(aff) == array { aff } else { (aff,) }
 }
 
-// Fill in the optional author fields so the rest of the code can use plain field
-// access (a.email, a.note, ...) instead of defensive `.at(..., default:)`.
 #let normalize-author(a) = {
   let note = a.at("note", default: none)
   let affiliation = a.at("affiliation", default: none)
@@ -76,16 +50,11 @@
     email: a.at("email", default: none),
     note: if note == none { () } else if type(note) == array { note } else { (note,) },
     corresponding: a.at("corresponding", default: false),
-    // The order the email and affiliation were declared, preserved so the contact
-    // line can replay them in that order — acmart prints \addresses in the order
-    // the \email/\affiliation commands were issued (acmart.dtx:7588), and Typst
-    // dicts keep insertion order, so the author dict's key order is the analog.
+    // Preserve declaration order for replaying \email and \affiliation in contact information.
     contact-order: a.keys().filter(k => k == "email" or k == "affiliation"),
   )
 }
 
-// \orcid wraps the author's visible name in a link to the ORCID profile. A bare
-// identifier is resolved against https://orcid.org/; an explicit URL is used as-is.
 #let orcid-url(orcid) = {
   assert(type(orcid) == str, message: "faithful-acmart: author `orcid` must be a string, got " + repr(orcid))
   if orcid.starts-with("http") { orcid } else { "https://orcid.org/" + orcid }
@@ -93,65 +62,35 @@
 
 #let author-name(a, body) = if a.orcid == none { body } else { link(orcid-url(a.orcid), body) }
 
-// acmart renders \email{addr} as \href{mailto:addr}{addr}: the address is both the
-// visible text and the mailto target (acmart.dtx:7478/7551/7608). Wrap the address
-// so the contact lines carry the same hidden mailto annotations LaTeX emits.
 #let email-link(email) = link("mailto:" + email)[#email]
 
-// Join the present (non-none) values of `keys` from dict `d` with ", ". Returns
-// none — not "" — when no field is present, so absence is *always* `none` (a
-// single rule the callers can filter on uniformly).
 #let join-fields(d, keys) = {
   let vals = keys.map(k => d.at(k, default: none)).filter(v => v != none)
   if vals.len() == 0 { none } else { vals.join(", ") }
 }
 
-// The present affiliation strings of `aff` (one ", "-joined run of `keys` per
-// affiliation dict, empty affiliations dropped via join-fields' none).
 #let affil-strings(aff, keys) = affil-list(aff).map(a => join-fields(a, keys)).filter(v => v != none)
 
-// The affiliation fields the journal contact line may print, in the user's OWN
-// declaration order (acmart replays \institution/\department/\city/... in the
-// order the commands were issued, acmart.dtx:7588). Typst dicts preserve insertion
-// order, so we iterate each affiliation dict's own keys (filtered to this printable
-// set) rather than a fixed tuple. See DESIGN.md "Author top matter".
 #let contact-affil-fields = ("institution", "department", "city", "state", "country")
 #let contact-affil-strings(aff) = affil-list(aff).map(a => {
   join-fields(a, a.keys().filter(k => k in contact-affil-fields))
 }).filter(v => v != none)
 
-// Title-block affiliation: institution, country (city/state go to contact info).
-// Multiple affiliations are andified — \andify\@currentaffiliations
-// (acmart.dtx:7248): "A and B", "A, B, and C".
 #let affil-short(aff) = {
   let affs = affil-strings(aff, ("institution", "country"))
   if affs.len() == 0 { none } else { andify(affs) }
 }
 
-// Conference/proceedings author-grid affiliation, as separate lines. acmart's
-// non-journal field macros (acmart.dtx:7130) put \position, \institution and
-// \department each on their own line (\par), while \city/\state/\country
-// accumulate into one ", "-joined address line. (Journal mode collapses the
-// whole thing to institution, country — that is affil-short.)
 #let affil-conf-lines(aff) = affil-list(aff).map(a => {
   let lines = ("position", "institution", "department").map(k => a.at(k, default: none))
   lines.push(join-fields(a, ("city", "state", "country")))
   lines.filter(v => v != none)
 }).flatten()
 
-// Keywords may be an array (joined with ", ") or a ready string/content.
 #let kw-join(kw) = if type(kw) == array { kw.join(", ") } else { kw }
 
-// Group authors exactly as acmart's \@mkauthors@i does (acmart.dtx:7337-7371) —
-// the unconditional rule for journal formats incl. acmsmall (the \@mkauthors
-// \ifcase routes acmsmall to @i, acmart.dtx:7160). Authors accumulate onto one
-// line; an \affiliation closes that line and attaches itself to EVERY author
-// accumulated so far, then the next author starts a fresh line. Consequences,
-// matching acmart and NOT a value comparison (acmart never compares affiliations):
-//   - an author with no affiliation is andified onto the following author(s);
-//   - authors that each carry an affiliation get their own line, even when the
-//     affiliations are identical;
-//   - trailing affiliation-less authors share a final, affiliation-less line.
+// In \@mkauthors@i, an affiliation closes the group accumulated so far.
+// Equal affiliations on separate authors still close separate groups.
 #let group-authors(authors) = {
   let groups = ()
   let pending = ()
@@ -168,17 +107,9 @@
   groups
 }
 
-// Normalize the `ccs` option into a list of (significance, area, specific)
-// tuples, or none when there are no concepts (LaTeX omits the CCS section when
-// \@concepts is empty). Besides the tuple list itself, accepts the ACM CCS
-// tool's output (https://dl.acm.org/ccs) pasted verbatim as a string or inside
-// a raw block (where backslashes need no escaping): the \ccsdesc lines are
-// parsed when present — they are what LaTeX typesets, the CCSXML environment
-// being a comment (acmart.dtx:5951) — otherwise the <ccs2012> XML element.
 #let parse-ccs(ccs) = {
   if ccs == none { return none }
   let src = if type(ccs) == str { ccs } else if type(ccs) == content {
-    // A raw block, possibly wrapped in a content block (`[  ```…```  ]`).
     let r = if ccs.func() == raw { ccs } else if ccs.has("children") {
       ccs.children.find(c => c.func() == raw)
     }
@@ -191,9 +122,7 @@
         + repr(ccs))
     return if ccs.len() == 0 { none } else { ccs }
   }
-  // \ccsdesc[sig]{Area~Specific}: sig defaults to 100, the specific may be
-  // absent; like \ccsdesc@parse (acmart.dtx:5988), anything after a second "~"
-  // is dropped.
+  // \ccsdesc@parse discards text after the second tilde.
   let concept(sig, desc) = {
     assert(sig == none or sig.trim().match(regex("^[0-9]+$")) != none,
       message: "faithful-acmart: non-numeric CCS significance " + repr(sig))
@@ -203,10 +132,7 @@
      parts.first().trim(),
      if spec == "" { none } else { spec })
   }
-  // Every \ccsdesc use must parse; a malformed one (non-numeric significance,
-  // a brace inside the argument) is rejected rather than silently dropped —
-  // partial acceptance would also silently demote the documented \ccsdesc
-  // precedence to the XML.
+  // Reject partial parsing so malformed descriptions cannot silently fall back to the XML.
   let uses = src.matches(regex("\\\\ccsdesc\\b")).len()
   let descs = src.matches(regex("\\\\ccsdesc\\b\\s*(?:\\[\\s*([0-9]+)\\s*\\])?\\s*\\{([^{}]*)\\}"))
   if uses > 0 {
@@ -240,12 +166,7 @@
   concepts
 }
 
-// CCS concepts: group by area (preserving order), style specifics by
-// significance (>=500 bold, >=300 italic, else roman), join with "; ",
-// bullet + bold area + arrow per group, trailing period. Input: list of
-// (significance, area, specific) tuples (mirrors \ccsdesc[sig]{area~specific}).
 #let render-ccs-concepts(ccs) = {
-  // preserve area order
   let areas = ()
   let by-area = (:)
   let all-specific = true
@@ -270,12 +191,8 @@
     else if s.sig >= 300 { emph(s.spec) }
     else { s.spec }
   }
-  // \ccsdesc separates every concept (areas and specifics) with "; ", so areas
-  // are joined by "; " too. The closing "." only prints when the @concepts counter
-  // reaches zero, which happens iff EVERY concept carries a specific (each specific
-  // decrements the counter that every \ccsdesc call incremented, acmart.dtx:5989-6006);
-  // any area-only concept — even an invisible repeat of an area already shown —
-  // leaves the list ending in "; " instead.
+  // \ccsdesc decrements its concept counter only for specifics.
+  // An area-only entry leaves the closing separator as a semicolon.
   for (i, area) in areas.enumerate() {
     if i > 0 { [; ] }
     [• #strong(area)]
@@ -288,27 +205,10 @@
   if all-specific { [.] } else { [;] }
 }
 
-// Wrap inline content as an explicit paragraph so Typst's PDF tagger emits it as
-// its own <P> structure element. Typst fuses several CONSECUTIVE inline-only
-// blocks into a single <Span> (e.g. the author note + the contact-info block
-// would merge); a block whose body is an explicit paragraph is tagged separately.
-// Layout-neutral — the paragraph already existed implicitly, so the rendering is
-// byte-identical; the only effect is to give the content its own structure-tree
-// chunk, in reading order, so the text-comparison harness can check intra-chunk
-// element order (e.g. each author's name→affiliation→email) instead of one fused
-// blob. Only safe for SINGLE-paragraph content — `par` collapses paragraph breaks.
+// Explicit paragraphs receive separate PDF tags; consecutive inline blocks can merge.
+// Use only for single-paragraph content because par() collapses internal paragraph breaks.
 #let tagged-par(body) = par(body)
 
-// A full-width frontmatter text block at one font-size step (default "small" =
-// 9pt), with intra-block leading and inter-paragraph spacing on the baseline
-// grid (comp()). `indent` sets the first-line indent (0pt = none); `spacing` is
-// the outer block gap to neighbours. Used for the abstract, CCS/keywords lines,
-// and the ACM reference format.
-// `chunk: true` wraps a SINGLE-paragraph body in `tagged-par` so it tags as its
-// own <P> structure element instead of fusing into a neighbour's <Span> (see
-// tagged-par). Only safe for single-paragraph content — `par` collapses
-// paragraph breaks — so it is off by default and the multi-paragraph abstract
-// keeps it off.
 #let fm-block(cfg, body, sz: "small", justify: true, indent: 0pt, spacing: 0pt, chunk: false) = {
   let lead = comp(cfg, sz: sz)
   block(width: 100%, spacing: spacing)[
@@ -323,41 +223,18 @@
   ]
 }
 
-// A 9pt "Label: content" line used for CCS Concepts and Keywords.
-// \@specialsection does `\par\medskip\small ...`, so the gap is \medskip before
-// 9pt text (tex-skip with sz: "small"). See DESIGN.md "block vertical spacing".
 #let special-line(cfg, label, content) = {
-  // Journals run these in at \small with a plain label; sigplan uses
-  // \noindentparagraph (a level-4 run-in heading) at normalsize, so the LABEL takes
-  // the paragraph heading style — bold italic (\@specialsection, acmart.dtx:6790).
   let sz = if cfg.journal { "small" } else { "normalsize" }
   let pf = cfg.sec-fonts.paragraph
   let head = if cfg.journal { [#label:] } else { text(weight: pf.weight, style: pf.style)[#label:] }
   v(tex-skip(cfg, cfg.medskip, sz: sz), weak: true)
-  // \@specialsection bodies are ordinary JUSTIFIED paragraphs (acmart.dtx:6773);
-  // only visible when the label+content wraps past one line.
   fm-block(cfg, [#head #content], sz: sz, spacing: comp(cfg, sz: sz), chunk: true)
 }
 
-// Assign footnote symbols across the whole top matter, matching acmart's shared
-// footnote counter. \maketitle sets the counter to 1 and emits the texts in the
-// order \@titlenotes, \@subtitlenotes, \@authornotes (acmart.dtx:6659-6661), all
-// using \@fnsymbol marks (acmart.dtx:6650). The asterisk (symbol 1) is reserved for
-// the corresponding author, so every counted note starts one symbol later: a title
-// note takes the dagger, a subtitle note the next, and author notes follow.
-// Identical author notes are deduplicated; the corresponding-author mark is a fixed
-// \textsuperscript{*} (acmart.dtx:5506), NOT a counter step, so it consumes no
-// symbol, and its "Corresponding author" text opens \@titlenotes
-// (acmart.dtx:5403) ahead of every counted note. In anonymous mode \authornote and
-// \correspondingauthor are both suppressed (acmart.dtx:5461/5487) while
-// title/subtitle notes still appear with placeholder text (acmart.dtx:5417/5440).
-//
-// Returns the title/subtitle marks (for make-title), the ordered footnote list
-// (for make-footnotes), and each author's superscript marks.
 #let collect-notes(meta) = {
   let anon = meta.anonymous
   let notes = ()
-  // \maketitle's \setcounter{footnote}{1}: the first \stepcounter lands on 2.
+  // \maketitle reserves the first symbol for the corresponding author, even when absent.
   let idx = 1
   let title-mark = none
   let subtitle-mark = none
@@ -366,11 +243,8 @@
     fnsymbols.at(i)
   }
 
-  // \if@ACM@corresponding@present (acmart.dtx:5476), which \correspondingauthor
-  // raises only outside anonymous mode.
   let corresponding-present = not anon and meta.authors.any(a => a.corresponding)
   if corresponding-present {
-    // \footnotetext[1] takes symbol 1 explicitly, leaving the counter alone.
     notes.push((symbol: fnsymbols.at(0), body: [Corresponding author]))
   }
   if meta.title-note != none {
@@ -405,21 +279,10 @@
   (title-mark: title-mark, subtitle-mark: subtitle-mark, notes: notes, marks: marks)
 }
 
-// One author's contact entry, replaying name then the email/affiliation fields in
-// the order they were declared, matching LaTeX \@mkauthorsaddresses, which prints
-// \addresses in \email/\affiliation command order (acmart.dtx:7588). Authors are
-// listed individually in source order with the affiliation repeated per author —
-// NOT grouped. Multiple affiliations per author are supported (an `affiliation`
-// array, like LaTeX's repeated \affiliation), joined by " and ".
 #let contact-line(a) = {
-  // \@mkauthorsaddresses replays \typeset@authorN, so the name keeps its ORCID
-  // link (acmart.dtx:7620), like the title strip.
   let parts = (author-name(a, a.name),)
   for field in a.contact-order {
     if field == "affiliation" {
-      // each affiliation's fields joined ", " in the user's declared key order
-      // (\department prints ", <dept>", acmart.dtx:7605); several affiliations
-      // joined by " and " (LaTeX's institution separator, acmart.dtx:7601-7602).
       let affs = contact-affil-strings(a.affiliation)
       if affs.len() > 0 { parts.push(affs.join(" and ")) }
     } else if a.email != none {
@@ -429,24 +292,13 @@
   parts.join(", ")
 }
 
-// authordraft stamps the page-1 copyright block with a black large-bold notice
-// overlaying the (greyed) copyright text (acmart.dtx:6606-6610). place() gives it
-// zero size, so the copyright lines flow behind it. \raisebox{-2ex} lowers the
-// stamp baseline 2ex below the block's first (permission) baseline — the ex is the
-// SURROUNDING footnote font's x-height (the \large is inside the box, so it does not
-// set the ex). The block's first baseline sits 1em(footnotesize) below its top and
-// place() honours the stamp's own top-edge (1em of \large), so we cancel that
-// size difference and add 2ex.
+// \raisebox{-2ex} measures ex in the surrounding footnote font, before the stamp switches size.
 #let draft-stamp(cfg) = context {
   let ex = measure(text(size: cfg.size.footnotesize, top-edge: "x-height", bottom-edge: "baseline")[x]).height
   place(top + left, dy: 2 * ex + cfg.size.footnotesize - cfg.size.large,
     text(size: cfg.size.large, weight: "bold")[Unpublished working draft. Not for distribution.])
 }
 
-// The conference info line in the copyright block (acmart.dtx:6617-6621). The
-// form is format-dependent: engage prints "<booktitle>, <year>.", every other
-// conference format prints italic "<conference short>, <conference venue>".
-// none when the relevant metadata was not supplied.
 #let conf-info-line(cfg, meta) = {
   let booktitle-form = { if meta.booktitle != none { emph[#meta.booktitle, #meta.acm-year.] } }
   if cfg.name == "acmengage" {
@@ -462,9 +314,6 @@
   }
 }
 
-// The page-1 footnote stack: author notes, authors' contact information, and the
-// copyright/permission block, each with a rule above. Placed at the bottom of
-// the first page's text area.
 #let make-footnotes(cfg, meta) = {
   let fs = cfg.size.footnotesize
   let lead = comp(cfg, sz: "footnotesize")
@@ -482,10 +331,6 @@
     set par(justify: true, leading: lead, first-line-indent: 0pt, spacing: lead)
 
     let anon = meta.anonymous
-    // \thanks pieces open the authors-addresses stream (acmart.dtx:6585); the
-    // contact block itself prints for journal/tog formats unless anonymous or
-    // overridden (\authorsaddresses, acmart.dtx:5327: `auto` derives it, `none`
-    // suppresses it, content replaces it). LaTeX prints name-only entries too.
     let thanks = if meta.thanks == none { () } else if type(meta.thanks) == array { meta.thanks } else { (meta.thanks,) }
     let has-contact-info = cfg.name != "acmcp" and cfg.bibstrip-or-tog and not anon and (
       if meta.authors-addresses == auto { meta.authors.len() > 0 } else { meta.authors-addresses != none }
@@ -496,37 +341,21 @@
       if meta.nonacm { mode == "cc" and ptext != none } else { true }
     )
 
-    // 1. Title/subtitle/author notes (regular footnotes, symbol marks). collect-notes
-    // already excludes author notes under anonymity but keeps title/subtitle notes.
     if ni.notes.len() > 0 {
       rule(cfg.footnote-rule-short)
       for n in ni.notes {
         block(spacing: lead, tagged-par[#note-super(n.symbol)#n.body])
       }
       if thanks.len() > 0 or has-contact-info or has-copyright-info {
-        // Separate LaTeX footnote streams (ordinary notes, then the manyfoot
-        // authors-address/copyright streams). manyfoot gives every stream the same
-        // \skip\footins as the ordinary one (manyfoot.sty:212) and puts exactly that
-        // glue between two streams, so the gap depends on neither the format nor
-        // which streams are present; the rule's own \kern-3pt then steps back up,
-        // the same expression the footnote float and body footnotes use. LaTeX also
-        // carries the footnote box's depth here, which TeX derives from \footnotesep
-        // and the split struts rather than from any class parameter, so a sub-point
-        // residual remains (DESIGN.md "Footnote stream separation").
+        // manyfoot inserts \skip\footins between streams; the rule's kern pulls back into that gap.
         let stream-gap = cfg.footins-skip - cfg.footnote-rule-kern-above
         v(stream-gap, weak: false)
       }
     }
 
-    // 2. \thanks + Authors' Contact Information — the authors-addresses stream.
-    // Only the journal/tog formats print the contact block (\if@ACM@journal@
-    // bibstrip@or@tog, acmart.dtx:6592); the conference formats carry contact
-    // info in the author grid instead (but \thanks prints everywhere).
     if thanks.len() > 0 or has-contact-info {
       rule(100%)
       for t in thanks {
-        // \@setthanks: \par <text>\@addpunct. — anonymous swaps in "A note"
-        // (acmart.dtx:6420/7839).
         block(spacing: lead, tagged-par[#add-punct(if anon [A note] else { t })])
       }
       if has-contact-info {
@@ -540,47 +369,26 @@
       }
     }
 
-    // 3. Copyright / permission (faithful to acmart's assembly). nonacm
-    // suppresses this whole block — including the © line and ACM bibstrip —
-    // except cc mode, which still prints its permission text (acmart.dtx:6599-6661).
     if cfg.name == "acmcp" {
-      // acmcp routes contact data to the cover infobox and suppresses the normal
-      // copyright footnote block (acmart.dtx:6589/6604).
+      // Contact information goes in the cover infobox.
     } else if meta.nonacm {
       if mode == "cc" and ptext != none {
         rule(100%)
         block(spacing: lead, ptext)
       }
     } else {
-      // One block mirroring acmart.dtx:6604-6659: author-version drops only the
-      // permission text (dtx:6612); the italic conference-info line and the ©
-      // line print either way; then ONE closing notice — manuscript wins over
-      // author-version, which wins over the ACM bibstrip (dtx:6631-6656).
       rule(100%)
       block(spacing: lead, {
         if meta.author-draft { draft-stamp(cfg) }
         set text(fill: if meta.author-draft { luma(90%) } else { black })
-        // acmart sets \parskip = 0.1\baselineskip inside this block (acmart.dtx:6611),
-        // so each \par boundary (permission->conf-info, conf-info->(c)) gets that extra
-        // space; the \\ lines (the (c) and closing lines) stay plain (unaffected by
-        // par spacing). Line box is 1em, so a parbreak yields spacing + size baselines.
+        // \par boundaries add \parskip; explicit line breaks retain the ordinary baseline interval.
         set par(spacing: lead + 0.1 * cfg.bls.footnotesize)
         if not meta.author-version and ptext != none { ptext; parbreak() }
-        // No ragged override: LaTeX sets this block as ordinary justified
-        // footnote paragraphs whose short lines end in \\ (a line before an
-        // explicit break is not justified in either engine), so a line long
-        // enough to wrap justifies — e.g. the author's-version notice.
-        // Conference info line, between the permission text and the © line
-        // (acmart.dtx:6615-6622): italic "<conf short>, <conf venue>", or for the
-        // engage/booktitle path "<booktitle>, <year>.". Journal/tog skip it.
         let proceedings-copyright = cfg.name != "manuscript" and not cfg.bibstrip
         if proceedings-copyright {
           let cl = conf-info-line(cfg, meta)
-          // conf-info ends with \par (acmart.dtx:6618/6620), not \\ — a parbreak so
-          // it carries the 0.1\baselineskip parskip above the (c) line.
           if cl != none { cl; parbreak() }
         }
-        // © <year> <owner>  (copyright-year always has a value; see acmart() in lib.typ)
         let owner = copyright-owner(mode)
         if owner != none {
           [© #meta.copyright-year #owner]
@@ -588,23 +396,16 @@
         } else {
           [#meta.copyright-year. ]
         }
-        // Final line: manuscript notice / author's-version notice / journal
-        // bibstrip / conference ISBN+DOI (acmart.dtx:6631-6656).
         if cfg.name == "manuscript" {
           [Manuscript submitted to ACM]
         } else if meta.author-version {
-          // The "Version of Record" notice names the emphasized journal for a
-          // journal bibstrip, else the booktitle (acmart.dtx:6638-6644).
           let venue = if cfg.bibstrip { j.name } else { meta.booktitle }
           [This is the author's version of the work. It is posted here for your personal use. Not for redistribution. The definitive Version of Record was published in #emph(venue)#{
             if meta.doi != none [, #doi-link(meta.doi).]
             else [.]
           }]
         } else if cfg.bibstrip {
-          // ACM <issn>/<year>/<month>-ART<article> then DOI (acmart.dtx:6651).
-          // \@acmArticle defaults to empty, so ART may have no number. str() on the
-          // month delimits the number from the following "-ART" (markup would
-          // otherwise read "acm-month-ART" as one hyphenated identifier).
+          // str() separates the month expression from the literal -ART suffix in markup.
           [ACM #j.issn/#meta.acm-year/#str(meta.acm-month)-ART#{
             if meta.acm-article != none { str(meta.acm-article) }
           }]
@@ -613,7 +414,6 @@
             doi-link(meta.doi)
           }
         } else {
-          // conference: ACM ISBN <isbn> then DOI (acmart.dtx:6654).
           if meta.isbn != none and meta.isbn != "" { [ACM ISBN #meta.isbn]; linebreak() }
           if meta.doi != none {
             doi-link(meta.doi)
@@ -623,30 +423,17 @@
     }
   }
 
-  // float: true so the block reserves space at the bottom of the first page and
-  // the body text flows above it (rather than overlapping). clearance mirrors the
-  // normal-footnote path (body.typ): LaTeX's body->footnote gap is \skip\footins
-  // with the rule's \kern-3pt pulling back up (~4pt), NOT Typst's 1.5em float
-  // default — without this the body stops ~1-2 lines short of where LaTeX allows.
   place(bottom, float: true, clearance: cfg.footins-skip - cfg.footnote-rule-kern-above,
     block(width: 100%, spacing: 0pt, stack))
 }
 
-// acmcp cover infobox (\set@ACM@acmcpbox, acmart.dtx:6725): a 5pc-wide box at the
-// right text margin (\fancyhead[R]\makebox[\z@][r], acmart.dtx:8129) — the JDS logo
-// over optional code/data links, keywords, contributions and author contact
-// information, in scriptsize. The acmcp title is narrowed by 6pc so it clears the
-// box. The caller bottom-aligns this box in the cover grid's right column, matching
-// LaTeX's two-pass zref adjustment that drives the infobox bottom to the frame bottom.
 #let make-acmcp-infobox(cfg, meta) = {
   assert(meta.acmcp-logo != none, message:
     "faithful-acmart: the `acmcp` cover format needs a journal logo — pass `acmcp-logo: image(\"...\")` "
     + "(the ACM journal logo is ACM's trademark and is not bundled with this package).")
   let big = tex-skip(cfg, cfg.bigskip, sz: "scriptsize")
-  box(width: 60 * tp /* 5pc */)[
-    #set align(left) // the \parindent\z@ vbox is left-aligned, not centred
-    // User-supplied logo (see `acmcp-logo`); default it to the box width so a bare
-    // `image("logo.png")` fills the column, as the bundled JDS logo used to.
+  box(width: 60 * tp)[
+    #set align(left)
     #{ set image(width: 100%); meta.acmcp-logo }
     #set text(size: cfg.size.scriptsize)
     #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg, sz: "scriptsize"))
@@ -656,8 +443,6 @@
     #if meta.authors.len() > 0 {
       v(big, weak: true)
       let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
-      // Anonymous review replaces the replayed \addresses with "Anonymous Author(s)"
-      // (\@mkauthorsaddresses under \if@ACM@anonymous), as for the journal contact block.
       if meta.anonymous {
         [#label Anonymous Author(s).]
       } else {
@@ -668,19 +453,11 @@
   ]
 }
 
-// The acmcp single-page cover: the body sits on a light tint of the article colour
-// (\@ACM@color@frame, acmart.dtx:5899: \colorbox{@ACM@Article@color!10!white}), with
-// the hsize reduced 6.5pc on the right (acmart.dtx:5902) to clear the top-right cover
-// infobox. ONLY the body is tinted — title/authors/abstract above stay on white. The
-// infobox (JDS logo + code/data, keywords, contributions, contact info;
-// \set@ACM@acmcpbox, acmart.dtx:6724) is bottom-aligned in the right column, matching
-// LaTeX's zref feedback that butts the infobox bottom against the frame bottom. acmcp
-// is a single-page cover format, so keeping the framed body in one grid cell is
-// acceptable. `art-color` is the resolved article-type colour (options.article.color).
+// Bottom alignment reproduces acmart's zref adjustment of the infobox against the body frame.
 #let make-acmcp-cover(cfg, meta, art-color, body) = {
   let tint = art-color.lighten(90%)
   let fbox = 3 * tp // \fboxsep
-  let body-reduction = 6.5 * 12 * tp // \advance\hsize -6.5pc (acmart.dtx:5902)
+  let body-reduction = 6.5 * 12 * tp
   let framed-body = pad(left: -fbox, block(
     fill: tint,
     inset: fbox,
@@ -695,37 +472,20 @@
   ))
 }
 
-// --- Shared title-head pieces (used by both the journal and the conference head;
-// the only difference between those heads is centering + the author layout). ---
-
-// The title font's cap height (needs context). The title block hangs its first
-// line from the cap top, so every title-line pitch is derived from this.
 #let title-cap-height(cfg) = {
   let tf = cfg.title-font
   measure(text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size),
     top-edge: "cap-height", bottom-edge: "baseline")[X]).height
 }
 
-// The title block: \@titlefont per format, with cap-height top-edge so the (tall)
-// first line's cap-top sits at the top margin, matching LaTeX \topskip for a first
-// line taller than \topskip. That top edge makes every line box only cap-height
-// tall, so the leading must be bls − cap-height (not the usual bls − size) for
-// wrapped lines to keep the title \baselineskip pitch. \@translatedtitle adds each
-// secondary title as a new \par in the title font (acmart.dtx:3374/6994), one
-// baselineskip below — the same pitch, hence the same paragraph spacing.
+// With cap-height as the top edge, title leading must compensate for cap height instead of font size.
 #let title-block(cfg, meta, mark) = context {
   let tf = cfg.title-font
   let lead = cfg.bls.at(tf.size) - title-cap-height(cfg)
-  // acmcp narrows the title box by 6pc (\@mktitle@i \advance\hsize -6pc,
-  // acmart.dtx:6988) so it clears the top-right cover infobox; auto width (natural,
-  // unchanged) elsewhere.
   block(spacing: 0pt, width: if cfg.title-width-reduction != 0pt { 100% - cfg.title-width-reduction } else { auto })[
     #set text(font: cfg.fonts.at(tf.family), weight: tf.weight, size: cfg.size.at(tf.size),
       top-edge: "cap-height", bottom-edge: "baseline")
     #set par(justify: false, first-line-indent: 0pt, leading: lead, spacing: lead)
-    // tagged-par so the title is its own <P> chunk, not fused into the author
-    // head's <Span>. Translated titles are already separate paragraphs (parbreak)
-    // and tag separately on their own.
     #tagged-par[#meta.title#if mark != none { note-super(mark) }]
     #for (l, t) in meta.translated-title {
       parbreak()
@@ -734,13 +494,7 @@
   ]
 }
 
-// The subtitle block. The subtitle paragraph's closing \par fires AFTER the
-// {\@subtitlefont ...} group (\@mktitle@i, acmart.dtx:6995-6998), so TeX spaces
-// its line(s) at the TITLE font's \baselineskip — measured 16.94bp on acmsmall
-// = bls(Large), not the normalsize 11.95. With the subtitle line box at 1em,
-// the gap above (and the intra-paragraph leading) is bls(title) − size(subtitle).
-// \@translatedsubtitle each in the subtitle font (acmart.dtx:3391/6996).
-// none when there is no subtitle.
+// The subtitle's closing \par lies outside its font group, so it uses the title's baseline interval (\@mktitle@i).
 #let subtitle-block(cfg, meta, mark) = {
   if meta.subtitle == none { return }
   let sf = cfg.subtitle-font
@@ -757,27 +511,16 @@
   ]
 }
 
-// How much LOWER the subtitle fix puts the title box's last baseline compared
-// to the old normalsize pitch. LaTeX's interline glue below the tall title
-// parbox goes negative and collapses to \lineskip abutment, so the material
-// after the box hangs at the same place with or without the extra subtitle
-// drop (measured: author baselines match LaTeX either way) — the title heads
-// subtract this from their following gap.
+// After the tall title box, TeX falls back to \lineskip abutment.
+// Subtract the subtitle's extra depth to keep the following material at that boundary.
 #let subtitle-extra(cfg, meta) = if meta.subtitle == none { 0pt } else {
   (cfg.bls.at(cfg.title-font.size) - cfg.size.at(cfg.subtitle-font.size)) - tex-skip(cfg, 0pt)
 }
 
-// Render an author's note marks as superscripts.
 #let render-marks(marks) = marks.map(note-super).join()
 
-// Attach each author's collected note marks (collect-notes order) as `_marks`, so
-// group-authors and the per-name rendering can read them off the author dict.
 #let mark-authors(meta, ni) = meta.authors.enumerate().map(((i, a)) => a + (_marks: ni.marks.at(i)))
 
-// Anonymous review replaces the whole author strip with "Anonymous Author(s)" (plus a
-// "Submission Id: <id>" line when set, acmart.dtx:5190-5193). The three heads differ
-// only in box width, whether the author-font weight is set explicitly, and — for the
-// journal strip — the \MakeUppercase + tagged-par wrapper.
 #let anon-author-strip(cfg, meta, width: auto, weight: none, upper-case: false, tagged: false) = {
   let af = cfg.author-font
   let body = [Anonymous Author(s)#if meta.submission-id != none [\ Submission Id: #meta.submission-id]]
@@ -789,12 +532,6 @@
   ]
 }
 
-// The teaser figure box (\@mkteasers, acmart.dtx:7661-7671): appended INSIDE
-// \mktitle@bx as "\par\bigskip <figure> \par" with a closing \medskip. The
-// surrounding skips are emitted by the calling title head (they differ per
-// format because the author box's trailing skip differs, and TeX skips ADD).
-// The in-topmatter flag suppresses the body float spacing + indent shim that
-// the global figure show rule would add (parts/body.typ).
 #let teaser-figure(meta) = {
   in-topmatter.update(true)
   block(width: 100%, spacing: 0pt)[
@@ -804,42 +541,24 @@
   in-topmatter.update(false)
 }
 
-// The journal @i spanning head (acmart.dtx:6986): left-aligned title/subtitle,
-// then the andified author *list* with short affiliations. Used by the single-
-// column journals and by acmtog (two-column journal). The conference formats use
-// conf-title-head instead; make-title-head dispatches on cfg.title-style.
 #let journal-title-head(cfg, meta) = {
   let ni = collect-notes(meta)
   title-block(cfg, meta, ni.title-mark)
   subtitle-block(cfg, meta, ni.subtitle-mark)
 
-  // Author-list fonts come from the format dict (acmart.dtx:7206 \@authorfont /
-  // \@affiliationfont): acmsmall \large sans names + \small serif affils (the
-  // make-format defaults), acmtog \LARGE sans + \large. The size step also drives
-  // the leading and the title->authors gap.
   let af = cfg.author-font
   let aff-f = cfg.affil-font
-  // Title box ends with \par\bigskip; \@mkauthors@i prepends \par\medskip before
-  // the author lines (at the author size). gap = \bigskip + \medskip.
+  // Combine the title's trailing \bigskip with the author block's leading \medskip.
   v(tex-skip(cfg, cfg.bigskip + cfg.medskip, sz: af.size) - subtitle-extra(cfg, meta), weak: true)
 
-  // \@mkauthors@i narrows its lines like the title under acmcp (\advance\hsize
-  // by -6pc, acmart.dtx:7364) so long author lines also clear the cover infobox.
   let author-width = if cfg.title-width-reduction != 0pt { 100% - cfg.title-width-reduction } else { auto }
-  // --- Authors (grouped structurally per acmart; see group-authors) ---
-  // Anonymous review: replace the whole author strip with "Anonymous Author(s)"
-  // plus, when a submission id is set, a "\\Submission Id: <id>" second line
-  // (acmart.dtx:5190-5193); the journal strip's \MakeUppercase covers both lines.
   if meta.anonymous {
     anon-author-strip(cfg, meta, width: author-width, weight: af.weight, upper-case: true, tagged: true)
   } else {
   block(spacing: 0pt, width: author-width)[
     #set par(justify: false, leading: comp(cfg, sz: af.size), spacing: 0pt)
     #for g in group-authors(mark-authors(meta, ni)) {
-      // andify preserves the per-name content marks (superscript symbols).
       let names = g.authors.map(a => { author-name(a, upper(a.name)); render-marks(a._marks) })
-      // tagged-par so each author line is its own <P> chunk (author order can be
-      // checked) rather than fusing into one frontmatter <Span>.
       block(spacing: comp(cfg, sz: af.size))[
         #tagged-par[#text(font: cfg.fonts.at(af.family), weight: af.weight, size: cfg.size.at(af.size))[#andify(names)]#{
           let aff = affil-short(g.affiliation)
@@ -850,12 +569,8 @@
       ]
     }
   ]
-  } // end non-anonymous author block
+  }
 
-  // \@mkauthors@i ends \par\medskip (acmart.dtx:7369-7371); a teaser appends
-  // "\par\bigskip <figure> \par ... \medskip" (acmart.dtx:7661-7671) and TeX
-  // skips ADD, so the figure sits medskip+bigskip under the authors and the
-  // abstract medskip under whichever came last.
   if meta.teaser != none {
     v(tex-skip(cfg, cfg.medskip + cfg.bigskip), weak: true)
     teaser-figure(meta)
@@ -863,20 +578,6 @@
   v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
 }
 
-// Conference author grid (\@mkauthors@iii, acmart.dtx:7438): one centered box per
-// affiliation group (same group-authors rule as the journal list), laid out N per
-// row. acmart's box width is (textwidth - sep)/N - sep with sep = \author@bx@sep
-// (1pc); N defaults from the group count (1-3 -> that many, 4 -> 2, 5+ -> 3) and
-// is overridable with authors-per-row. Names are mixed-case (not uppercased like
-// the journal list); fonts are cfg.author-font / cfg.affil-font. Each row is
-// centered independently (acmart \centering per row), so a partial final row is
-// centered under the full rows rather than left-aligned.
-// One author box shared by the conference (@mkauthors@iii) and sigchi-a
-// (@mkauthors@iv) grids: STACKED names in author-font (acmart adds every name with
-// `\par##1`, NOT andified like the journal list), a blank line, then the contact
-// lines in affil-font. `contact-fn(group)` yields the ordered contact lines;
-// sigchi-a left-aligns (else centered). `fli` is the name paragraph's first-line
-// indent (0pt for sigchi-a; the conference box keeps the ambient body indent).
 #let author-grid-box(cfg, group, contact-fn, align-x: center, fli: 0pt) = {
   let af = cfg.author-font
   let aff = cfg.affil-font
@@ -892,20 +593,13 @@
 
 #let make-authors-grid(cfg, groups, authors-per-row: 0) = {
   if groups.len() == 0 { return [] }
-  let sep = 12 * tp // \author@bx@sep = 1pc
+  let sep = 12 * tp // \author@bx@sep
   let tw = cfg.paper.width - cfg.margin.inside - cfg.margin.outside
   let n = if authors-per-row > 0 { authors-per-row } else {
     let g = groups.len()
     if g <= 3 { g } else if g == 4 { 2 } else { 3 }
   }
   let bw = (tw - sep) / n - sep
-  // Contact lines in acmart's command order: \email/\affiliation append to
-  // \@currentaffiliation as issued (acmart.dtx). Replay each author's email and
-  // affiliation in its own declared order (a.contact-order), so an author who
-  // wrote \affiliation before \email (sample Lars/Charles/John/Julius) prints
-  // institution-then-email, while one who wrote \email first prints email-then
-  // -institution. The shared group affiliation is emitted once, at the position
-  // its holder declared it (only that author carries it in contact-order).
   let contact-fn(group) = {
     let lines = ()
     for a in group.authors {
@@ -916,58 +610,39 @@
     }
     lines
   }
-  // Center each row on its own (acmart centers every row), so a short final row
-  // sits centered rather than left-aligned. Rows are \lineskip (1pc) apart. The
-  // conference box keeps the ambient body first-line indent (\parindent).
   let fli = cfg.parindent
-  stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..groups.chunks(n).map(row => align(center, grid(
+  stack(dir: ttb, spacing: 12 * tp /* \lineskip */, ..groups.chunks(n).map(row => align(center, grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,
     ..row.map(g => author-grid-box(cfg, g, contact-fn, fli: fli)),
   ))))
 }
 
-// The conference @mktitle@iii spanning head (acmart.dtx:7018): CENTERED title and
-// subtitle, then the centered author grid. Fonts come from the format dict.
 #let conf-title-head(cfg, meta) = {
   let ni = collect-notes(meta)
   set align(center)
   title-block(cfg, meta, ni.title-mark)
   subtitle-block(cfg, meta, ni.subtitle-mark)
-  // title box \par\bigskip + @mkauthors@iii leading \par\medskip before the boxes
   v(tex-skip(cfg, cfg.bigskip + cfg.medskip) - subtitle-extra(cfg, meta), weak: true)
   if meta.anonymous {
     anon-author-strip(cfg, meta)
   } else {
     make-authors-grid(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
   }
-  // \@mkauthors@iii ends \par\bigskip (acmart.dtx:7503); a teaser appends
-  // "\par\bigskip <figure>" — TeX skips ADD, so the figure sits 2 bigskips
-  // under the grid. The box-trailing skip (\bigskip plain, the teaser's
-  // closing \medskip with one) is the two-column float clearance in lib.typ.
+  // The author grid closes with \bigskip and \@mkteasers adds another.
   if meta.teaser != none {
     v(tex-skip(cfg, 2 * cfg.bigskip), weak: true)
     teaser-figure(meta)
   }
 }
 
-// Dispatch the spanning head on the format's title style (acmart.dtx:6874).
-// sigchi-a @mkauthors@iv (acmart.dtx:7518): authors in left-aligned boxes, no more
-// than 2 per row, each box holding the bold mixed-case name(s) (\@authorfont =
-// \bfseries) then the email(s) and affiliation lines (\@affiliationfont = \mdseries),
-// in source order (the twins declare \email before \affiliation). Unlike the
-// conference grid (\@mkauthors@iii) the boxes are NOT centred (sigchiamode skips
-// \centering) and box width is (textwidth - sep)/N - sep with sep = \author@bx@sep.
 #let sigchi-authors(cfg, groups, authors-per-row: 0) = {
-  let sep = 12 * tp // \author@bx@sep = 1pc
+  let sep = 12 * tp // \author@bx@sep
   let tw = cfg.paper.width - cfg.margin.left - cfg.margin.right
   let n = if authors-per-row > 0 { authors-per-row } else if groups.len() <= 1 { 1 } else { 2 }
   let bw = (tw - sep) / n - sep
-  // grouped emails then affiliation lines (source order, \email before \affiliation)
   let contact-fn(group) = group.authors.map(a => a.email).filter(e => e != none).map(email-link) + affil-conf-lines(group.affiliation)
-  // Boxes flow left-aligned (sigchiamode skips \centering) and wrap after N; rows
-  // are \lineskip (1pc) apart. The box first line is unindented (\parindent 0).
-  stack(dir: ttb, spacing: 12 * tp /* \lineskip = 1pc */, ..groups.chunks(n).map(row => grid(
+  stack(dir: ttb, spacing: 12 * tp /* \lineskip */, ..groups.chunks(n).map(row => grid(
     columns: (bw,) * row.len(),
     column-gutter: sep,
     align: top + left,
@@ -975,40 +650,21 @@
   )))
 }
 
-// sigchi-a @mktitle@iv (acmart.dtx:7039): hsize-wide box with \leftskip5pc and a
-// leading full-width 2pt rule (\leaders\hrule height 2pt\hfill), then the
-// ragged-right title; the author grid (\@mkauthors@iv) follows at leftskip 0.
 #let sigchi-title-head(cfg, meta) = context {
   let ni = collect-notes(meta)
   let tf = cfg.title-font
-  // The rule title's geometry needs the title font's real cap height and
-  // descender (the title block anchors at cap height, and the material after
-  // the box hangs from the box BOTTOM = last baseline + descender).
   let cap-h = title-cap-height(cfg)
   let last-size = if meta.subtitle != none { cfg.subtitle-font.size } else { tf.size }
   let desc = measure(text(size: cfg.size.at(last-size), top-edge: "baseline", bottom-edge: "descender")[gjpqy]).height
-  pad(left: 5 * 12 * tp, { // \leftskip5pc
-    // \leaders\hrule height 2pt\hfill\par then \@title: the rule line's baseline
-    // is its bottom (margin top + 2pt) and the title baseline sits one title
-    // \baselineskip below it (measured: rule bottom 100.6, title base 124.5 =
-    // + bls(Huge)); the title block's first ink is its cap top, so the gap is
-    // bls − cap-height. rect() rather than line() so the 2pt occupies layout
-    // height (a stroked line's box is zero-height, halving the ink onto the
-    // margin and losing the 2pt from the gap).
+  pad(left: 5 * 12 * tp, {
+    // Use a filled rectangle so the rule thickness occupies layout height.
     block(above: 0pt, below: cfg.bls.at(tf.size) - cap-h,
       rect(width: 100%, height: 2pt, fill: black, stroke: none))
     title-block(cfg, meta, ni.title-mark)
     subtitle-block(cfg, meta, ni.subtitle-mark)
   })
-  // sigchiamode defers \@mkauthors until after \@printtopmatter (acmart.dtx:
-  // 6574/6576), so teasers — appended inside \mktitle@bx — come BEFORE the
-  // author grid: box-end \par\bigskip (dtx:7044) + teaser \par\bigskip fig
-  // ... \medskip, then \@printtopmatter's \par\bigskip (dtx:6859), then the
-  // authors. Without a teaser: title -> 2 bigskips -> authors. The \bigskips
-  // hang from the BOX BOTTOM (the tall last line collapses TeX's following
-  // interline glue to \lineskip abutment), so the last line's descender joins
-  // the gap; measured LaTeX title-base -> author-base = desc + 2\bigskip +
-  // \baselineskip = 34.7bp on sigchi-a-test.
+  // sigchiamode defers authors until after \@printtopmatter, placing teasers before them.
+  // The gap starts at the title box's bottom, including its descender.
   let box-gap = desc + tex-skip(cfg, 2 * cfg.bigskip) - subtitle-extra(cfg, meta)
   if meta.teaser != none {
     v(box-gap, weak: true)
@@ -1022,7 +678,6 @@
   } else {
     sigchi-authors(cfg, group-authors(mark-authors(meta, ni)), authors-per-row: meta.authors-per-row)
   }
-  // \@mkauthors@iv closing \par\bigskip before the abstract block (dtx:7573)
   v(tex-skip(cfg, cfg.bigskip), weak: true)
 }
 
@@ -1034,26 +689,15 @@
   journal-title-head(cfg, meta)
 }
 
-// acmart's \@specialsection is small run-in text for journals and sigplan, but a
-// real unnumbered section for the other proceedings (acmart.dtx:6763-6817).
 #let special-section(cfg, label, content, lang: none) = {
-  // acmcp keeps the ACM reference format suppressed but still renders CCS via the
-  // real \section* form (acmart.dtx:6797), NOT the journals' \small run-in line —
-  // so it is excluded from the journals' run-in branch here (keywords are already
-  // acmcp-suppressed by the caller, so only CCS reaches this).
   if (cfg.journal and cfg.name != "acmcp") or cfg.name == "sigplan" {
     special-line(cfg, label, if lang != none { text(lang: lang, content) } else { content })
   } else {
-    // Proceedings \section*{label}: the heading is a real section and the body is
-    // normalsize (\@specialsection, acmart.dtx:6786) — NOT the journals' \small.
     heading(numbering: none, outlined: false)[#label]
     fm-block(cfg, if lang != none { text(lang: lang, content) } else { content }, sz: "normalsize", chunk: true)
   }
 }
 
-// ACM Engage prints \setengagemetadata lines immediately after the author block
-// and before the Synopsis heading: one no-indent paragraph per key/value pair,
-// with the key bold and no punctuation inserted by the class.
 #let engage-metadata-block(cfg, items) = {
   if items.len() == 0 { return }
   block(width: 100%, spacing: 0pt)[
@@ -1070,28 +714,17 @@
   ]
 }
 
-// \abstractname for an abstract in `language` (a supported name, or none for the
-// monolingual default): babel's per-language name — except acmengage's "Synopsis",
-// which acmart sets at class load and re-applies only inside \captionsenglish
-// (acmart.dtx:3298-3313), so under acmengage a non-English main language, or a
-// non-English translated abstract, still gets the babel name.
+// acmengage overrides \abstractname only in \captionsenglish.
 #let abstract-name(cfg, language) = {
   if cfg.name == "acmengage" and language in (none, "english") { return "Synopsis" }
   if language == none { cfg.strings.abstract } else { lang-record(language).abstract }
 }
 
-// In-column top matter: abstract / CCS / keywords / ACM reference format. In
-// two-column formats these follow \@printtopmatter (acmart.dtx:6665) and so flow
-// in the FIRST column beneath the spanning title box; in one column they are
-// contiguous with the head. The leading weak skip collapses at a column top.
 #let make-title-body(cfg, meta) = {
   if cfg.name == "acmengage" {
     engage-metadata-block(cfg, meta.engage-metadata)
   }
 
-  // --- Abstract ---
-  // Journals set the abstract in \small with no heading; proceedings do
-  // \section*{Abstract} + a normalsize body (\@mkabstract, acmart.dtx:7688-7696).
   let render-abstract(name, body) = if cfg.journal {
     fm-block(cfg, body, indent: cfg.parindent)
   } else {
@@ -1099,26 +732,18 @@
     fm-block(cfg, body, indent: cfg.parindent, sz: "normalsize")
   }
   if meta.abstract != none { render-abstract(abstract-name(cfg, cfg.strings.main), meta.abstract) }
-  // Translated abstracts: each is another block in its own language, right after the
-  // main one; proceedings repeat the abstract heading per language, each headed by
-  // that language's \abstractname.
   for (l, ab) in meta.translated-abstract {
     render-abstract(abstract-name(cfg, l), text(lang: lang-record(l).code, ab))
   }
 
-  // --- CCS Concepts (suppressed by \settopmatter{printccs=false}) ---
   if meta.ccs != none and meta.print-ccs {
     special-section(cfg, [CCS Concepts], render-ccs-concepts(meta.ccs))
   }
 
-  // --- Keywords ---
-  // acmcp suppresses normal keyword top matter; the infobox prints it instead.
   if meta.keywords != none and cfg.name != "acmcp" {
     let label = if cfg.journal { cfg.strings.keywords } else { cfg.strings.keywords_proceedings }
     special-section(cfg, label, kw-join(meta.keywords))
   }
-  // Translated keywords (secondary languages): each block carries \keywordsname
-  // in its own language and sets that language for hyphenation (acmart.dtx:5338).
   if cfg.name != "acmcp" {
     for (l, kw) in meta.translated-keywords {
       let rec = lang-record(l)
@@ -1127,15 +752,12 @@
     }
   }
 
-  // --- ACM Reference Format ---
   if meta.print-acm-reference {
     let j = meta.journal
     let proceedings-ref = not cfg.bibstrip
-    // \@mkbibcitation does `\par\medskip\small ...`; next block is 9pt
     v(tex-skip(cfg, cfg.medskip, sz: "small"), weak: true)
     context {
-      // \ref{TotPages} here is the SHEET count (the totpages counter, physical
-      // pages), independent of \startPage's page-counter seed.
+      // \ref{TotPages} counts physical sheets independently of \startPage.
       let start = if meta.start-page == none { 1 } else { meta.start-page }
       let total = counter(page).final().first() - (start - 1)
       fm-block(cfg, [
@@ -1146,10 +768,6 @@
           if not proceedings-ref {
             [#if j.short != none { emph(j.short) + " " }#meta.acm-volume, #meta.acm-number#if meta.acm-article != none [, Article #meta.acm-article] (#pub-date(meta)), #total #if total == 1 [page] else [pages].]
           } else {
-            // booktitle is resolved (explicit or derived from the conference) in
-            // acmart(). Editors follow the booktitle: an ITALIC ", " then the
-            // andified names and "(Ed./Eds.)." (acmart.dtx:7756-7758); with no
-            // editors the closing period is italic too (\textit{.}).
             [In #emph(meta.booktitle)#if meta.editors.len() == 0 [#emph[.]] else [#emph[, ]#andify(meta.editors) (#if meta.editors.len() == 1 [Ed.] else [Eds.]).] ACM, New York, NY, USA#if meta.acm-article != none [, Article #meta.acm-article], #total #if total == 1 [page] else [pages].]
           }
         }#{
@@ -1159,30 +777,20 @@
     }
   }
 
-  // \@printendtopmatter \par\bigskip; next block is the body at 10pt
   v(tex-skip(cfg, cfg.bigskip), weak: true)
 }
 
-// One-column path: the head and in-column body are contiguous, exactly as the
-// old single make-title. Two-column formats call the two halves separately (the
-// head inside a spanning float), so this wrapper is the single-column entry.
 #let make-title(cfg, meta) = {
   make-title-head(cfg, meta)
   make-title-body(cfg, meta)
 }
 
-// Format a paper-history line for \received. acmart accumulates calls into one
-// string: the first stage defaults to "Received <date>", later stages append
-// "; <stage> <date>" (acmart.dtx:5844-5857). We accept either:
-//   - content/string -> used verbatim, or
-//   - an array of items, each a (stage, date) pair or a bare date; the first
-//     item's empty/none stage becomes "Received", later empty stages "revised".
 #let format-received(received) = {
   if type(received) != array { return received }
   let parts = ()
   for (i, item) in received.enumerate() {
     let (stage, date) = if type(item) == array and item.len() >= 2 { (item.at(0), item.at(1)) }
-      else if type(item) == array { (none, item.at(0, default: none)) }  // 1-elem array: treat as bare date
+      else if type(item) == array { (none, item.at(0, default: none)) }
       else { (none, item) }
     let s = if stage == none or stage == "" {
       if i == 0 { "Received" } else { "revised" }
@@ -1192,24 +800,15 @@
   parts.join([; ])
 }
 
-// The paper-history line, printed at the very end of the document
-// (acmart \AtEndDocument, acmart.dtx:5858-5861): \par\bigskip then \small
-// \normalfont (9pt body roman — serif, or sans under sans-default), unindented.
 #let make-received(cfg, received) = {
   v(tex-skip(cfg, cfg.bigskip, sz: "small"), weak: true)
   block(width: 100%, spacing: 0pt)[
     #set text(font: cfg.fonts.body, weight: "regular", style: "normal", size: cfg.size.small)
-    // \@specialsection-style body: an ordinary justified paragraph (visible only
-    // when the accumulated paper-history line wraps).
     #set par(justify: true, leading: comp(cfg, sz: "small"), first-line-indent: 0pt)
     #format-received(received)
   ]
 }
 
-// Artifact-evaluation badges for the first-page header (acmart firstpagestyle,
-// acmsmall: \@acmBadgeL at left, \@acmBadgeR at right; acmart.dtx:8203-8206).
-// `badges` is a dict with optional `left`/`right` content (typically an image at
-// `cfg.badge-width` wide, optionally wrapped in a link). Returns header content.
 #let make-badges(badges) = {
   let l = badges.at("left", default: none)
   let r = badges.at("right", default: none)

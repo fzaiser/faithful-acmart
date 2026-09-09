@@ -1,5 +1,3 @@
-// Small brace-depth scanners shared by the BibTeX reader and BibLaTeX renderer.
-
 #let ws = (" ", "\n", "\t", "\r")
 
 #let match-delim(cp, i, open: "{", close: "}") = {
@@ -35,9 +33,7 @@
 
 #let match-brace(cp, i) = match-delim(cp, i)
 
-// remove_outer (Biber Utils.pm): one brace pair wrapping the WHOLE string goes,
-// and every inner pair stays. Biber compares and initials name parts in this
-// form, which is why a dash protected as "{-}" survives its filters.
+// Biber removes only a brace pair enclosing the whole string (Utils.pm, remove_outer).
 #let remove-outer(s) = {
   let t = s.trim()
   let cp = t.codepoints()
@@ -46,7 +42,6 @@
   t.slice(1, t.len() - 1)
 }
 
-// Split a name/list field on a top-level whitespace-bounded "and".
 #let split-list-and(raw, trim: false, filter-empty: false) = {
   let cp = raw.codepoints()
   let n = cp.len()

@@ -1,12 +1,3 @@
-// draft-test — timestamp / author-draft mode smoke test.
-//
-// No LaTeX twin. The timestamp footer prints the compile date (datetime.today),
-// which the harness's pinned clock makes deterministic, so the page is
-// golden-hashed like any other test. This guards
-// that the author-draft code paths keep compiling warning-free — the draft
-// watermark, the copyright-block overlay + greying, the inner-edge timestamp
-// footer (with submission id) coexisting with the journal bibstrip, and the
-// review-mode line numbers that author-draft turns on.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(
@@ -17,7 +8,7 @@
   doi: "XXXXXXX.XXXXXXX",
   copyright: "acmlicensed", copyright-year: 2018,
   short-authors: "Trovato",
-  author-draft: true,            // = timestamp + review + watermark/overlay
+  author-draft: true,
   submission-id: "123-A56-BU3",
   authors: (
     (name: "Ben Trovato", email: "trovato@corporation.com",

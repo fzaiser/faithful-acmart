@@ -1,8 +1,3 @@
-// sample-acmtog-conf — port of the upstream acmart sample (acmart/samples,
-// docstrip option `all,proceedings,acmtog,conf`). The two-column acmtog format
-// used for a sponsored event: conference metadata replaces the journal metadata,
-// and the author-year citation style (\citestyle{acmauthoryear}) is in force.
-// Diffed against out/latex/acmtog-conf.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

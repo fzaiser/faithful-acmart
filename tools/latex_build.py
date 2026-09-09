@@ -1,9 +1,3 @@
-"""LaTeX reference building.
-
-Stage the bundled acmart class + vendored assets, compile a ``.tex`` to a stable
-PDF (rerunning until cross-references settle), and the latex-oracle gate that
-verifies the staged dependencies and the log recognizers."""
-
 from __future__ import annotations
 
 import os
@@ -19,12 +13,7 @@ from harness import (
 from pdf_extract import page_count, pdf_text
 
 
-# ---------------------------------------------------------------------------
-# LaTeX build (ported from latex-build.sh / build-reference.sh)
-# ---------------------------------------------------------------------------
-# Every non-system LaTeX input bundled for this audit is staged beside acmart.cls
-# so TeX cannot silently select a different TeX Live version. Keys are the names
-# TeX resolves; values are the authoritative repository copies.
+# Stage these dependencies beside acmart.cls so TeX resolves the bundled versions.
 PINNED_LATEX_INPUTS: dict[str, Path] = {
     "ACM-Reference-Format.bst": ACMART / "ACM-Reference-Format.bst",
     "acm-jdslogo.png": ACMART / "acm-jdslogo.png",
@@ -39,21 +28,18 @@ PINNED_LATEX_INPUTS: dict[str, Path] = {
     "english-software.lbx": ACMART / "deps" / "biblatex-software" / "english-software.lbx",
 }
 
-# The macOS Biber executable self-extracts into a shared PAR cache. Concurrent
-# first-use processes race while renaming the same `biber.lipo` temporary file,
-# so serialize this one tool while leaving pdflatex/BibTeX work parallel.
+# Concurrent first-use Biber processes race while extracting into the macOS PAR cache.
 _BIBER_LOCK = threading.Lock()
 
 
 def _sync_file(src: Path, dst: Path) -> None:
-    """Copy src only when bytes differ, preserving useful output mtimes."""
+    """Copy changed files while preserving mtimes for unchanged inputs."""
     data = src.read_bytes()
     if not dst.exists() or dst.read_bytes() != data:
         dst.write_bytes(data)
 
 
-# pdflatex/bibtex may write non-UTF-8 font names to stdout. Capture them
-# decode-tolerantly, but never discard the return code.
+# TeX tools can emit non-UTF-8 font names.
 def _quiet(cmd: list[str], **kw) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, capture_output=True, text=True, errors="replace", **kw)
 
@@ -76,11 +62,6 @@ def _pdflatex(tex_basename: str, srcdir: Path, outdir: Path, env: dict) -> None:
 
 
 def ensure_class(outdir: Path) -> None:
-    """Generate acmart.cls (and bundled assets) into outdir from acmart/ sources.
-
-    Always builds against the BUNDLED acmart class, never the system one — the two
-    can differ (e.g. section-title uppercasing). Regenerated if missing or stale.
-    """
     outdir.mkdir(parents=True, exist_ok=True)
     cls = outdir / "acmart.cls"
     dtx = ACMART / "acmart.dtx"
@@ -119,12 +100,9 @@ def _latex_final_problems(logtext: str) -> list[str]:
 
 
 def latex_build(tex: Path, outdir: Path = LATEX) -> int:
-    """Compile a .tex to a STABLE PDF in outdir; return its page count.
+    """Compile until references stabilize and return the page count.
 
-    Reruns pdflatex until cross-references / TotPages settle, runs bibtex or
-    biber (auto-detected from the source), and fails if a 'Temporary page'
-    placeholder survives or LaTeX reports an error.
-    """
+    Fail on tool errors or unresolved placeholders."""
     outdir.mkdir(parents=True, exist_ok=True)
     ensure_class(outdir)
     srcdir = tex.resolve().parent
@@ -137,8 +115,6 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
     env = {
         **os.environ,
         **TEST_CLOCK_ENV,
-        # acmart.cls in outdir must win over any system install; srcdir carries
-        # the twin's own bib/image assets (sample-base.bib, sample-franklin.png…).
         "TEXINPUTS": f"{outdir}:{srcdir}:",
         "BIBINPUTS": f"{outdir}:{srcdir}:",
     }
@@ -152,8 +128,6 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
             raise RuntimeError(f"biber {base} reported an error (see {blg})")
     else:
         aux = outdir / f"{base}.aux"
-        # Most layout twins have no bibliography. Running BibTeX unconditionally
-        # used to create a failing .blg that the harness then ignored.
         if aux.exists() and "\\bibdata" in aux.read_text(errors="replace"):
             _run_latex_tool(["bibtex", base], label=f"bibtex {base}", cwd=outdir, env=env)
     _pdflatex(f"{base}.tex", srcdir, outdir, env)
@@ -178,11 +152,7 @@ def latex_build(tex: Path, outdir: Path = LATEX) -> int:
     if "Temporary page" in pdf_text(pdf):
         raise SystemExit(f"ERROR: {pdf} still contains a 'Temporary page'.")
     return page_count(pdf)
-# The LaTeX references are a pure function of their sources. A reference PDF is
-# fresh if it is newer than its own .tex AND newer than every shared input that
-# could change its output: the class source, bundled assets/bst, and twin
-# bib/image/PDF assets. This deliberately over-invalidates because correctness
-# beats precision here. `--force` bypasses it entirely.
+# Include shared bibliography and image inputs when invalidating cached references.
 _shared_inputs_mtime_cache: float | None = None
 
 
@@ -202,16 +172,10 @@ def _shared_inputs_mtime() -> float:
 
 
 def ref_is_fresh(tex: Path, pdf: Path) -> bool:
-    """True if ``pdf`` is up to date with ``tex`` and all shared LaTeX inputs."""
     if not pdf.exists() or not tex.exists():
         return False
     return pdf.stat().st_mtime >= max(tex.stat().st_mtime, _shared_inputs_mtime())
 def gate_latex_oracle(report: bool = False) -> list[str]:
-    """Verify the reference directory contains the exact vendored dependencies.
-
-    The actual LaTeX builds exercise command-status and convergence checking; the
-    canned strings below keep the diagnostic recognizers themselves covered.
-    """
     failures: list[str] = []
     ensure_class(LATEX)
     for name, source in PINNED_LATEX_INPUTS.items():
@@ -240,11 +204,7 @@ def gate_latex_oracle(report: bool = False) -> list[str]:
     return failures
 def build_all_latex(
         jobs: int = 1, force: bool = False, names: list[str] | None = None) -> None:
-    """Build selected LaTeX twins (all by default) in parallel.
-
-    Up-to-date references are skipped unless ``force`` (see ``ref_is_fresh``).
-    """
-    ensure_class(LATEX)  # serial, before fan-out: avoids a class/asset write race
+    ensure_class(LATEX)  # Stage shared assets before parallel builds to avoid write races.
     selected = set(TESTS) if names is None else set(names)
     twins = [(name, TESTS_DIR / t.subdir / f"{name}.tex")
              for name, t in TESTS.items() if name in selected and t.kind == "twin"]

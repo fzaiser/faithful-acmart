@@ -1,125 +1,82 @@
-# Contributing to faithful-acmart
+# Contributing
 
-Thanks for helping improve `faithful-acmart`. The project aims to keep user-facing
-Typst source pleasant while matching LaTeX `acmart` output as closely as Typst can.
+## Setup
 
-## Development setup
-
-Sync the local Python environment used by the validation harness:
-
-```sh
-uv sync
-```
-
-The harness is one Python program, [`tools/test.py`](tools/test.py), driven by the
-matrix in [`tools/test_matrix.py`](tools/test_matrix.py). Build through
-[`tools/tc`](tools/tc), a `typst` wrapper that points at the bundled development
-fonts in [`fonts/`](fonts/).
-
-Outside Python it needs a TeX distribution — `pdflatex`, `bibtex` and `biber` build the
-LaTeX references the twins are compared against — and, for the `package` command,
-[`typst-package-check`](https://github.com/typst/package-check).
-
-It also needs one specific Typst: the Tier 1 goldens are raster page hashes, so they
-only reproduce under the version recorded in `TYPST_VERSION` and in the header of
-[`tests/golden/typst.sha256`](tests/golden/typst.sha256). A different compiler is
-rejected by the matrix-integrity gate before any page is compared, so keep that build
-first on `PATH` while running `check`. Moving the pin is a deliberate migration —
-regenerate the hashes with `test.py accept` and inspect what moved — not a way to make
-a version mismatch go away.
-
-Common commands:
+Install `uv`, a TeX distribution providing `pdflatex`, `bibtex`, and `biber`, and `typst-package-check`.
+Use the Typst version pinned by `TYPST_VERSION` in [tools/test_matrix.py](tools/test_matrix.py); raster goldens depend on that compiler and the locked Python dependencies.
+The [CI workflow](.github/workflows/tests.yml) records the tested installation commands and system packages.
 
 ```sh
-uv run python tools/test.py build   # LaTeX refs + Typst PDFs + example
-uv run python tools/test.py check   # all regression gates
-uv run python tools/test.py unit    # fast Typst logic/data tests
-uv run python tools/test.py package # validate the exact distributable bundle
-uv run python tools/test.py smoke body2-test theorem-transition-test # targeted build/page checks
-uv run python tools/test.py accept  # bless golden hashes after an intended change
+uv sync --frozen
 ```
 
-The matched twins import `/src/lib.typ` directly, so `check` needs no package link.
-Building the example or running `typst init` does — see
-[PUBLISHING.md](PUBLISHING.md#local-testing-the-package-symlink), which also explains
-why that link shadows the released package afterwards.
+Compile repository documents through `tools/tc`.
+It supplies the project root and bundled fonts, isolating output from system font versions.
+For example:
 
-## Validation model
+```sh
+mkdir -p tests/out
+tools/tc compile tests/twins/body-test.typ tests/out/body-test.pdf
+```
 
-The port is validated by rendering both the real LaTeX `acmart` output and the Typst
-output, then comparing them page-by-page. LaTeX references are built from the bundled
-upstream sources in [`acmart/`](acmart/), not from the system TeX installation.
+Generated files belong in `tests/out/`; private working notes belong in `scratch/`.
+Both are ignored by Git.
 
-The main check builds the LaTeX references, compiles every Typst test once in
-parallel, and then runs the gates:
+## Validation
 
-- matrix/source-data integrity and a pinned, converged LaTeX oracle
-- warning, page-count, unit, and staged-package checks
-- committed Typst raster hashes in `tests/golden/`
-- extracted text, PDF metadata, links, fonts, and expected-error checks
-- tagged-PDF roles, language/alt metadata, and logical reading order
-- exact, explicitly bounded cross-engine layout metrics
+```sh
+uv run python tools/test.py unit
+uv run python tools/test.py check
+```
 
-`tools/test.py validate` separately builds copyright and option variants and reports
-page-1 mismatch percentages. `tools/test.py probe --format <name>` audits layout
-measurements against the LaTeX class. `tools/test.py source-data` verifies the
-transcribed journal table against `acmart.dtx` and the bibliography journal macros
-and canonical abbreviations against `ACM-Reference-Format.bst`; it is a checker and
-never rewrites the Typst data. `tools/test.py structure` reports the tagged-PDF
-semantic checks without rerunning the rest of the suite.
+`check` builds reference PDFs from the bundled LaTeX class and bibliography styles, rerunning TeX until references stabilize.
+It compares text, typography, layout, and PDF semantics, checks Typst raster goldens, and validates the distributable package.
+Use `check --help` for the current gates.
 
-## What the tests cover
+Fixtures live in `tests/twins/` as matching `.tex` and `.typ` documents, in `tests/typst-only/` for smoke tests, and in `tests/unit/` for logic tests.
+Register document fixtures and their expectations in [tools/test_matrix.py](tools/test_matrix.py).
+Keep paired fixtures equivalent in content and intent.
 
-The validation suite checks:
+The package check compiles a fresh starter project and every `typst` example in the README against the distributable files.
+It does not require a locally installed package.
+The `example` command does; see [local package testing](PUBLISHING.md#local-package-testing).
 
-- Page geometry, body typography, baseline grid, and headings, including run-in
-  headings.
-- Front matter: title, authors and affiliations, abstract, CCS concepts, keywords,
-  ACM reference format, page-1 footnotes, and running headers/footers.
-- Proceedings top matter, author grids, and conference copyright blocks.
-- The `acmcp` cover page frame, article-type label, infobox, and footer.
-- Figure and table captions, theorem environments, lists, footnotes, code, and
-  bibliography rendering.
-- Copyright modes, including Creative Commons badge output and invalid-value errors.
+## Investigating a difference
 
-Test documents live in [`tests/`](tests/):
+Start with a targeted build and comparison:
 
-| Path | Contents |
-|---|---|
-| `tests/twins/` | Matched `.tex` and `.typ` documents diffed against each other |
-| `tests/typst-only/` | Typst-only smoke, alias, and feature checks |
-| `tests/golden/` | Committed Tier 1 raster hashes |
-| `tests/out/` | Generated PDFs, images, and diffs; gitignored |
+```sh
+uv run python tools/test.py smoke body-test
+uv run python tools/test.py report body-test
+```
 
-The test matrix determines which directory a test belongs to and which gates apply.
+The HTML report in `tests/out/report/index.html` shows both PDFs side by side.
+With Ghostscript and qpdf installed, it also includes a vector overlay.
+Without a fixture name, `report` selects failures from the last `check`.
 
-## Working on layout code
+Read [DESIGN.md](DESIGN.md) before changing layout assumptions.
+Use `tools/test.py probe --format <name>` to measure the bundled class, and the `text`, `metrics`, or `linepitch` commands to inspect output; each has `--help`.
+`source-data` checks transcribed data against upstream sources, and `bib-oracle` compares the bibliography reader with BibTeX.
 
-Read [`DESIGN.md`](DESIGN.md) before changing layout behavior. It documents the
-architecture, source-vs-output matching decisions, known limitations, and the
-measurement model used by the port.
+Fix the implementation or fixture when a comparison reveals a bug.
+For an accepted engine difference, record its cause and bounded expectation in the matrix.
+Avoid broadening text normalization to absorb a local mismatch: that weakens checks for every document.
+Exemptions must fail when their expected difference disappears.
 
-Useful pointers:
+## Updating baselines
 
-- [`src/lib.typ`](src/lib.typ) is the public `acmart(...)` entry point.
-- [`src/formats/`](src/formats/) contains one builder per public format.
-- [`src/parts/spacing.typ`](src/parts/spacing.typ) centralizes the TeX-to-Typst
-  baseline-grid conversion.
-- [`src/parts/frontmatter.typ`](src/parts/frontmatter.typ),
-  [`src/parts/body.typ`](src/parts/body.typ), and
-  [`src/parts/headings.typ`](src/parts/headings.typ) hold most visible layout rules.
-- [`src/parts/acmref*.typ`](src/parts/) and [`src/parts/bibtex.typ`](src/parts/bibtex.typ)
-  implement the ACM bibliography backends.
+After inspecting an intended rendering change, regenerate raster hashes:
 
-When changing measurements, re-derive values from the bundled `acmart` sources or a
-probe, then run the relevant targeted test before the full `check` gate.
+```sh
+uv run python tools/test.py accept
+uv run python tools/test.py check
+```
 
-## Repository notes
+A compiler or rasterizer upgrade also requires inspecting the resulting page changes before accepting new hashes.
+Use `compat` to check a different Typst release without applying the pinned raster expectations.
 
-[`typst.toml`](typst.toml) excludes development-only files from the published Typst
-Universe bundle: the upstream LaTeX sources, tests, tools, development fonts,
-contributor docs, and trademarked ACM logo sample.
+## Documentation
 
-The fonts in [`fonts/`](fonts/) are mirrored for development and validation. They are
-not bundled with the published package, so user-facing documentation should continue
-to tell users to provide the required fonts themselves.
+Keep paper-writing guidance in [README.md](README.md), architectural decisions and compatibility limits in [DESIGN.md](DESIGN.md), and release steps in [PUBLISHING.md](PUBLISHING.md).
+Option defaults, format measurements, and test expectations belong in code.
+Comments should explain constraints or surprising choices that the surrounding code cannot explain.

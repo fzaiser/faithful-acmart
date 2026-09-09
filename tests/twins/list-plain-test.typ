@@ -1,12 +1,6 @@
-// list-plain-test — list geometry WITHOUT review/nonacm: acmart's own
-// dimensions apply (labelsep 4pt, leftmargini 24.5pt, nested 8.5pt); see
-// list-test for the review/nonacm (amsart-values) side of the class's
-// hook-ordering bug.
 #import "/src/lib.typ": acmart
 #show: acmart.with(format: "acmsmall")
-// This body-only twin's .tex uses \pagestyle{empty}\thispagestyle{empty} to drop
-// the journal footer (acmart otherwise prints the bibstrip footer even without a
-// journal set); the Typst analog is suppressing the page footer.
+// Suppress the footer directly so nonacm cannot change the list geometry.
 #set page(footer: none)
 
 = Lists

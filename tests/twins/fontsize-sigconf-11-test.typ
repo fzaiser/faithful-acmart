@@ -1,9 +1,4 @@
-// fontsize-sigconf-11-test — sigconf (two-column proceedings) at the NON-DEFAULT
-// 11pt base. Matched twin: fontsize-sigconf-11-test.tex. A titled document so the
-// title block switches acmart into two-column mode (a titleless proceedings doc
-// stays single-column); the body then exercises the proceedings section-heading
-// ladder at 11pt — a distinct scaling axis from the single-column acmsmall
-// fontsize twins. Two-column extraction reorders, so text is word-bag gated.
+// The title makes \maketitle switch LaTeX into two-column mode.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

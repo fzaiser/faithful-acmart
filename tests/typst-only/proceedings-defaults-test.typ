@@ -1,4 +1,3 @@
-// proceedings-defaults-test — proceedings formats use acmart's conference defaults.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

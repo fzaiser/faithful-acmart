@@ -1,7 +1,3 @@
-// startpage-test — \startPage seeds the page counter.
-// Matched twin: startpage-test.tex. Folios ("111:7"), running-head parity, and
-// the journal footer must follow the counter, not the physical sheet index
-// (acmart.dtx:6822-6825).
 #import "/src/lib.typ": acmart
 
 #let fill = [

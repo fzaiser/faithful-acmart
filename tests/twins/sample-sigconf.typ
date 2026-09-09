@@ -1,7 +1,3 @@
-// sample-sigconf — port of the upstream acmart sample (acmart/samples, docstrip
-// option `all,proceedings,sigconf`). The default two-column proceedings format:
-// spanning centred title, centred author grid, first-column copyright block.
-// Diffed page-by-page against out/latex/sigconf.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

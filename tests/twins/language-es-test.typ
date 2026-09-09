@@ -1,9 +1,3 @@
-// language-es-test — Spanish multilingual paper (acmart `language=spanish`).
-// Matched twin: language-es-test.tex. Verifies the Spanish fixed strings —
-// keywordsname ("Palabras y Frases Claves Adicionales"), proofname
-// ("Demostración"), acksname ("Expresiones de gratitud"), tablename ("Cuadro")
-// — while the figure label stays "Fig." (acmart sets it globally). Includes an
-// English translated title/keywords and Spanish (es) hyphenation.
 #import "/src/lib.typ": acmart, proof, acks, tabular, toprule, midrule, bottomrule
 
 #show: acmart.with(

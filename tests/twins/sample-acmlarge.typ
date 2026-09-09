@@ -1,7 +1,3 @@
-// sample-acmlarge — port of the upstream acmart sample (acmart/samples,
-// docstrip option `all,acmlarge`). Single-column journal format acmlarge (used
-// by JOCCH/TAP); identical content to acmsmall but the wider acmlarge text
-// block and the POMACS journal. Diffed against out/latex/acmlarge.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

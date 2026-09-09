@@ -1,8 +1,3 @@
-"""Copyright/option validation variants vs LaTeX.
-
-Renders each variant with both engines, saves a side-by-side PNG, and gates the
-page-1 raster mismatch percentage against the matrix thresholds."""
-
 from __future__ import annotations
 
 import sys
@@ -14,7 +9,6 @@ from pdf_extract import raster_array
 from latex_build import latex_build, ref_is_fresh, ensure_class
 
 
-# LaTeX/Typst templates for the validation suite (copyright modes + options).
 _VALIDATE_TEX = r"""\documentclass[acmsmall{opts}]{{acmart}}
 \acmJournal{{JACM}}
 \acmVolume{{37}}\acmNumber{{4}}\acmArticle{{111}}\acmYear{{2018}}\acmMonth{{8}}
@@ -96,8 +90,7 @@ def _validate_variant_results(
         opts, pre, typ_opts = M.VARIANTS[name]
         tex = LATEX / f"var-{name}.tex"
         new_tex = _VALIDATE_TEX.format(opts=opts, pre=pre)
-        # Only rewrite when the content changes, so an unchanged variant keeps its
-        # mtime and ref_is_fresh can skip its (slow) LaTeX rebuild.
+        # Preserve mtimes for unchanged variants so cached LaTeX references remain usable.
         if not (tex.exists() and tex.read_text() == new_tex):
             tex.write_text(new_tex)
         typ = OUT / f"var-{name}.typ"
@@ -120,12 +113,11 @@ def _validate_variant_results(
             rc, oc = link_rgb(ref), link_rgb(our)
             if rc is not None and oc is not None:
                 d = int(max(abs(rc - oc)))
-                # A ±1-2/channel delta is expected (Typst writes CMYK as 8-bit).
                 if d > 2:
                     note += f"link rgb ref~{tuple(rc)} our~{tuple(oc)} (Δ{d}) "
         return name, mismatch(ref, our), note
 
-    ensure_class(LATEX)  # warm the class before the parallel fan-out (write race)
+    ensure_class(LATEX)  # Stage shared assets before parallel builds to avoid write races.
     return _pmap(variant, names, jobs)
 
 

@@ -1,7 +1,3 @@
-// acmtog-test — two-column journal format.
-// Matched twin: acmtog-test.tex. Exercises the two-column journal layout: the
-// spanning LEFT-aligned @i title, the author LIST (not grid), the contact-info
-// footnote + ACM bibstrip, 9pt parindent, and the sans-large sections.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

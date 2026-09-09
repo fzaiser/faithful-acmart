@@ -1,8 +1,4 @@
 #import "/src/lib.typ": *
-// Happy path for the in-text cite -> reference-list hyperlinks: numbers `link` to the
-// entry labels (see `parts/acmref-cite.typ`). Many `@key`s incl. dotted keys in one
-// sentence also guards the resolve path against a `read(none)` regression (the error
-// case — citing with no acmart bibliography — is `cite-without-bibliography`).
 #show: acmart.with(format: "acmsmall", bib-backend: "bibtex")
 
 = Introduction

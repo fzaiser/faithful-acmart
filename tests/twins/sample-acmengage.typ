@@ -1,8 +1,3 @@
-// sample-acmengage — port of the upstream acmart sample (acmart/samples,
-// acmengage.dtx). ACM EngageCSEdu course-material format: two-column, Synopsis
-// instead of Abstract, CC license, engage metadata before Synopsis, and the
-// ACM-Reference-Format bibliography through the bst backend.
-// Diffed against out/latex/acmengage.pdf.
 #import "/src/lib.typ": *
 
 #show: acmart.with(

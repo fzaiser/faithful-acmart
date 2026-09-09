@@ -1,9 +1,3 @@
-"""PDF-semantic cross-engine gates.
-
-Metadata (Tier 1.55), hyperlinks (1.7), per-letter fonts (1.8), tagged-PDF
-structure (1.85), intra-chunk reading order (1.9), and bookmark/outline parity
-(1.95). All read the extracted PDF semantics rather than rendered pixels."""
-
 from __future__ import annotations
 
 import re
@@ -23,11 +17,7 @@ from gate_residuals import (
 )
 
 
-# Semantic document-info fields worth cross-checking against LaTeX. Producer /
-# Creator / CreationDate carry engine identity, so they are deliberately excluded.
-# acmart's hyperref setup emits only /Title (and a CCS /Subject we don't mirror),
-# never /Author or /Keywords — so LaTeX is an oracle for a field only when it
-# populates it; where it doesn't, the METADATA_EXPECTATIONS anchors pin Typst.
+# Compare publication metadata; engine identity and build timestamps differ by design.
 _CROSS_METADATA_FIELDS = ("Title", "Author", "Keywords")
 
 
@@ -36,12 +26,6 @@ def _meta_norm(value: str | None) -> str:
 
 
 def gate_metadata(report: bool = False) -> list[str]:
-    """Tier 1.55 — PDF metadata populated by the acmart show rule.
-
-    Anchored twins keep exact expected Title/Author/Keywords; every twin also has
-    its semantic fields cross-checked against its LaTeX twin wherever LaTeX
-    provides a value.
-    """
     failures: list[str] = []
     for name, expected in M.METADATA_EXPECTATIONS.items():
         pdf = typst_pdf(name)
@@ -75,7 +59,7 @@ def gate_metadata(report: bool = False) -> list[str]:
             if field in exempt:
                 continue
             lv = _meta_norm(li.get(field))
-            if not lv:  # acmart gave no oracle for this field
+            if not lv:
                 continue
             tv = _meta_norm(ti.get(field))
             if lv != tv:
@@ -87,32 +71,18 @@ def gate_metadata(report: bool = False) -> list[str]:
     return failures
 _SECTION_NUMBER = re.compile(r"^\d+(?:\.\d+)*\s")
 def _numbered_sections(entries: list[tuple[int, str, int]]) -> list[tuple[str, int]]:
-    """(quote-folded title, page) for numbered-section bookmarks only.
-
-    Restricting to numbered sections drops the frontmatter/backmatter entries
-    acmart bookmarks via \\addcontentsline (Abstract, Synopsis, Acknowledgments,
-    References) that Typst — which bookmarks headings, not those blocks — has no
-    counterpart for. Quotes are folded because hyperref writes the raw TeX
-    ``...'' where Typst writes real quotation marks."""
+    """Return (quote-normalized title, page) for numbered-section bookmarks."""
     def norm(title: str) -> str:
-        # hyperref writes raw TeX quote ligatures into bookmarks (``…'' / `…');
-        # fold them to plain quotes to meet Typst's real quotation marks.
+        # hyperref can retain TeX quote ligatures in bookmark text.
         title = title.replace("``", '"').replace("''", '"').replace("`", "'")
         return _fold_quotes(title)
     return [(norm(t), p) for _lvl, t, p in entries if _SECTION_NUMBER.match(t)]
 
 
 def gate_outline(report: bool = False) -> list[str]:
-    """Tier 1.95 — PDF bookmark (outline) parity vs LaTeX for every twin.
+    """Compare numbered bookmarks through LaTeX's outline depth.
 
-    Compares the numbered-section bookmark sequence (title incl. its number, so
-    nesting depth is implied), capping Typst to LaTeX's own bookmark depth (Typst
-    bookmarks subsubsections/paragraphs that acmart's depth omits). Target PAGE is
-    checked only for page-1-anchored entries — later-page bookmark targets drift
-    with the documented multi-page page-fill difference, and a twin whose first page
-    is itself at the fill boundary names the exact heading and page pair in
-    EXPECTED_OUTLINE_DIFFS. If LaTeX bookmarks any numbered section, Typst must
-    emit a non-empty outline (catches lost tagging)."""
+    Check target pages only for page-1 anchors; later targets can shift with page breaking."""
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
@@ -161,11 +131,6 @@ def gate_outline(report: bool = False) -> list[str]:
                 print(f"ok   {name}: {len(lsec)} section bookmark(s) match")
     return failures
 def gate_links(report: bool = False) -> list[str]:
-    """Tier 1.7 — external and internal hyperlink coverage.
-
-    URI annotation multisets are compared exactly for every twin. Tests that set minimum
-    internal-link counts also get normalized /GoTo and /Dest coverage checks.
-    """
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
@@ -217,8 +182,6 @@ def gate_links(report: bool = False) -> list[str]:
             failures.append(
                 f"{name}: expected at least {t.min_internal_destinations} internal "
                 f"link destinations, found {ti['unique_targets']}")
-        # Every resolved internal-link target must land on a real page: a target
-        # page outside [1, pages] means a dangling/misresolved destination.
         stray = sorted(p for p in ti["target_pages"] if not 1 <= p <= ti["pages"])
         if stray:
             failures.append(
@@ -229,9 +192,6 @@ def gate_links(report: bool = False) -> list[str]:
                   f"{ti['unique_targets']} destination(s)")
     return failures
 def gate_fonts(report: bool = False) -> list[str]:
-    """Tier 1.8 — per-letter font gate. Every alphabetic character must match LaTeX
-    in family/weight/italic/size/colour. Twins with ``expected_font_diffs``
-    evidence may carry a known mismatch."""
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
@@ -244,9 +204,6 @@ def gate_fonts(report: bool = False) -> list[str]:
             name, t, pdf_text(lref), pdf_text(tpdf)) if t.expected_font_diffs else []
         (lb, lfp), (tb, tfp) = _font_scan(lref), _font_scan(tpdf)
         miss, extra = lb - tb, tb - lb
-        # Annotate each residual key with the first page it occurs on (LaTeX page
-        # for LaTeX-only keys, Typst page for Typst-only) so a one-letter family
-        # diff names where to look.
         show = lambda residual, fp: {
             k: (n, f"p{fp.get(k, '?')}") for k, n in list(residual.items())[:8]}
         if t.expected_font_diffs:
@@ -270,19 +227,7 @@ def gate_fonts(report: bool = False) -> list[str]:
         elif report:
             print(f"ok   {name}: fonts match")
     return failures
-# --- Tier 1.9: per-chunk reading-order gate (tagged structure tree) ---
-# The word/char bags are order-independent by design, so an element emitted in the
-# wrong place — an affiliation/email swap in the contact line, a reordered citation
-# field — slips through them. Typst writes a tagged PDF, so each logical chunk
-# (title, an author line, the contact block, a heading, a bib entry) is recoverable
-# in logical order from the structure tree; we check by LCS that its tokens occur in
-# that order in the flat (untagged) LaTeX stream. See tools/pdf_chunks.py.
 def gate_order(report: bool = False) -> list[str]:
-    """Tier 1.9 — intra-chunk reading order vs LaTeX. Each tagged Typst chunk's
-    tokens must appear in the flat LaTeX stream in the chunk's own order (other
-    content may interpose — the check is sub-sequence/LCS based, so it is immune to
-    reflow, page breaks and column flow). Needs pikepdf; twins with
-    ``expected_order_diffs`` evidence may carry a known mismatch."""
     try:
         import pikepdf  # noqa: F401
     except ImportError:
@@ -332,9 +277,7 @@ def gate_order(report: bool = False) -> list[str]:
         elif report:
             print(f"ok   {name}: chunk order matches")
     return failures
-# --- Tier 1.85: tagged-PDF semantics ---------------------------------------
 def _structure_elements(node):
-    """Yield every structure element below a StructTreeRoot in document order."""
     import pikepdf
     if isinstance(node, pikepdf.Array):
         for item in node:
@@ -350,8 +293,6 @@ def _structure_elements(node):
 
 
 def gate_structure(report: bool = False) -> list[str]:
-    """Tier 1.85 — require tagging on representative fixtures, then pin
-    semantic roles, document languages, and image alternative descriptions."""
     try:
         import pikepdf
     except ImportError:
@@ -388,7 +329,7 @@ def gate_structure(report: bool = False) -> list[str]:
     for name, expected in expected_languages.items():
         pdf_path = typst_pdf(name)
         if not pdf_path.exists():
-            continue  # already reported by the representative-fixture pass above
+            continue
         with pikepdf.Pdf.open(pdf_path) as pdf:
             actual = str(pdf.Root.get("/Lang", ""))
         if actual != expected:
@@ -404,8 +345,6 @@ def gate_structure(report: bool = False) -> list[str]:
         alternatives = Counter(
             str(elem.get("/Alt")) for elem in elements if "/Alt" in elem
         )
-    # /THead + /TH pin acmart's \tagpdfsetup{table/header-rows={1}}
-    # (acmart.dtx:4292): a table's first row is a header, not loose data.
     required_roles = {
         "/Document", "/H1", "/H2", "/P", "/L", "/LI", "/Table", "/TR",
         "/TD", "/THead", "/TH", "/Figure", "/Caption", "/Link", "/Formula",

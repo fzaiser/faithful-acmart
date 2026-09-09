@@ -1,8 +1,4 @@
 #import "/src/lib.typ": acmart
-// Typst-only smoke for the opt-in "typst" (native CSL) bibliography backend: it must
-// compile and render a reference list via Typst's built-in ACM CSL style. "typst" is a
-// documented approximation of LaTeX — the faithful default is the "bibtex" backend (the
-// ACM-Reference-Format.bst port), so this is a compile/render smoke, not a diff twin.
 #show: acmart.with(format: "acmsmall", bib-backend: "typst")
 
 = Introduction

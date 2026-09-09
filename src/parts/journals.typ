@@ -1,10 +1,4 @@
-// ACM journal table, transcribed in full from acmart.dtx's \acmJournal choice
-// table (the dummy FACMP fallback is intentionally omitted).
-//
-// key -> (name, short, issn, screen?). issn is acmart's \@permissionCodeTwo (falling back
-// to \@permissionCodeOne when Two is absent), used in the
-// "ACM <issn>/<year>/<month>-ART<article>" copyright line; `short` is the
-// running-head/footer abbreviation.
+// acmart.dtx, \acmJournal: issn is \@permissionCodeTwo, falling back to \@permissionCodeOne.
 #let journals = (
   ACMJCSS: (name: "ACM Journal on Computing and Sustainable Societies", short: "ACM J. Comput. Sustain. Soc.", issn: "2834-5533"),
   ACMJDS: (name: "ACM Journal of Data Science", short: "ACM J. Data Sci.", issn: "3069-3497"),

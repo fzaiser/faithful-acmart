@@ -1,5 +1,3 @@
-// Exhaustive format × base-font-size construction matrix.
-
 #import "/src/formats/manuscript.typ": manuscript
 #import "/src/formats/acmsmall.typ": acmsmall
 #import "/src/formats/acmlarge.typ": acmlarge
@@ -33,10 +31,6 @@
   }
 }
 
-// The obsolete public options `siggraph` and `sigchi` are aliases: the option
-// resolver maps them to the sigconf builder (matching the bundled LaTeX class).
-// The compile-only siggraph-test / sigchi-test smokes prove the full pipeline
-// accepts them; these asserts pin the mapping itself.
 #import "/src/parts/options.typ": formats as format-table
 #assert.eq(format-table.at("siggraph"), format-table.at("sigconf"),
   message: "siggraph must resolve to the sigconf config")

@@ -1,9 +1,3 @@
-"""Shared residual-signature and expected-diff checking.
-
-Used by the text, font, and order gates: a stable digest of a signed gate
-residual, the matrix lookup for a test's expected signature, and the
-fragment-presence checker behind ``expected_{text,font,order}_diffs``."""
-
 from __future__ import annotations
 
 import hashlib
@@ -18,11 +12,7 @@ from pdf_extract import pdf_text
 
 
 def _residual_digest(missing: Counter, extra: Counter) -> str:
-    """Stable SHA-256 of a signed gate residual.
-
-    Counter keys may be strings or font/order tuples, so serialize their reprs in
-    sorted order rather than relying on insertion order or JSON type coercion.
-    """
+    """Hash sorted key representations so tuple keys and insertion order cannot change the digest."""
     payload = repr((
         sorted(((repr(key), count) for key, count in missing.items())),
         sorted(((repr(key), count) for key, count in extra.items())),

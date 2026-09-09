@@ -1,22 +1,18 @@
 # faithful-acmart
 
-`faithful-acmart` is a [Typst](https://typst.app) port of the LaTeX **acmart**
-document class. It covers **every** public acmart format and is **tested against the
-real LaTeX class**, matching its fonts, page geometry, spacing, and top matter *as
-closely as Typst allows* — while your source stays idiomatic Typst.
-
-It also covers the rest of an ACM paper: captions, theorem environments, copyright
-blocks, and the ACM bibliography styles.
+A [Typst](https://typst.app) port of LaTeX's `acmart` document class, with ACM page layouts, front matter, bibliography styles, and theorem environments.
+The test suite compares rendered documents against the [bundled LaTeX sources](acmart/).
+See [compatibility limits](DESIGN.md#compatibility-limits) for differences between the engines.
 
 ## Getting started
 
-Create a new paper from the template:
+Install the [required fonts](#fonts), then create a paper:
 
 ```sh
 typst init @preview/faithful-acmart:0.1.0
 ```
 
-Or import the package in an existing document:
+For an existing document, import the package and apply `acmart`:
 
 ```typst
 #import "@preview/faithful-acmart:0.1.0": *
@@ -31,216 +27,137 @@ Or import the package in an existing document:
   acm-year: 2018,
   acm-month: 8,
   doi: "XXXXXXX.XXXXXXX",
-  copyright: "acmlicensed",
-  copyright-year: 2018,
   authors: (
     (
       name: "Ada Lovelace",
       email: "ada@example.org",
-      corresponding: true,
       affiliation: (
-        institution: "Analytical Engine Co.",
+        institution: "Analytical Engine Institute",
         city: "London",
         country: "UK",
       ),
     ),
   ),
   abstract: [Your abstract.],
-  ccs: ((500, "Computing methodologies", "Massively parallel algorithms"),),
   keywords: ("one", "two"),
 )
 
 = Introduction
-Write normal Typst. Cite with @Cohen:1996:EAE and finish with a bibliography.
+Write ordinary Typst and cite prior work @Cohen:1996:EAE.
 
 #bibliography("refs.bib")
 ```
 
-Use the wildcard import (`*`). It brings `acmart`, the theorem environments,
-`cite`, `bibliography`, the textual citation helpers (`cite-text`, `cite-year`,
-`cite-author`), and the booktabs table helpers (`tabular`, `toprule`, `midrule`,
-`bottomrule`) into scope. A complete starter document is in
-[`template/main.typ`](template/main.typ).
+Use the wildcard import (`*`) to include the package's `cite` and `bibliography` functions.
+The [starter document](template/main.typ) includes figures, tables, and theorems.
+The minimum Typst version is recorded in [typst.toml](typst.toml).
 
 ## Fonts
 
-ACM documents use **Libertinus** for text/math and **Inconsolatazi4** for monospace.
-Typst packages cannot bundle fonts, so install or provide these families before
-compiling:
+Provide **Libertinus Serif**, **Libertinus Sans**, **Libertinus Math**, and **Inconsolatazi4**.
+They are available in the repository's [fonts directory](fonts/), with provenance and licensing information.
+Fonts are excluded from the published package.
 
-- `Libertinus Serif`
-- `Libertinus Sans`
-- `Libertinus Math`
-- `Inconsolatazi4`
-
-On the command line, install the fonts system-wide or pass a font directory:
+Install them system-wide or pass their directory when compiling:
 
 ```sh
 typst compile --font-path <font-folder> main.typ
 ```
 
-In the Typst web app, upload the font files into the project. Libertinus is available
-from the [Libertinus releases](https://github.com/alerque/libertinus/releases);
-`Inconsolatazi4` ships with TeX Live's `inconsolata` package. The project repository
-also mirrors both families in [`fonts/`](fonts/).
+In the Typst web app, upload the font files into your project.
 
-## Formats
+## Choosing a format
 
-Set the output style with `format`:
-
-| Format | Use |
+| `format` | Layout |
 |---|---|
-| `manuscript` | ACM manuscript layout |
-| `acmsmall`, `acmlarge` | Single-column ACM journal layouts |
-| `acmtog` | Two-column ACM TOG layout |
-| `sigconf` | Standard ACM conference proceedings |
-| `siggraph`, `sigchi` | Aliases of `sigconf`, matching `acmart` |
+| `manuscript` | Manuscript; the default |
+| `acmsmall`, `acmlarge` | Single-column journals |
+| `acmtog` | Two-column TOG journal |
+| `sigconf` | Conference proceedings |
+| `siggraph`, `sigchi` | Aliases of `sigconf`, as in acmart |
 | `sigplan` | SIGPLAN proceedings |
-| `sigchi-a` | Legacy landscape SIGCHI extended abstract |
-| `acmengage` | ACM EngageCSEdu format |
-| `acmcp` | ACM cover-page format (used by the Journal of Data Science) |
+| `acmengage` | EngageCSEdu |
+| `sigchi-a` | Legacy landscape extended abstract |
+| `acmcp` | Cover-page format; requires `acmcp-logo: image("logo.png")` |
 
-If `format` is omitted, `acmart` defaults to `manuscript`, matching the LaTeX
-class. Proceedings formats also inherit acmart's placeholder conference metadata
-unless you pass `conference: none` or provide your own `conference` dictionary.
+For proceedings, supply `conference: (name: "…", short: "…", venue: "…", date: "…")`, along with `booktitle` and `isbn`.
+Omitting `conference` retains acmart's placeholder metadata; `conference: none` suppresses it.
+Set `acm-year` and `acm-month` explicitly to keep publication dates independent of the compile date.
 
-## Common options
+## Paper metadata
 
-Most papers only need a subset of these:
+The `acmart` signature in [src/lib.typ](src/lib.typ) lists all options and defaults.
+Common submission options are `anonymous`, `review`, `screen`, and `submission-id`; `short-title` and `short-authors` override running heads.
 
-| Option | Purpose |
-|---|---|
-| `title`, `subtitle` | Paper title and subtitle |
-| `title-note`, `subtitle-note` | Footnotes attached to the title/subtitle |
-| `authors` | Array of author dictionaries |
-| `abstract`, `ccs`, `keywords` | Standard ACM front matter |
-| `journal`, `acm-volume`, `acm-number`, `acm-article`, `acm-year`, `acm-month`, `doi` | Journal metadata |
-| `conference`, `booktitle`, `isbn` | Proceedings metadata |
-| `copyright`, `copyright-year`, `cc-type`, `cc-version` | Copyright and Creative Commons metadata |
-| `anonymous`, `review`, `screen`, `nonacm`, `author-draft`, `submission-id` | Common `acmart` modes |
-| `print-ccs`, `print-acm-reference`, `print-folios` | Top-matter/output toggles |
-| `teaser`, `badges`, `received` | Teaser figure, artifact badges, and paper history |
-| `language`, `translations` | Main language and translated top matter |
-| `short-title`, `short-authors` | Running-head overrides |
-| `font-size` | One of `8pt`, `9pt`, `10pt`, `11pt`, `12pt`, or `auto` |
+An author can have an `orcid`, a `note` or array of notes, and an array of `affiliation` dictionaries.
+Each affiliation requires a `country`.
+Identical notes share a footnote mark; at most one author may set `corresponding: true`.
+The contact block preserves the declaration order of email, affiliations, and affiliation fields.
+To group authors under a shared affiliation in a journal title block, put the affiliation on the last author in that group.
 
-Author dictionaries accept `name`, `orcid`, `email`, `note`, `corresponding`, and
-`affiliation`. `note` may be one note or an array of notes; repeated identical
-note content shares one footnote mark across authors, like LaTeX's
-`\authornotemark`. `corresponding` puts an asterisk after the name and a
-"Corresponding author" footnote at the head of the top-matter stack; at most one
-author may set it. An affiliation is a dictionary with fields such as `institution`,
-`city`, `state`, and `country`; pass an array of affiliation dictionaries for
-multiple affiliations.
-
-CCS entries are `(significance, area, concept)`: significance `500` or higher prints
-bold, `300` or higher prints italic, and lower values print roman. Alternatively,
-paste the [ACM CCS tool](https://dl.acm.org/ccs)'s output verbatim as `ccs`, most
-conveniently in a raw block, where backslashes stay literal (a string works too,
-but needs every `\` doubled):
+For CCS concepts, paste the [ACM CCS tool](https://dl.acm.org/ccs)'s output into a raw block:
 
 ````typ
 ccs: ```
-\begin{CCSXML}
-<ccs2012>…</ccs2012>
-\end{CCSXML}
-
 \ccsdesc[500]{Software and its engineering~Virtual machines}
 ```
 ````
 
-From a paste, the `\ccsdesc` lines are used when present — they are what LaTeX
-typesets, the CCSXML environment being a comment there — otherwise the
-`<ccs2012>` XML is read.
+The package accepts the tool's complete output, including CCSXML, or an array of `(significance, area, concept)` tuples.
+When both XML and `\ccsdesc` are present, it uses `\ccsdesc`.
 
-Supported `copyright` values include `acmcopyright`, `acmlicensed`,
-`rightsretained`, `usgov`, `usgovmixed`, `cagov`, `cagovmixed`,
-`licensedusgovmixed`, `licensedcagov`, `licensedcagovmixed`, `othergov`,
-`licensedothergov`, `iw3c2w3`, `iw3c2w3g`, `cc`, and `none`. For `copyright: "cc"`,
-set `cc-type` to `zero`, `by`, `by-sa`, `by-nd`, `by-nc`, `by-nc-sa`, or
-`by-nc-nd`.
+Set `copyright` and `copyright-year` from the publication's rights instructions.
+For Creative Commons, use `copyright: "cc"` with `cc-type` and `cc-version`.
 
-For `acmcp`, provide `acmcp-logo: image("logo.png")`. The ACM journal logo is a
-trademark and is not bundled.
+## Citations
 
-## Citations and references
+| `bib-backend` | Reference style |
+|---|---|
+| `"bibtex"` | Default; ACM's `ACM-Reference-Format.bst` |
+| `"biblatex"` | ACM BibLaTeX styles, including software artifacts |
+| `"typst"` | Typst's built-in ACM CSL style |
 
-The default bibliography backend is `"bibtex"`, a pure-Typst implementation of
-ACM's `ACM-Reference-Format.bst`. Use normal Typst citation syntax:
+The first two backends run entirely in Typst; set `cite-style: "author-year"` for author-year citations.
+They accept a single relative bibliography path or an array of project-absolute paths, such as `bibliography(("/refs.bib", "/more.bib"))`.
 
 ```typst
-Prior work includes @Cohen:1996:EAE and #cite(<Li:2008:PUC>, <Hollis:1999:VBD>).
-#cite-text(<Cohen:1996:EAE>) gives a textual citation.
+Prior work includes @Cohen:1996:EAE[p. 42].
+#cite(<Li:2008:PUC>, <Hollis:1999:VBD>) groups several citations.
+#cite-text(<Cohen:1996:EAE>) cites the author in prose.
 
 #bibliography("refs.bib")
 ```
 
-`cite` accepts Typst's `form`, each mapping to the natbib command acmart defines:
+`cite` accepts `form: "prose"`, `"author"`, `"year"`, `"full"`, or `none` as well as the default `"normal"`.
+Use `form: none` to include an uncited entry in the reference list.
+A page locator goes in `supplement`; the `"full"` and `none` forms do not take one.
+The `bibtex` backend follows natbib in dropping supplements from numeric author-only and year-only citations.
 
-| `form` | natbib | renders |
-|---|---|---|
-| `"normal"` (default) | `\cite` | `[1]` |
-| `"prose"` | `\citet` | `Harel [1]` |
-| `"author"` | `\citeauthor` | `Harel` |
-| `"year"` | `\citeyear` | `1978` |
-| `"full"` | — | the whole reference, inline |
-| `none` | `\nocite` | nothing; the entry still joins the list |
-
-A page number or other postnote goes in `supplement`, on `cite` and on the textual
-helpers alike — `@Harel78[p. 5]`, `#cite(<Harel78>, form: "prose", supplement: [p. 5])`,
-`#cite-alt(<Harel78>, supplement: [p. 5])`. Where it lands follows natbib: inside the
-brackets, on the last of several keys. In *numeric* mode natbib drops the postnote from
-the author and year forms, which the `bibtex` backend reproduces; the `biblatex` backend
-keeps it, as BibLaTeX does.
-
-Choose a backend with `bib-backend`:
-
-| Backend | Behavior |
-|---|---|
-| `"bibtex"` | Default; closest to LaTeX `acmart` with BibTeX |
-| `"biblatex"` | ACM BibLaTeX renderer, including software artifacts |
-| `"typst"` | Typst's native `bibliography()` with the built-in ACM CSL style |
-
-Set `cite-style: "author-year"` for author-year citations; otherwise citations are
-numeric. With the `bibtex` and `biblatex` backends, a single bibliography file may be
-relative (`"refs.bib"`); multiple files must use project-absolute paths such as
-`"/refs.bib"`.
+For bibliography fields containing custom TeX commands, supply a `tex-render` callback, for example `tex-render: s => default-tex-render(s.replace("\\myunit", "kg"))`.
+This changes field rendering; sorting and citation labels still use the built-in parser.
 
 ## Theorems and acknowledgments
 
-The package exports `theorem`, `lemma`, `corollary`, `proposition`, `conjecture`,
-`definition`, `example`, `remark`, and `proof`. Theorem-like environments share a
-section-scoped counter:
+Theorem environments share a counter within each section and support labels:
 
 ```typst
-#theorem(name: "Optional name")[
+#theorem(name: "Topological ordering")[
   Every finite acyclic graph has a topological ordering.
-]
+] <topo>
 
 #proof[
   Remove a source vertex and continue by induction.
 ]
+
+Apply @topo to order the dependencies.
 ```
 
-Label a theorem to refer back to it; the reference names the environment and its
-number, as `\autoref` does in LaTeX:
-
-```typst
-#theorem[Every finite acyclic graph has a topological ordering.] <topo>
-Applying @topo to the dependency graph gives a build order.
-```
-
-Use `#acks[...]` or `#acknowledgments[...]` for the unnumbered acknowledgments
-section. It is suppressed automatically in anonymous mode.
+Also available: `lemma`, `corollary`, `proposition`, `conjecture`, `definition`, `example`, and `remark`.
+Use `#acks[...]` for acknowledgments; anonymous mode suppresses the section.
 
 ## Tables
 
-ACM tables use [booktabs](https://ctan.org/pkg/booktabs) style: no vertical rules,
-heavy top/bottom rules, a light middle rule, and a little breathing space around
-each rule. A plain Typst `table` draws the rules but not that surrounding space, so
-the package exports **`tabular`** — a drop-in replacement for `table` with the same
-arguments — plus **`toprule`**, **`midrule`**, and **`bottomrule`**, matching LaTeX's
-`\toprule`/`\midrule`/`\bottomrule`:
+Use `tabular` with the booktabs rule helpers for ACM rule weights and spacing:
 
 ```typst
 #figure(
@@ -250,54 +167,22 @@ arguments — plus **`toprule`**, **`midrule`**, and **`bottomrule`**, matching 
     [Method], [Accuracy],
     midrule(),
     [Baseline], [72.1%],
-    [Ours],     [88.4%],
+    [Ours], [88.4%],
     bottomrule(),
   ),
   caption: [Results.],
 )
 ```
 
-You can still use plain `table.hline()` for the rules inside `tabular` (it becomes a
-light rule); `toprule`/`bottomrule` additionally set the heavier booktabs weight.
+`tabular` accepts Typst table arguments and treats the first row as a header when it can infer the row safely.
+Use `header-rows: 0` for a table without a header, or supply `table.header` explicitly for a more complex table.
+Pass `columns` directly to `tabular` so it can determine row boundaries.
 
-## Known differences from LaTeX
+## Development and license
 
-Some differences come from Typst and LaTeX being different layout engines:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and validation, and [DESIGN.md](DESIGN.md) for architecture and compatibility limits.
+The project was developed with AI coding assistance and human review.
 
-- Typst has no vertical justification, so pages are ragged-bottom: it can't
-  reproduce LaTeX's bottom-of-page fill (`\flushbottom` in the two-column formats,
-  stretchable bottom glue in the single-column ones) or balance the final
-  two-column page.
-- Line and page breaks can differ from LaTeX on dense pages: acmart loads
-  `microtype`, and Typst has no equivalent of its glyph-level font expansion
-  and margin protrusion, so LaTeX occasionally fits one more word on a line.
-- `sigchi-a` does not move footnotes into the margin.
-- The `"typst"` bibliography backend is convenient, but less faithful than the
-  default `"bibtex"` backend.
-
-For the detailed design rationale and validation notes, see [`DESIGN.md`](DESIGN.md).
-
-## Requirements
-
-- Typst 0.14 or newer.
-- The fonts listed in [Fonts](#fonts).
-
-## License and trademarks
-
-The package is licensed MIT; the `template/` directory is MIT-0 so papers created
-from `typst init` carry no attribution requirement. See [`LICENSE`](LICENSE).
-
-Creative Commons badges in `src/assets/cc/` are Creative Commons trademarks, not
-part of the MIT license; see [`src/assets/cc/README.md`](src/assets/cc/README.md).
-The ACM journal logo is not bundled; provide it yourself for `acmcp`.
-
-## AI assistance
-
-This package was developed with the help of AI coding assistants (Claude Code and
-OpenAI Codex) under close human review. What keeps it faithful is not just that review but
-also the test suite: every format is diffed against real LaTeX acmart output.
-
-## Contributing
-
-Development setup, validation, and repository internals are documented in
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
+The package is [MIT licensed](LICENSE); the [starter template is MIT-0](template/LICENSE).
+The [Creative Commons badges](src/assets/cc/README.md) are trademarks covered by their own usage policy.
+The ACM journal logo must be supplied by the user.

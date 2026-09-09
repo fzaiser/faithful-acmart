@@ -1,15 +1,5 @@
-// Copyright / permission handling, transcribed from acmart.dtx
-// (\@copyrightpermission and \@copyrightowner). The first-page copyright block is
-//   <permission text>
-//   © <year> <owner>
-//   ACM <issn>/<year>/<month>-ART<article>
-//   https://doi.org/<doi>
-// For Creative Commons (copyright: "cc") the permission text is the CC license
-// statement; set cc-type / cc-version on acmart() to choose the licence.
+// Permission and owner text from acmart.dtx, \@copyrightpermission and \@copyrightowner.
 
-
-// Keep each mode's permission and owner together: the two values are a single
-// choice in acmart, and a record prevents the tables from drifting apart.
 #let _mode(permission, owner) = (permission: permission, owner: owner)
 #let _copyright-modes = (
   "none": _mode(none, none),
@@ -40,15 +30,10 @@
   "by-nc-nd": "Attribution-NonCommercial-NoDerivatives",
 )
 
-// CC license statement (\@copyrightpermission case cc): the 88x31 licence badge
-// (linked) on its own line, then the linked text statement. acmart draws the
-// badge at height=5ex (~2.15x x-height); the SVGs live in src/assets/cc/.
 #let cc-statement(cc-type, cc-version) = {
   assert(cc-type in _cc-names,
     message: "faithful-acmart: unsupported Creative Commons type " + repr(cc-type)
       + "; supported: " + repr(_cc-names.keys()))
-  // CC0 is version 1.0 and ignores cc-version (its URL/name are fixed below); only
-  // the graduated licences take 3.0/4.0.
   assert(cc-type == "zero" or cc-version in ("3.0", "4.0"),
     message: "faithful-acmart: unsupported Creative Commons version " + repr(cc-version)
       + "; supported: (\"3.0\", \"4.0\")")
@@ -66,7 +51,6 @@
   link(url)[This work is licensed under a Creative Commons #name#suffix License.]
 }
 
-// The full permission paragraph for a mode (CC computed from type/version).
 #let permission-text(mode, cc-type: "by", cc-version: "4.0") = {
   assert(mode in _copyright-modes,
     message: "faithful-acmart: unsupported copyright mode " + repr(mode)

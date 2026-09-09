@@ -1,16 +1,3 @@
-"""Self-contained HTML failure/comparison report.
-
-``test.py report [<stem> ...]`` rasterizes each requested twin's LaTeX and Typst
-PDFs page by page (reusing the harness's PyMuPDF rasterizer), lays them out side
-by side with the vector recolour overlay (Typst red over LaTeX blue) as a third
-column where Ghostscript/qpdf are available, and heads each twin with the gates
-that flagged it in the most recent ``check`` run. Everything is written into
-``tests/out/report/`` (gitignored); nothing is stored in git.
-
-With no stems it defaults to the twins that failed the most recent ``check``
-(recorded by ``cmd_check`` into ``tests/out/report/check-status.json``); if there
-is no such record it asks for explicit stems."""
-
 from __future__ import annotations
 
 import html
@@ -31,11 +18,7 @@ REPORT_DPI = 110
 
 
 def record_check_status(gate_failures: dict[str, list[str]]) -> None:
-    """Persist {twin stem -> [failing gate slugs]} from a `check` run.
-
-    Failure strings are formatted "<stem>: …" or "<stem> p2: …" by the gates, so
-    the leading whitespace-delimited token identifies the twin they belong to.
-    """
+    """Identify fixture failures by the leading token in each gate diagnostic."""
     twins = {name for name, t in TESTS.items() if t.kind == "twin"}
     per_twin: dict[str, set[str]] = {}
     for slug, failures in gate_failures.items():
@@ -62,7 +45,6 @@ def _rel(path: Path) -> str:
 
 
 def _overlay_pngs(stem: str, ref: Path, ours: Path) -> list[Path]:
-    """Rasterized vector overlay pages, or [] if Ghostscript/qpdf are unavailable."""
     try:
         from overlay import _vector_overlay
     except ImportError:
@@ -72,7 +54,7 @@ def _overlay_pngs(stem: str, ref: Path, ours: Path) -> list[Path]:
             tmp = Path(td)
             overlay_pdf = _vector_overlay(stem, ref, ours, tmp, tmp / f"{stem}-ov.pdf")
             return rasterize(overlay_pdf, REPORT_DPI, IMG_DIR / f"{stem}-overlay")
-    except Exception:  # gs/qpdf missing or a recolour failure: overlay is best-effort
+    except Exception:
         return []
 
 

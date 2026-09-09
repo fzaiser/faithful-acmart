@@ -1,9 +1,3 @@
-// sample-sigconf-i13n — port of the upstream acmart sample (acmart/samples,
-// docstrip option `all,proceedings,sigconf,i13n`). The sigconf proceedings
-// format with secondary-language top matter: \translatedtitle and
-// translatedabstract in French/German/Spanish, carried in the `translations`
-// argument (English is the main `language`). Diffed against
-// out/latex/sigconf-i13n.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

@@ -1,9 +1,3 @@
-// authorversion-conf-test — author's-version mode on a CONFERENCE format.
-// Matched twin: authorversion-conf-test.tex. Unlike the journal case
-// (authorversion-test), the page-1 block must keep the italic conference-info
-// line (acmart.dtx:6615-6622 is not guarded by \if@ACM@authorversion) and the
-// "Version of Record" notice must name the booktitle, not a journal
-// (acmart.dtx:6638-6644).
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

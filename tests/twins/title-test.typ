@@ -1,8 +1,3 @@
-// title-test — self-contained frontmatter isolator.
-// Matched twin: title-test.tex. Exercises the title block alone (3 authors with
-// note / ORCID / corresponding / accented names / optional fields), abstract,
-// CCS concepts, and keywords. The full 9-author grid lives in the e2e port
-// (sample-acmsmall.typ); keep this minimal so frontmatter issues are isolable.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(
@@ -19,14 +14,9 @@
      orcid: "1234-5678-9012", email: "trovato@corporation.com",
      affiliation: (institution: "Institute for Clarity in Documentation",
                    city: "Dublin", state: "Ohio", country: "USA")),
-    // department declared BEFORE institution: the contact line replays the fields
-    // in the user's declared key order (department, institution, city, country),
-    // matching acmart's \@mkauthorsaddresses command-order replay.
     (name: "Lars Thørväld", corresponding: true, email: "larst@affiliation.org",
      affiliation: (department: "Theory Division", institution: "The Thørväld Group",
                    city: "Hekla", country: "Iceland")),
-    // three affiliations: the title strip andifies them ("A, B, and C",
-    // \andify\@currentaffiliations) while the contact line joins with " and ".
     (name: "Valerie Béranger",
      affiliation: (
        (institution: "Inria Paris-Rocquencourt", city: "Rocquencourt", country: "France"),
@@ -40,9 +30,7 @@
     title block, an author list with affiliations, an author note, an ORCID, a
     corresponding author, the abstract, CCS concepts, and keywords.
   ],
-  // Deliberately long CCS + keyword lists so the CCS Concepts and Keywords run-in
-  // lines WRAP past one line — exercising \@specialsection's justified paragraph
-  // body (a ragged-setting regression only becomes visible once a line wraps).
+  // Keep these long enough to exercise justified wrapping.
   ccs: (
     (500, "Computing methodologies", "Massively parallel algorithms"),
     (300, "Computing methodologies", "Concurrent algorithms"),

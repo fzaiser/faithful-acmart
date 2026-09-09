@@ -1,16 +1,6 @@
-// Model of LaTeX's \@addpunct for the places where acmart appends terminal
-// punctuation: \@adddotafter (acmart.dtx:8534), \@setthanks (dtx:7839),
-// \@setauthorsaddresses (dtx:7847) and the proof head (dtx:8807).
-//
-// \@addpunct{X} appends X only when \spacefactor <= 1000, which is NOT the same
-// as "the text already ends in punctuation". An uppercase letter sets the space
-// factor to 999, and TeX clamps a following sfcode above 1000 back down to 1000
-// rather than letting it through, so "...in the UK." still receives a second
-// full stop while "...in England." does not. Verified against the class.
+// \@addpunct tests TeX's space factor.
+// An uppercase letter followed by a period still permits an added period: "UK..".
 
-// Space factor codes from plain TeX's table: ) ] ' leave the factor unchanged,
-// sentence punctuation raises it, uppercase letters lower it to 999. Spaces are
-// glue and never touch the factor either.
 #let _sfcode(c) = {
   if c == ")" or c == "]" or c == "'" or c.trim() == "" { 0 }
   else if c == "." or c == "?" or c == "!" { 3000 }
@@ -31,21 +21,14 @@
   sf
 }
 
-// The factor depends only on the last couple of characters, so a short trailing
-// window is enough and spares us flattening arbitrary content.
-//
-// Content we cannot read as text still typesets *something* — a reference's
-// number, a citation, an image, a formula — and TeX sets the space factor to
-// 1000 after a box or after math, so such content stands in as a digit. Glue
-// and metadata put no character on the line and leave the factor alone, so the
-// walk carries on past them into the text before.
+// Math and boxes reset TeX's space factor to 1000, represented here by a digit.
+// Invisible content leaves the preceding factor intact.
 #let _opaque = "0"
 
 #let _trailing(c, want: 16) = {
   if type(c) == str { return c }
   if type(c) != content { return "" }
-  // Several of these element functions aren't exposed, so match on the name,
-  // as `_body-starts-with-paragraph` in lib.typ does.
+  // Some element functions are not exposed as bindings, so compare their names.
   let name = repr(c.func())
   if name in ("space", "h", "v", "parbreak", "linebreak", "pagebreak", "place",
               "metadata", "state", "counter", "update") { return "" }

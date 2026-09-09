@@ -22,8 +22,6 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          # The texlive-lang-* packs supply the babel .ldf files and hyphenation
-          # patterns for the twins that pass acmart's `language` option.
           sudo apt-get install -y --no-install-recommends \
             biber \
             texlive-bibtex-extra \
@@ -42,7 +40,6 @@ jobs:
           typst-version: 0.14.2
 
       - name: Install uv
-        # setup-uv publishes no floating major tag beyond v7; pin the release SHA.
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
@@ -85,8 +82,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      # The golden gates stay pinned to 0.14.2; this job only smoke-compiles
-      # on whatever release users currently install, for early warning.
       - name: Install latest Typst
         uses: typst-community/setup-typst@v5
         with:

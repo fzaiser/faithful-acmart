@@ -1,9 +1,6 @@
-%% biblatex-fields-numeric-test - BibLaTeX field formats under acmnumeric.
 \documentclass[acmsmall,nonacm,natbib=false]{acmart}
 \pagestyle{empty}
-%% acmart's standardpagestyle puts \shorttitle in the odd-page running head, and
-%% amsart only defines it via \title. This titleless fixture runs past page 2, so
-%% give it the empty \shorttitle a \title{} would (the Typst twin has no title either).
+% A titleless multipage document must define \shorttitle for its running heads.
 \def\shorttitle{}
 \settopmatter{printacmref=false}
 \RequirePackage[

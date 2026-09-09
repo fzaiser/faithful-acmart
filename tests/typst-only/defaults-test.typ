@@ -1,4 +1,3 @@
-// defaults-test — acmart defaults to manuscript and ACM's placeholder DOI.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

@@ -1,9 +1,3 @@
-"""Tier 1.5 — extracted-text semantic gate.
-
-Layered text comparison per twin: exact normalized sequence or word-bag, the
-universal exact char-bag tripwire, the dash residual, the ``expected_text_diffs``
-fragments, and the per-twin text assertions."""
-
 from __future__ import annotations
 
 import difflib
@@ -31,8 +25,6 @@ def _first_diff(a: str, b: str) -> str:
         return f"{tag} at LaTeX token {i1}, Typst token {j1}\n    LaTeX: {left}\n    Typst: {right}"
     return "strings differ, but no token diff was found"
 def _check_assertions(name: str, t: Test) -> list[str]:
-    """Targeted text-layer assertions — the only part of this tier a smoke doc,
-    which has no LaTeX reference to compare against, can take part in."""
     local: list[str] = []
     for i, a in enumerate(t.text_assertions, 1):
         needle = normalize(a.text, review_line_numbers=t.review_line_numbers)
@@ -53,12 +45,9 @@ def _check_assertions(name: str, t: Test) -> list[str]:
 
 
 def gate_text(report: bool = False) -> list[str]:
-    """Tier 1.5 — extracted-text semantic gate."""
     failures: list[str] = []
     for name, t in TESTS.items():
         if t.kind != "twin":
-            # Smoke docs reach only the assertion check; everything else in this
-            # tier needs a LaTeX reference to diff against.
             local = _check_assertions(name, t)
             if not local and not report and t.text_assertions:
                 print(f"ok   {name}")
@@ -96,10 +85,6 @@ def gate_text(report: bool = False) -> list[str]:
         elif report:
             print(f"skip  {name}: text equality not configured")
 
-        # Universal char-bag tripwire on top of the above: every twin's content
-        # must match as an exact character multiset (order-, line-break-, number-
-        # and scheme-independent), unless it carries expected_text_diffs evidence
-        # for a known content difference or an extraction artifact.
         ca = char_bag(lraw, review_line_numbers=t.review_line_numbers)
         cb = char_bag(traw, review_line_numbers=t.review_line_numbers)
         cm, ce = ca - cb, cb - ca

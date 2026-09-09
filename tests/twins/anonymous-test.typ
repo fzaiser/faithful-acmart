@@ -1,10 +1,3 @@
-// anonymous-test — double-anonymous journal submission with a submission id.
-// Matched twin: anonymous-test.tex. The author strip must read "ANONYMOUS
-// AUTHOR(S)" with a second "SUBMISSION ID: <id>" line (acmart.dtx:5190-5193,
-// uppercased by the journal strip's \MakeUppercase), and the contact-info
-// footnote is suppressed. `corresponding` is a no-op under `anonymous`
-// (acmart.dtx:5487), so neither the author's asterisk nor the "Corresponding
-// author" footnote may appear.
 #import "/src/lib.typ": acmart, anon
 
 #show: acmart.with(

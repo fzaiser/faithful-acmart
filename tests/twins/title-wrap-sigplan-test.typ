@@ -1,6 +1,3 @@
-// title-wrap-sigplan-test — a wrapping \Huge serif-bold sigplan title.
-// Matched twin: title-wrap-sigplan-test.tex.
-// The largest title font shows a leading error most clearly: descenders of the first line collide with capitals of the second.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

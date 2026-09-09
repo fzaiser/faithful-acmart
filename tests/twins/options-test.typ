@@ -1,10 +1,3 @@
-// options-test — class/topmatter option toggles.
-// Matched twin: options-test.tex. Exercises the options with a visible effect in
-// the single-column acmsmall layout — nonacm (drops the ACM footer, reference
-// format, and page-1 copyright block), print-ccs: false (suppresses the CCS
-// block), print-folios: false (no folios in the running head) — plus the
-// single-column no-ops balance / natbib. Two pages so page 2 shows the
-// suppressed folios in the running head.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(
@@ -15,12 +8,11 @@
   doi: "XXXXXXX.XXXXXXX",
   copyright: "acmlicensed", copyright-year: 2018,
   short-authors: "Trovato",
-  // toggled options under test
   nonacm: true,
   print-ccs: false,
   print-folios: false,
-  balance: false,  // single-column no-op (two-column formats only)
-  natbib: false,   // single-column no-op (bibliography is CSL-driven)
+  balance: false,
+  natbib: false,
   authors: (
     (name: "Ben Trovato", email: "trovato@corporation.com",
      affiliation: (institution: "Institute for Clarity in Documentation",
@@ -31,7 +23,6 @@
     printccs, printfolios, balance, and natbib. The body is long enough to span two
     pages so that the suppressed folios in the running head can be observed.
   ],
-  // print-ccs: false suppresses this in the title block (kept here to prove it).
   ccs: (
     (500, "Computing methodologies", "Massively parallel algorithms"),
   ),

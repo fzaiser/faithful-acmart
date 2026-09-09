@@ -1,693 +1,92 @@
-# Design notes
+# Design
 
-How this template is built and the key decisions — in particular, **where it
-follows the LaTeX source faithfully vs. matches the rendered output empirically**.
-Read this before changing layout code.
-
-## Goal & approach
-
-Reproduce LaTeX `acmart` closely enough that a reader can't easily tell the Typst
-and LaTeX outputs apart: same fonts, sizes, margins, spacing. We do **not** chase
-identical line/page breaks — the engines break differently, and that's accepted.
-
-All public acmart formats are accepted, in three families that share the `parts/`
-machinery and differ mainly by a data dict in `formats/`:
-
-| family | formats | columns | top matter |
-|---|---|---|---|
-| single-column journal | manuscript, acmsmall, acmlarge | 1 | `@i` left title + author list, ACM bibstrip |
-| two-column journal | acmtog | 2 | `@i` left title + author list, spanning bibstrip |
-| two-column proceedings | sigconf, sigplan, acmengage | 2 | `@iii` centered title + author grid, first-column copyright block |
-| bespoke | sigchi-a (landscape), acmcp (cover) | 1 | best-effort (see Known limitations) |
-
-Obsolete `siggraph`/`sigchi` alias to `sigconf`, matching the bundled class.
-
-Each format's geometry is **probed** from the bundled class (`tools/test.py probe
---format <name>`) via `body-top = 1in + topmargin + headheight + headsep` (exact
-against acmsmall's 85/46/46/63.7); fonts and the `\ifcase\ACM@format@nr` flags are
-**read** from `acmart.dtx`. The spec is [`acmart/`](acmart/) (`acmart.dtx` →
-`acmart.cls`, built on `amsart`); every measurement is probed or read from the `.dtx`.
+This port targets the `acmart` sources bundled in [acmart/](acmart/).
+Layout values come from those sources or measurements of their rendered output.
+The tests establish agreement for specific documents; they do not imply identical layout for every paper.
 
 ## Architecture
 
-[`src/README.md`](src/README.md) is the file-by-file map of the package; this section
-covers only the decisions behind that shape.
+[src/lib.typ](src/lib.typ) exposes the public API and applies the document's styles.
+[Options](src/parts/options.typ) and [metadata](src/parts/metadata.typ) are resolved before rendering, so layout functions receive a format configuration and normalized paper metadata.
+Body-level functions, such as theorems and citations, read the active configuration through Typst state.
 
-**Format-as-data.** A format is a dict of measurements built as a function of the base
-font size, so `lib.typ` is format-agnostic except for the two-column branch. The
-constants that do not vary between formats live in one `make-format()` constructor, and
-each `formats/<name>.typ` passes only what differs: its probed geometry and the flags
-acmart selects on with `\ifcase`.
+Explicit top-matter arguments override format defaults where LaTeX distinguishes preamble settings from later `\settopmatter` calls.
+This allows, for example, `print-acm-reference: true` with `nonacm`.
 
-Two of those flags are derived rather than declared. `journal` is acmart's static
-`\if@ACM@journal`; from it `parts/options.typ` derives `bibstrip`, which governs the ACM
-bibstrip, the journal footer and the journal wording of the reference block, and
-`bibstrip-or-tog`, which governs the running heads, footers, folios and the contact
-footnote. A conference always lowers the first; under acmsmall it lowers the second as
-well, so an acmsmall conference paper takes the proceedings chrome throughout.
+Formats are dictionaries built from shared defaults in [formats/_base.typ](src/formats/_base.typ).
+Each [format builder](src/formats/) supplies its geometry and typography choices.
+This keeps layout rules shared across formats and centralizes font-size-dependent measurements.
 
-**Config plumbing.** `acmart()` collects user metadata into a `meta` dict passed to
-the part functions, alongside the format dict `cfg` — also published via `state`
-(`theorems.typ:cfg-state`) so body-level theorem *functions* can read it.
+[Front matter](src/parts/frontmatter.typ), [body styles](src/parts/body.typ), [headings](src/parts/headings.typ), and [page headers and footers](src/parts/page-chrome.typ) handle rendering.
+In two-column formats, a page-wide title float precedes the abstract in the first column.
+Bottom floats reserve space for the first-page footnote streams.
 
-### Two-column layout
-`set page(columns: cfg.columns)` + `set columns(gutter: cfg.columnsep)` gives the
-exact `\columnsep`. The title/author box spans both columns via
-`place(top, scope: "parent", float: true, …)` — `scope: "parent"` escapes to the
-full text width, reproducing `\twocolumn[\box\mktitle@bx]` (acmart.dtx:6849). The
-abstract/CCS/keywords (`\@mkabstract`, acmart.dtx:6665) follow it in the **first
-column**, so `make-title` splits into `make-title-head` (spanning) and
-`make-title-body` (in-column). The conference copyright block
-(`\footnotetextcopyrightpermission`) is a column-scoped `place(bottom, float: true)`;
-the acmtog journal bibstrip is the page footer instead.
+## Layout model
 
-### Configurable base font size
-acmart picks a base size via `8pt|9pt|10pt|11pt|12pt` and passes it to amsart
-(`\LoadClass[\ACM@fontsize]{amsart}`, acmart.dtx:3090). The size steps
-(`scriptsize`…`Huge`) and their baselineskips come from amsart's `\@typesizes`
-table (a clamped window into one master ladder with `normalsize` at the base);
-`\small`/`\med`/`\bigskip` are `0.7·baselineskip` halved (`\@adjustvertspacing`).
-**Geometry, margins, and `\parindent` do NOT scale** (acmart.dtx:3750). Every part
-reads sizes from the dict (`cfg.font-size`/`baselineskip`/`size`/`bls` + skip
-fields), so nothing else changes. Default 10pt; 8/9/11/12pt are validated against
-`tests/twins/fontsize-*-test`.
+TeX and Typst use different point units.
+The `tp` constant converts TeX measurements to Typst lengths; paper dimensions can use physical units directly.
+Use [spacing.typ](src/parts/spacing.typ) for leading and vertical gaps.
+It compensates for the difference between TeX's baseline spacing and Typst's line boxes, using the following block's font metrics.
+The title uses its measured cap height to position the first line.
 
-## Key mechanisms
+Font-size steps and some spacing come from `amsart`, and begin-document hooks can override acmart's earlier settings.
+Consult the executed class or a probe before changing a value that appears inconsistent with a source declaration.
+Keep the relevant upstream macro or constraint beside the code when the reason would otherwise be hard to recover.
 
-### TeX points vs PostScript points
-LaTeX lengths are **TeX points** (1/72.27in); Typst's `pt` is a **PostScript
-point** (1/72in). `formats/acmsmall.typ` defines `tp = 72/72.27 * 1pt` and
-expresses every probed length as `N * tp`. Paper sizes use `in`.
+## Bibliography model
 
-### The baseline grid (leading model)
-TeX sets lines on a rigid `\baselineskip`; Typst's `leading` depends on font
-metrics. Pin the line box to the font size:
+The custom backends reproduce ACM's BibTeX and BibLaTeX formatting without requiring a TeX installation to compile a paper.
+Typst's native CSL backend remains available, with its own field mapping and formatting limits.
 
-```
-set text(top-edge: 1em, bottom-edge: 0pt)
-set par(leading: baselineskip - font-size)   // => baseline pitch == baselineskip
-```
+[bibtex.typ](src/parts/bibtex.typ) reads raw fields; the [BibTeX](src/parts/acmref-bst.typ) and [BibLaTeX](src/parts/acmref-biblatex.typ) renderers apply their respective styles.
+[acmref-cite.typ](src/parts/acmref-cite.typ) resolves cited entries, inheritance, sorting, and citation labels.
+Fields retain TeX syntax until rendering because braces and control sequences affect name parsing, capitalization, and sorting.
+[tex.typ](src/parts/tex.typ) interprets a bounded set of TeX commands and rejects unknown commands; `tex-render` provides an extension point for field presentation.
 
-`top-edge: 1em` also puts the first baseline at `top-margin + \topskip` (matches
-LaTeX). The **title** uses `top-edge: "cap-height"` so its tall first line's cap-top
-sits at the top margin (TeX's `\topskip` for a first line taller than `\topskip`) —
-**matched to output**, verified with `tools/test.py linepitch` (pitch 11.94 vs
-11.95pt; first baseline 92.07pt exact). Because that top edge makes every title
-line box only cap-height tall, the title's leading and paragraph spacing are
-`bls(title) − cap-height` (measured in context), not `bls − size`: wrapped title
-lines and `\translatedtitle` paragraphs then sit exactly one title `\baselineskip`
-apart (`tests/twins/title-wrap-test`, `sample-sigconf-i13n`).
+The package replaces `bibliography` because Typst validates native bibliography input before a show rule can intercept it.
+It replaces `cite` to support grouped citations and routes unresolved `@key` references through the same backend.
 
-### Heading / block vertical spacing (line-box compensation)
-`\@startsection` places a heading `\baselineskip + beforeskip` below the previous
-baseline, and the body `\baselineskip + afterskip` below the heading. Typst's line
-box is `1em` (= font size), **not** `\baselineskip`, so a block gap `g` yields a
-baseline distance `g + 1em`. To reproduce LaTeX's `\baselineskip + skip` we set the
-gap to `skip + (\baselineskip − font-size)`. For acmsmall sections this gives
-`above = 0.75bl + (bl − 10pt)` and `below = 0.25bl + (bl − 10pt)` — verified against
-a descender-free probe (before 20.92 vs 20.96pt, after 14.94 vs 14.90pt). The same
-`(bl − font-size)` term makes the inter-paragraph `spacing` a solid 12pt grid.
+BibLaTeX name disambiguation alternates name expansion and list expansion until they stabilize, matching Biber's dependency between those passes.
+Its date parser deliberately covers the forms in the date fixtures, including uncertain dates, seasons, and intervals.
+Keep that coverage tied to executable comparisons with Biber when changing the parser.
 
-The **same compensation applies to every `\baselineskip + skip` gap**: amsthm
-theorem/proof (`\topsep`, `theorems.typ`) and the frontmatter `\medskip`/`\bigskip`
-(`frontmatter.typ`) all add `(bl_next − size_next)` — the *following* block's metrics
-— so a `\medskip` before 9pt text uses `4.2pt + (11 − 9)`. Both pieces are
-centralized in [`spacing.typ`](src/parts/spacing.typ): `comp(cfg, sz)` = `bl − size`
-and `tex-skip(cfg, skip, sz)` = `skip + comp` (`sz` names the following line's step,
-default `normalsize`). Every leading, block gap, and `v()` routes through these.
+## Compatibility limits
 
-> **The amsart skips are NOT the article defaults.** amsart sets
-> `\smallskip`/`\medskip`/`\bigskip` to **2.1 / 4.2 / 8.4pt** (0.7× the familiar
-> 3/6/12pt). `formats/acmsmall.typ` encodes them; `tools/test.py probe` re-confirms.
-> Float spacing (`\intextsep`/`\abovecaptionskip` = 12pt) is its own constant, not
-> derived from `\bigskip`.
+### Page layout
 
-The **number → title separator** is acmart's `\@seccntformat` `\quad` (1em),
-modelled as a 1em-wide box holding a single space (`box(width: 1em, sym.space)`) —
-literally a quad-width space. The space is load-bearing for the tagged PDF, not
-visible: a bare `h(1em)` (or an *empty* box) abutting the title makes Typst tag the
-first word glyph-by-glyph, scrambling the Tier 1.9 reading-order gate, whereas a box
-carrying real text keeps the title one *word run*. It extracts as an ordinary space,
-so the text gates are unaffected. See the harness note below on why the section
-number itself is no longer a text-gate problem.
+- Typst lacks TeX's stretchable page glue, final-column balancing, and `microtype` font expansion and protrusion.
+  Pages remain ragged at the bottom, and line and page breaks can differ.
+- Math uses Libertinus Math and approximate display spacing.
+  TeX's short-display skips and exact math metrics are not reproduced.
+- First baselines on continuation pages, captions, floats, and footnote stream boundaries can differ slightly because the engines use different line-box depths.
+  Measured allowances belong in [test_matrix.py](tools/test_matrix.py).
+- Wrapped numbered headings do not have LaTeX's hanging indent.
+  The simple layout preserves tagged-PDF reading order.
+- Term lists lack acmart's label-column geometry, and the separate LaTeX `quotation` layout is unsupported.
+- Text after display equations or code blocks continues without indentation.
+  Typst cannot distinguish a continued paragraph from LaTeX's blank-line-separated new paragraph there; add explicit horizontal spacing when an indent is needed.
+- Widow and orphan avoidance uses Typst's layout costs; TeX's hard break penalties, including its penalty after a hyphen, have no exact equivalent.
 
-### Run-in headings
-subsubsection/paragraph headings flow inline: a heading show rule returning *inline*
-content (not a block), with a weak `v()` for the before-skip and
-`h(indent - parindent)` cancelling the first-line indent.
+### Special formats and metadata
 
-### Page-1 footnote block
-The author-notes / contact-info / copyright stack is emitted with
-`place(bottom, float: true, clearance: …)` so it **reserves space** and the body
-flows above. The `clearance` is `\skip\footins − \kern` (~4pt — the same body→
-footnote gap the in-body footnotes use), **not** Typst's 1.5em float default;
-without it the body stopped 1–2 lines short of where LaTeX fills. (The gap
-*between* the manyfoot streams — contact vs copyright — is still tighter than
-LaTeX's per-stream `\skip\footins`; the reported symptom was the space *above* the
-whole block, which the clearance addresses.)
+- `sigchi-a` footnotes remain in the body.
+  Margin notes can shift near block boundaries and overlap when placed at the same anchor; place consecutive notes at different paragraphs.
+- The narrow `acmcp` infobox wraps long URLs and email addresses differently from LaTeX.
+- Top-matter note marks use a consistent superscript size; LaTeX's oversized section-sign mark is not reproduced.
+  Corresponding-author marks have a fixed order relative to other notes.
+- A draft timestamp contains the compile date without the time of day.
+  The `draft` option for overfull-line markers is unsupported; `author-draft` provides the review watermark.
+- PDF Subject metadata is unavailable through Typst's document API.
+  Additional affiliations can be expressed as author notes.
 
-### Captions
-`singlelinecheck`: a caption that fits one line is centred, otherwise justified to
-the **full column** with a ragged-left last line
-(`block(width: 100%, align(left, …))`, matching acmart's `margin=\z@` caption) —
-branch chosen by `measure()` in the caption show rule. (`align()` alone leaves a
-justified paragraph at its natural break width, ~4pt narrow, and inherits the
-figure's centring on the last line.)
+### References
 
-## Faithful to source vs matched to output
+- BibLaTeX sorting approximates Unicode collation.
+  Ordering can differ for accent-only ties, punctuation, and unsupported character commands.
+- BibLaTeX citation disambiguation can expand name lists, but that expansion does not propagate to long reference-list names or sort keys.
+- The TeX field renderer supports a subset of bibliography commands and inline math.
+  In math, `/` becomes a fraction and `\left`/`\right` do not resize delimiters.
+  URLs bypass TeX rendering, and inline math is unsupported in plain-text citation labels.
+- BibTeX's warning diagnostics are not reproduced.
 
-**Faithful (probed/transcribed):** page geometry, font-size steps, `\baselineskip`,
-skips (2.1/4.2/8.4pt), float spacing, heading skips/fonts, the run-in separator
-(`-3.5pt`, the `\@startsection` afterskip), theorem styles (acmplain/acmdefinition)
-+ `\topsep`, title→authors gap, caption setup, copyright texts + owner lines,
-journal name/ISSN table, link colours, line-number colour. Re-derive any value with
-`tools/test.py probe` or by reading the macro in [`acmart.dtx`](acmart/acmart.dtx).
-
-**Matched to rendered output (empirical):** the first-baseline placement of the
-taller-than-`\topskip` title line.
-
-> Section titles are **mixed case** (bold sans), not uppercased — matches the
-> **bundled** acmart (v2.21; uppercasing removed in v2.08). A system acmart may be
-> older (v2.03) and *does* uppercase level-1 titles, so always validate against the
-> bundled class (`tools/test.py`'s `ensure_class` generates it from [`acmart/`](acmart/)).
-
-## Package policy
-
-Two deliberate policies where LaTeX's semantics have no direct Typst analog. Both
-are *package conventions*, not "the LaTeX fact" — flagged here so they aren't
-mistaken for faithfulness bugs.
-
-- **Explicit arguments override format defaults.** LaTeX distinguishes a preamble
-  option from a post-`\begin{document}` `\settopmatter`, and several class options
-  (`nonacm`, `acmcp`) flip a `\settopmatter` key off via an
-  `\AtBeginDocument{\@ACM@…false}` hook (acmart.dtx:2717/3006) that a *preamble*
-  setting cannot beat but a *body* one can. This package has no such timing, so it
-  resolves the ambiguity by letting an explicit user argument always win over a
-  format default. The motivating case is `print-acm-reference`: `nonacm`/`acmcp`
-  flip its **default** to false, but `print-acm-reference: true` re-enables the ACM
-  Reference Format block — matching a reachable LaTeX `\settopmatter{printacmref=true}`
-  after `\begin{document}` (probe-verified on acmcp). `options.typ` resolves `auto`
-  to the format default and passes any explicit value straight through.
-- **`conference: auto` vs `none`.** `auto` reproduces acmart's *untouched* default —
-  on proceedings formats that is the class's placeholder "Conference'17" line
-  (`\acmConference` defaults, acmart.dtx), none on journal/manuscript. Explicit
-  `none` is a **Typst-only suppression** of that line: acmart offers no way to blank
-  the conference, so `none` is a deliberate extension, distinct from `auto`.
-- **Author notes dedup by content.** acmart's `\authornote` attaches a footnote to a
-  specific author and repeats an *identical* note under a fresh symbol only if
-  written twice; two authors sharing one note use `\authornotemark[n]` to reuse the
-  first symbol. Our API stores each author's `note` as content, and `collect-notes`
-  deduplicates by content — two authors with the *same* note content share one
-  symbol automatically (the `\authornotemark`-equivalent comes for free), while
-  distinct notes each get their own symbol. This is an intentional API mapping, not
-  a divergence.
-
-## Bibliography — three backends (`bib-backend`)
-
-- **`"typst"` — idiomatic, an approximation.** Native `bibliography()` with Typst's
-  built-in ACM CSL (`association-for-computing-machinery`); native `@key` keeps
-  Typst's cite hyperlinks. *Not* faithful: bounded by the style's own choices (full
-  month names, `https://doi.org/<id>` DOIs, `Doctoral dissertation` wording, no
-  report genre label) and by hayagriva's BibTeX→CSL data-mapping limits (dropped
-  `lastaccessed`, `@periodical` journal names, thesis `school`/advisor, conference
-  `address`). For `.bst`-exact output use `"bibtex"`.
-- **`"bibtex"` (default) — exact, no extra dependencies.** A pure-Typst port of
-  `ACM-Reference-Format.bst`: [`bibtex.typ`](src/parts/bibtex.typ) parses the `.bib`
-  (`read()`), [`acmref.typ`](src/parts/acmref.typ) reimplements the `.bst` output
-  state machine + `format.*` helpers + every entry-type handler + the sort/cite layer
-  (native `state`/`query`), and [`bib-data.typ`](src/parts/bib-data.typ) carries the
-  journal MACRO table + `journal.canon.abbrev` (so `journal = csur` → "Comput.
-  Surveys"). DOI/URL/arXiv/`\url` render as real Typst hyperlinks; in-text citations
-  are anchored to the reference list (each entry carries `entry-label(key)`; cite
-  numbers / author-year groups `link` to it — ACMPurple in screen mode, matching
-  acmart's `citecolor`; uncoloured in print). Reached via `@key` (a `show ref:` rule),
-  the shadowed `cite`/`bibliography`, and `cite-text`/`cite-year`/`cite-author`.
-  Reproduces the `.bst` text **exactly**: the `bib-all` (20 entry-type handlers),
-  `bib-edge`, `crossref`, `authoryear`, `mathfields`, and `keycite` twins gate the
-  full char bag against real bibtex with **no exemption**, plus a `link_check` gate on
-  the `/URI` set and word-level assertions. The von/Last/Jr split tokenizes on **raw
-  TeX** per BibTeX's `format.name$` (`von_name_ends`+`von_token_found` from
-  `bibtex.web`): a token's case is its first brace-level-0 letter (or a `{\..}` foreign
-  letter), so `{de la}`/`{Barnes & Co.}` are Last; the von part may lead with uppercase
-  (`De la`); a bare `\ss` doesn't split (`Stra\ss e` → Last). Verified against the
-  bibtex binary (`tests/unit/bibtex.typ`).
-- **`"biblatex"` — ACM BibLaTeX, no extra dependencies.** A sibling renderer in
-  [`acmref.typ`](src/parts/acmref.typ) ports the visible formatting of `acmnumeric.bbx`,
-  the `acmauthoryear.bbx` deltas, and `biblatex-software` (`software.bbx`/`.dbx`,
-  `english-software.lbx`), reusing the same reader, sort/cite state, `@key`/
-  `#bibliography` routing, and `cite-style: "numeric" | "author-year"` switch. Covers
-  sentence-cased numeric titles, preserved/quoted author-year titles, full journal
-  names, `doi: <id>` punctuation, `lastaccessed` dates, `In:`/booktitle and journal
-  italics, software-family inheritance, SWHID source-map normalization, ACM's software
-  labels (`[SW]`, `[SW Rel.]`, `[SW Mod.]`, `[SW exc.]`), and HAL/URL/VCS/SWHID
-  identifier blocks. The `biblatex-test` twin gates acmnumeric against biber with no
-  exemption; the full samples exercise the software cite block against upstream.
-- **The venue-less BibLaTeX drivers are three different drivers**, not one. `misc` —
-  which every type biblatex has no driver for aliases to, including ACM's own
-  `presentation` and `underreview` — prints howpublished and type, ends in
-  `organization+location+date` (so it always shows a parenthesized date, empty
-  parentheses included) and then `doi+eprint+url`, which drops the URL for a DOI.
-  `online` prints neither howpublished nor type, dates itself only when the entry has a
-  month, and ends in a bare eprint + `url+urldate`, so it never shows a DOI and always
-  shows a URL. `manual` is a book-shaped driver with edition, series, publisher, pages
-  and ISBN. All three, plus `article`, `report` and `dataset`, print a `version` field
-  through biblatex's own format — the `version` bibstring, capitalized by the
-  punctuation tracker ("Version v3"); the software drivers print the same field
-  mid-sentence, so it stays lowercase. An entry biber found no date for prints ACM's
-  `[n. d.]` under acmnumeric and biblatex's `nodate` string under acmauthoryear ("N.d."
-  in the reference list, "n.d." in a cite), with any `extradate` letter parenthesized
-  after it. Pinned by the `biblatex-misc-test` / `biblatex-misc-numeric-test` pair.
-- **Biber's date grammar, in full** — markers (`2005?`), unspecified digits (`200X` IS
-  2000-2009), EDTF seasons, open range ends, negative years, and a day checked against
-  the real calendar. Deliberately not a subset: it is one parsing function, and
-  `biblatex-dates-test` pins every form against real biber.
-- **BibLaTeX field formats that cut across the drivers.** A `date` field is the only
-  one that can carry a day — biber nulls a `day` field (biblatex.def:1341) — and the day
-  then shows in every parenthesized date and, under acmauthoryear, in the label date
-  ("June 14, 2026"). A `type` field naming a localization string prints that string
-  (biblatex.def:586), which is where a typeless `@techreport` gets its "Tech. rep." and
-  a thesis its "Ph.D. Dissertation": biber's driver sourcemap stamps the type on while
-  remapping the entry (biblatex.def:1348). A reference-list name list stops at nine
-  names and continues "et al.", counting an explicit "and others" as none of the nine.
-  And the numeric styles sentence-case a title by uppercasing its FIRST character and
-  lowercasing every letter after it — a title opening with a digit, a bracket or a quote
-  therefore keeps no capital at all, and a full stop inside the title starts nothing new;
-  the title and the subtitle are cased separately, so the subtitle keeps a capital of its
-  own. Pinned by the `biblatex-fields-test` / `biblatex-fields-numeric-test` pair.
-- **BibLaTeX cite-label name disambiguation**
-  ([`acmref-blxnames.typ`](src/parts/acmref-blxnames.typ)). `acmauthoryear.bbx` builds on
-  `authoryear-comp`, which turns on biber's `uniquename=full` and `uniquelist=true` and
-  caps citation name lists at `maxcitenames=2`. A label therefore shows as much of each
-  name, and as many names, as it takes to identify the entry: a name grows from its bare
-  family name to given initials to the whole given name, and a list is widened past the
-  truncation point one name at a time. Because each mechanism decides what the other sees,
-  biber alternates the two passes to a fixed point; the port reproduces that loop, and
-  what is left over — entries no name part can separate — takes biblatex's `extradate`
-  year letter, grouped the way biber's uniqueness-aware name hash groups it. The plain
-  name hash beside it — every part of every visible name, uniquename ignored — is what
-  `authoryear-comp` compresses consecutive cites on, so two entries whose labels coincide
-  but whose names do not still cite apart ("[King 2001a; King 2001b]"). Pinned end to end
-  by the `biblatex-uniquename` twin and, for the hashes a twin cannot read, by
-  `tests/unit/blxnames.typ`; every expectation in both came from real biber output.
-- **BibLaTeX reference order is biber's `nty` template** (biblatex.def:1493, selected by
-  both ACM styles): presort, then a `sortkey` that — being `final` — takes over the whole
-  key when a `key` field supplies one, then the name slot (`sortname`, else author, else
-  editor, else the title, since `usetranslator` is off), then the title, then the year and
-  the volume as integers with roman numerals resolved and a 2000000000 fallback that files
-  entries missing them last. A name contributes four key parts — prefix + family, given,
-  suffix, prefix again — each padded with spaces to the longest of its kind in the list, so
-  the parts of one name line up with the next and a second name can decide a comparison the
-  first would have lost; a part the name does not have contributes nothing at all. Which of
-  the two prefix key parts is used turns on `useprefix`, which acmnumeric inherits as
-  *true* from `trad-standard.bbx:18` and acmauthoryear leaves *false* — so the two ACM
-  styles file "Ludwig van Beethoven" in genuinely different places. Sorting decides which
-  of two colliding entries takes the `a` extradate letter, so the two are pinned together
-  by the `biblatex-sort-test` / `biblatex-sort-numeric-test` pair.
-
-### Implemented (each validated against real bibtex)
-- **Author-year mode** (`cite-style: "author-year"`, `\citestyle{acmauthoryear}`):
-  short `format.lab.names` labels (von+Last, `" and "` for two, `"et al."` for >2), the
-  `\natexlab` a/b/c suffix over `(label, year)`-equal entries in sort order
-  (forward/reverse pass), a list with **no leading numbers**, and natbib `\citep`/
-  `\citet` with same-author year compression (`[Smith and Doe 2020a,b]`).
-- **`crossref`** (BibTeX *engine* behaviour, not the `.bst`): parent fields inherited
-  into the child; the parent is listed only when crossref'd ≥ `min_crossrefs` (=2) or
-  cited directly; a listed-parent child renders `format.{article,book,incoll.inproc}.
-  crossref` ("See [N]" / "In ⟨ed⟩ [N]"), an unlisted-parent child drops `crossref` and
-  renders in full from inherited fields.
-- **`organization`-as-label `format.key` fallback** (proceedings/manual): an entry
-  with no name field nor organization leads with its `key`, in text and sort key.
-- **`distinctURL`**: prints the URL alongside a DOI.
-- **Native `@key`/`#cite`/`#bibliography` routing**, via two mechanisms in `lib.typ`:
-  - `@key` is Typst *syntax* (a `ref`, unshadowable), so a document-level `show ref:`
-    rule (gated `bib-backend != "typst"`) routes it to the engine — the hook
-    `alexandria`/`pergamon` use. A `ref` resolving to no label (`it.element == none`) is
-    a citation; real elements (figures/headings/equations) pass through.
-  - `cite`/`bibliography` are *functions*, so they are **shadowed**. `cite` groups keys
-    into one bracket; `bibliography` renders through the engine — required because Typst
-    validates a native `#bibliography` source through hayagriva *at element construction*
-    (before any show rule fires), so a `.bst`-only feature such as a journal-abbreviation
-    macro (`journal = csur`) would error; the shadow never constructs a native element.
-    The engines `read()` the `.bib` lazily; Typst resolves a `read()` path against where
-    the path value was *written*, which survives only on an un-indexed `arguments` value
-    — so the shadow threads a single positional path as `arguments` to `read(..args)`
-    (**relative paths work**). Indexing (several files, or an array) loses the origin, so
-    those require a **project-absolute** path (`"/refs.bib"`, asserted).
-
-  For `"typst"` the `show ref:` rule is the identity and both shadows delegate to
-  `std.cite`/`std.bibliography` (the ACM CSL `set bibliography(style: …)` in `body.typ`
-  styles the list), so relative and multi-file paths both work; `cite-text`/`cite-year`/
-  `cite-author` map to `std.cite(form: "prose"/"year"/"author")`.
-- **TeX-string handling follows BibTeX literally** (`tex.typ`). BibTeX never
-  normalizes to Unicode — it carries the **raw** TeX and applies only `purify$` (sort
-  keys) and `change.case$` (display case), both math-blind and brace-aware. Both ported
-  exactly (quoting `bibtex.web`'s `x_purify`/`x_change_case` + the 13-entry
-  `control_seq_ilk` foreign-letter table; oracle-tested in `tests/unit/tex.typ`). Fields
-  stay raw TeX until the **render seam**: one mode-independent tokenizer (text runs,
-  control words/symbols, `{groups}`, `$math$`, catcode-special `~ ^ _`) feeding
-  evaluators — to content (`tex-to-content`), to a plain string for sort/cite labels
-  (`tex-to-string`, never overridable), or to a Typst-math string that is `eval`'d. Name
-  tokens are tie-joined per `format.name$` (a `~` before the last token / after a single
-  letter), so `Stra\ss e` renders `Straß e`.
-- **Inline math (`$…$`) is real Typst math**: symbols (`\alpha`→`alpha`, `\leq`→`<=`,
-  `\oplus`→`plus.o`), 1-/2-arg functions (`\frac{a}{b}`→`frac(a,b)`, `\mathbb{R}`→
-  `bb(R)`, `\sqrt`), `^{..}`/`_{..}` → `^(..)`/`_(..)`, then `eval`'d. Extracts to the
-  same char-bag as LaTeX math-italic (`𝜆`, plain-digit sub/superscripts, `ℝ`→`R` under
-  NFKC), so `mathfields` gates with no exemption.
-- **Formatting commands**: `\emph`/`\textit`→`emph`, `\textbf`→`strong`, `\textsc`→
-  `smallcaps`, `\texttt`→`raw`, `\underline`, `\textsuperscript`/`\textsubscript`;
-  `\url`/`\href`→links; accents + foreign letters (`\ss`)→Unicode; `\LaTeX`/`\TeX`→logos.
-- **Unknown commands raise an error** (never silent), naming the command and pointing at
-  the **`tex-render`** override: a callback `(raw-tex: str) => content` (default `auto` =
-  `tex-to-content`), composable with the exported `default-tex-render`, e.g.
-  `tex-render: s => default-tex-render(s.replace("\\myunit", "kg"))`. A small allowlist
-  of no-ops (`\noopsort`, `\relax`, `\protect`, …) is recognized.
-
-### Not ported (out of reach, or faithful to omit)
-- **ISSN/CODEN/LCCN**: emitted by the `.bst` but suppressed by acmart (`\showISSN` etc.
-  undefined in every format → the `.bbl`'s `\unskip` eats them), so omitting them is
-  *faithful to stock acmart*. Redefining them to surface the fields isn't supported.
-  **ISBN is the exception** since acmart v2.21 defines `\showISBNx`/`\showISBNxiii`
-  (acmart.dtx:9018): a reference prints `ISBN <isbn>.` and `ISBN-13 <isbn-13>.`, both
-  when an entry carries both (`show-isbn-10-and-13`, bst:3162).
-- **Arbitrary/full-equation TeX** beyond the command tables + `tex-render` —
-  *unbounded* (a field can hold any TeX; interpreting all of it means a TeX engine). We
-  support the finite set references use and **error on anything unknown**.
-
-### tex-render accepted approximations (correct for the common case)
-- Math-symbol table is curated and only spot-verified: `mathfields` oracle-tests greek +
-  `\leq \frac \oplus \mathbb \log`; the other ~110 entries compile but aren't diffed, so
-  a wrong-but-valid mapping renders silently. Greek + tested set trusted; long tail
-  best-effort.
-- `/` inside `$…$` becomes a Typst fraction, not a literal slash (rare in refs).
-- `\left`/`\right` are dropped, so delimiters don't auto-size (the bare delimiter prints).
-- Accents render as combining sequences (`o`+◌̈), not precomposed. Invisible in the
-  rendered text, which NFKC-folds identically — but NOT in a comparison, so every
-  key that decides identity (BibLaTeX name disambiguation, extradate contexts) is
-  composed first and the sort keys are decomposed first, matching biber either way.
-- Multi-token first-name tie placement may not match BibTeX exactly — inter-token
-  spacing is whitespace, dropped by the char bag.
-- `url`/`doi`/`eprint` bypass the render seam (linked with the raw string; URLs rarely
-  contain TeX).
-- `tex-to-string` (sort/cite labels) errors on inline math — labels never carry `$…$`.
-- Recursion vs Typst's ~72 call-depth: the evaluator loops over the token list (field
-  length unbounded); only structural nesting recurses, so overflow needs ~70+ nested
-  braces/math.
-- BibTeX warnings aren't emitted (best-effort, silent).
-- `, Article N` comma is emitted unconditionally (every reachable call site is
-  post-`new.block`).
-- **Caveat:** the `\LaTeX`/`\TeX` logos extract as `LATEX` in extracted text, so a
-  logo-bearing reference reads oddly in a text dump (the rendering is correct — a
-  glyph-extraction artifact). `latex-logo`/`tex-logo`/`bibtex-logo` in `parts/tex.typ`
-  reproduce the kerns, the `\lower.5ex` E and the A set at `\sf@size` and raised to the
-  T's cap height, so the logo's advance width matches LaTeX's to ~0.01pt and does not
-  disturb line breaking.
-
-## Author top matter
-
-- **Corresponding-author `*` is faithful**: acmart's `\correspondingauthor` (v2.21) emits
-  `\textsuperscript{*}` (acmart.dtx:5506) and opens the top-matter footnote stack with a
-  "Corresponding author" note carrying the asterisk symbol, which is why every other note
-  now starts at the dagger (`\maketitle` sets the footnote counter to 1). At most one
-  author may be the corresponding one — a second is a class error, which the port raises
-  too. What differs is *ordering* — we emit mark-then-note in a fixed order, not
-  source-declaration order (our model stores a boolean + note, with no declaration order).
-- **Note marks are set at `\sf@size`**, the size `\@textsuperscript` asks for
-  (`note-super`, `frontmatter.typ`), on the title, the subtitle and the author names
-  alike. LaTeX itself is inconsistent here: `\@fnsymbol{4}`, the section sign, comes
-  out at the full text size while the dagger, double dagger and pilcrow beside it
-  obey `\sf@size`, so a document with four or more distinct top-matter notes shows
-  one oversized mark in LaTeX and none in ours. Not replicated.
-- **Contact-info field order follows the author dict's key order** — acmart's
-  `\@mkauthorsaddresses` replays the declared `\email`/`\affiliation` order; Typst
-  dicts preserve insertion order, so writing `email:` before `affiliation:` (or vice
-  versa) reproduces the declaration order (guarded by the Tier 1.9 order gate). The
-  **affiliation's own fields** (`institution`/`department`/`city`/`state`/`country`)
-  likewise print in the user's declared key order, not a fixed tuple — acmart replays
-  `\institution`/`\department`/… in command order, so an affiliation written
-  `department:` before `institution:` reads "Theory Division, The Group, …" in the
-  contact line (`contact-affil-strings`, `frontmatter.typ`; `title-test` declares one
-  department-first).
-- **Terminal punctuation follows TeX's space factor**, not "does it already end in a
-  mark". acmart appends stops through `\@addpunct` (`\@adddotafter`, `\@setthanks`,
-  `\@setauthorsaddresses`, the proof head), which fires whenever `\spacefactor` is at
-  most 1000. An uppercase letter sets the factor to 999 and TeX then clamps the
-  following period's 3000 back down to 1000 instead of letting it through, so acmart
-  really does print "…London, UK.." while "…London, England." keeps its single stop.
-  `src/parts/punct.typ` replays the space-factor table over the trailing text rather
-  than testing the last character. Math and boxes reset the factor to 1000, so a
-  period after `$X$` is the author's own and content we can't read as text (a `ref`,
-  a citation, an image) stands in as a digit rather than letting the text before it
-  decide. `notes-test` and `head-test` pin both directions against LaTeX.
-- **Author line grouping IS faithful**: `group-authors` (`frontmatter.typ`) implements
-  `\@mkauthors@i` (acmart.dtx:7337) — authors accumulate onto a line and an
-  `\affiliation` closes it for everyone accumulated so far; values are never compared.
-  For a shared-affiliation line, give the affiliation to the *second* author and omit it
-  on the first (the acmart idiom; see Trovato/Tobin in `sample-acmsmall.typ`).
-- **Lists match the LIVE class, not the dtx**: amsart's begin-document hook derives
-  the margins from rendered label widths (`\labelsep` 5pt, `\leftmargini` =
-  width("(13)") + labelsep + `\parindent` ≈ 30.26pt, nested levels from their own
-  labels at counter 13) and overrides acmart's 4pt/24.5pt block — probed and measured.
-  Labels are `\llap`'d in both engines: zero-width right-overhanging markers pin every
-  body at its level's `\leftmargin` exactly; level-2+ `\topsep` is 0. `quote` maps to
-  LaTeX's `quote` (both margins at `\leftmargini`); the 3pc `quotation` variant is not
-  modelled.
-- **`screen` link colours** are stored as CMYK (`ACMPurple`/`ACMDarkBlue`); Typst writes
-  8-bit CMYK, so the on-screen RGB can differ by ~1/255 per channel — imperceptible, and
-  not "fixed" to RGB (that would lose print-CMYK fidelity).
-
-## Known limitations / not done
-
-- **Vertical fill (`\flushbottom`/`\@textbottom`) is not replicable** — Typst has no
-  vertical justification, so all formats are ragged-bottom. Two LaTeX mechanisms are
-  missing: (1) *two-column* formats call `\flushbottom`, so columns don't fill and
-  last-column balancing (`balance`) is absent; (2) *all* formats — including
-  single-column acmsmall, which does **not** call `\flushbottom` — redefine
-  `\@textbottom` to `\vskip \z@ \@plus 1pt` (acmart.dtx:3936), so a full page stretches
-  the section-skip rubber glue to the bottom margin. Content and spacing are *exactly*
-  correct (forcing `\raggedbottom` in LaTeX matches section positions to 0.2pt); only the
-  bottom-fill stretch is missing, showing as gradual drift on *full* pages
-  (`tests/twins/full-test` p1), not partial/last pages. No clean Typst workaround.
-- **Footnote stream separation carries a sub-point residual** — acmart stacks the
-  top-matter footnotes as three `manyfoot` streams (ordinary notes, authors-addresses,
-  copyright). manyfoot gives every stream the ordinary stream's `\skip\footins` and
-  puts exactly that glue between two of them, so the separation depends on neither the
-  format nor which streams are present; the port uses the same
-  `footins-skip - footnote-rule-kern-above` it uses for the footnote float. LaTeX also
-  carries the footnote box's *depth* at that boundary, and TeX derives that depth from
-  `\footnotesep` and the split struts rather than from any class parameter the port can
-  read, so the port sits ~0.3pt low at the default base size and within 0.75pt across
-  the 9–12pt range (worst at 9pt). `tests/twins/notes-conf-test` pins the two-stream
-  case and `notes-test` the three-stream one.
-- **`sigchi-a`**: geometry, sans default, the `@mktitle@iv` title (5pc-leftskip ragged
-  under a 2pt rule, one title-`\baselineskip` below its bottom, acmart.dtx:7039), the
-  `@mkauthors@iv` grid (bold name + email + affiliation, 2/row, acmart.dtx:7518), the
-  margin-column running head (`\fancyheadoffset`, x measured exact), unnumbered
-  sections, bold-small captions, and the "Legacy document" watermark match LaTeX.
-  `sidebar`/`marginfigure`/`margintable` set their body in the 170pt margin column
-  (`\marginpar`; a sidebar's first baseline is measured exact) and `fulltextwidth()`
-  spans text + margin. Approximations: footnotes are **not** moved into the margin
-  (`\marginpar` footnotes, acmart.dtx:3533); a margin note's vertical anchor can sit
-  ~1–2 lines off when invoked right before a display heading (Typst's `place()` anchors
-  at the following block); consecutive notes at the SAME anchor overlap instead of
-  stacking — anchor them at different paragraphs.
-- **`acmcp`**: geometry, unnumbered sections, the suppressed ACM reference format, the
-  rotated article-type label at the left edge, the light-tinted cover **frame**
-  (`@ACM@Article@color!10!white`, acmart.dtx:5899) scoped to the **body only** and
-  narrowed 6.5pc right (acmart.dtx:5902), and the right-margin **infobox** (the
-  user-supplied `acmcp-logo` — ACM's trademark JDS logo isn't bundled, so
-  `src/assets/acm-jdslogo.png` is twin-only — over the optional `code-data-link`/
-  `keywords`/`contributions`/contact info) are reproduced; the title alone narrows 6pc
-  (acmart.dtx:6988). The infobox and tinted body are a two-cell grid: the body cell
-  stays top-aligned, while the infobox cell is bottom-aligned so its bottom lands on
-  the frame bottom, matching acmart's two-pass `zref` adjustment (acmart.dtx:6733)
-  without a magic vertical offset. Normal contact/copyright footnotes and keyword top
-  matter are suppressed, as in LaTeX.
-  The infobox measure is only 5pc — narrower than the code/data URL and than several
-  of the contact-block email addresses — so the two paragraph breakers part ways on
-  those unbreakable runs: TeX keeps the run on the current line and lets the box go
-  overfull, Typst starts a new line. The content is the same either way, but the wrap
-  points differ (the code/data URL splits into different word-bag tokens), and an
-  acmcp page is only 486pt wide, so LaTeX's overflow can push a glyph clean off the
-  page, where text extraction drops it. Both engines typeset all eight `;` separators
-  of the upstream sample's contact block, but two of LaTeX's land at or past x=486 and
-  survive extraction only if the reference PDF's MediaBox is widened first (the
-  extractor reads six). Don't "fix" the port to match that count.
-- **Conference Huge title** sits ~4–5pt off from LaTeX (glyph-bbox overshoot): we pin the
-  cap-top to the top margin (the faithful `\topskip` model), whereas LaTeX places the
-  baseline. Imperceptible; the sigplan twin marks its Tier-2 top check report-only.
-- **Math fidelity untuned** (Libertinus Math ≈ newtxmath, best-effort).
-- **No microtype.** acmart loads `microtype`, so pdfTeX sets every paragraph with
-  glyph-level font expansion (±1%) and margin protrusion; Typst has neither, so a
-  line LaTeX squeezes one more word onto breaks earlier for us. On `sample-sigplan`
-  that one word decides a page: expansion is what keeps "Institute for Clarity in
-  Documentation" on a single line of the author grid, and without it the affiliation
-  wraps, the teaser figure and everything under it drop ~12pt, the first column
-  hands an abstract line to the second, and the "1 Introduction" heading no longer
-  fits on page 1. Rebuilding the reference with
-  `\microtypesetup{expansion=false,protrusion=false}` reproduces our author-grid
-  wrap, our abstract column split and our page-2 bookmark.
-- **Continuation-page first baseline** sits 1em (the base font size) below the top
-  margin instead of LaTeX's fixed `\topskip` = 10pt: ~+1pt on the 9pt-base formats,
-  −1/−2pt at the 11/12pt options. Typst has no per-page margin control, and shifting
-  the page margin would displace the (correct) title pages and running heads.
-- **Wrapped numbered section titles** return to the left margin instead of hanging
-  after "N\quad" (`\@hangfrom`): a measured hanging indent broke the tagged-PDF
-  reading order (Tier 1.9), so the rare two-line numbered title keeps the simple form.
-- **`booktabs` rule separation** is modelled by the opt-in **`tabular`** wrapper
-  (`parts/tables.typ`) plus **`toprule`/`midrule`/`bottomrule`** helpers. A bare
-  Typst `table.hline` carries a stroke with no surrounding vertical space, so a plain
-  `table` renders booktabs rules flush against the cell struts; `tabular` has the same
-  signature as `table` and re-adds `\aboverulesep` (`.4ex`) above each rule and
-  `\belowrulesep` (`.65ex`) below it, with heavy (`.08em`) `\toprule`/`\bottomrule`
-  and light (`.05em`) `\midrule` weights. `tabular` also marks its first row as a
-  table header, mirroring acmart's `\tagpdfsetup{table/header-rows={1}}`
-  (acmart.dtx:4292), so a screen reader announces each cell under its column
-  heading; `header-rows: 0` opts out. Typst's `table.header` repeats the row after
-  a page break and acmart's declaration does not, so the header is built with
-  `repeat: false` and the rendered table is byte-identical. Because a wrong split
-  silently MOVES cells, the header is only built when the children can be read
-  row-major with certainty: `columns` must be an explicit argument (a
-  `set table(columns: ..)` default is visible only from `context`, which `tabular`
-  must not enter), every cell must take its automatic position, no header cell may
-  span into the body, and a caller's own `table.header`/`table.footer` is left
-  alone. Any other table is tagged without a header rather than reflowed. Design
-  notes:
-  - It is a **plain function, not a `show table` rule** — a show rule whose body emits
-    a `table` re-matches its own output (`maximum show rule depth exceeded`), so the
-    wrapper sidesteps recursion entirely and needs no re-entry guard. It builds
-    `std.table` internally, so it survives any shadowing of `table`.
-  - Each rule's row boundary is inferred from cell order (a child `hline`'s resolved
-    `y` is not exposed — reading it errors "not known at this point"): exact for the
-    common grid of auto-placed 1×1 cells (colspan honoured); an explicitly positioned
-    `table.cell(y: ..)` or a rowspan can misplace the separation.
-  - `\aboverulesep`/`\belowrulesep` are font-relative (`ex`); Typst has no `ex` unit
-    and `tabular` must not wrap its output in `context` (a context block hides the
-    table from `figure()`'s kind detection, losing the "Table N" supplement), so the
-    x-height is expressed as em via Libertinus Serif's ratio 0.429 (4.29pt at 10pt).
-    em tracks the table font size, so the seps and rule widths scale correctly across
-    formats (9pt sigconf … 12pt options) without a `tp` conversion.
-  - **Row strut.** Every LaTeX table row is `\@arstrut` — height `0.7\baselineskip`,
-    depth `0.3\baselineskip` (verified from `array.sty`'s `\@array` and the kernel's
-    `\strutbox`; acmart leaves `\arraystretch=1`/`\extrarowheight=0`). The document's
-    global `top-edge: 1em` would reserve a full em (>`0.7\baselineskip`) above the
-    baseline and can't be undone by inset, so `body.typ`'s `show table` rule models the
-    strut in the cell TEXT metrics instead: `top-edge: 0.7·baselineskip`,
-    `bottom-edge: −0.3·baselineskip`, `leading: 0` — making a single-line row exactly
-    `\baselineskip` and an n-line cell exactly n·`\baselineskip`, matching LaTeX. The
-    strut is font-size dependent via `\baselineskip`, so it uses the format's
-    `cfg.baselineskip` (per-format normalsize); a table the user manually wraps in a
-    different size would use the normalsize `\baselineskip` — consistent with the rest
-    of the document's normalsize-based rigid-leading model, and the acmart default is
-    normalsize tables. Verified against LaTeX: total table height matches to within the
-    rule-thickness measurement convention (Typst draws `hline` as a centered line,
-    LaTeX booktabs as a `\rule` with thickness).
-- **Caption first baseline** sits ~1.3pt below LaTeX's — the caption line inherits
-  the global `top-edge: 1em` (9pt ascent at 9pt) rather than the font's natural
-  ascender; same family as the continuation-page first-baseline item above, and left
-  as-is to keep the baseline-grid model uniform (changing it would skew multi-line
-  caption pitch).
-- **`description`/terms: no `show` rule, on purpose.** Typst's default term-list label
-  is `strong` (= `\upshape\bfseries`), which *coincides* with acmart's
-  `\descriptionlabel` font, and the colon-less label matches because Typst swallows the
-  colon in `/ term: body` source — so overriding the term list would only risk drift.
-  What is *not* modelled is acmart's hanging `\@ACM@labelwidth` geometry (the wide,
-  right-aligned label column); that remains an accepted gap.
-- **`\additionalaffiliation` is not modelled.** acmart folds a second affiliation
-  into an author note reading "Also with \<affiliation>." (acmart.dtx:5316); this port
-  has no equivalent command, so pass the extra affiliation as an author `note` instead.
-- **BibLaTeX name-list visibility ignores `uniquelist`.** Both the reference list and
-  the sort key cut a name list longer than `maxbibnames`/`maxsortnames` (9) down to the
-  first name, which is what biber does whenever `uniquelist` is unset. Under
-  acmauthoryear, though, `uniquelist` is on, and biber uses the widened count in place
-  of that minimum (Biber.pm:2924/2937) — so two entries of ten-plus names sharing a
-  leading name print and sort on as many names as it takes to tell their *cites* apart,
-  where we print and sort on one. Reproducing it means disambiguating before sorting
-  rather than after, which is the opposite of our pipeline order. acmnumeric has no
-  `uniquelist` and is exact; the acmnumeric case is pinned in `tests/unit/acmref.typ`.
-- **BibLaTeX sort keys compare by code point, not by the Unicode Collation Algorithm.**
-  Biber collates each sort slot with `Unicode::Collate` (`sortcase`/`sortupper` both on,
-  spaces made non-ignorable), so accents are a secondary difference and case a tertiary
-  one. We case-fold, resolve accent commands to their base letter and BibTeX's
-  thirteen foreign-character commands to their expansion (so `\ae` files as "ae" and
-  `\ss` as "ss", the expansions the root collation gives those characters), fold every
-  non-alphanumeric ASCII character into a low block so punctuation and symbols weigh
-  below the digits and the letters as the UCA weighs them, and compare code points,
-  with a per-slot case pattern appended so uppercase still wins an otherwise exact
-  tie. That agrees with the UCA on the character *classes* and on ASCII letters,
-  digits and spaces, and on accented letters at the primary level; it can still
-  differ on the *relative* order of two different punctuation marks, on an accent
-  used as the only tie-break, and on a character command outside those thirteen
-  (`\dh`, `\th`, …), which is still dropped — our TeX renderer does not know them
-  either, so such a title cannot be typeset at all.
-- **Full BibLaTeX sample drift**: `sample-sigconf-biblatex` (with the software artifact
-  block) reflows to one extra Typst page (dense two-column bibliography); the bundled
-  samples gate visual snapshots, not page parity, and `biblatex-test` is the exact text
-  gate.
-- **Engine-variant / tagged samples** (3 of 18): `sigconf-lualatex` is docstrip-identical
-  to `sigconf`; `acmsmall-tagged`/`sigconf-tagged` need `\DocumentMetadata{tagging=on}` +
-  `lualatex-dev`, which pdflatex rejects. All render identically to their base, adding
-  zero coverage.
-- **No trailing indent after a display equation or verbatim block.** Unlike lists /
-  figures / quotes (which emit an env-block indent shim), a paragraph *after* a
-  `$ … $` block equation or a fenced code block is left un-indented. A block equation /
-  verbatim is very often a mid-paragraph *continuation* — the official ACM samples set
-  text right after `\end{equation}` / `\end{verbatim}` with no blank line, which LaTeX
-  does **not** indent (`\@doendpe` for verbatim; a continued paragraph for the
-  equation) — and Typst cannot tell that apart from a blank-line-separated new
-  paragraph, which LaTeX *would* indent, because a block equation/verbatim always ends
-  the Typst paragraph either way. An unconditional shim would regress the (common)
-  continuation case, so the port matches it and users add an explicit `#h(parindent)`
-  (as `_sample-common.typ` does) where the blank-line indent is wanted.
-- **Display-math vertical skips** are approximate. The below-equation gap is measured
-  from the equation's *ink* bounding box, so it leaks the descender depth of the last
-  row (~2.3bp low vs LaTeX's `\belowdisplayskip` from the math axis). amsart's
-  *short* display skips (`\abovedisplayshortskip` 0pt / `\belowdisplayshortskip`
-  ≈2.1pt, used when the line before the display is short) are **not** modelled — every
-  display uses the long `\abovedisplayskip`/`\belowdisplayskip` (≈`\medskip`).
-- **Float / caption micro-gaps ≤ 3.3bp.** The `bottom-edge: 0pt` line-box model gives
-  a caption strut no depth, so the figure-body↔caption and caption↔surround gaps run
-  up to ~3.3bp tight. And `\textfloatsep` (the space between a top/bottom float and the
-  text, 15pt) is approximated by Typst's fixed float clearance of `1.5em` — exact at a
-  10pt base, but ~1.5pt tight on the 9pt formats.
-- **Widow / orphan / broken penalties.** amsart sets `\widowpenalty = \clubpenalty =
-  \brokenpenalty = 10000` (never a widow/orphan line, never a page break after a
-  hyphen). The port sets `text(costs: (widow: 10000%, orphan: 10000%))` — Typst's cost
-  is a *soft* optimizer weight, not TeX's hard penalty, and there is **no**
-  `brokenpenalty` analogue. Ablation: at both 1000% and 10000% the entire twin/sample
-  suite is byte-identical to Typst's 100% default (the fixtures contain no avoidable
-  widows/orphans), so the strong value is a zero-regression faithfulness choice that
-  only affects longer real documents; the un-modelled `\brokenpenalty` may leave a page
-  break after a hyphenated line where LaTeX would forbid it.
-
-## Test harness
-
-LaTeX references are built by `tools/test.py`'s `latex_build`, which **reruns pdflatex
-until stable** (cross-refs/`TotPages`/lastpage resolved) and fails on surviving
-"Temporary page!" placeholders or LaTeX errors — a single pass leaves `TotPages`
-unresolved, adding a spurious page. It also **generates `acmart.cls` from
-[`acmart/`](acmart/)** into `tests/out/latex/` and prepends that to `TEXINPUTS`, so
-references build against the repo's acmart, never the system tree (keeping the target and
-validator on one class version — see the section-title note above).
-
-See [CONTRIBUTING.md](CONTRIBUTING.md#validation-model) for the harness commands and
-gates. `tools/test.py probe` audits the numbers in `formats/*.typ`: it compiles
-[`tools/probe.tex`](tools/probe.tex) against the bundled acmart and dumps geometry,
-font-size steps, baselineskips, and skips (`PROBE …`/`SIZE …` lines) — every length in a
-format dict should trace to a probe line or an `acmart.dtx` macro.
-
-**Layout numbers vs content numbers.** The only numbers the text gates strip are the
-review-mode line-number ruler, recognized as a run of standalone number lines by
-`_drop_layout_numbers` in [`pdf_text_tokens.py`](tools/pdf_text_tokens.py) and shared by
-the sequence, word-bag, and char-bag gates. Every other bare number line is compared
-like any other text, because both engines put the same ones there:
-
-- **Section numbers** are content. LaTeX typesets the number in its own `\@hangfrom`
-  box, so it extracts on its own line while Typst's extracts inline with the title —
-  a line-break difference the order-independent bags and the whitespace-collapsing
-  sequence gate absorb. An earlier version dropped every standalone-number line, which
-  swept section numbers up too and forced the heading to keep an over-wide gap so its
-  number would land on its own extracted line.
-- **Page folios** agree between the engines, so nothing is gained by dropping them.
-  PyMuPDF reads them beside the running head at the top of the page rather than at the
-  end of it, so no "last line of the page" rule would reach them consistently anyway.
+For a particular mismatch, inspect the fixture's expected differences in [test_matrix.py](tools/test_matrix.py) and use the [comparison workflow](CONTRIBUTING.md#investigating-a-difference).

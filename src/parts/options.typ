@@ -1,5 +1,3 @@
-// Resolve class and top-matter options before metadata or rendering consumes them.
-
 #import "../formats/acmsmall.typ": acmsmall
 #import "../formats/manuscript.typ": manuscript
 #import "../formats/acmlarge.typ": acmlarge
@@ -51,16 +49,12 @@
     format in formats,
     message: "faithful-acmart: unknown format: " + format,
   )
-  // The format builder validates font-size and computes the typography ladder;
-  // `auto` retains the format-specific default size.
   let cfg = if font-size == auto {
     (formats.at(format))()
   } else {
     (formats.at(format))(font-size: font-size)
   }
 
-  // In acmart, draft only draws overfull-line markers. Typst reports overflow as
-  // compiler warnings and exposes no equivalent marker or custom-warning API.
   assert(
     data.draft == false,
     message: "faithful-acmart: option `draft` has no effect in this Typst port, so it is "
@@ -70,17 +64,7 @@
       + "compile.",
   )
 
-  // acmart carries three journal flags: the static \if@ACM@journal (the format
-  // family, `cfg.journal`) and two that \acmConference lowers. It always lowers
-  // \if@ACM@journal@bibstrip — the ACM bibstrip, the journal footer and the
-  // journal wording of the reference block — and under acmsmall it also lowers
-  // \if@ACM@journal@bibstrip@or@tog and the folios (acmart.dtx:5104, new in
-  // v2.20): an acmsmall paper with a conference is a proceedings paper published
-  // as a book, so it takes the proceedings running heads and drops the contact
-  // footnote and the page numbers (the proceedings assigns those). acmtog keeps
-  // its own conference headers — there a conference paper is a journal issue.
-  // `auto` is not yet a conference: it stands for acmart's untouched default, which
-  // names one only on the proceedings formats (where `journal` is false anyway).
+  // \acmConference changes the bibstrip flags independently of the format family (acmart.dtx, \acmConference).
   let conference = resolve-conference(cfg, data.conference)
   let acmsmall-conference = cfg.name == "acmsmall" and conference != none
   let bibstrip-flags = (
@@ -88,25 +72,13 @@
     bibstrip-or-tog: cfg.journal and not acmsmall-conference,
   )
 
-  // acmcp and nonacm each flip the ACM reference block's DEFAULT off via an
-  // \AtBeginDocument{\@ACM@printacmreffalse} hook (acmart.dtx:2717/3006), but a
-  // user's explicit choice still wins — LaTeX honours a post-\begin{document}
-  // \settopmatter{printacmref=true}. This package has no preamble-vs-body timing,
-  // so an explicit argument always overrides the format default (see DESIGN.md
-  // "Explicit arguments override format defaults").
   let print-acm-reference = if print-acm-reference == auto {
     not nonacm and cfg.name != "acmcp"
   } else {
     print-acm-reference
   }
 
-  // authordraft implies timestamp and review mode, but it raises the switches
-  // DIRECTLY (acmart.dtx:2819-2820) instead of going through the `review` key
-  // handler — so it never picks up that handler's
-  // \AtBeginDocument{\@ACM@printfoliostrue} (acmart.dtx:2683). Only an explicit
-  // `review` forces folios on (and it wins over an explicit `print-folios:
-  // false`, because the hook runs at \begin{document}); under `author-draft`
-  // alone the format's own default stands.
+  // authordraft sets review directly, bypassing the review option hook that forces folios on.
   let timestamp = timestamp or author-draft
   let review = review or author-draft
   let print-folios = if print-folios == auto {
@@ -116,11 +88,8 @@
   }
   let print-folios = print-folios or data.review
 
-  // The same hook-ordering accident decides the list geometry (parts/body.typ):
-  // amsart's \settowidth values win only when acmart registered a begin-document
-  // hook from an option handler BEFORE \LoadClass{amsart}, which `review` and
-  // `nonacm` do and `authordraft` — raising the switch directly — does not. So
-  // this reads the option as written, not review mode as it ends up.
+  // These options register hooks before amsart loads, letting its list dimensions win.
+  // authordraft bypasses those hooks, so use the explicit review option here.
   let amsart-lists = data.review or nonacm
 
   let article = if cfg.name == "acmcp" {
@@ -129,8 +98,6 @@
     acmcp-article-types.at(article-type)
   }
 
-  // Carry the resolved language record (every fixed string, plus `code` and `main`)
-  // on cfg so all downstream modules read identical values.
   let lang = resolve-language(data.language)
   let cfg = cfg + (strings: lang, lang: lang.code, bib-backend: bib-backend)
   let cfg = cfg + bibstrip-flags
@@ -141,8 +108,6 @@
     message: "faithful-acmart: `cite-style` must be \"numeric\" or \"author-year\".")
   assert(type(data.acm-month) == int and data.acm-month >= 1 and data.acm-month <= 12,
     message: "faithful-acmart: `acm-month` must be an integer 1..12; got " + repr(data.acm-month) + ".")
-  // acmart warns and resets a non-integer \settopmatter{authorsperrow}; we fail
-  // early and clearly instead (0 = acmart's automatic per-group default).
   assert(type(data.authors-per-row) == int and data.authors-per-row >= 0,
     message: "faithful-acmart: `authors-per-row` must be a non-negative integer "
       + "(0 selects the automatic per-row default); got " + repr(data.authors-per-row) + ".")

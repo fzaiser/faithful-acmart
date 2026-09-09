@@ -1,12 +1,6 @@
-"""PDF extraction utilities and the per-run extraction cache.
+"""Memoized PDF readers.
 
-Text, rasters, word geometry and document metadata all come from PyMuPDF, whose
-version the uv lockfile pins, so every machine extracts identically; pikepdf reads
-the object-level structure (links, tags). Both are imported inside the readers that
-need them, so the Typst-only commands (``min-version`` runs on a bare Python in CI)
-start without the uv environment. Every reader is memoized on (path, mtime) via
-``_pdf_memo`` so each PDF is parsed once per ``check`` run. Pure reading — no gating
-logic lives here."""
+Import PDF libraries lazily so compile-only commands can run with standard Python."""
 
 from __future__ import annotations
 
@@ -21,14 +15,11 @@ from pathlib import Path
 from pdf_text_tokens import CHAR_FOLD
 
 
-# Per-run extraction memo: threaded through the `check` gates so each PDF is
-# parsed once (PDF parsing is the run's dominant cost) instead of once per gate.
-# Keyed on path + mtime so a rebuilt PDF is never served stale.
 _EXTRACT_CACHE: dict[tuple, object] = {}
 
 
 def _pdf_memo(fn):
-    """Cache an extractor's result per (function, pdf path, mtime, extra args)."""
+    """Cache by extractor, path, mtime, and extra arguments."""
     @functools.wraps(fn)
     def wrapped(pdf, *args, **kwargs):
         try:
@@ -42,15 +33,7 @@ def _pdf_memo(fn):
     return wrapped
 
 
-# ---------------------------------------------------------------------------
-# Text, rasters, word geometry, metadata (PyMuPDF)
-# ---------------------------------------------------------------------------
 def extractor_version() -> str:
-    """The PyMuPDF/MuPDF pair behind every text, raster and metadata read.
-
-    Raster hashes and text residual digests are reproducible only under the same
-    extractor, so the golden header records it and the matrix gate pins it.
-    """
     import fitz
     return f"pymupdf {fitz.VersionBind} (mupdf {fitz.VersionFitz})"
 
@@ -60,7 +43,7 @@ def page_count(pdf: Path) -> int:
     try:
         with fitz.open(pdf) as doc:
             return doc.page_count
-    except RuntimeError:  # PyMuPDF's missing-file and bad-data errors
+    except RuntimeError:  # PyMuPDF's missing-file and bad-data errors.
         return -1
 
 
@@ -73,7 +56,7 @@ _INFO_FIELDS = {
 
 @_pdf_memo
 def pdf_info(pdf: Path) -> dict[str, str]:
-    """Document-information fields that are set, keyed by their PDF /Info names."""
+    """Return populated fields keyed by their PDF /Info names."""
     import fitz
     try:
         with fitz.open(pdf) as doc:
@@ -89,7 +72,7 @@ def _pixmap(page, dpi: int, gray: bool = False):
 
 
 def rasterize(pdf: Path, dpi: int, prefix: Path) -> list[Path]:
-    """Render every page to ``<prefix>-<n>.png``; the paths come back in page order."""
+    """Write pages as <prefix>-<n>.png and return paths in page order."""
     import fitz
     prefix.parent.mkdir(parents=True, exist_ok=True)
     paths: list[Path] = []
@@ -103,7 +86,7 @@ def rasterize(pdf: Path, dpi: int, prefix: Path) -> list[Path]:
 
 
 def raster_array(pdf: Path, page: int, dpi: int, *, gray: bool = False):
-    """One page's pixels as a numpy array: (h, w, 3) RGB, or (h, w) when gray."""
+    """Return pixels as an RGB (h, w, 3) or grayscale (h, w) array."""
     import fitz
     import numpy as np
     with fitz.open(pdf) as doc:
@@ -113,7 +96,7 @@ def raster_array(pdf: Path, page: int, dpi: int, *, gray: bool = False):
 
 
 def page_hashes(pdf: Path, dpi: int) -> list[str]:
-    """SHA-256 of each page's rendered pixels (size + raw samples, no PNG encoding)."""
+    """Hash page dimensions and raw pixel samples, independently of PNG encoding."""
     import fitz
     hashes: list[str] = []
     with fitz.open(pdf) as doc:
@@ -135,15 +118,10 @@ def _word(run: list[dict]) -> tuple:
 
 @_pdf_memo
 def words(pdf: Path) -> dict:
-    """1-based page -> {w, h, words: [(x0, y0, x1, y1, text, baseline), ...],
-    baselines: [one dominant baseline per text line]}.
+    """Return page dimensions, word boxes, and dominant line baselines, keyed by 1-based page.
 
-    A word is a whitespace-free run of one text line sharing one baseline, in
-    content-stream order; its box is the union of its glyph boxes and ``baseline``
-    is that baseline's y. A baseline shift ends the word, so a superscript footnote
-    mark is not glued to the word after it (their baselines differ, and the mark
-    would otherwise lend its raised baseline to the whole word).
-    """
+    Words are (x0, y0, x1, y1, text, baseline) tuples in content-stream order.
+    A baseline shift starts a new word so superscripts cannot change the adjoining word's baseline."""
     import fitz
     pages: dict = {}
     with fitz.open(pdf) as doc:
@@ -155,8 +133,7 @@ def words(pdf: Path) -> dict:
                     chars = [c for span in line["spans"] for c in span["chars"]]
                     if not chars:
                         continue
-                    # The line's baseline is the one most of its glyphs sit on; a
-                    # raised footnote mark or superscript does not make a line.
+                    # Superscripts must not set the line baseline.
                     baselines.append(Counter(
                         round(c["origin"][1], 2) for c in chars).most_common(1)[0][0])
                     run: list[dict] = []
@@ -176,14 +153,12 @@ def words(pdf: Path) -> dict:
 
 
 def page_metrics(page: dict) -> dict | None:
-    """Layout geometry for one page: text-block margins, line count, baseline pitch."""
     ws = page["words"]
     if not ws:
         return None
     left = min(w[0] for w in ws)
     right = page["w"] - max(w[2] for w in ws)
-    # Cluster the text lines' baselines: a new line starts when the gap exceeds 2pt
-    # (a hanging section number and its title are separate line objects on one baseline).
+    # A heading number and title can extract as separate lines on the same baseline.
     ys = sorted(page["baselines"])
     baselines = [ys[0]]
     for y in ys[1:]:
@@ -191,11 +166,7 @@ def page_metrics(page: dict) -> dict | None:
             baselines.append(y)
     gaps = [b - a for a, b in zip(baselines, baselines[1:])]
     pitch = statistics.median(gaps) if gaps else 0.0
-    # Per-line text pitches: drop page-spanning gaps (the last body line -> page
-    # footer is a ~400pt jump, not a baseline pitch). Heading skips (~1.5-2x the
-    # body pitch) are kept, so two single-column pages whose lines break the same
-    # way can be compared pitch-for-pitch, catching a single mis-spaced line that
-    # the median hides.
+    # Exclude jumps to page footers while retaining heading skips.
     grid = [g for g in gaps if g <= 3 * pitch] if pitch else []
     return {"left": left, "right": right, "top": baselines[0], "lines": len(baselines),
             "pitch": pitch, "pitches": grid}
@@ -203,8 +174,7 @@ def page_metrics(page: dict) -> dict | None:
 
 @_pdf_memo
 def pdf_text(pdf: Path, page: int | None = None) -> str:
-    """Plain text in content-stream order, a form feed closing every page (the
-    layout-number stripping in ``pdf_text_tokens`` keys on that page break)."""
+    """Return content-stream text with a form feed after every page."""
     import fitz
     with fitz.open(pdf) as doc:
         pages = [doc[page - 1]] if page is not None else list(doc)
@@ -212,7 +182,7 @@ def pdf_text(pdf: Path, page: int | None = None) -> str:
 
 @_pdf_memo
 def extract_uris(pdf: Path) -> Counter[str]:
-    """External hyperlink annotation targets, preserving multiplicity."""
+    """Return external link targets, preserving multiplicity."""
     try:
         import pikepdf
     except ImportError as exc:
@@ -229,12 +199,7 @@ def extract_uris(pdf: Path) -> Counter[str]:
 
 @_pdf_memo
 def extract_internal_links(pdf: Path) -> dict:
-    """Internal PDF link summary, normalized across named and direct destinations.
-
-    LaTeX/hyperref usually writes named /GoTo actions; Typst writes direct /Dest
-    arrays. Destination names are engine-specific, so the gate compares counts and
-    normalized target coverage instead of raw names.
-    """
+    """Normalize named GoTo actions and direct Dest arrays to common internal targets."""
     try:
         import pikepdf
     except ImportError as exc:
@@ -309,26 +274,14 @@ def extract_internal_links(pdf: Path) -> dict:
         "count": len(links),
         "unique_targets": len({target for _, target in links}),
         "pages": len(doc.pages),
-        # Multiset of resolved target page numbers (previously computed then
-        # discarded). Cross-engine equality against LaTeX is deliberately NOT
-        # gated: measured across the twin set the two engines' internal-link
-        # target-page multisets diverge broadly and legitimately — hyperref emits
-        # more internal links than Typst (section \autoref backrefs, author-year
-        # multi-\cite), and on multi-page docs pagination drifts (the documented
-        # \flushbottom/ragged-bottom difference). So a cross-engine comparison
-        # would need a per-twin exemption the size of the divergence; the outline
-        # gate owns cross-engine SECTION target pages (page-1 anchored), and this
-        # multiset instead feeds a Typst-side validity check (targets in range).
+        # Target counts differ across engines; use these pages to check destination validity.
         "target_pages": Counter(target[0] for _, target in links),
     }
 @_pdf_memo
 def horizontal_rules(pdf: Path) -> dict[int, list[tuple]]:
-    """1-based page -> list of (thickness, colour, x_mid, x_width) horizontal rules.
+    """Return (thickness, color, x midpoint, width) rules by 1-based page.
 
-    A rule is a stroked line or a thin filled rectangle whose long axis is
-    horizontal. LaTeX draws booktabs/footnote rules as thin filled boxes and
-    strokes; Typst strokes them — both reduce to the same tuple, so the gate is
-    engine-neutral. Colour is quantised to a 1/16 grid to absorb CMYK rounding."""
+    Read horizontal lines and thin rectangles from stroked drawing paths."""
     import fitz
     out: dict[int, list[tuple]] = {}
     doc = fitz.open(pdf)
@@ -357,7 +310,7 @@ def horizontal_rules(pdf: Path) -> dict[int, list[tuple]]:
     return out
 @_pdf_memo
 def outline(pdf: Path) -> list[tuple[int, str, int]]:
-    """PDF bookmarks as (level, normalized-title, target-page) via PyMuPDF."""
+    """Return bookmarks as (level, normalized title, target page)."""
     import fitz
     doc = fitz.open(pdf)
     try:
@@ -365,13 +318,8 @@ def outline(pdf: Path) -> list[tuple[int, str, int]]:
                 for lvl, title, page in doc.get_toc(simple=True)]
     finally:
         doc.close()
-# --- Tier 1.8: per-letter font/size/colour gate (PyMuPDF) ---
-# The text gates see only characters; this catches a letter rendered in the wrong font
-# family, weight, size, or colour — e.g. sigchi-a body that should be sans (acmart's
-# \sffamily document default) but came out serif, or an author block a step too small.
 def _font_role(font: str) -> str:
-    """Canonical family for a PDF BaseFont, so LinBiolinum (LaTeX) and LibertinusSans
-    (Typst) both map to 'sans'. Math/symbol fonts collapse to 'sym'."""
+    """Map engine-specific font names to common family roles."""
     f = font.lower()
     if any(k in f for k in ("mono", "inconsolata", "zi4", "dejavu")):
         return "mono"
@@ -385,24 +333,17 @@ def _font_role(font: str) -> str:
 
 
 def _font_color(c: int) -> tuple[int, int, int]:
-    """Quantise an sRGB int to a 16-step grid — absorbs the engines' 8-bit CMYK
-    rounding (e.g. link blue #155195 vs #155095) while keeping real colours apart."""
+    """Quantize color to absorb the engines' CMYK rounding differences."""
     q = lambda x: min(255, (x + 8) // 16 * 16)
     return (q((c >> 16) & 255), q((c >> 8) & 255), q(c & 255))
 
 
 @_pdf_memo
 def _font_scan(pdf: Path) -> tuple[Counter, dict]:
-    """Multiset of (letter, family, bold, italic, size, colour) over every glyph,
-    plus the first (1-based) page each such key appears on for failure localization.
+    """Count (letter, family, bold, italic, size, color) tuples and record their first pages.
 
-    LETTERS only — punctuation and symbols sit at font boundaries / come from
-    divergent symbol fonts, so their family is noise. Mono SIZE is dropped: LaTeX's
-    zi4 and our bundled Inconsolata are scaled differently, so the nominal size is
-    incomparable (the family still is). The ITALIC flag is dropped for math/symbol
-    glyphs: it comes from the font descriptor, which is unreliable for combined math
-    fonts (Typst's NewCMMath reports non-italic even though it renders the
-    mathematical-italic glyphs slanted, just like LaTeX's separate italic math font)."""
+    Exclude punctuation and symbol-font boundaries from font comparisons.
+    Ignore monospace size because the font builds scale differently, and math italic flags because their descriptors are unreliable."""
     import fitz
     counts: Counter = Counter()
     first_page: dict = {}
@@ -426,5 +367,4 @@ def _font_scan(pdf: Path) -> tuple[Counter, dict]:
 
 
 def font_bag(pdf: Path) -> Counter:
-    """Per-letter font multiset (see _font_scan)."""
     return _font_scan(pdf)[0]

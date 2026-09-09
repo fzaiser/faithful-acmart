@@ -1,20 +1,8 @@
-// Direct unit tests for the pure-Typst .bib reader (src/parts/bibtex.typ).
-//
-// These run WITHOUT the LaTeX/pdftotext harness: the file simply compiles, and a
-// failing #assert.eq aborts the Typst compile with a diagnostic. Run standalone
-//   tools/tc compile tests/unit/bibtex.typ /dev/null
-// or via the harness as the "unit" tier (tools/test.py unit / test.py check).
-//
-// The cases are ported from the reference parser biblatex-main/ — specifically the
-// Rust unit tests in src/types/person.rs (BibTeX name grammar) and src/raw.rs
-// (field/value tokenizing). We match real bibtex (the .bst oracle), which differs
-// from the biblatex *crate* in a few documented spots (noted inline).
+// Name and tokenization cases adapted from the biblatex Rust crate (src/types/person.rs and src/raw.rs).
+// Expected values follow the BibTeX binary where its behavior differs.
 
 #import "/src/parts/bibtex.typ": parse-names, parse-bib
 
-// ---- name parsing (port of person.rs) -------------------------------------
-// Expected name record, in this parser's (first, von, last, jr) shape. The
-// reference names the same fields given / prefix / family / suffix.
 #let nm(first: "", von: "", last: "", jr: "") = (first: first, von: von, last: last, jr: jr)
 
 #let chk-name(raw, ..expected) = {
@@ -23,8 +11,6 @@
   assert.eq(got, want, message: "parse-names(" + repr(raw) + ")\n  got:  " + repr(got) + "\n  want: " + repr(want))
 }
 
-// test_person_comma + test_person_no_comma: the "jean de la fontaine" matrix.
-// Multi-token parts carry BibTeX's tie (~) before the last token (tie-join).
 #chk-name("jean de la fontaine,", nm(von: "jean de~la", last: "fontaine"))
 #chk-name("de la fontaine, Jean", nm(first: "Jean", von: "de~la", last: "fontaine"))
 #chk-name("De La Fontaine, Jean", nm(first: "Jean", last: "De La~Fontaine"))
@@ -37,24 +23,20 @@
 #chk-name("jean De la Fontaine", nm(von: "jean De~la", last: "Fontaine"))
 #chk-name("Jean de La Fontaine", nm(first: "Jean", von: "de", last: "La~Fontaine"))
 
-// test_person_two_comma: "<Last>, <Suffix>, <First>".
 #chk-name("Mudd, Sr., Harcourt Fenton", nm(first: "Harcourt~Fenton", last: "Mudd", jr: "Sr."))
 
-// test_list_of_names + the " and " separator (split_token_lists_with_kw).
 #chk-name(
   "Johannes Gutenberg and Aldus Manutius and Claude Garamond",
   nm(first: "Johannes", last: "Gutenberg"),
   nm(first: "Aldus", last: "Manutius"),
   nm(first: "Claude", last: "Garamond"),
 )
-// test_list_of_names_multilines: newlines around "and" are whitespace.
 #chk-name(
   "Johannes Gutenberg\nand\nAldus Manutius and\nClaude Garamond",
   nm(first: "Johannes", last: "Gutenberg"),
   nm(first: "Aldus", last: "Manutius"),
   nm(first: "Claude", last: "Garamond"),
 )
-// test_consecutive_and: "and and" yields an empty name between the two keywords.
 #chk-name(
   "Johannes Gutenberg and and Aldus Manutius and Claude Garamond",
   nm(first: "Johannes", last: "Gutenberg"),
@@ -62,21 +44,17 @@
   nm(first: "Aldus", last: "Manutius"),
   nm(first: "Claude", last: "Garamond"),
 )
-// test_leading_and: a leading "and" is part of the first name, not a separator.
 #chk-name(
   "and Gutenberg, Johannes and Aldus Manutius",
   nm(first: "Johannes", von: "and", last: "Gutenberg"),
   nm(first: "Aldus", last: "Manutius"),
 )
-// test_trailing_and: a trailing "and" is kept as a (degenerate) final name.
 #chk-name(
   "Johannes Gutenberg and Aldus Manutius and Claude Garamond and",
   nm(first: "Johannes", last: "Gutenberg"),
   nm(first: "Aldus", last: "Manutius"),
   nm(first: "Claude~Garamond", last: "and"),
 )
-// test_name_with_and_inside: "and" only splits as a standalone whitespace-bounded
-// word — "Claudeand"/"Aanderson"/"anderson" stay intact.
 #chk-name(
   "Johannes anderson Gutenberg and Claudeand Garamond and Aanderson Manutius",
   nm(first: "Johannes", von: "anderson", last: "Gutenberg"),
@@ -84,20 +62,11 @@
   nm(first: "Aanderson", last: "Manutius"),
 )
 
-// ---- brace protection (regression for the audit fix) ----------------------
-// Real bibtex treats a brace group as a single verbatim (upper-cased) token, so
-// internal spaces/commas are NOT structural. (The biblatex crate splits these
-// differently; we follow the .bst oracle.) The braces are kept here and stripped
-// later by the formatter.
 #chk-name("{Barnes and Noble}", nm(last: "{Barnes and Noble}"))
 #chk-name("{de la} Fontaine, Jean", nm(first: "Jean", last: "{de la}~Fontaine"))
 #chk-name("Haug, {Martin}", nm(first: "{Martin}", last: "Haug"))
 
-// Raw-TeX von/last boundary, each verified against the real bibtex format.name$
-// (see the oracle battery in the session notes): names tokenize on RAW TeX, the
-// von part may include leading UPPERCASE tokens ("De la"), a trailing lowercase
-// token with nothing after it stays in Last ("Stra\ss e"), and a bare control
-// sequence (\ss) does not split its token.
+// Expected name boundaries come from BibTeX's format.name$ on the raw TeX input.
 #chk-name("Stra\\ss e, Joe", nm(first: "Joe", last: "Stra\\ss~e"))
 #chk-name("De la Fontaine, Jean", nm(first: "Jean", von: "De~la", last: "Fontaine"))
 #chk-name("De La Fontaine, Jean", nm(first: "Jean", last: "De La~Fontaine"))
@@ -107,10 +76,8 @@
 #chk-name("Ludwig van Beethoven", nm(first: "Ludwig", von: "van", last: "Beethoven"))
 #chk-name("Jones, Jr., John Paul", nm(first: "John~Paul", last: "Jones", jr: "Jr."))
 
-// ---- field / value tokenizing (port of raw.rs) ----------------------------
 #let fields-of(src, key) = parse-bib(src).at(key).fields
 
-// test_parse_article: type, field order/values, brace escape kept verbatim.
 #let a = parse-bib("@article{haug2020,
   title = \"Great proceedings\\{\",
   year=2002,
@@ -120,16 +87,12 @@
 #assert.eq(a.fields.year, "2002")
 #assert.eq(a.names.author, (nm(first: "{Martin}", last: "Haug"), nm(first: "Gregor", last: "Haug")))
 
-// test_resolve_string + # concatenation across an @string abbreviation. The inner
-// spaces of each fragment are preserved before joining ("Tech " # "Press").
 #assert.eq(fields-of("@string{BT = \"bibtex\"}@misc{x, note = BT}", "x").note, "bibtex")
 #assert.eq(
   fields-of("@string{pub = \"Tech \" # \"Press\"}@misc{x, title = pub}", "x").title,
   "Tech Press",
 )
 
-// Real BibTeX applies @string definitions in source order. A later redefinition
-// changes later entries only; the old two-pass parser incorrectly rewrote `early`.
 #let ordered = parse-bib("@string{label = \"First\"}
 @misc{early, title = label}
 @string{label = \"Second\"}
@@ -137,11 +100,6 @@
 #assert.eq(ordered.early.fields.title, "First")
 #assert.eq(ordered.late.fields.title, "Second")
 
-// A forward/undefined macro is empty in BibTeX. The field is KEPT with its empty
-// value — `has` reads it as absent in both backends, so nothing prints, but the
-// entry carries the name, which is what lets an empty canonical spelling keep a
-// legacy alias from taking its place. The defined pieces of a concatenation are
-// retained. Decimal literals are not macros.
 #let undefined = parse-bib("@misc{before, title = future, note = \"pre\" # missing # \"post\", year = 2026}
 @string{future = \"Now defined\"}
 @misc{after, title = future}")
@@ -150,31 +108,23 @@
 #assert.eq(undefined.before.fields.year, "2026")
 #assert.eq(undefined.after.fields.title, "Now defined")
 
-// @string identifiers follow BibTeX's broader identifier grammar, not `\w`.
 #assert.eq(
   fields-of("@string{publisher-name = \"Hyphen Press\"}@book{x, publisher = publisher-name}", "x").publisher,
   "Hyphen Press",
 )
 
-// Quoted value respects brace depth: an inner {"} does not end the string.
 #assert.eq(fields-of("@misc{c, note = \"a {\"} b\"}", "c").note, "a {\"} b")
 
-// Entry types and @comment/@preamble are skipped; the entry key is trimmed.
 #let db = parse-bib("@comment{ignored}
 @preamble{\"\\foo\"}
 @Book{ k1 , title={T} }")
 #assert.eq(db.keys(), ("k1",))
 #assert.eq(db.k1.entry-type, "book")
 
-// BibTeX accepts parentheses as entry delimiters too.
 #let paren-db = parse-bib("@string(monthname = \"May\")
 @misc(p1, title = {Paren ) Entry}, note = \"quoted ) value\", month = monthname, year = 2026)")
 #assert.eq(paren-db.p1.fields, (title: "Paren ) Entry", note: "quoted ) value", month: "May", year: "2026"))
 
-// ---- % line comments (regression for the audit fix) -----------------------
-// biblatex supports `%` line comments; the old reader silently dropped the rest
-// of the entry. A `%` after a value, after a comma, or after the key is skipped;
-// a literal `%` inside a value is preserved.
 #assert.eq(
   fields-of("@article{a, title = {Hello} % trailing\n, year = {2020}}", "a"),
   (title: "Hello", year: "2020"),
@@ -185,6 +135,5 @@
 )
 #assert.eq(fields-of("@misc{p, note = {50% done}}", "p").note, "50% done")
 
-// All assertions passed if this renders.
 #set page(height: auto, width: auto, margin: 6pt)
 *bibtex.typ unit tests: all assertions passed.*

@@ -1,5 +1,3 @@
-// Normalize document and publication metadata before rendering consumes it.
-
 #import "frontmatter.typ": normalize-author, parse-ccs
 #import "journals.typ": lookup-journal
 #import "strings.typ": lang-record
@@ -76,13 +74,8 @@
   },
 )
 
-// `data` contains the public metadata arguments after class options have been
-// resolved. The returned `meta` record is the only representation consumed by
-// front matter and page chrome.
 #let resolve-metadata(cfg, lang, data) = {
   let authors = data.authors.map(normalize-author)
-  // acmart raises a class error on the second \correspondingauthor
-  // (acmart.dtx:5490): the asterisk mark and its footnote belong to one author.
   assert(authors.filter(a => a.corresponding).len() <= 1,
     message: "faithful-acmart: at most one author may set `corresponding: true`, "
       + "matching acmart's \\correspondingauthor.")

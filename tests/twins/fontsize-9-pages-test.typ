@@ -1,7 +1,3 @@
-// fontsize-9-pages-test — multi-page layout at a non-default base size.
-// Matched twin: fontsize-9-pages-test.tex. At acmsmall+9pt geometry rounds
-// \textheight to 571pt and the whole ladder rescales; page parity, folios, and
-// the continuation head are compared.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

@@ -1,25 +1,14 @@
-// Shared content for the acmart upstream-sample ports (acmart/samples/*.tex,
-// docstrip option `all`). All the `all`-body samples carry the SAME authors,
-// abstract, CCS concepts, \received dates, and document body — only the
-// preamble (format, journal/conference metadata, copyright, class options)
-// differs. Each sample-<format>.typ sets that preamble and calls `sample-body`.
+// Shared body from acmart/samples/samples.dtx.
 #import "/src/lib.typ": *
 
 #let sample-authors = (
-  // Trovato carries NO affiliation; Tobin holds the shared one, so acmart's
-  // structural rule andifies them onto one line (samples.dtx:181-194 does the
-  // same — only Tobin has \affiliation). See group-authors in frontmatter.typ.
-  // Trovato is given TWO \orcid commands in samples.dtx; each one redefines
-  // \typeset@author for the current author, so the last wins.
+  // The upstream sample assigns the shared affiliation to Tobin and redefines Trovato's ORCID; the last value wins.
   (name: "Ben Trovato", note: [Both authors contributed equally to this research.],
    email: "trovato@corporation.com", orcid: "1234-5678-9012"),
   (name: "G.K.M. Tobin", orcid: "0000-0012-1825-0097", note: [Both authors contributed equally to this research.],
    email: "webmaster@marysville-ohio.com",
    affiliation: (institution: "Institute for Clarity in Documentation",
                  city: "Dublin", state: "Ohio", country: "USA")),
-  // Lars/Charles/John/Julius declare \affiliation BEFORE \email in the source
-  // (samples.dtx), so the contact lines replay affiliation-then-email — the key
-  // order here is significant (contact-line in frontmatter.typ).
   (name: "Lars Thørväld", orcid: "0000-2034-1825-0097",
    affiliation: (institution: "The Thørväld Group", city: "Hekla", country: "Iceland"),
    email: "larst@affiliation.org"),
@@ -59,20 +48,13 @@
   (100, "Do Not Use This Code", "Generate the Correct Terms for Your Paper"),
 )
 
-// \received{20 February 2007}\received[revised]{...}\received[accepted]{...}
-// (samples.dtx:378-380), printed at end of document.
 #let sample-received = (
   ("", "20 February 2007"),
   ("revised", "12 March 2009"),
   ("accepted", "5 June 2009"),
 )
 
-// The shared article body (everything after \maketitle). `documentclass` is the
-// option string echoed in the "Citations and Bibliographies" verbatim example,
-// e.g. "acmsmall" or "sigconf" — the only per-format text in the body.
-//
-// Citations route through the selected ACM backend so the sample's reference
-// ordering and numeric/author-year labels follow the LaTeX preamble being ported.
+// documentclass supplies the literal option string in the sample's code example.
 #let sample-body(documentclass: "acmsmall", author-year: false, biblatex: false) = {
   let cit(..keys) = cite(..keys.pos())
   [
@@ -564,7 +546,6 @@ examples of their usage.
   To Robert, for the bagels and explaining CMYK and color spaces.
 ]
 
-// GAP: \section*{} unnumbered section.
 #heading(numbering: none, level: 1)[Ethics and Privacy Statement]
 
 This section of your ACM work should discuss the potential societal risks that
@@ -584,8 +565,6 @@ could be provided in this statement.
   bibliography("/tests/twins/sample-base.bib")
 }
 
-// GAP: \appendix — acmart switches section numbering to letters (A, A.1, ...).
-// Emulated by resetting the heading counter and switching the numbering format.
 #counter(heading).update(0)
 #set heading(numbering: "A.1")
 

@@ -1,8 +1,4 @@
-"""On-demand .bib-reader byte-identity oracle.
-
-Compares the pure-Typst ``.bib`` reader against real bibtex over the twins' and
-the mutation-corpus ``.bib`` files, using a dump-everything ``.bst``. Not part of
-``check`` — it needs the real bibtex binary and is a maintenance audit."""
+"""Compare parsed bibliography fields with BibTeX; invoked by bib-oracle."""
 
 from __future__ import annotations
 
@@ -17,21 +13,6 @@ from pathlib import Path
 from harness import ROOT, OUT, TESTS_DIR, ACMART
 
 
-# --- bib-oracle: real-bibtex .bib-reader byte-identity oracle (on-demand) ---
-#
-# The pure-Typst .bib reader (src/parts/bibtex.typ) claims byte-identity with real
-# bibtex on well-formed input, diverging only where bibtex REJECTS the input (its
-# crate-style \{ \} \" escaping). This command keeps that property from rotting: a
-# generated dump .bst re-emits every entry's parsed field VALUES, and the Typst
-# reader's field values are compared against them over the twins' .bib files plus
-# the in-repo mutation corpus (tests/bib-oracle/). The comparison is total: the
-# two entry-key sets and, per entry, the two field-name sets must agree, so a
-# bibtex run that produced nothing cannot pass as "nothing to compare". Only two
-# field-set differences are allowed, both narrow — a field the dump .bst never
-# declared, and one bibtex supplied through crossref inheritance. It is on-demand
-# only (NOT in `check`/CI): it needs the real bibtex binary and is a maintenance
-# audit, not a gate. Inputs must be well-formed — the corpus documents that
-# contract.
 _ORACLE_FIELDS = (
     "address advisor archiveprefix author booktitle chapter city date edition "
     "editor eprint eprinttype eprintclass howpublished institution journal key "
@@ -40,7 +21,6 @@ _ORACLE_FIELDS = (
     "numpages lastaccessed coden isbn issn lccn distinctURL archived venue"
 ).split()
 
-# Typst reader as a queryable metadata dump; reads the .bib named by sys.inputs.
 _ORACLE_TYP = (
     '#import "/src/parts/bibtex.typ": parse-bib\n'
     "#metadata(parse-bib(read(sys.inputs.bib))) <bib-oracle>\n"
@@ -48,8 +28,7 @@ _ORACLE_TYP = (
 
 
 def _oracle_bst() -> str:
-    """A dump-everything .bst: seeds the ACM BST's own MACROs (so month/journal
-    expansion matches the reader) and writes each present field verbatim."""
+    """Generate a field-dump style seeded with ACM string macros."""
     bst_src = (ACMART / "ACM-Reference-Format.bst").read_text()
     macros = re.findall(r'MACRO\s*\{([^}]+)\}\s*\{("[^"]*")\}', bst_src)
     lines = ["ENTRY", "  { " + " ".join(_ORACLE_FIELDS) + " }", "  {}", "  {}", "",
@@ -70,14 +49,9 @@ _ORACLE_FIELD_RE = re.compile(r"^  (\S+) =(.*)$")
 
 
 def _parse_oracle_bbl(text: str) -> dict[str, dict[str, str]]:
-    """Read the dump .bst's output back into {key: {field: value}}.
+    """Read {key: {field: value}} records through their closing delimiter.
 
-    ``write$`` wraps past ~79 columns, breaking at a space and indenting the rest
-    by two spaces — which looks exactly like a field line, and can even fall
-    between the ``=`` and the value. So a record is accumulated until its closing
-    ``>`` arrives instead of being matched line by line; the space each break
-    consumed is put back. Matching line by line instead silently drops every long
-    value, which then reads as a field bibtex never parsed."""
+    BibTeX can wrap values across lines that resemble new field declarations."""
     out: dict[str, dict[str, str]] = {}
     current: str | None = None
     pending: tuple[str, str] | None = None
@@ -104,11 +78,7 @@ def _parse_oracle_bbl(text: str) -> dict[str, dict[str, str]]:
 
 
 def _inherited(db: dict[str, dict[str, str]], key: str, field: str) -> str | None:
-    """The value bibtex's crossref inheritance gives `key`.`field`, or None.
-
-    The Typst reader is a plain parser and resolves no ``crossref``, so a field
-    bibtex reports and it does not is expected exactly when an ancestor supplies
-    it. A parent's ``title`` also feeds a child's ``booktitle``."""
+    """Return a field inherited through crossref, including the parent-title to booktitle mapping."""
     by_lower = {k.lower(): k for k in db}
     names = (field, "title") if field == "booktitle" else (field,)
     entry = db.get(by_lower.get(key.lower(), ""))
@@ -128,7 +98,6 @@ def _inherited(db: dict[str, dict[str, str]], key: str, field: str) -> str | Non
 
 
 def _typst_reader_fields(bib_in_root: str) -> dict[str, dict[str, str]]:
-    """Field values the Typst reader parses, via `typst query` on the dump doc."""
     OUT.mkdir(parents=True, exist_ok=True)
     dump = OUT / "bib-oracle-dump.typ"
     dump.write_text(_ORACLE_TYP)
@@ -153,8 +122,6 @@ def _bibtex_reader_fields(bib: Path, bst: str, workdir: Path) -> dict[str, dict[
     bbl = workdir / f"{stem}.bbl"
     bbl.unlink(missing_ok=True)
     proc = subprocess.run(["bibtex", stem], cwd=workdir, capture_output=True, text=True)
-    # A failing bibtex, or one that wrote no .bbl, must not read as "nothing to
-    # compare": that is how an oracle reports success on an empty comparison.
     if proc.returncode != 0 or not bbl.exists():
         blg = workdir / f"{stem}.blg"
         detail = (proc.stdout + proc.stderr).strip() or (
@@ -166,13 +133,7 @@ def _bibtex_reader_fields(bib: Path, bst: str, workdir: Path) -> dict[str, dict[
 
 
 def _compare(bib_name: str, typst, bibtex, declared: set[str]) -> tuple[int, list[str]]:
-    """Compare the two readers' entry keys, field names, and field values.
-
-    Field names are matched case-insensitively: bibtex lowercases what it reads,
-    while the dump .bst echoes back the spelling declared in ``_ORACLE_FIELDS``.
-    Two field-set differences are expected and everything else is reported —
-    a field the dump never declared (bibtex does not read it at all), and one
-    bibtex supplied through crossref inheritance (`_inherited`)."""
+    """Compare keys, declared fields, and values, allowing fields added by BibTeX inheritance."""
     diffs: list[str] = []
     compared = 0
     for key in sorted(set(typst) - set(bibtex)):
@@ -200,7 +161,6 @@ def _compare(bib_name: str, typst, bibtex, declared: set[str]) -> tuple[int, lis
 
 
 def cmd_bib_oracle(_args) -> int:
-    """Compare the Typst .bib reader against real bibtex over well-formed input."""
     if shutil.which("bibtex") is None:
         print("bib-oracle needs the real `bibtex` binary (TeX Live).", file=sys.stderr)
         return 2

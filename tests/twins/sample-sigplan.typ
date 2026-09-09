@@ -1,6 +1,3 @@
-// sample-sigplan — port of the upstream acmart sample (acmart/samples, docstrip
-// option `all,proceedings,sigplan`). Two-column SIGPLAN proceedings format
-// (10pt) with the screen option. Diffed against out/latex/sigplan.pdf.
 #import "/src/lib.typ": acmart
 #import "_sample-common.typ": sample-authors, sample-abstract, sample-ccs, sample-received, sample-body
 

@@ -1,10 +1,4 @@
-// notes-conf-test — frontmatter footnote isolator for an acmsmall CONFERENCE
-// paper. Matched twin: notes-conf-test.tex. \acmConference lowers
-// \if@ACM@journal@bibstrip@or@tog under acmsmall (acmart.dtx:5104), so the
-// authors-addresses stream is empty here: no `thanks` and no contact block. That
-// leaves exactly two footnote streams — the ordinary top-matter notes and the
-// copyright/permission block — which is the stream combination notes-test
-// (journal, three streams) cannot reach.
+// A conference paper without thanks isolates the notes and copyright streams.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

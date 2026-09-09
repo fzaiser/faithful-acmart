@@ -1,6 +1,3 @@
-// acmlarge-test — large single-column journal format.
-// Matched twin: acmlarge-test.tex. Exercises geometry, the journal @i title
-// block, and the sans (large, regular) section fonts at the 10pt acmlarge default.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

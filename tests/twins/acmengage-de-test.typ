@@ -1,6 +1,3 @@
-// acmengage-de-test — acmengage with a German main language.
-// Matched twin: acmengage-de-test.tex.
-// acmengage renames the abstract "Synopsis", but only inside babel's captionsenglish; under a German main language babel's "Zusammenfassung" wins.
 #import "/src/lib.typ": acmart
 
 #show: acmart.with(

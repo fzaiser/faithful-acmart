@@ -1,5 +1,3 @@
 # TODO
 
-- Replace `tools/test.py overlay`'s Ghostscript+`qpdf` pipeline with `pikepdf`:
-  rewrite all colour operators, including spot/ICC `setcolor`, and compose page
-  XObjects with `/BM /Multiply` plus alpha so aligned ink renders dark.
+- Replace the overlay command's Ghostscript and qpdf pipeline with pikepdf, preserving spot and ICC colors and using multiply blending for aligned ink.
