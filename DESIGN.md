@@ -47,47 +47,9 @@ The package replaces `bibliography` because Typst validates native bibliography 
 It replaces `cite` to support grouped citations and routes unresolved `@key` references through the same backend.
 
 BibLaTeX name disambiguation alternates name expansion and list expansion until they stabilize, matching Biber's dependency between those passes.
-Its date parser deliberately covers the forms in the date fixtures, including uncertain dates, seasons, and intervals.
-Keep that coverage tied to executable comparisons with Biber when changing the parser.
+The date parser handles calendar dates, partial dates, uncertainty, seasons, and intervals before the renderer formats them.
 
-## Compatibility limits
+## Compatibility
 
-### Page layout
-
-- Typst lacks TeX's stretchable page glue, final-column balancing, and `microtype` font expansion and protrusion.
-  Pages remain ragged at the bottom, and line and page breaks can differ.
-- Math uses Libertinus Math and approximate display spacing.
-  TeX's short-display skips and exact math metrics are not reproduced.
-- First baselines on continuation pages, captions, floats, and footnote stream boundaries can differ slightly because the engines use different line-box depths.
-  Measured allowances belong in [test_matrix.py](tools/test_matrix.py).
-- Wrapped numbered headings do not have LaTeX's hanging indent.
-  The simple layout preserves tagged-PDF reading order.
-- Term lists lack acmart's label-column geometry, and the separate LaTeX `quotation` layout is unsupported.
-- Text after display equations or code blocks continues without indentation.
-  Typst cannot distinguish a continued paragraph from LaTeX's blank-line-separated new paragraph there; add explicit horizontal spacing when an indent is needed.
-- Widow and orphan avoidance uses Typst's layout costs; TeX's hard break penalties, including its penalty after a hyphen, have no exact equivalent.
-
-### Special formats and metadata
-
-- `sigchi-a` footnotes remain in the body.
-  Margin notes can shift near block boundaries and overlap when placed at the same anchor; place consecutive notes at different paragraphs.
-- The narrow `acmcp` infobox wraps long URLs and email addresses differently from LaTeX.
-- Top-matter note marks use a consistent superscript size; LaTeX's oversized section-sign mark is not reproduced.
-  Corresponding-author marks have a fixed order relative to other notes.
-- A draft timestamp contains the compile date without the time of day.
-  The `draft` option for overfull-line markers is unsupported; `author-draft` provides the review watermark.
-- PDF Subject metadata is unavailable through Typst's document API.
-  Additional affiliations can be expressed as author notes.
-
-### References
-
-- BibLaTeX sorting approximates Unicode collation.
-  Ordering can differ for accent-only ties, punctuation, and unsupported character commands.
-- BibLaTeX citation disambiguation can expand name lists, but that expansion does not propagate to long reference-list names or sort keys.
-- Punctuation-only initials retain their period throughout a grouped citation; BibLaTeX can omit it after a preceding entry.
-- The TeX field renderer supports a subset of bibliography commands and inline math.
-  In math, `/` becomes a fraction and `\left`/`\right` do not resize delimiters.
-  URLs bypass TeX rendering, and inline math is unsupported in plain-text citation labels.
-- BibTeX's warning diagnostics are not reproduced.
-
-For a particular mismatch, inspect the fixture's expected differences in [test_matrix.py](tools/test_matrix.py) and use the [comparison workflow](CONTRIBUTING.md#investigating-a-difference).
+The user reference lists [capabilities and compatibility limits](docs/reference.md#compatibility).
+For a measured layout difference, record the bounded expectation in [test_matrix.py](tools/test_matrix.py) and follow the [comparison workflow](CONTRIBUTING.md#investigating-a-difference).

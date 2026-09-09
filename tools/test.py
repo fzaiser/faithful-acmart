@@ -21,7 +21,7 @@ from harness import (
 )
 from pdf_extract import _EXTRACT_CACHE, pdf_text, raster_array
 from latex_build import build_all_latex, latex_build, gate_latex_oracle
-from source_data import gate_source_data, gate_package
+from source_data import gate_source_data, gate_package, cmd_docs
 from gates_core import (
     gate_matrix_integrity, gate_smoke, gate_golden, write_golden,
     gate_errors, gate_format_sweep, gate_unit,
@@ -386,6 +386,7 @@ def main() -> int:
     check.set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
     sub.add_parser("unit", help="run pure-Typst unit tests (tests/unit/*.typ); no LaTeX").set_defaults(fn=cmd_unit)
+    sub.add_parser("docs", help="compile documentation examples and refresh SVG illustrations").set_defaults(fn=cmd_docs)
     pkg = sub.add_parser("package", help="validate and compile the manifest-filtered package")
     pkg.add_argument(
         "--out", type=Path, metavar="DIR",

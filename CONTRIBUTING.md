@@ -1,5 +1,7 @@
 # Contributing
 
+Use these instructions to develop the package and compare its output with LaTeX.
+
 ## Setup
 
 Install `uv`, a TeX distribution providing `pdflatex`, `bibtex`, and `biber`, and `typst-package-check`.
@@ -24,6 +26,8 @@ Both are ignored by Git.
 
 ## Validation
 
+Run the unit tests and the full regression suite before submitting changes:
+
 ```sh
 uv run python tools/test.py unit
 uv run python tools/test.py check
@@ -37,7 +41,7 @@ Fixtures live in `tests/twins/` as matching `.tex` and `.typ` documents, in `tes
 Register document fixtures and their expectations in [tools/test_matrix.py](tools/test_matrix.py).
 Keep paired fixtures equivalent in content and intent.
 
-The package check compiles a fresh starter project and every `typst` example in the README against the distributable files.
+The package check compiles a fresh starter project and every `typst` example in the README and `docs/` against the distributable files.
 It does not require a locally installed package.
 The `example` command does; see [local package testing](PUBLISHING.md#local-package-testing).
 
@@ -77,6 +81,27 @@ Use `compat` to check a different Typst release without applying the pinned rast
 
 ## Documentation
 
-Keep paper-writing guidance in [README.md](README.md), architectural decisions and compatibility limits in [DESIGN.md](DESIGN.md), and release steps in [PUBLISHING.md](PUBLISHING.md).
-Option defaults, format measurements, and test expectations belong in code.
-Comments should explain constraints or surprising choices that the surrounding code cannot explain.
+The [README](README.md) is displayed on Typst Universe: it showcases the package and provides a quick start.
+The [reference](docs/reference.md) explains option contracts and user-visible compatibility limits.
+Keep architecture in [DESIGN.md](DESIGN.md) and release steps in [PUBLISHING.md](PUBLISHING.md).
+Link to the reference instead of repeating detailed restrictions in several places.
+
+Write for human readers, using concrete examples, short explanations, and tables where they help comparison.
+Introduce each section with a sentence before a table or list.
+Every runnable example uses a column-zero backtick fence labelled `typst`; use a longer fence when the example contains a raw block.
+The package check compiles these examples against the staged package and checks links, headings, package versions, and rendered illustrations.
+Body-only snippets receive an `acmsmall` preamble on a compact, automatically sized page; snippets with their own show rule receive only the package import.
+
+To illustrate an example, put `<!-- render: name -->` immediately before its fence and link to `docs/assets/name.svg` from the README, or `assets/name.svg` from another document in `docs/`.
+The starter illustration is the first page of `template/main.typ`.
+Regenerate illustrations with the pinned compiler:
+
+```sh
+uv run python tools/test.py docs
+uv run python tools/test.py package
+```
+
+Inspect changed SVGs before committing them.
+The package check rejects stale illustrations; it does not update them.
+Keep format measurements and test expectations in code, and explain only non-obvious constraints in code comments.
+When changing bibliography date handling, compare the affected forms with Biber as well as updating the capability statement.

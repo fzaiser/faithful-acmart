@@ -438,16 +438,16 @@ def _is_shipped(target: str, rels: set[str]) -> bool:
     return path in rels or any(rel.startswith(path + "/") for rel in rels)
 
 
-def _release_readme(text: str, manifest: dict, rels: set[str]) -> str:
+def _release_document(text: str, manifest: dict, rels: set[str], document: str = "README.md") -> str:
     """Rewrite links to unshipped files using the release tag; use raw URLs for images."""
     package = manifest["package"]
     repository = package["repository"]
     tag = f"v{package['version']}"
     for target in sorted(set(_relative_link_targets(text))):
-        if _is_shipped(target, rels):
-            continue
         path, _, fragment = target.partition("#")
-        path = path.rstrip("/")
+        path = (ROOT / document).parent.joinpath(path).resolve().relative_to(ROOT).as_posix()
+        if _is_shipped(path, rels):
+            continue
         if Path(path).suffix.lower() in _IMAGE_SUFFIXES:
             host = repository.replace("github.com", "raw.githubusercontent.com")
             url = f"{host}/{tag}/{path}"
@@ -468,18 +468,108 @@ def _stage_package(package_dir: Path) -> list[str]:
         destination = package_dir / rel
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
-    readme = package_dir / "README.md"
-    readme.write_text(_release_readme(readme.read_text(), manifest, set(rels)))
+    for document in _doc_paths():
+        staged = package_dir / document
+        staged.write_text(_release_document(staged.read_text(), manifest, set(rels), document))
     return rels
 
 
-def _compile_against_packages(main: Path, package_root: Path) -> subprocess.CompletedProcess:
+def _compile_against_packages(main: Path, package_root: Path, output: Path | None = None) -> subprocess.CompletedProcess:
+    output = output or main.with_name("out.pdf")
     return subprocess.run(
-        ["typst", "compile", str(main), str(main.with_name("out.pdf")),
+        ["typst", "compile", str(main), str(output),
+         *(["--pages", "1"] if output.suffix == ".svg" else []),
          "--package-path", str(package_root), "--root", str(main.parent),
          "--font-path", str(ROOT / "fonts"), "--ignore-system-fonts"],
         capture_output=True, text=True, env={**os.environ, **TEST_CLOCK_ENV},
     )
+
+
+def _doc_paths() -> list[str]:
+    return ["README.md", *[p.relative_to(ROOT).as_posix() for p in sorted((ROOT / "docs").glob("*.md"))]]
+
+
+_DOC_BLOCK_RE = re.compile(r"^(?P<fence>`{3,})typst\n(?P<body>.*?)^(?P=fence)$", re.M | re.S)
+
+
+def _check_doc_examples(root: Path, package_root: Path, package_dir: Path, *, update: bool = False) -> tuple[list[str], int]:
+    package = _package_manifest()["package"]
+    import_line = f'#import "@preview/{package["name"]}:{package["version"]}": *\n'
+    preamble = import_line + (
+        '#show: acmart.with(format: "acmsmall", nonacm: true, print-folios: false)\n'
+        '#set page(width: 360pt, height: auto, margin: 8pt, header: none, footer: none, fill: white)\n'
+    )
+    failures: list[str] = []
+    illustrations: dict[str, bytes] = {}
+    count = 0
+
+    def render(main: Path, name: str) -> None:
+        output = main.with_suffix(".svg")
+        proc = _compile_against_packages(main, package_root, output)
+        if proc.returncode:
+            failures.append(f"SVG {name}: {proc.stderr.strip()}")
+        elif name in illustrations:
+            failures.append(f"duplicate documentation illustration: {name}")
+        else:
+            illustrations[name] = output.read_bytes()
+
+    for document in _doc_paths():
+        text = (ROOT / document).read_text()
+        typst_blocks = list(_DOC_BLOCK_RE.finditer(text))
+        openings = re.findall(r"(?mi)^ {0,3}(?:`{3,}|~{3,})[ \t]*typst\b", text)
+        if len(openings) != len(typst_blocks):
+            failures.append(f"{document}: use column-zero backtick fences labelled typst, closed with the same number of backticks")
+        bib = (package_dir / "template/refs.bib").read_text()
+        for index, block in enumerate(typst_blocks, 1):
+            count += 1
+            example = root / f"doc-example-{count}"
+            example.mkdir()
+            (example / "refs.bib").write_text(bib)
+            source = block["body"]
+            if "#import" not in source:
+                source = (import_line if "#show: acmart.with(" in source else preamble) + source
+            main = example / "main.typ"
+            main.write_text(source)
+            proc = _compile_against_packages(main, package_root)
+            if proc.returncode or proc.stderr.strip():
+                failures.append(f"{document}: Typst example {index}:\n{proc.stderr.strip()}")
+                continue
+            marker = re.search(r"<!-- render: ([a-z-]+) -->\n$", text[:block.start()])
+            if marker:
+                render(main, marker[1])
+
+    starter = root / "doc-starter"
+    shutil.copytree(package_dir / "template", starter)
+    render(starter / "main.typ", "starter")
+    assets = ROOT / "docs/assets"
+    for name, data in illustrations.items():
+        path = assets / f"{name}.svg"
+        if not update and (not path.exists() or path.read_bytes() != data):
+            failures.append(f"{path.relative_to(ROOT)} is stale; inspect and regenerate with `tools/test.py docs`")
+    if update and not failures:
+        assets.mkdir(parents=True, exist_ok=True)
+        for name, data in illustrations.items():
+            (assets / f"{name}.svg").write_bytes(data)
+    return failures, count
+
+
+def cmd_docs(_args) -> int:
+    version = subprocess.run(["typst", "--version"], capture_output=True, text=True).stdout.split()
+    if len(version) < 2 or version[1] != M.TYPST_VERSION:
+        print(f"Use pinned Typst {M.TYPST_VERSION} to regenerate documentation SVGs.")
+        return 1
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        package = _package_manifest()["package"]
+        package_root = root / "packages"
+        package_dir = package_root / "preview" / package["name"] / package["version"]
+        _stage_package(package_dir)
+        failures, count = _check_doc_examples(root, package_root, package_dir, update=True)
+    for failure in failures:
+        print(failure)
+    if not failures:
+        print(f"Compiled {count} documentation examples and refreshed docs/assets/*.svg")
+    return 1 if failures else 0
 
 
 def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]:
@@ -500,11 +590,12 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
 
         allowed_root = {"LICENSE", "README.md", "thumbnail.png", "typst.toml"}
         unexpected = [rel for rel in rels if not (
-            rel in allowed_root or rel.startswith("src/") or rel.startswith("template/")
+            rel in allowed_root or rel.startswith(("src/", "template/", "docs/"))
         )]
         required = {
             "LICENSE", "README.md", "thumbnail.png", "typst.toml",
             "src/lib.typ", "template/main.typ", "template/refs.bib", "template/LICENSE",
+            "docs/reference.md",
         }
         missing = sorted(required - set(rels))
         if unexpected:
@@ -512,56 +603,62 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
         if missing:
             failures.append("package is missing required files: " + ", ".join(missing))
 
-        source_readme = (ROOT / "README.md").read_text()
-        staged_readme = (package_dir / "README.md").read_text()
-        release_tag = f"v{package['version']}"
-        repository = package["repository"]
-        broken = sorted({
-            target for target in _relative_link_targets(source_readme)
-            if not (ROOT / target.partition("#")[0].rstrip("/")).exists()
-        })
-        if broken:
-            failures.append("README links to missing paths: " + ", ".join(broken))
-        if any(f"{repository}/{view}/main/" in source_readme for view in ("blob", "tree")):
-            failures.append(
-                "repository README must use relative links, not main-branch URLs")
-        # The release rewrite supports plain inline links only.
-        sloppy = [m.group(0) for m in re.finditer(r"\]\([^)]*\s[^)]*\)", source_readme)]
-        if re.search(r"(?m)^ {0,3}\[(?!\^)[^\]]+\]:", source_readme):
-            sloppy.append("a reference-style link definition")
-        if sloppy:
-            failures.append(
-                "README links the staging rewrite cannot parse — use plain inline "
-                "](target) links without titles: " + ", ".join(sloppy))
-        prose, code = _split_markdown(source_readme)
-        if "](" in code:
-            failures.append(
-                "README has ](…) inside a code span or fence; the staging rewrite "
-                "cannot tell it from a link, so reword that code")
-        headings = re.findall(r"(?m)^#{1,6} +(.+?)\s*$", prose)
-        slugs = {re.sub(r" +", "-", re.sub(r"[^\w\- ]", "", h.lower())) for h in headings}
-        missing_anchors = sorted({
-            target for target in re.findall(r"\]\((#[^)\s]+)\)", source_readme)
-            if target[1:] not in slugs
-        })
-        if missing_anchors:
-            failures.append(
-                "README anchor links to missing headings: " + ", ".join(missing_anchors))
-        unshipped = sorted({
-            target for target in _relative_link_targets(staged_readme)
-            if not _is_shipped(target, set(rels))
-        })
-        if unshipped:
-            failures.append(
-                f"staged README links to unshipped paths (expected {release_tag} URLs): "
-                + ", ".join(unshipped))
+        scans = []
+        for document in _doc_paths():
+            source_text = (ROOT / document).read_text()
+            staged_text = (package_dir / document).read_text()
+            release_tag = f"v{package['version']}"
+            repository = package["repository"]
+            broken = sorted({
+                target for target in _relative_link_targets(source_text)
+                if not (ROOT / document).parent.joinpath(target.partition("#")[0]).exists()
+            })
+            if broken:
+                failures.append(f"{document} links to missing paths: " + ", ".join(broken))
+            if any(f"{repository}/{view}/main/" in source_text for view in ("blob", "tree")):
+                failures.append(
+                    f"{document} must use relative links, not main-branch URLs")
+            # The release rewrite supports plain inline links only.
+            sloppy = [m.group(0) for m in re.finditer(r"\]\([^)]*\s[^)]*\)", source_text)]
+            if re.search(r"(?m)^ {0,3}\[(?!\^)[^\]]+\]:", source_text):
+                sloppy.append("a reference-style link definition")
+            if sloppy:
+                failures.append(
+                    f"{document} links the staging rewrite cannot parse — use plain inline "
+                    "](target) links without titles: " + ", ".join(sloppy))
+            prose, code = _split_markdown(source_text)
+            if "](" in code:
+                failures.append(
+                    f"{document} has ](…) inside a code span or fence; the staging rewrite "
+                    "cannot tell it from a link, so reword that code")
+            for target in (m.group(1) for m in _MD_LINK_RE.finditer(source_text)):
+                if ":" in target:
+                    continue
+                path, _, fragment = target.partition("#")
+                linked = (ROOT / document).parent.joinpath(path) if path else ROOT / document
+                if fragment and linked.is_file() and linked.suffix == ".md":
+                    linked_prose, _ = _split_markdown(linked.read_text())
+                    headings = re.findall(r"(?m)^#{1,6} +(.+?)\s*$", linked_prose)
+                    slugs = {re.sub(r" +", "-", re.sub(r"[^\w\- ]", "", h.lower())) for h in headings}
+                    if fragment not in slugs:
+                        failures.append(f"{document}: missing heading in {target}")
+            unshipped = sorted({
+                target for target in _relative_link_targets(staged_text)
+                if not _is_shipped((ROOT / document).parent.joinpath(target.partition("#")[0]).resolve().relative_to(ROOT).as_posix(), set(rels))
+            })
+            if unshipped:
+                failures.append(
+                    f"staged {document} links to unshipped paths (expected {release_tag} URLs): "
+                    + ", ".join(unshipped))
+
+            scans.extend(((prose, False), (code, True)))
 
         # Allow sentence punctuation after package references in prose; code references must match exactly.
         token_re = re.compile(r"@preview/[^\s\"'`)\]]*")
         exact = rf"@preview/{re.escape(package['name'])}:{re.escape(package['version'])}"
         strict_ref = re.compile(exact + r"\Z")
         prose_ref = re.compile(exact + r"[.,;:]?\Z")
-        scans = [(prose, prose_ref), (code, strict_ref)] + [
+        scans = [(text, strict_ref if is_code else prose_ref) for text, is_code in scans] + [
             (path.read_text(), strict_ref)
             for path in sorted((ROOT / "template").glob("*.typ"))]
         tokens = [m.group(0) for text, _ in scans for m in token_re.finditer(text)]
@@ -569,7 +666,7 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
                       for m in token_re.finditer(text) if not pattern.match(m.group(0))})
         if bad or not tokens:
             failures.append(
-                f"README/template must reference @preview/{package['name']}:"
+                f"Documentation/template must reference @preview/{package['name']}:"
                 f"{package['version']} only, found: " + (", ".join(bad) or "no references"))
 
         project = root / "project"
@@ -580,36 +677,8 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
                 "fresh staged package failed to compile:\n" +
                 (compile_proc.stderr + compile_proc.stdout).strip())
 
-        fences = re.findall(r"^```typst\n(.*?)^```$", source_readme, re.M | re.S)
-        # Require fences recognized by the example compiler.
-        loose_fences = re.findall(r"(?mi)^ {0,3}(?:`{3,}|~{3,})[ \t]*typst\b", source_readme)
-        if len(loose_fences) != len(fences):
-            failures.append(
-                f"README has {len(loose_fences)} typst fences but only {len(fences)} in "
-                "the canonical form the gate compiles (```typst at column 0)")
-        if not fences:
-            failures.append("README has no ```typst example to compile")
-        preamble = (
-            f'#import "@preview/{package["name"]}:{package["version"]}": *\n'
-            "#show: acmart.with(\n"
-            '  title: "README Example",\n'
-            "  acm-year: 2018,\n"
-            "  acm-month: 8,\n"
-            '  authors: ((name: "Ada Lovelace", email: "ada@example.org",\n'
-            '    affiliation: (institution: "Analytical Engine Institute", country: "UK")),),\n'
-            ")\n"
-        )
-        for index, fence in enumerate(fences, start=1):
-            example = root / f"readme-example-{index}"
-            example.mkdir()
-            shutil.copy2(package_dir / "template" / "refs.bib", example / "refs.bib")
-            source = fence if "#import" in fence else preamble + fence
-            (example / "main.typ").write_text(source)
-            fence_proc = _compile_against_packages(example / "main.typ", package_root)
-            if fence_proc.returncode != 0:
-                failures.append(
-                    f"README ```typst example {index} failed to compile:\n" +
-                    (fence_proc.stderr + fence_proc.stdout).strip())
+        doc_failures, example_count = _check_doc_examples(root, package_root, package_dir)
+        failures.extend(doc_failures)
 
         checker = shutil.which("typst-package-check")
         if checker is None:
@@ -652,5 +721,5 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
     if report and not failures:
         print(
             f"ok   {len(rels)} shipped files; fresh template compile; "
-            f"{len(fences)} README examples; offline package lint")
+            f"{example_count} documentation examples; checked SVGs; offline package lint")
     return failures

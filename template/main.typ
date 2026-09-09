@@ -42,8 +42,8 @@
   abstract: [
     A clear and well-documented Typst document is presented as an article
     formatted for publication by ACM. Based on the acmart class, this template
-    reproduces the look of the LaTeX original — fonts, sizes, and spacing — while
-    letting you write idiomatic Typst.
+    provides ACM fonts, page layouts, and document styles while letting you
+    write idiomatic Typst. Line and page breaks can differ between the engines.
   ],
 
   ccs: (
@@ -56,12 +56,12 @@
 
 = Introduction
 ACM's consolidated article template provides a consistent style across ACM
-publications. This Typst port lets you write a normal Typst document and have it
-render like acmart. You use ordinary headings, paragraphs, figures, and
+publications. This Typst port applies acmart's document styles to ordinary
+Typst content. You use headings, paragraphs, figures, and
 citations @Cohen:1996:EAE @Li:2008:PUC.
 
-A second paragraph is indented, as in the LaTeX original, and the text is set on
-the same baseline grid.
+A second paragraph is indented, as in the LaTeX original. The package sets fonts
+and spacing according to the selected format.
 
 == Using the template
 Call `acmart.with(...)` in a show rule and write the body as usual. Sections,
@@ -78,8 +78,8 @@ Run-in headings continue inline with the following text, just like LaTeX.
     separator, as ACM journals require.],
 )
 
-ACM tables are booktabs-style: use `tabular` (a drop-in for `table`) with
-`toprule`/`midrule`/`bottomrule` for the correct rule weights and spacing.
+Use `tabular` with `toprule`/`midrule`/`bottomrule` for booktabs-style rule weights
+and spacing. Pass `columns` directly so the wrapper can infer the header row.
 
 #figure(
   tabular(
@@ -97,17 +97,17 @@ ACM tables are booktabs-style: use `tabular` (a drop-in for `table`) with
 Theorem-like environments share a counter numbered within the section:
 
 #theorem[
-  For every $epsilon > 0$ there exists a $delta > 0$ such that the template
-  renders within $delta$ of the LaTeX original.
+  Every finite directed acyclic graph has a topological ordering.
 ]
 
 #proof[
-  Build both with the same content and compare. The difference is bounded by the
-  engines' differing line-breaking, which is below $epsilon$.
+  A nonempty finite acyclic graph has a vertex with no incoming edges. Remove
+  that vertex, order the remaining graph by induction, and put the vertex first.
 ]
 
 #definition[
-  A _faithful port_ matches fonts, sizes, margins, and spacing of the original.
+  A _topological ordering_ puts the source of every directed edge before its
+  target.
 ]
 
 We can also use lists:

@@ -16,8 +16,10 @@ The regression and package checks already arrange their own inputs and need no l
 
 ## Prepare a release
 
-1. Update the manifest version and the package imports in `README.md` and `template/main.typ`.
-2. Run the [regression suite](CONTRIBUTING.md#validation).
+Complete these steps before submitting a new package version:
+
+1. Update the manifest version and the package imports in `README.md`, `docs/`, and `template/main.typ`.
+2. Run `uv run python tools/test.py docs` to refresh the SVG illustrations, inspect any changes, and run the [regression suite](CONTRIBUTING.md#validation).
 3. If the example's appearance changed, rebuild the thumbnail with the local package link in place:
 
    ```sh
@@ -35,8 +37,9 @@ The regression and package checks already arrange their own inputs and need no l
    ```
 
 The package command writes the bundle only after its checks pass and requires an empty destination.
-It rewrites README links to excluded files as links to the release tag.
-Keep those generated URLs out of the source README: use relative inline links there, and ordinary column-zero `typst` fences for examples so the checker can compile them.
+The bundle includes the reference and SVG illustrations.
+It rewrites documentation links to excluded files as links to the release tag.
+Keep those generated URLs out of source documents: use relative inline links and the [documentation example conventions](CONTRIBUTING.md#documentation).
 
 ## Submit
 
