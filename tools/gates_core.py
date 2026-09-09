@@ -210,11 +210,12 @@ def gate_golden() -> list[str]:
         else:
             if len(c) != len(g):
                 local.append(f"{name}: page count {len(c)} != golden {len(g)}")
-            for i, h in enumerate(c, 1):
-                if g.get(i) != h:
-                    local.append(f"{name}: page {i} changed")
-                    DIFF.mkdir(parents=True, exist_ok=True)
-                    rasterize(typst_pdf(name), M.GOLDEN_DPI, DIFF / f"changed-{name}")
+            changed = [i for i, h in enumerate(c, 1) if g.get(i) != h]
+            for i in changed:
+                local.append(f"{name}: page {i} changed")
+            if changed:
+                DIFF.mkdir(parents=True, exist_ok=True)
+                rasterize(typst_pdf(name), M.GOLDEN_DPI, DIFF / f"changed-{name}")
         if not local:
             print(f"ok   {name} ({len(c)}p)")
         failures.extend(local)
