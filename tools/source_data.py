@@ -384,10 +384,16 @@ def _package_files() -> list[Path]:
         return rel == ".git" or rel.startswith(".git/") or any(
             rel == item or rel.startswith(item + "/") for item in excluded)
 
-    return sorted(
-        p for p in ROOT.rglob("*")
-        if p.is_file() and not is_excluded(p.relative_to(ROOT).as_posix())
-    )
+    files: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(ROOT):
+        base = Path(dirpath)
+        dirnames[:] = [d for d in dirnames
+                       if not is_excluded((base / d).relative_to(ROOT).as_posix())]
+        for fname in filenames:
+            p = base / fname
+            if not is_excluded(p.relative_to(ROOT).as_posix()):
+                files.append(p)
+    return sorted(files)
 
 
 _MD_LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
