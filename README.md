@@ -225,6 +225,24 @@ Apply @topo to order the tasks.
 There are also lemmas, corollaries, propositions, conjectures, definitions, examples, and remarks.
 See [theorems and acknowledgments](docs/reference.md#theorems-and-acknowledgments) for naming and numbering.
 
+## Correct inherited quirks
+
+The port reproduces the LaTeX sources faithfully, including a few of their defects.
+Set `fix-quirks: true` to correct them; ACM formatting is otherwise unchanged.
+
+```typst
+#show: acmart.with(
+  format: "acmsmall",
+  nonacm: true,
+  fix-quirks: true,
+  title: "Scheduling with dependency graphs",
+)
+```
+
+The corrections cover doubled DOI resolver links, `inbook` entries attributed to their editor rather than their author, empty date parentheses, doubled sentence periods, and citation locators that natbib drops.
+[Design](DESIGN.md#corrections) lists each one and the backends it applies to.
+The option is off by default, so existing papers keep the output they have today.
+
 ## Documentation
 
 Use the reference for details and the starter for a complete, editable paper:

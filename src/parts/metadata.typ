@@ -3,13 +3,15 @@
 #import "frontmatter.typ": normalize-author, parse-ccs
 #import "journals.typ": lookup-journal
 #import "strings.typ": lang-record
+#import "doi.typ": normalize-doi
 
-#let resolve-publication(journal, doi) = (
+#let resolve-publication(journal, doi, fix-quirks: false) = (
   journal: lookup-journal(journal),
   doi: if doi == none {
     none
   } else {
-    (bare: doi, url: "https://doi.org/" + doi)
+    let bare = if fix-quirks { normalize-doi(doi) } else { doi }
+    (bare: bare, url: "https://doi.org/" + bare)
   },
 )
 
@@ -82,7 +84,7 @@
     message: "faithful-acmart: at most one author may set `corresponding: true`, "
       + "matching acmart's \\correspondingauthor.")
   let translated = resolve-translations(lang, data.translations)
-  let publication = resolve-publication(data.journal, data.doi)
+  let publication = resolve-publication(data.journal, data.doi, fix-quirks: cfg.fix-quirks)
   let conference = resolve-conference(cfg, data.conference)
   let booktitle = resolve-booktitle(conference, data.booktitle)
   let copyright-year = if data.copyright-year != none {

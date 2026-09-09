@@ -1,0 +1,106 @@
+% Entries for the fix-quirks corrections that the shared twin bibliographies do not cover.
+% The BibLaTeX inbook cases complement DriverInbook in biblatex-driver-test.bib, which
+% already supplies a chapter author, a book editor, and a distinct book author.
+
+@article{FxCrossA,
+  author   = {Alice Ames},
+  title    = {A first article in the volume},
+  crossref = {FxPeriodical},
+  pages    = {1--9},
+}
+@article{FxCrossB,
+  author   = {Bob Byrne},
+  title    = {A second article in the volume},
+  crossref = {FxPeriodical},
+  pages    = {10--19},
+}
+@periodical{FxPeriodical,
+  title     = {Journal of Shared Volumes},
+  journal   = {Journal of Shared Volumes},
+  editor    = {Cora Cole},
+  volume    = {7},
+  year      = {2021},
+  publisher = {ACM},
+  address   = {New York, NY},
+}
+@article{FxLocatorA,
+  author  = {Dana Doyle},
+  title   = {An article cited with a locator},
+  journal = {Journal of Locators},
+  volume  = {3},
+  year    = {2019},
+  pages   = {21--30},
+}
+@article{FxLocatorB,
+  author  = {Emil Ellis},
+  title   = {Another article cited with a locator},
+  journal = {Journal of Locators},
+  volume  = {4},
+  year    = {2020},
+  pages   = {31--40},
+}
+
+@inbook{FxInbookNoEditor,
+  author    = {Iris Inbook},
+  bookauthor = {Beatrice Bookauthor},
+  title     = {A chapter without an editor},
+  booktitle = {Book Without Editors},
+  publisher = {Book Press},
+  location  = {Boston},
+  year      = {2021},
+  pages     = {1--10},
+}
+@inbook{FxInbookNoAuthor,
+  editor    = {Evan Editor and Edna Editrix},
+  title     = {A chapter without an author},
+  booktitle = {Book Without Authors},
+  publisher = {Book Press},
+  location  = {Boston},
+  year      = {2020},
+  pages     = {11--20},
+}
+
+@misc{FxMiscNoDate,
+  author       = {Nora Nodate},
+  title        = {A note with no date at all},
+  organization = {Standards Group},
+  location     = {Geneva},
+}
+@misc{FxMiscNoDateBare,
+  author = {Otto Only},
+  title  = {A note with neither date nor publisher},
+}
+@misc{FxCorporate,
+  author = {{Widgets Inc.}},
+  title  = {A note from a corporate author},
+  year   = {2018},
+}
+@misc{FxEditorLed,
+  editor = {Petra Pike},
+  title  = {A note led by its editor},
+  year   = {2017},
+}
+@manual{FxOrgLed,
+  organization = {Standards Group Inc.},
+  title        = {A manual led by its organization},
+  year         = {2016},
+}
+
+@misc{FxDoiUrl,
+  author = {Rita Roe},
+  title  = {A note whose DOI field holds a resolver URL},
+  year   = {2022},
+  doi    = {https://DOI.org/10.1145/3597503},
+}
+@misc{FxDoiDx,
+  author = {Sam Shaw},
+  title  = {A note whose DOI field holds the legacy resolver},
+  year   = {2022},
+  doi    = {http://dx.doi.org/10.1145/3597504},
+}
+@misc{FxDoiBare,
+  author = {Tara Thom},
+  title  = {A note whose DOI field holds a bare identifier},
+  year   = {2022},
+  doi    = {10.1145/3597505},
+}

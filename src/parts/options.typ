@@ -100,8 +100,12 @@
     acmcp-article-types.at(article-type)
   }
 
+  assert(type(data.fix-quirks) == bool,
+    message: "faithful-acmart: `fix-quirks` must be a boolean; got " + repr(data.fix-quirks) + ".")
+
   let lang = resolve-language(data.language)
-  let cfg = cfg + (strings: lang, lang: lang.code, bib-backend: bib-backend)
+  let cfg = cfg + (strings: lang, lang: lang.code, bib-backend: bib-backend,
+    fix-quirks: data.fix-quirks)
   let cfg = cfg + bibstrip-flags
 
   assert(bib-backend in ("typst", "bibtex", "biblatex"),

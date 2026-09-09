@@ -25,7 +25,7 @@
   h(if ambient { indent - cfg.parindent } else { indent })
   set text(font: f.font, style: f.style, weight: f.weight, size: f.size)
   if num != none [#num#h(1em)]
-  if dot { add-punct(body) } else { body }
+  if dot { add-punct(body, fix: cfg.fix-quirks) } else { body }
   if sep == auto [ ] else { h(cfg.runin-sep) }
 }
 

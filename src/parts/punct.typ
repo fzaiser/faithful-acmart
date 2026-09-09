@@ -49,6 +49,19 @@
   _opaque
 }
 
-#let needs-punct(c) = _space-factor(_trailing(c)) <= 1000
+// Corrected mode looks only at the last visible character, so an uppercase letter
+// no longer hides the punctuation behind it: "London, UK." keeps one period.
+#let _ends-punct(s) = {
+  let last = none
+  for c in s {
+    if _sfcode(c) != 0 { last = c }
+  }
+  last != none and _sfcode(last) > 1000
+}
 
-#let add-punct(c, mark: [.]) = if needs-punct(c) { [#c#mark] } else { c }
+#let needs-punct(c, fix: false) = {
+  let t = _trailing(c)
+  if fix { not _ends-punct(t) } else { _space-factor(t) <= 1000 }
+}
+
+#let add-punct(c, mark: [.], fix: false) = if needs-punct(c, fix: fix) { [#c#mark] } else { c }

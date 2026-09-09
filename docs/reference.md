@@ -335,7 +335,7 @@ Use `cite-style: "numeric"` or `"author-year"` on `acmart` to choose the overall
 
 Use `@key[p. 42]` or `#cite(<key>, supplement: [p. 42])` for a page locator.
 The `"full"` and `none` forms do not accept a supplement.
-The BibTeX backend follows natbib in dropping supplements from numeric author-only and year-only citations.
+The BibTeX backend follows natbib in dropping supplements from numeric author-only and year-only citations, unless [`fix-quirks`](#corrections) is enabled.
 
 Additional single-key helpers are `cite-alt` (prose citation without the outer year brackets), `cite-yearpar` (bracketed year), and `short-cite` (bracketed year for author–year citations, ordinary citation for numeric citations).
 They take an optional `supplement`.
@@ -476,6 +476,12 @@ These helpers require `sigchi-a`.
 
 The package targets the bundled LaTeX `acmart` sources.
 It compares representative documents against LaTeX, but does not guarantee identical output for every paper.
+
+### Corrections
+
+A few of the differences below are defects in the LaTeX sources that faithful output reproduces.
+Set `fix-quirks: true` to correct the documented ones while keeping ACM formatting; [Design](../DESIGN.md#corrections) lists them and the backends they apply to.
+The option defaults to false, which keeps the current output.
 
 ### Layout
 

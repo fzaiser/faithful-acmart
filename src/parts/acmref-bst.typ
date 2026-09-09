@@ -3,7 +3,7 @@
 #import "bib-data.typ": journal-canon
 #import "tex.typ": purify, change-case
 #import "acmref-common.typ": render, ends-punct, V, it, fld, is-others, join-names, dashify, von-last, nolinkurl
-#import "acmref-common.typ": has as present, year-value as plain-year-value
+#import "acmref-common.typ": has as present, year-value as plain-year-value, fixing
 // empty.or.unknown treats the BibNet ?? prefix as a missing field.
 #let has(e, name) = present(e, name) and not fld(e, name).starts-with("??")
 #let fV(e, name) = if has(e, name) { V(fld(e, name)) } else { none }
@@ -262,7 +262,8 @@
     if is-others(eds.at(1)) { s + " et al." } else { s + " and " + von-last(eds.at(1)) }
   } else { s }
 }
-#let format-article-crossref(e, xref-cite) = (c: [See] + xref-cite, p: false) // ACM's format.article.crossref emits no intervening space.
+// ACM's format.article.crossref emits no intervening space.
+#let format-article-crossref(e, xref-cite) = (c: (if fixing() { [See ] } else { [See] }) + xref-cite, p: false)
 #let format-incoll-inproc-crossref(e, xref-cite) = (c: [See ] + xref-cite, p: false)
 #let format-book-crossref(e, xref-cite) = {
   let pre = if has(e, "volume") { [Volume #fld(e, "volume") of ] } else { [In ] }

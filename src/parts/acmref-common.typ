@@ -3,6 +3,12 @@
 #import "tex.typ": tex-to-content
 #import "theorems.typ": cfg-state
 
+// Corrections are off by default so helpers used without a document keep the LaTeX-compatible output.
+#let fixing() = {
+  let cfg = cfg-state.get()
+  cfg != none and cfg.fix-quirks
+}
+
 #let nolinkurl(s) = {
   let cfg = cfg-state.get()
   if cfg != none and cfg.urlstyle-sans { text(font: cfg.fonts.sans, s) } else { s }

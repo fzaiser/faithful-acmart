@@ -49,6 +49,24 @@ It replaces `cite` to support grouped citations and routes unresolved `@key` ref
 BibLaTeX name disambiguation alternates name expansion and list expansion until they stabilize, matching Biber's dependency between those passes.
 The date parser handles calendar dates, partial dates, uncertainty, seasons, and intervals before the renderer formats them.
 
+## Corrections
+
+The bundled LaTeX sources contain defects that faithful output reproduces.
+The `fix-quirks` option corrects the ones listed here while keeping ACM formatting; it is off by default, so the paired fixtures keep checking the LaTeX-compatible output.
+Enabling it is not a claim that every upstream defect is fixed, and leaving it off is not a claim of exact LaTeX identity.
+
+| Correction | Applies to |
+|---|---|
+| A DOI that already carries a `doi.org` or `dx.doi.org` resolver URL produces one resolver link instead of a doubled one. | The `doi` option; the BibLaTeX backend |
+| An `inbook` entry that has an author leads with that author, and its editor follows the book title. | The BibLaTeX backend |
+| An entry with no printable date contributes no empty parentheses and no separator of its own. | The BibLaTeX backend |
+| An opening author, editor, or organization that already ends in a sentence period takes no second one. | The BibLaTeX author–year style |
+| A page or section locator survives on author-only and year-only numeric citations. | The BibTeX backend |
+| A space separates `See` from the cross-referenced entry. | The BibTeX backend |
+| Terminal punctuation is recognized after an uppercase letter, so a heading, proof name, author note, or contact line that ends in an abbreviation keeps one period. | Headings, proofs, and front matter |
+
+Typst's native CSL backend is unaffected: its formatting comes from Typst.
+
 ## Compatibility
 
 The user reference lists [capabilities and compatibility limits](docs/reference.md#compatibility).

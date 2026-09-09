@@ -190,6 +190,28 @@ def gate_links(report: bool = False) -> list[str]:
         elif report:
             print(f"ok   {name}: {ti['count']} internal links, "
                   f"{ti['unique_targets']} destination(s)")
+    for name, t in TESTS.items():
+        if not t.link_assertions:
+            continue
+        tpdf = typst_pdf(name)
+        if not tpdf.exists():
+            failures.append(f"{name}: Typst PDF missing for hyperlink assertion")
+            continue
+        try:
+            uris = extract_uris(tpdf)
+        except RuntimeError as exc:
+            failures.append(f"{name}: {exc}")
+            continue
+        for i, a in enumerate(t.link_assertions, 1):
+            if a.kind == "present" and a.uri not in uris:
+                failures.append(
+                    f"{name}: hyperlink assertion {i} missing target {a.uri!r}; "
+                    f"found {sorted(uris)}")
+            elif a.kind == "absent" and a.uri in uris:
+                failures.append(
+                    f"{name}: hyperlink assertion {i} found forbidden target {a.uri!r}")
+        if report:
+            print(f"ok   {name}: {len(t.link_assertions)} hyperlink target assertion(s)")
     return failures
 def gate_fonts(report: bool = False) -> list[str]:
     failures: list[str] = []

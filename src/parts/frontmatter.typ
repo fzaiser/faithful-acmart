@@ -358,15 +358,15 @@
     if thanks.len() > 0 or has-contact-info {
       rule(100%)
       for t in thanks {
-        block(spacing: lead, tagged-par[#add-punct(if anon [A note] else { t })])
+        block(spacing: lead, tagged-par[#add-punct(if anon [A note] else { t }, fix: cfg.fix-quirks)])
       }
       if has-contact-info {
         if meta.authors-addresses == auto {
           let label = if meta.authors.len() > 1 { "Authors' Contact Information:" } else { "Author's Contact Information:" }
           let contacts = meta.authors.map(contact-line).join("; ")
-          block(spacing: lead, tagged-par[#add-punct([#label #contacts])])
+          block(spacing: lead, tagged-par[#add-punct([#label #contacts], fix: cfg.fix-quirks)])
         } else {
-          block(spacing: lead, tagged-par[#add-punct(meta.authors-addresses)])
+          block(spacing: lead, tagged-par[#add-punct(meta.authors-addresses, fix: cfg.fix-quirks)])
         }
       }
     }

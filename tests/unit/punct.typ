@@ -33,3 +33,27 @@
 #assert(needs-punct[The "case"])
 
 = Target <punct-target>
+
+// Corrected mode: the punctuation set is unchanged, but an uppercase letter no longer
+// hides the punctuation behind it.
+#for mark in (".", "!", "?", ",", ";", ":") {
+  assert(not needs-punct("Label" + mark, fix: true))
+  assert(not needs-punct("LABEL" + mark, fix: true), message: "uppercase must not hide " + mark)
+}
+#assert(needs-punct("Label", fix: true))
+#assert(not needs-punct("Written in the UK.", fix: true))
+#assert(not needs-punct("Written in the U.S.", fix: true))
+#assert(not needs-punct("Written in England.", fix: true))
+#assert.eq(add-punct("London, UK.", fix: true), "London, UK.")
+#assert.eq(add-punct("London", fix: true), [#"London"#[.]])
+#assert(not needs-punct("Label. ", fix: true))
+#assert(not needs-punct([#emph[Label:]], fix: true))
+#assert(not needs-punct([#link("https://example.com")[Label;]], fix: true))
+#assert(not needs-punct([#strong[UK].], fix: true))
+#assert(not needs-punct([#strong[England].], fix: true))
+#assert(not needs-punct([The case $X$.], fix: true))
+#assert(needs-punct([The case $X$], fix: true))
+#assert(needs-punct([Proof of Sec. #ref(<punct-target>, supplement: [])], fix: true))
+#assert(not needs-punct([Proof of Sec. #h(2pt)], fix: true))
+#assert(not needs-punct([The "case."], fix: true))
+#assert(needs-punct([The "case"], fix: true))

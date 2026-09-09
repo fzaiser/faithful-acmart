@@ -93,7 +93,7 @@
     let cfg = cfg-state.get()
     let name = if name != none { name } else { cfg.strings.proof }
     // The proof uses \topsep and \labelsep from its trivlist, independently of the theorem style (acmart.dtx, proof).
-    thm-block(cfg, _head-font(cfg.thm.proof-head, add-punct(name)),
+    thm-block(cfg, _head-font(cfg.thm.proof-head, add-punct(name, fix: cfg.fix-quirks)),
       [#body #h(1fr)#sym.square.stroked],
       topsep: 6 * tp, indent: cfg.thm.proof-indent,
       head-sep: (if cfg.amsart-lists { 5 } else { 4 }) * tp)

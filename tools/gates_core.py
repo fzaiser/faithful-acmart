@@ -219,6 +219,14 @@ def gate_golden() -> list[str]:
         if not local:
             print(f"ok   {name} ({len(c)}p)")
         failures.extend(local)
+    for a, b, reason in M.GOLDEN_EQUIVALENT_PAIRS:
+        ha, hb = cur.get(a), cur.get(b)
+        if ha is None or hb is None:
+            failures.append(f"{a}/{b}: not built for the render-equivalence check")
+        elif ha != hb:
+            failures.append(f"{a} and {b} render differently: {reason}")
+        else:
+            print(f"ok   {a} == {b}")
     if failures:
         failures.append(f"inspect changed pages in {DIFF.relative_to(ROOT)}/ , "
                         "then `test.py accept` if intended.")

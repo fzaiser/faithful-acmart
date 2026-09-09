@@ -228,6 +228,8 @@
   article-type: "Research",
   acmthm: true,
   url-break-on-hyphens: true,
+  // Correct documented quirks inherited from the LaTeX class and bibliography styles.
+  fix-quirks: false,
   draft: false,
   font-size: auto,
   body,
@@ -249,6 +251,7 @@
     acm-month: acm-month,
     article-type: article-type,
     authors-per-row: authors-per-row,
+    fix-quirks: fix-quirks,
   ))
   let cfg = options.cfg
   let print-acm-reference = options.print-acm-reference

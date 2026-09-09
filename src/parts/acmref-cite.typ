@@ -2,7 +2,7 @@
 
 #import "bibtex.typ": parse-bib, parse-names
 #import "tex.typ": tex-to-string
-#import "acmref-common.typ": fld, has, is-others, von-last, it
+#import "acmref-common.typ": fld, has, is-others, von-last, it, fixing
 #import "acmref-bst.typ": handle, sort-key, has as bst-has, year-value as bst-year-value
 #import "acmref-biblatex.typ": blx-handle, blx-biber-datamodel, blx-sort-key, blx-np-lengths, blx-label-year
 #import "acmref-blxnames.typ": name-list, disambiguate, list-label, list-context, list-namehash
@@ -425,7 +425,7 @@
 }
 
 // natbib drops author/year postnotes in numeric mode; BibLaTeX keeps them.
-#let keeps-postnote(p) = p.fmt == "biblatex" or cite-style-state.get() == "author-year"
+#let keeps-postnote(p) = p.fmt == "biblatex" or cite-style-state.get() == "author-year" or fixing()
 
 #let bbl-citeyear(..keys) = {
   let ks = keys.pos()

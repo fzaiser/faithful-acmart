@@ -69,6 +69,16 @@ class Assertion:
 
 
 @dataclass(frozen=True)
+class LinkAssertion:
+    """An exact hyperlink target expected in, or absent from, the Typst PDF.
+
+    kind accepts present or absent."""
+
+    uri: str
+    kind: str = "present"
+
+
+@dataclass(frozen=True)
 class ExtractionArtifact:
     """A mismatch caused by PDF extraction."""
 
@@ -241,6 +251,13 @@ EXPECTED_DASH_DIFFS: dict[str, ExpectedDashDiff] = {
 }
 
 
+# Fixture pairs whose rendered pages must be identical.
+GOLDEN_EQUIVALENT_PAIRS: tuple[tuple[str, str, str], ...] = (
+    ("fix-quirks-doc-default-test", "fix-quirks-doc-off-test",
+     "omitting fix-quirks must render exactly like passing it as false"),
+)
+
+
 @dataclass(frozen=True)
 class MetricAllowance:
     """An expected metric difference with a maximum permitted delta."""
@@ -285,6 +302,7 @@ class Test:
     text_equal: bool | str | None = None
     expected_text_diffs: tuple[ExpectedTextDiff, ...] = ()
     text_assertions: tuple[Assertion, ...] = ()
+    link_assertions: tuple[LinkAssertion, ...] = ()
     expected_font_diffs: tuple[ExpectedFontDiff, ...] = ()
     expected_order_diffs: tuple[ExpectedOrderDiff, ...] = ()
     min_internal_links: int = 0
@@ -311,6 +329,9 @@ class Test:
             raise ValueError("minimum internal-link counts cannot be negative")
         if self.review_line_numbers and self.kind != "twin":
             raise ValueError("review_line_numbers only applies to twin tests")
+        for a in self.link_assertions:
+            if a.kind not in ("present", "absent"):
+                raise ValueError(f"unknown link assertion kind {a.kind!r}")
         if self.kind != "twin" and any(a.engine != "typst" for a in self.text_assertions):
             raise ValueError("a smoke test has no LaTeX reference, so its text "
                              "assertions must use engine=\"typst\"")
@@ -2047,6 +2068,154 @@ TESTS: dict[str, Test] = {
         ),
         note="A4.1: explicit print-acm-reference: true overrides acmcp's default "
              "suppression (LaTeX honours a post-\\begin \\settopmatter{printacmref=true}).",
+    ),
+    "fix-quirks-doc-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="https://doi.org/10.1145/1234567.1234568"),
+            Assertion(engine="typst", kind="absent", text="https://doi.org/https://"),
+            Assertion(engine="typst", text="Measured in the U.S. A run-in heading"),
+            Assertion(engine="typst", text="Deployed across the EU. A deeper run-in heading"),
+            Assertion(engine="typst", text="Ordinary subsubsection. A control heading"),
+            Assertion(engine="typst", text="Proof of Thm. A. The proof body"),
+            Assertion(engine="typst", text="council in the UK. Authors"),
+            Assertion(engine="typst", text="London, UK. Permission"),
+        ),
+        link_assertions=(
+            LinkAssertion(uri="https://doi.org/10.1145/1234567.1234568"),
+            LinkAssertion(kind="absent",
+                          uri="https://doi.org/https://DOI.org/10.1145/1234567.1234568"),
+        ),
+        note="fix-quirks outside the bibliography: a resolver URL in the `doi` option is "
+             "stripped once, and terminal punctuation is recognized after an abbreviation.",
+    ),
+    "fix-quirks-doc-off-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="https://doi.org/https://DOI.org/10.1145/1234567.1234568"),
+            Assertion(engine="typst", text="Measured in the U.S.. A run-in heading"),
+            Assertion(engine="typst", text="Deployed across the EU.. A deeper run-in heading"),
+            Assertion(engine="typst", text="Ordinary subsubsection. A control heading"),
+            Assertion(engine="typst", text="Proof of Thm. A.. The proof body"),
+            Assertion(engine="typst", text="council in the UK.."),
+            Assertion(engine="typst", text="London, UK.."),
+        ),
+        link_assertions=(
+            LinkAssertion(uri="https://doi.org/https://DOI.org/10.1145/1234567.1234568"),
+        ),
+        note="The same document with fix-quirks: false keeps the LaTeX-compatible doubled "
+             "resolver and the doubled period after an uppercase abbreviation.",
+    ),
+    "fix-quirks-doc-default-test": Test(
+        kind="smoke", pages=1,
+        note="The same document with the option omitted; GOLDEN_EQUIVALENT_PAIRS pins it to "
+             "render exactly like the explicit fix-quirks: false variant.",
+    ),
+    "fix-quirks-bst-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="A first article in the volume. See [3]"),
+            Assertion(engine="typst", kind="absent", text="See[3]"),
+            Assertion(engine="typst", text="year-only citation 2019, Sec. 2"),
+            Assertion(engine="typst", text="Ellis, n. 4"),
+            Assertion(engine="typst", text="2020, passim"),
+            Assertion(engine="typst", text="locator once: Doyle; Ellis, p. 7"),
+            Assertion(engine="typst", text="stay bare: Doyle and 2020"),
+        ),
+        note="fix-quirks on the BibTeX backend: a space after the article cross-reference "
+             "`See`, and locators retained on author-only and year-only numeric citations.",
+    ),
+    "fix-quirks-bst-off-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="A first article in the volume. See[3]"),
+            Assertion(engine="typst", text="year-only citation 2019. The helpers"),
+            Assertion(engine="typst", text="take one too: Ellis and 2020."),
+            Assertion(engine="typst", text="locator once: Doyle; Ellis."),
+            Assertion(engine="typst", kind="absent", text="Sec. 2"),
+            Assertion(engine="typst", kind="absent", text="passim"),
+        ),
+        note="The same document with fix-quirks: false keeps natbib's dropped numeric "
+             "locators and ACM's spaceless cross-reference.",
+    ),
+    "fix-quirks-blx-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="Iris Inbook. 2021."),
+            Assertion(engine="typst", text="Big Book of Drivers. Ed. by Evan Editor."),
+            Assertion(engine="typst", text="Ed. by Evan Editor and Edna Editrix."),
+            Assertion(engine="typst", text="Geneva: Standards Group."),
+            Assertion(engine="typst", kind="absent", text="Standards Group, ()"),
+            Assertion(engine="typst", kind="absent", text="publisher. ()"),
+            Assertion(engine="typst", text="Standards Group Inc. 2016."),
+            Assertion(engine="typst", text="Petra Pike, (Ed.) 2017."),
+            Assertion(engine="typst", text="Widgets Inc. 2018."),
+            Assertion(engine="typst", text="doi:10.1145/3597503"),
+            Assertion(engine="typst", kind="absent", text="doi:https://"),
+            Assertion(engine="typst", text="Nina Number. 2020. Series book."),
+        ),
+        link_assertions=(
+            LinkAssertion(uri="https://doi.org/10.1145/3597503"),
+            LinkAssertion(uri="https://doi.org/10.1145/3597504"),
+            LinkAssertion(uri="https://doi.org/10.1145/3597505"),
+            LinkAssertion(kind="absent", uri="https://doi.org/https://DOI.org/10.1145/3597503"),
+        ),
+        note="fix-quirks on the BibLaTeX author-year style: inbook leads with its author, an "
+             "empty date drops its parentheses, a punctuated opening takes no second period, "
+             "and a resolver URL in `doi` is stripped once.",
+    ),
+    "fix-quirks-blx-off-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", kind="absent", text="Iris Inbook."),
+            Assertion(engine="typst", text="Ed. by Evan Editor and Edna Editrix."),
+            Assertion(engine="typst", text="Geneva: Standards Group, ()."),
+            Assertion(engine="typst", text="publisher. ()."),
+            Assertion(engine="typst", text="Standards Group Inc. . 2016."),
+            Assertion(engine="typst", text="Petra Pike, (Ed.) . 2017."),
+            Assertion(engine="typst", text="Widgets Inc.. 2018."),
+            Assertion(engine="typst", text="doi:https://DOI.org/10.1145/3597503"),
+        ),
+        link_assertions=(
+            LinkAssertion(uri="https://doi.org/https://DOI.org/10.1145/3597503"),
+            LinkAssertion(kind="absent", uri="https://doi.org/10.1145/3597503"),
+        ),
+        note="The same document with fix-quirks: false reproduces the upstream inbook "
+             "attribution, empty parentheses, doubled periods, and doubled resolver.",
+    ),
+    "fix-quirks-blx-numeric-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", text="Iris Inbook. 2021. A chapter without an editor."),
+            Assertion(engine="typst", text="Iris Inbook. 2022. A contributed chapter."),
+            Assertion(engine="typst", text="Big Book of Drivers. Evan Editor, (Ed.) (2nd ed.)"),
+            Assertion(engine="typst",
+                      text="Evan Editor and Edna Editrix, (Eds.) 2020. A chapter without an author."),
+            Assertion(engine="typst", text="Geneva: Standards Group."),
+            Assertion(engine="typst", kind="absent", text="Standards Group, ()"),
+            Assertion(engine="typst", text="doi:10.1145/3597503"),
+            Assertion(engine="typst", kind="absent", text="doi:https://"),
+        ),
+        link_assertions=(
+            LinkAssertion(uri="https://doi.org/10.1145/3597503"),
+            LinkAssertion(kind="absent", uri="https://doi.org/https://DOI.org/10.1145/3597503"),
+        ),
+        note="fix-quirks on the BibLaTeX numeric style: the same inbook attribution and "
+             "empty-date corrections, with the numeric opening separator unchanged.",
+    ),
+    "fix-quirks-blx-numeric-off-test": Test(
+        kind="smoke", pages=1,
+        text_assertions=(
+            Assertion(engine="typst", kind="absent", text="Iris Inbook."),
+            Assertion(engine="typst", text="2021. A chapter without an editor. Beatrice"),
+            Assertion(engine="typst", text="Evan Editor, (Ed.) 2022. A contributed chapter."),
+            Assertion(engine="typst",
+                      text="Evan Editor and Edna Editrix, (Eds.) 2020. A chapter without an author."),
+            Assertion(engine="typst", text="Geneva: Standards Group, ()."),
+            Assertion(engine="typst", text="doi:https://DOI.org/10.1145/3597503"),
+        ),
+        note="The same document with fix-quirks: false keeps the upstream numeric inbook "
+             "attribution, empty parentheses, and doubled resolver.",
     ),
 }
 

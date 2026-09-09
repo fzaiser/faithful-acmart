@@ -5,7 +5,8 @@
 #import "tex.typ": foreign-purify, decode-chars, _special-letters as special-letters
 #import "tex.typ": _accent-cs as accent-symbols, _cs-literal as visible-symbols
 #import "tex.typ": _noop-cw as noop-words
-#import "acmref-common.typ": render, blx-ends-punct, blx-visible-tail, it, fld, has, articleno-of, is-others, join-names, dashify
+#import "acmref-common.typ": render, blx-ends-punct, blx-visible-tail, it, fld, has, articleno-of, is-others, join-names, dashify, fixing
+#import "doi.typ": normalize-doi
 #let V(text, c: none) = (c: render(if c == none { text } else { c }), p: blx-ends-punct(text))
 #let fV(e, name) = if has(e, name) { V(fld(e, name)) } else { none }
 
@@ -316,7 +317,11 @@
   y
 }
 // The ACM date macro retains parentheses even when \printdate is empty.
-#let blx-date-macro(e) = (c: "(" + blx-printdate(e) + ")", p: false)
+#let blx-date-macro(e) = {
+  let d = blx-printdate(e)
+  if d == "" and fixing() { return none }
+  (c: "(" + d + ")", p: false)
+}
 #let blx-date-ifmonth(e) = if blx-date-parts(e).month != none { blx-date-macro(e) } else { none }
 #let blx-year-macro(e) = {
   let p = blx-date-parts(e)
@@ -548,8 +553,10 @@
     if c != [] { c += ": " }
     c += blx-list-content(fld(e, "organization"))
   }
+  let d = blx-date-macro(e)
+  if d == none { return if c == [] { none } else { (c: c, p: false) } }
   if c != [] { c += ", " }
-  (c: c + blx-date-macro(e).c, p: false)
+  (c: c + d.c, p: false)
 }
 #let blx-pages-unit(e) = {
   let pg = blx-chapter-pages(e)
@@ -649,9 +656,10 @@
   let num = if arxiv { link("https://arxiv.org/abs/" + ep)[#ep] } else { link(ep)[#ep] }
   (c: prefix + ": " + num + cls, p: false)
 } else { none }
+// The BibLaTeX DOI format prepends the resolver even when the field already contains a URL.
 #let blx-doi(e) = if has(e, "doi") {
-  let d = fld(e, "doi")
-  // The BibLaTeX DOI format prepends the resolver even when the field already contains a URL.
+  let raw = fld(e, "doi")
+  let d = if fixing() { normalize-doi(raw) } else { raw }
   (c: link("https://doi.org/" + d)[doi:#d], p: false)
 } else { none }
 #let blx-tail(e) = {
@@ -690,14 +698,18 @@
   if who == none { return if style == "numeric" { dt } else { none } }
   // acmauthoryear inserts a literal period even after punctuation.
   // Its editor+others macro also emits a newline space before date+extradate.
-  let sep = if style == "numeric" { if who.dot { " " } else { ". " } }
+  let sep = if style == "numeric" or fixing() { if who.dot { " " } else { ". " } }
     else if editor-others and who.kind != "author" { " . " }
     else { ". " }
   (c: who.c + sep + dt.c, p: dt.p)
 }
+// The ACM inbook drivers test author with \iffieldundef, which always treats a name list as
+// undefined, so their byeditor+others branch runs at the leading position even with an author.
+#let blx-inbook-author-led(e) = has(e, "author") and fixing()
 #let blx-inbook-lead(e, style: "numeric", suffix: "") = {
-  // The ACM inbook drivers test author with \iffieldundef, which always treats a name list as undefined.
-  // Their byeditor+others branch therefore runs even with an author.
+  if blx-inbook-author-led(e) {
+    return blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false)
+  }
   let ed = blx-editor-block(e, style: style)
   if ed == none { return if style == "numeric" { blx-year-macro(e) } else { none } }
   if style != "numeric" { return ed }
@@ -783,6 +795,7 @@
     blx-bytranslator(e),
     blx-bookauthor(e),
     blx-booktitle-simple(e, with-in: false, style: style),
+    if blx-inbook-author-led(e) { blx-editor-block(e, style: style) },
     blx-edition(e),
     blx-volume(e),
     blx-volumes(e),
