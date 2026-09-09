@@ -176,6 +176,30 @@ CHECK_GATE_SLUGS = [
     "validate", "fonts", "structure", "order", "outline", "metrics",
     "word-positions", "rules",
 ]
+# slug -> (needs the shared Typst PDFs, needs the shared LaTeX references).
+# Gates absent here (or new ones) fall back to building both.
+GATE_BUILD_NEEDS = {
+    "matrix-integrity": (False, False),
+    "source-data":      (False, False),
+    "latex-oracle":     (False, False),
+    "smoke":            (True,  True),
+    "unit":             (False, False),
+    "package":          (False, False),
+    "format-sweep":     (False, False),
+    "golden":           (True,  False),
+    "text":             (True,  True),
+    "metadata":         (True,  True),
+    "errors":           (False, False),
+    "links":            (True,  True),
+    "validate":         (False, False),
+    "fonts":            (True,  True),
+    "structure":        (True,  False),
+    "order":            (True,  True),
+    "outline":          (True,  True),
+    "metrics":          (True,  True),
+    "word-positions":   (True,  True),
+    "rules":            (True,  True),
+}
 def cmd_check(args) -> int:
     selected = None
     if args.gates:
@@ -187,10 +211,16 @@ def cmd_check(args) -> int:
             return 2
 
     _EXTRACT_CACHE.clear()
-    print("Building LaTeX references…")
-    build_all_latex(jobs=args.jobs, force=args.force)
-    print("Compiling Typst test PDFs once…")
-    compiled = compile_all_typst()
+    active = selected if selected is not None else CHECK_GATE_SLUGS
+    need_typst = any(GATE_BUILD_NEEDS.get(s, (True, True))[0] for s in active)
+    need_latex = any(GATE_BUILD_NEEDS.get(s, (True, True))[1] for s in active)
+    if need_latex:
+        print("Building LaTeX references…")
+        build_all_latex(jobs=args.jobs, force=args.force)
+    compiled: dict[str, tuple[int, str]] = {}
+    if need_typst:
+        print("Compiling Typst test PDFs once…")
+        compiled = compile_all_typst()
 
     ok = True
     gate_failures: dict[str, list[str]] = {}
