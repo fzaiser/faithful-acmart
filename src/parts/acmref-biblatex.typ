@@ -612,6 +612,17 @@
   let raw = blx-join-names(e.names.translator)
   (c: "Trans. by " + render(raw), p: blx-ends-punct(raw))
 } else { none }
+// byeditor+others prints the editor and then the translator in one unit.
+// A leading name macro clears the name it printed, so `editor` is false where the
+// entry's opening already consumed the editor. usetranslator is off, so a translator
+// never leads and always reappears here.
+#let blx-editor-others(e, style: "numeric", sentence-start: true, editor: true) = {
+  let ed = if editor { blx-editor-block(e, style: style, sentence-start: sentence-start) }
+  let tr = blx-bytranslator(e)
+  if ed == none { return tr }
+  if tr == none { return ed }
+  (c: ed.c + (if ed.p { " " } else { ". " }) + tr.c, p: tr.p)
+}
 #let blx-isbn(e) = if has(e, "isbn") { (c: "isbn: " + fld(e, "isbn"), p: false) } else { none }
 #let blx-journal-title(e) = if has(e, "journaltitle") { fld(e, "journaltitle") } else { none }
 #let blx-journal(e) = {
@@ -710,11 +721,11 @@
   if blx-inbook-author-led(e) {
     return blx-lead(e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false)
   }
-  let ed = blx-editor-block(e, style: style)
+  let ed = blx-editor-others(e, style: style)
   if ed == none { return if style == "numeric" { blx-year-macro(e) } else { none } }
   if style != "numeric" { return ed }
   let dt = blx-year-macro(e)
-  (c: ed.c + " " + dt.c, p: dt.p)
+  (c: ed.c + (if ed.p { " " } else { ". " }) + dt.c, p: dt.p)
 }
 #let blx-nonempty(v) = v != none and v.c != none and v.c != [] and v.c != ""
 #let blx-blocks(..vals) = {
@@ -748,6 +759,8 @@
 #let blx-author-lead(e, style: "numeric", suffix: "") = blx-lead(
   e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false)
 
+// The article driver is the only one with its own bytranslator+others, which runs
+// before byeditor+others and leaves that macro with the editor alone.
 #let blx-article-like(e, style: "numeric", suffix: "") = blx-blocks(
   blx-author-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
@@ -762,9 +775,8 @@
   blx-blocks(
     blx-author-lead(e, style: style, suffix: suffix),
     blx-title-field(e, style: style),
-    blx-bytranslator(e),
     blx-booktitle(e, with-in: true, style: style),
-    blx-editor-block(e, style: style, sentence-start: has(e, "booktitle")),
+    blx-editor-others(e, style: style, sentence-start: has(e, "booktitle")),
     blx-volume(e),
     blx-list-field(e, "organization"),
     ..blx-publisher-pages(e),
@@ -775,13 +787,12 @@
 #let blx-incollection(e, style: "numeric", suffix: "") = blx-blocks(
   blx-author-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
-  blx-bytranslator(e),
   blx-booktitle-simple(e, with-in: true, style: style),
   blx-series-number(e, style: style),
   blx-edition(e),
   blx-volume(e),
   blx-volumes(e),
-  blx-editor-block(e, style: style, sentence-start: has(e, "booktitle")),
+  blx-editor-others(e, style: style, sentence-start: has(e, "booktitle")),
   blx-note(e),
   ..blx-publisher-pages(e),
   blx-isbn(e),
@@ -792,10 +803,9 @@
   blx-blocks(
     lead,
     blx-title-field(e, style: style),
-    blx-bytranslator(e),
     blx-bookauthor(e),
     blx-booktitle-simple(e, with-in: false, style: style),
-    if blx-inbook-author-led(e) { blx-editor-block(e, style: style) },
+    if blx-inbook-author-led(e) { blx-editor-others(e, style: style) },
     blx-edition(e),
     blx-volume(e),
     blx-volumes(e),
@@ -910,8 +920,7 @@
       blx-maintitle-title(e, style: style),
       if has(e, "language") { blx-language-value(fld(e, "language")) },
       blx-event(e),
-      blx-bytranslator(e),
-      if has(e, "author") { blx-editor-block(e, style: style) },
+      blx-editor-others(e, style: style, editor: has(e, "author")),
       if not blx-maintitle-takes-volume(e) { blx-volume-part(e) },
       blx-volumes(e),
       blx-series-number(e, style: style),
@@ -956,8 +965,7 @@
 #let blx-book-like(e, style: "numeric", suffix: "") = blx-blocks(
   blx-misc-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
-  blx-bytranslator(e),
-  if has(e, "author") { blx-editor-block(e, style: style) },
+  blx-editor-others(e, style: style, editor: has(e, "author")),
   blx-edition(e),
   blx-series-number(e, style: style),
   blx-volume(e),
@@ -970,7 +978,7 @@
 #let blx-misc(e, style: "numeric", suffix: "") = blx-blocks(
   blx-misc-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
-  blx-bytranslator(e),
+  blx-editor-others(e, style: style, editor: has(e, "author")),
   fV(e, "howpublished"),
   blx-type(e),
   blx-version(e),
@@ -982,7 +990,7 @@
 #let blx-online(e, style: "numeric", suffix: "") = blx-blocks(
   blx-misc-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),
-  blx-bytranslator(e),
+  blx-editor-others(e, style: style, editor: has(e, "author")),
   blx-version(e),
   blx-note(e),
   blx-list-field(e, "organization"),
@@ -1016,8 +1024,7 @@
   blx-blocks(
     lead,
     blx-title-field(e, style: style),
-    if has(e, "author") { blx-editor-block(e, style: style) },
-    blx-bytranslator(e),
+    blx-editor-others(e, style: style, editor: has(e, "author")),
     blx-type(e),
     blx-edition(e),
     blx-version(e),

@@ -11,7 +11,7 @@
 )
 
 #let blx-keys = (
-  "DriverInbook", "FxInbookNoEditor", "FxInbookNoAuthor",
+  "DriverInbook", "FxInbookNoEditor", "FxInbookNoAuthor", "FxInbookTranslated",
   "FxMiscNoDate", "FxMiscNoDateBare",
   "FxCorporate", "FxEditorLed", "FxOrgLed",
   "FxDoiUrl", "FxDoiDx", "FxDoiBare", "DriverBook",
@@ -20,6 +20,7 @@
 #let blx-body = [
   = Drivers, dates, separators and identifiers
   Inbook chapters with and without each name list #cite("DriverInbook", "FxInbookNoEditor", "FxInbookNoAuthor").
+  A chapter whose editor and translator print together #cite("FxInbookTranslated").
   Entries with no date at all, with and without a publisher line #cite("FxMiscNoDate", "FxMiscNoDateBare").
   Openings that already end in a period #cite("FxCorporate", "FxEditorLed", "FxOrgLed").
   DOI fields holding a resolver URL, the legacy resolver, and a bare identifier

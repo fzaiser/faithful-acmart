@@ -836,8 +836,14 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="A shared report title. 2026a. Tech. rep. First Institute."),
             Assertion(engine="both", text="A shared report title. 2026b. Tech. rep. Second Institute."),
             Assertion(engine="both", text="[A dateless report n.d.]"),
+            Assertion(engine="both", text="Ed. by Elsa Editor. Trans. by Tilly Translator."),
+            Assertion(engine="both", text="In: Translated Collection. Ed. by Elsa Editor. "
+                      "Trans. by Tilly Translator."),
+            Assertion(engine="both", text="Mona Misc. 2017. A translated note. Ed. by Elsa Editor. "
+                      "Trans. by Tilly Translator. (2017)."),
         ),
-        note="BibLaTeX driver order for book/chapter, translator, and patent fields.",
+        note="BibLaTeX driver order for book/chapter, translator, and patent fields, "
+             "including the editor and translator that byeditor+others prints as one unit.",
     ),
     "biblatex-driver-numeric-test": Test(
         kind="twin", pages=1,
@@ -871,8 +877,15 @@ TESTS: dict[str, Test] = {
                       "Ph.D. Dissertation. Nameless University."),
             Assertion(engine="both", text="2025. A report with a long title. Tech. rep. Short Institute."),
             Assertion(engine="both", text="[n. d.] A dateless report. Tech. rep. Dateless Institute."),
+            Assertion(engine="both", text="Elsa Editor, (Ed.) Trans. by Tilly Translator. 2019. "
+                      "A translated chapter. Translated Book of Drivers."),
+            Assertion(engine="both", text="In Translated Collection. Elsa Editor, (Ed.) "
+                      "Trans. by Tilly Translator."),
+            Assertion(engine="both", text="Mona Misc. 2017. A translated note. Elsa Editor, (Ed.) "
+                      "Trans. by Tilly Translator. (2017)."),
         ),
-        note="BibLaTeX numeric report sourcemap plus translator and patent drivers.",
+        note="BibLaTeX numeric report sourcemap plus translator and patent drivers, "
+             "including the editor and translator that byeditor+others prints as one unit.",
     ),
     "biblatex-names-test": Test(
         kind="twin", pages=2, text_equal=False,
@@ -2153,6 +2166,9 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", text="doi:10.1145/3597503"),
             Assertion(engine="typst", kind="absent", text="doi:https://"),
             Assertion(engine="typst", text="Nina Number. 2020. Series book."),
+            Assertion(engine="typst", text="Iris Inbook. 2019."),
+            Assertion(engine="typst", text="Translated Book. Ed. by Evan Editor. "
+                      "Trans. by Trudy Translator."),
         ),
         link_assertions=(
             LinkAssertion(uri="https://doi.org/10.1145/3597503"),
@@ -2175,6 +2191,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", text="Petra Pike, (Ed.) . 2017."),
             Assertion(engine="typst", text="Widgets Inc.. 2018."),
             Assertion(engine="typst", text="doi:https://DOI.org/10.1145/3597503"),
+            Assertion(engine="typst", text="Ed. by Evan Editor. Trans. by Trudy Translator."),
         ),
         link_assertions=(
             LinkAssertion(uri="https://doi.org/https://DOI.org/10.1145/3597503"),
@@ -2195,6 +2212,8 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", kind="absent", text="Standards Group, ()"),
             Assertion(engine="typst", text="doi:10.1145/3597503"),
             Assertion(engine="typst", kind="absent", text="doi:https://"),
+            Assertion(engine="typst", text="Iris Inbook. 2019. A translated chapter. "
+                      "Translated Book. Evan Editor, (Ed.) Trans. by Trudy Translator."),
         ),
         link_assertions=(
             LinkAssertion(uri="https://doi.org/10.1145/3597503"),
@@ -2213,6 +2232,8 @@ TESTS: dict[str, Test] = {
                       text="Evan Editor and Edna Editrix, (Eds.) 2020. A chapter without an author."),
             Assertion(engine="typst", text="Geneva: Standards Group, ()."),
             Assertion(engine="typst", text="doi:https://DOI.org/10.1145/3597503"),
+            Assertion(engine="typst", text="Evan Editor, (Ed.) Trans. by Trudy Translator. 2019. "
+                      "A translated chapter. Translated Book."),
         ),
         note="The same document with fix-quirks: false keeps the upstream numeric inbook "
              "attribution, empty parentheses, and doubled resolver.",
