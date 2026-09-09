@@ -121,7 +121,7 @@
 }
 
 // Native bibliography input is validated before show rules run, so the custom parsers require a replacement function.
-#let bibliography(title: auto, ..args) = {
+#let bibliography(title: auto, full: false, style: auto, ..args) = {
   // Validate before entering context so this error precedes any lazy citation lookup.
   assert(args.pos().len() == 1,
     message: "faithful-acmart: `bibliography` takes a single path or an array of paths, like "
@@ -133,8 +133,18 @@
     let backend = if cfg == none { "typst" } else { cfg.bib-backend }
     if backend == "typst" {
       // Forward arguments intact to preserve the caller's path origin and inherited title setting.
-      if title == auto { std.bibliography(..args) } else { std.bibliography(..args, title: title) }
+      let extra = if style == auto { (:) } else { (style: style) }
+      std.bibliography(..args, title: title, full: full, ..extra)
     } else {
+      assert(args.named().len() == 0,
+        message: "faithful-acmart: with bib-backend " + repr(backend) + ", `bibliography` accepts "
+          + "only `title`; got unexpected named argument(s) " + repr(args.named().keys()) + ".")
+      assert(not full,
+        message: "faithful-acmart: `full` (list every entry) is not supported with bib-backend "
+          + repr(backend) + "; cite the entries you want listed.")
+      assert(style == auto,
+        message: "faithful-acmart: the reference style is fixed by the acmart `format`; the "
+          + "`style` argument is not accepted with bib-backend " + repr(backend) + ".")
       // Indexing a path loses its source location in Typst.
       // Keep a single path inside arguments through read(); array paths must be project-absolute.
       let title = if title == auto { cfg.strings.references } else { title }
