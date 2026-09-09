@@ -65,3 +65,10 @@
 #assert.eq(decode-chars("M{\\\"u}ller"), "Mu\u{308}ller")
 #assert.eq(decode-chars("{\\ae}-Paul"), "{æ}-Paul")
 #assert.eq(name-initials("{\\ae}-Paul"), "æ.-P.")
+
+// A name-supplied label must not trigger title conversion, which panics on math titles.
+#import "/src/parts/acmref-cite.typ": blx-lab-label
+#assert.eq(blx-lab-label(
+  (entry-type: "article", fields: (author: "Alice Smith", title: "On $x^2$"),
+   names: (author: parse-names("Alice Smith"))),
+  "Smith", "numeric"), "Smith")

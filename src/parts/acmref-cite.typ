@@ -131,12 +131,14 @@
   else if t in ("suppbook", "suppcollection", "suppperiodical") { "plain" }
   else { "emph" }
 }
-#let blx-lab-label(e, names, style) = pick((
-  names,
-  if style == "author-year" and has(e, "label") { tex-to-string(fld(e, "label")) },
-  label-title(e, quoted: blx-citetitle-format(e) == "quoted"),
-  if has(e, "key") { tex-to-string(fld(e, "key")) },
-))
+#let blx-lab-label(e, names, style) = {
+  if names != none { return names }
+  if style == "author-year" and has(e, "label") { return tex-to-string(fld(e, "label")) }
+  let t = label-title(e, quoted: blx-citetitle-format(e) == "quoted")
+  if t != none { return t }
+  if has(e, "key") { return tex-to-string(fld(e, "key")) }
+  ""
+}
 
 #let blx-label-people(e) = {
   if e.entry-type in ("proceedings", "periodical", "collection") {
