@@ -120,6 +120,10 @@
   top: table-inset.top + belowrulesep, bottom: table-inset.bottom + aboverulesep,
 ))
 
+// Plain string and numeric cells are accepted, like Typst's own table.
+#assert.eq(kids(tabular(columns: 2, header-rows: 0, "A", 5)).len(), 2)
+#assert.eq(headers(tabular(columns: 2, "A", "B")).len(), 1)
+
 #let footed = tabular(columns: 2, [H1], [H2], [a], [b], table.footer([F1], [F2]))
 #assert.eq(headers(footed).len(), 1)
 #assert.eq(kids(footed).last().func(), table.footer)

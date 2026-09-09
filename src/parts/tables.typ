@@ -22,6 +22,9 @@
   let cols = args.named().at("columns", default: 1)
   let ncols = if type(cols) == array { cols.len() } else if type(cols) == int { cols } else { 1 }
 
+  let normalize-child(c) = if type(c) == content { c } else { [#c] }
+  let positional = args.pos().map(normalize-child)
+
   let caller-inset = args.named().at("inset", default: table-inset)
   let inset-at(x, y) = {
     let value = if type(caller-inset) == function { caller-inset(x, y) } else { caller-inset }
@@ -51,9 +54,9 @@
   let header-start = none
   let header-end = none
   let walk = ()
-  for (index, c) in args.pos().enumerate() {
+  for (index, c) in positional.enumerate() {
     if c.func() == std.table.header or c.func() == std.table.footer {
-      for inner in c.fields().at("children", default: ()) { walk.push((index, inner)) }
+      for inner in c.fields().at("children", default: ()) { walk.push((index, normalize-child(inner))) }
     } else {
       walk.push((index, c))
     }
@@ -85,7 +88,7 @@
     }
   }
 
-  let children = args.pos()
+  let children = positional
   let stop = if header-end == none { children.len() } else { header-end }
   let plain(c) = (
     c.func() != std.table.header and c.func() != std.table.footer
