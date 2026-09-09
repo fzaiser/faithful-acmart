@@ -51,10 +51,15 @@
 
 // Corrected mode looks only at the last visible character, so an uppercase letter
 // no longer hides the punctuation behind it: "London, UK." keeps one period.
+// A zero space factor already skips closing brackets and apostrophes, and _trailing
+// reports a smart quote as one. A literal closing quotation mark keeps a factor of its
+// own, so skip it here too instead of taking it for the last visible character.
+#let _closing-quotes = ("\"", "\u{201D}", "\u{2019}")
+
 #let _ends-punct(s) = {
   let last = none
   for c in s {
-    if _sfcode(c) != 0 { last = c }
+    if _sfcode(c) != 0 and c not in _closing-quotes { last = c }
   }
   last != none and _sfcode(last) > 1000
 }

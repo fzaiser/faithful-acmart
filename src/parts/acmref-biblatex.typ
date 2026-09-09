@@ -548,13 +548,19 @@
 #let blx-organization-location-date(e) = {
   let loc = if has(e, "location") { fld(e, "location") }
   let c = []
-  if loc != none { c += blx-list-content(loc) }
+  let last = ""
+  if loc != none {
+    c += blx-list-content(loc)
+    last = blx-list-last(loc)
+  }
   if has(e, "organization") {
     if c != [] { c += ": " }
     c += blx-list-content(fld(e, "organization"))
+    last = blx-list-last(fld(e, "organization"))
   }
   let d = blx-date-macro(e)
-  if d == none { return if c == [] { none } else { (c: c, p: false) } }
+  // Without the date the last surviving list item decides the terminal punctuation.
+  if d == none { return if c == [] { none } else { (c: c, p: blx-ends-punct(last)) } }
   if c != [] { c += ", " }
   (c: c + d.c, p: false)
 }

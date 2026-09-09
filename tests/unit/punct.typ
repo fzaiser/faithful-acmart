@@ -57,3 +57,15 @@
 #assert(not needs-punct([Proof of Sec. #h(2pt)], fix: true))
 #assert(not needs-punct([The "case."], fix: true))
 #assert(needs-punct([The "case"], fix: true))
+
+// A literal closing quotation mark hides the punctuation behind it in corrected mode,
+// as a smart quote already did.
+#assert(not needs-punct("The \u{201C}UK.\u{201D}", fix: true))
+#assert(not needs-punct("The \"UK.\"", fix: true))
+#assert(not needs-punct("The \u{201C}case.\u{2019}", fix: true))
+#assert.eq(add-punct("The \u{201C}UK.\u{201D}", fix: true), "The \u{201C}UK.\u{201D}")
+#assert(needs-punct("The \u{201C}UK\u{201D}", fix: true))
+#assert(needs-punct("The \u{201C}", fix: true), message: "an opening quote is still visible")
+// The space-factor default keeps its own reading of a literal quotation mark.
+#assert(needs-punct("The \u{201C}UK.\u{201D}"))
+#assert(needs-punct("The \u{201C}ok.\u{201D}"))
