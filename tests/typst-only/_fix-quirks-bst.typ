@@ -1,5 +1,3 @@
-// Shared body for the BibTeX-backend corrections: the article cross-reference
-// separator and the citation locators natbib drops in numeric mode.
 #import "/src/lib.typ": *
 
 #let bst-opts = (

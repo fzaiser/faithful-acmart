@@ -228,7 +228,6 @@
   article-type: "Research",
   acmthm: true,
   url-break-on-hyphens: true,
-  // Correct documented quirks inherited from the LaTeX class and bibliography styles.
   fix-quirks: false,
   draft: false,
   font-size: auto,

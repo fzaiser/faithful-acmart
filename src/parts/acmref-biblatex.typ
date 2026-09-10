@@ -559,7 +559,6 @@
     last = blx-list-last(fld(e, "organization"))
   }
   let d = blx-date-macro(e)
-  // Without the date the last surviving list item decides the terminal punctuation.
   if d == none { return if c == [] { none } else { (c: c, p: blx-ends-punct(last)) } }
   if c != [] { c += ", " }
   (c: c + d.c, p: false)
@@ -618,10 +617,8 @@
   let raw = blx-join-names(e.names.translator)
   (c: "Trans. by " + render(raw), p: blx-ends-punct(raw))
 } else { none }
-// byeditor+others prints the editor and then the translator in one unit.
-// A leading name macro clears the name it printed, so `editor` is false where the
-// entry's opening already consumed the editor. usetranslator is off, so a translator
-// never leads and always reappears here.
+// BibLaTeX clears an editor list used in the opening attribution.
+// The translator cannot lead because usetranslator is off.
 #let blx-editor-others(e, style: "numeric", sentence-start: true, editor: true) = {
   let ed = if editor { blx-editor-block(e, style: style, sentence-start: sentence-start) }
   let tr = blx-bytranslator(e)
@@ -720,8 +717,7 @@
     else { ". " }
   (c: who.c + sep + dt.c, p: dt.p)
 }
-// The ACM inbook drivers test author with \iffieldundef, which always treats a name list as
-// undefined, so their byeditor+others branch runs at the leading position even with an author.
+// ACM's inbook drivers use \iffieldundef for the author name list, so they always select the editor branch.
 #let blx-inbook-author-led(e) = has(e, "author") and fixing()
 #let blx-inbook-lead(e, style: "numeric", suffix: "") = {
   if blx-inbook-author-led(e) {
@@ -765,8 +761,7 @@
 #let blx-author-lead(e, style: "numeric", suffix: "") = blx-lead(
   e, style: style, suffix: suffix, editor-ok: false, org-ok: false, key-ok: false)
 
-// The article driver is the only one with its own bytranslator+others, which runs
-// before byeditor+others and leaves that macro with the editor alone.
+// The article driver prints and clears the translator before reaching byeditor+others.
 #let blx-article-like(e, style: "numeric", suffix: "") = blx-blocks(
   blx-author-lead(e, style: style, suffix: suffix),
   blx-title-field(e, style: style),

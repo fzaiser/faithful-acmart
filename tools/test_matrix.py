@@ -70,9 +70,7 @@ class Assertion:
 
 @dataclass(frozen=True)
 class LinkAssertion:
-    """An exact hyperlink target expected in, or absent from, the Typst PDF.
-
-    kind accepts present or absent."""
+    """An expected presence or absence of a hyperlink target in the Typst PDF."""
 
     uri: str
     kind: str = "present"
@@ -842,8 +840,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Mona Misc. 2017. A translated note. Ed. by Elsa Editor. "
                       "Trans. by Tilly Translator. (2017)."),
         ),
-        note="BibLaTeX driver order for book/chapter, translator, and patent fields, "
-             "including the editor and translator that byeditor+others prints as one unit.",
+        note="BibLaTeX book, chapter, translator, and patent formatting.",
     ),
     "biblatex-driver-numeric-test": Test(
         kind="twin", pages=1,
@@ -884,8 +881,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="both", text="Mona Misc. 2017. A translated note. Elsa Editor, (Ed.) "
                       "Trans. by Tilly Translator. (2017)."),
         ),
-        note="BibLaTeX numeric report sourcemap plus translator and patent drivers, "
-             "including the editor and translator that byeditor+others prints as one unit.",
+        note="BibLaTeX numeric report field mapping, translator, and patent formatting.",
     ),
     "biblatex-names-test": Test(
         kind="twin", pages=2, text_equal=False,
@@ -2099,8 +2095,7 @@ TESTS: dict[str, Test] = {
             LinkAssertion(kind="absent",
                           uri="https://doi.org/https://DOI.org/10.1145/1234567.1234568"),
         ),
-        note="fix-quirks outside the bibliography: a resolver URL in the `doi` option is "
-             "stripped once, and terminal punctuation is recognized after an abbreviation.",
+        note="DOI links and terminal punctuation with fix-quirks enabled.",
     ),
     "fix-quirks-doc-off-test": Test(
         kind="smoke", pages=1,
@@ -2116,13 +2111,11 @@ TESTS: dict[str, Test] = {
         link_assertions=(
             LinkAssertion(uri="https://doi.org/https://DOI.org/10.1145/1234567.1234568"),
         ),
-        note="The same document with fix-quirks: false keeps the LaTeX-compatible doubled "
-             "resolver and the doubled period after an uppercase abbreviation.",
+        note="DOI links and terminal punctuation with fix-quirks disabled.",
     ),
     "fix-quirks-doc-default-test": Test(
         kind="smoke", pages=1,
-        note="The same document with the option omitted; GOLDEN_EQUIVALENT_PAIRS pins it to "
-             "render exactly like the explicit fix-quirks: false variant.",
+        note="Omitting fix-quirks must match the explicit false variant.",
     ),
     "fix-quirks-bst-test": Test(
         kind="smoke", pages=1,
@@ -2135,8 +2128,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", text="locator once: Doyle; Ellis, p. 7"),
             Assertion(engine="typst", text="stay bare: Doyle and 2020"),
         ),
-        note="fix-quirks on the BibTeX backend: a space after the article cross-reference "
-             "`See`, and locators retained on author-only and year-only numeric citations.",
+        note="BibTeX cross-references and citation locators with fix-quirks enabled.",
     ),
     "fix-quirks-bst-off-test": Test(
         kind="smoke", pages=1,
@@ -2148,8 +2140,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", kind="absent", text="Sec. 2"),
             Assertion(engine="typst", kind="absent", text="passim"),
         ),
-        note="The same document with fix-quirks: false keeps natbib's dropped numeric "
-             "locators and ACM's spaceless cross-reference.",
+        note="BibTeX cross-references and citation locators with fix-quirks disabled.",
     ),
     "fix-quirks-blx-test": Test(
         kind="smoke", pages=1,
@@ -2180,9 +2171,7 @@ TESTS: dict[str, Test] = {
             LinkAssertion(uri="https://doi.org/10.1145/3597505"),
             LinkAssertion(kind="absent", uri="https://doi.org/https://DOI.org/10.1145/3597503"),
         ),
-        note="fix-quirks on the BibLaTeX author-year style: inbook leads with its author, an "
-             "empty date drops its parentheses, a punctuated opening takes no second period, "
-             "and a resolver URL in `doi` is stripped once.",
+        note="BibLaTeX author-year corrections to attribution, dates, punctuation, and DOI links.",
     ),
     "fix-quirks-blx-off-test": Test(
         kind="smoke", pages=1,
@@ -2203,8 +2192,7 @@ TESTS: dict[str, Test] = {
             LinkAssertion(uri="https://doi.org/https://DOI.org/10.1145/3597503"),
             LinkAssertion(kind="absent", uri="https://doi.org/10.1145/3597503"),
         ),
-        note="The same document with fix-quirks: false reproduces the upstream inbook "
-             "attribution, empty parentheses, doubled periods, and doubled resolver.",
+        note="BibLaTeX author-year behavior with fix-quirks disabled.",
     ),
     "fix-quirks-blx-numeric-test": Test(
         kind="smoke", pages=1,
@@ -2225,8 +2213,7 @@ TESTS: dict[str, Test] = {
             LinkAssertion(uri="https://doi.org/10.1145/3597503"),
             LinkAssertion(kind="absent", uri="https://doi.org/https://DOI.org/10.1145/3597503"),
         ),
-        note="fix-quirks on the BibLaTeX numeric style: the same inbook attribution and "
-             "empty-date corrections, with the numeric opening separator unchanged.",
+        note="BibLaTeX numeric corrections to attribution, dates, and DOI links.",
     ),
     "fix-quirks-blx-numeric-off-test": Test(
         kind="smoke", pages=1,
@@ -2241,8 +2228,7 @@ TESTS: dict[str, Test] = {
             Assertion(engine="typst", text="Evan Editor, (Ed.) Trans. by Trudy Translator. 2019. "
                       "A translated chapter. Translated Book."),
         ),
-        note="The same document with fix-quirks: false keeps the upstream numeric inbook "
-             "attribution, empty parentheses, and doubled resolver.",
+        note="BibLaTeX numeric behavior with fix-quirks disabled.",
     ),
 }
 

@@ -1,6 +1,3 @@
-// Shared body for the BibLaTeX-backend corrections: inbook attribution, empty
-// date parentheses, the opening separator, and DOI resolver normalization.
-// DriverInbook supplies a chapter author, a book editor and a distinct book author.
 #import "/src/lib.typ": *
 
 #let blx-opts = (

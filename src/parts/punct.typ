@@ -49,11 +49,7 @@
   _opaque
 }
 
-// Corrected mode looks only at the last visible character, so an uppercase letter
-// no longer hides the punctuation behind it: "London, UK." keeps one period.
-// A zero space factor already skips closing brackets and apostrophes, and _trailing
-// reports a smart quote as one. A literal closing quotation mark keeps a factor of its
-// own, so skip it here too instead of taking it for the last visible character.
+// Literal closing quotes need the same treatment as smart quotes, which _trailing represents as apostrophes.
 #let _closing-quotes = ("\"", "\u{201D}", "\u{2019}")
 
 #let _ends-punct(s) = {

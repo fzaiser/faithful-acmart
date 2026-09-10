@@ -1,11 +1,8 @@
-// Shared document for the corrections that apply outside the bibliography.
-// The variants differ only in how they pass `fix-quirks`.
 #import "/src/lib.typ": *
 
 #let doc-opts = (
   format: "acmsmall",
   title: "Corrections Outside the Bibliography",
-  // A mixed-case scheme and host exercise the case-insensitive resolver match.
   doi: "https://DOI.org/10.1145/1234567.1234568",
   acm-year: 2021,
   acm-month: 5,

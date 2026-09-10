@@ -479,9 +479,20 @@ It compares representative documents against LaTeX, but does not guarantee ident
 
 ### Corrections
 
-A few of the differences below are defects in the LaTeX sources that faithful output reproduces.
-Set `fix-quirks: true` to correct the documented ones while keeping ACM formatting; [Design](../DESIGN.md#corrections) lists them and the backends they apply to.
-The option defaults to false, which keeps the current output.
+Set `fix-quirks: true` to apply the following corrections to inherited LaTeX behavior.
+The option is off by default.
+
+| Correction | Applies to |
+|---|---|
+| Normalize `doi.org` and `dx.doi.org` URLs to avoid doubling the resolver prefix. | The document's `doi` option; BibLaTeX references |
+| Begin an `inbook` reference with its author, when present, and place the editor after the book title. | BibLaTeX references |
+| Omit empty date parentheses and their separator. | BibLaTeX references |
+| Avoid adding a second period after a punctuated author, editor, or organization at the start of a reference. | BibLaTeX author–year references |
+| Keep supplied locators on author-only and year-only numeric citations. | BibTeX citations |
+| Insert a space between `See` and an article's cross-reference. | BibTeX references |
+| Recognize punctuation after uppercase letters and inside closing quotes, so `UK.` keeps one period. | Headings, proof names, author notes, and contact information |
+
+The option does not change Typst's native bibliography formatting.
 
 ### Layout
 
