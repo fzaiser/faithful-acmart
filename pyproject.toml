@@ -4,7 +4,6 @@ version = "0.0.0"
 description = "Development tooling for the faithful-acmart Typst package."
 requires-python = ">=3.12"
 dependencies = [
-    "fonttools>=4.59.0",
     "numpy>=2.3.0",
     "pikepdf>=9.10.0",
     "pillow>=11.3.0",

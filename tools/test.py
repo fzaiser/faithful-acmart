@@ -397,7 +397,7 @@ def main() -> int:
     sub.add_parser("compat", help="compile compatibility fixtures under the Typst on PATH (any version)").set_defaults(fn=cmd_compat)
 
     o = sub.add_parser("overlay",
-                       help="per-twin vector overlay + side-by-side PDFs vs LaTeX")
+                       help="per-twin overlay SVGs + a side-by-side PDF vs LaTeX")
     o.add_argument("stems", nargs="*",
                    help="test stems to include (default: every twin)")
     o.set_defaults(fn=cmd_overlay)

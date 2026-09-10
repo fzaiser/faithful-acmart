@@ -54,8 +54,8 @@ uv run python tools/test.py smoke body-test
 uv run python tools/test.py report body-test
 ```
 
-The HTML report in `tests/out/report/index.html` shows both PDFs side by side.
-With Ghostscript and qpdf installed, it also includes a vector overlay.
+The HTML report in `tests/out/report/index.html` gives each page three SVG columns: LaTeX, Typst, and an overlay of the two.
+The overlay tints LaTeX ink blue and Typst ink red and multiplies them, so ink only one engine painted keeps that engine's color.
 Without a fixture name, `report` selects failures from the last `check`.
 
 Read [DESIGN.md](DESIGN.md) before changing layout assumptions.

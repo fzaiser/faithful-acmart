@@ -4,17 +4,15 @@ import html
 import json
 import shutil
 import sys
-import tempfile
 from pathlib import Path
 
 from test_matrix import TESTS
 from harness import ROOT, OUT, LATEX, typst_pdf
-from pdf_extract import rasterize
+from overlay import page_svgs, write_comparison, write_page_svgs
 
 REPORT_DIR = OUT / "report"
 STATUS_FILE = REPORT_DIR / "check-status.json"
 IMG_DIR = REPORT_DIR / "img"
-REPORT_DPI = 110
 
 
 def record_check_status(gate_failures: dict[str, list[str]]) -> None:
@@ -44,20 +42,6 @@ def _rel(path: Path) -> str:
     return path.relative_to(REPORT_DIR).as_posix()
 
 
-def _overlay_pngs(stem: str, ref: Path, ours: Path) -> list[Path]:
-    try:
-        from overlay import _vector_overlay
-    except ImportError:
-        return []
-    try:
-        with tempfile.TemporaryDirectory() as td:
-            tmp = Path(td)
-            overlay_pdf = _vector_overlay(stem, ref, ours, tmp, tmp / f"{stem}-ov.pdf")
-            return rasterize(overlay_pdf, REPORT_DPI, IMG_DIR / f"{stem}-overlay")
-    except Exception:
-        return []
-
-
 _STYLE = """
 :root { color-scheme: light dark; }
 * { box-sizing: border-box; }
@@ -84,6 +68,7 @@ section.twin > h2 { margin: 0 0 4px; font-size: 17px; font-family: ui-monospace,
 .page .plabel { font-size: 13px; font-weight: 600; opacity: .75; margin-bottom: 8px; }
 .cols { display: flex; gap: 14px; overflow-x: auto; }
 figure { margin: 0; flex: 1 1 0; min-width: 220px; }
+figure a { display: block; }
 figure figcaption { font-size: 12px; opacity: .7; margin-bottom: 5px; text-align: center; }
 figure img { width: 100%; height: auto; border: 1px solid #0002; border-radius: 4px;
              background: #fff; }
@@ -92,17 +77,21 @@ figure img { width: 100%; height: auto; border: 1px solid #0002; border-radius: 
 """
 
 
-def _figure(caption: str, png: Path | None) -> str:
-    body = (f'<img loading="lazy" src="{html.escape(_rel(png))}" alt="{html.escape(caption)}">'
-            if png is not None else '<div class="missing">— no page —</div>')
+def _figure(caption: str, svg: Path | None) -> str:
+    """Show one page, linked so a click opens the SVG on its own for zooming."""
+    body = (f'<a href="{html.escape(_rel(svg))}"><img loading="lazy" '
+            f'src="{html.escape(_rel(svg))}" alt="{html.escape(caption)}"></a>'
+            if svg is not None else '<div class="missing">— no page —</div>')
     return f'<figure><figcaption>{html.escape(caption)}</figcaption>{body}</figure>'
 
 
 def _twin_section(stem: str, gates: list[str]) -> str:
     ref, ours = LATEX / f"{stem}.pdf", typst_pdf(stem)
-    latex_pngs = rasterize(ref, REPORT_DPI, IMG_DIR / f"{stem}-latex") if ref.exists() else []
-    typst_pngs = rasterize(ours, REPORT_DPI, IMG_DIR / f"{stem}-typst") if ours.exists() else []
-    overlay_pngs = _overlay_pngs(stem, ref, ours) if ref.exists() and ours.exists() else []
+    latex_pages = page_svgs(ref) if ref.exists() else []
+    typst_pages = page_svgs(ours) if ours.exists() else []
+    latex_svgs = write_page_svgs(latex_pages, IMG_DIR / f"{stem}-latex")
+    typst_svgs = write_page_svgs(typst_pages, IMG_DIR / f"{stem}-typst")
+    overlay_svgs = write_comparison(latex_pages, typst_pages, IMG_DIR / f"{stem}-overlay")
 
     if gates:
         chips = "".join(f'<span class="chip">{html.escape(g)}</span>' for g in gates)
@@ -110,15 +99,12 @@ def _twin_section(stem: str, gates: list[str]) -> str:
         chips = '<span class="chip ok">no recorded check failures</span>'
 
     rows = []
-    npages = max(len(latex_pngs), len(typst_pngs), len(overlay_pngs))
-    for i in range(npages):
+    for i in range(len(overlay_svgs)):
         cols = [
-            _figure("LaTeX", latex_pngs[i] if i < len(latex_pngs) else None),
-            _figure("Typst", typst_pngs[i] if i < len(typst_pngs) else None),
+            _figure("LaTeX", latex_svgs[i] if i < len(latex_svgs) else None),
+            _figure("Typst", typst_svgs[i] if i < len(typst_svgs) else None),
+            _figure("Overlay", overlay_svgs[i]),
         ]
-        if overlay_pngs:
-            cols.append(_figure("Overlay (Typst red / LaTeX blue)",
-                                overlay_pngs[i] if i < len(overlay_pngs) else None))
         rows.append(
             f'<div class="page"><div class="plabel">page {i + 1}</div>'
             f'<div class="cols">{"".join(cols)}</div></div>')
@@ -163,12 +149,15 @@ def cmd_report(args) -> int:
         f"<style>{_STYLE}</style></head><body>"
         '<header class="top"><h1>typst-acmart comparison report</h1>'
         f'<p>{len(stems)} twin(s): LaTeX vs Typst, page by page. '
-        "Red chips are gates that flagged the twin in the last check.</p></header>"
+        "Red chips are gates that flagged the twin in the last check. "
+        "In the overlay, blue is LaTeX ink and red is Typst ink, so the darker a mark is, "
+        "the better the two engines agree there; matching grays and antialiased edges keep "
+        "a faint tint. Click any page to open it on its own.</p></header>"
         f'<main>{"".join(sections)}</main></body></html>')
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     index = REPORT_DIR / "index.html"
     index.write_text(doc)
     print(f"\nwrote {index.relative_to(ROOT)} "
-          f"({len(list(IMG_DIR.glob('*.png')))} page images in "
+          f"({len(list(IMG_DIR.glob('*.svg')))} page images in "
           f"{IMG_DIR.relative_to(ROOT)}/)")
     return 0

@@ -329,6 +329,24 @@ def gate_unit(report: bool = False) -> list[str]:
             failures.append(f"{src.name}: assertion/compile failure\n{stderr.strip()}")
         elif report:
             print(f"ok   {src.name}")
+    failures += _tool_tests(unit_dir, report)
     if report and not srcs:
         print("(no tests/unit/*.typ found)")
+    return failures
+
+
+def _tool_tests(unit_dir: Path, report: bool) -> list[str]:
+    """Run the tool tests that sit beside the Typst ones, each module as its own gate line."""
+    import io
+    import unittest
+
+    failures: list[str] = []
+    for src in sorted(unit_dir.glob("test_*.py")):
+        suite = unittest.defaultTestLoader.discover(
+            str(unit_dir), pattern=src.name, top_level_dir=str(unit_dir))
+        result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
+        for test, trace in result.failures + result.errors:
+            failures.append(f"{src.name}: {test.id().rsplit('.', 1)[-1]}\n{trace.strip()}")
+        if report and result.wasSuccessful():
+            print(f"ok   {src.name} ({result.testsRun} tests)")
     return failures
