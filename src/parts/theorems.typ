@@ -1,6 +1,6 @@
 // Theorem environments and references, proofs, and acknowledgments.
 
-#import "spacing.typ": tex-skip
+#import "spacing.typ": tex-skip, glue-above, glue-below
 #import "punct.typ": add-punct
 #import "../formats/_base.typ": tp
 
@@ -42,11 +42,15 @@
 // The trailing zero-height paragraph restores indentation after the environment, as amsthm does with \@endpefalse.
 #let thm-block(cfg, head, body, topsep: none, indent: auto, head-sep: 0.5em) = {
   let gap = tex-skip(cfg, if topsep == none { 0.5 * cfg.baselineskip } else { topsep })
-  block(above: gap, below: 0pt, width: 100%)[
+  // \thm@preskip: \@plus.2\baselineskip; the proof's \topsep stretches by its natural size.
+  let stretch = if topsep == none { 0.2 * cfg.baselineskip } else { topsep }
+  glue-above(cfg, gap, stretch)
+  block(above: 0pt, below: 0pt, width: 100%)[
     #h(if indent == auto { cfg.parindent } else { indent })
     // Keep these adjacent: a markup newline would add a space to head-sep.
     #head#h(head-sep)#body
   ]
+  glue-below(cfg, gap, stretch, carry: false)
   {
     set par(spacing: gap)
     h(cfg.parindent)

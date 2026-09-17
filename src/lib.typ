@@ -2,8 +2,8 @@
 
 #import "formats/_base.typ": tp
 #import "parts/colors.typ": acm-orange, acm-purple
-#import "parts/spacing.typ": comp, tex-skip
-#import "parts/headings.typ": render-heading, _in-heading, _body-since-heading, noindentparagraph as _noindentparagraph
+#import "parts/spacing.typ": comp, tex-skip, glue-above, mark-nested-flows, fill-region, region-start, region-used, document-end
+#import "parts/headings.typ": render-heading, _body-since-heading, noindentparagraph as _noindentparagraph
 #import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-cover, make-received
 #import "parts/metadata.typ": resolve-metadata
 #import "parts/options.typ": resolve-options
@@ -12,7 +12,7 @@
 #import "parts/tables.typ": tabular, toprule, midrule, bottomrule
 #import "parts/theorems.typ": cfg-state, anon-state, thm-counter, thm-figure-kind, thm-ref
 #import "parts/theorems.typ": theorem, lemma, corollary, proposition, conjecture, definition, example, remark, proof, acks
-#import "parts/acmref.typ": bbl-cite, bbl-nocite, bbl-fullcite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state, tex-render-state
+#import "parts/acmref.typ": bbl-cite, bbl-nocite, bbl-fullcite, bbl-citet, bbl-citealt, bbl-citeyear, bbl-citeyearpar, bbl-citeauthor, bbl-shortcite, bbl-bibliography, cite-style-state, bib-path-state, bib-format-state, register-cites, tex-render-state
 #import "parts/tex.typ": tex-to-content as default-tex-render, latex-logo, tex-logo, bibtex-logo
 
 #let _cite-label(k) = if type(k) == label { k } else { label(k) }
@@ -26,43 +26,50 @@
 )
 
 // Grouped citations need one call: separate ref show rules cannot merge adjacent citations.
-#let cite(..args) = context {
-  let cfg = cfg-state.get()
-  let keys = args.pos()
-  let named = args.named()
-  if cfg == none or cfg.bib-backend == "typst" {
-    keys.map(k => std.cite(_cite-label(k), ..named)).join()
-  } else {
-    let ks = keys.map(str)
-    for k in named.keys() {
-      assert(k in ("supplement", "form"), message:
-        "faithful-acmart: `cite` has no `" + k + "` argument on the `" + cfg.bib-backend
-        + "` backend"
-        + if k == "style" { "; the citation style follows acmart's `cite-style` option" } else { "" })
-    }
-    let form = named.at("form", default: "normal")
-    let supp = named.at("supplement", default: none)
-    if form == none {
-      assert(supp == none,
-        message: "faithful-acmart: `cite` with `form: none` typesets nothing, so it takes no `supplement`")
-      bbl-nocite(..ks)
+#let cite(..args) = {
+  // Inside the context, registration would reach the bibliography a layout pass later.
+  register-cites(args.pos().map(str))
+  context {
+    let cfg = cfg-state.get()
+    let keys = args.pos()
+    let named = args.named()
+    if cfg == none or cfg.bib-backend == "typst" {
+      keys.map(k => std.cite(_cite-label(k), ..named)).join()
     } else {
-      assert(form in _cite-forms, message:
-        "faithful-acmart: `cite` does not support `form: " + repr(form) + "`; supported forms are "
-        + _cite-forms.keys().map(repr).join(", ") + " and `none`")
-      assert(not (form == "full" and supp != none), message:
-        "faithful-acmart: `cite` with `form: \"full\"` prints the whole reference, so it takes no `supplement`")
-      if form == "full" { bbl-fullcite(..ks) } else { (_cite-forms.at(form))(..ks, supplement: supp) }
+      let ks = keys.map(str)
+      for k in named.keys() {
+        assert(k in ("supplement", "form"), message:
+          "faithful-acmart: `cite` has no `" + k + "` argument on the `" + cfg.bib-backend
+          + "` backend"
+          + if k == "style" { "; the citation style follows acmart's `cite-style` option" } else { "" })
+      }
+      let form = named.at("form", default: "normal")
+      let supp = named.at("supplement", default: none)
+      if form == none {
+        assert(supp == none,
+          message: "faithful-acmart: `cite` with `form: none` typesets nothing, so it takes no `supplement`")
+        bbl-nocite(..ks)
+      } else {
+        assert(form in _cite-forms, message:
+          "faithful-acmart: `cite` does not support `form: " + repr(form) + "`; supported forms are "
+          + _cite-forms.keys().map(repr).join(", ") + " and `none`")
+        assert(not (form == "full" and supp != none), message:
+          "faithful-acmart: `cite` with `form: \"full\"` prints the whole reference, so it takes no `supplement`")
+        if form == "full" { bbl-fullcite(..ks) } else { (_cite-forms.at(form))(..ks, supplement: supp) }
+      }
     }
   }
 }
 
-#let _cite-variant(bbl-fn, native-form) = (key, supplement: none) => context {
-  let cfg = cfg-state.get()
-  if cfg == none or cfg.bib-backend == "typst" {
-    std.cite(_cite-label(key), form: native-form, supplement: supplement)
-  } else {
-    bbl-fn(str(key), supplement: supplement)
+#let _cite-variant(bbl-fn, native-form) = (key, supplement: none) => {
+  register-cites((str(key),))
+  context {
+    let cfg = cfg-state.get()
+    if cfg == none or cfg.bib-backend == "typst" {
+      std.cite(_cite-label(key), form: native-form, supplement: supplement)
+    } else {
+      bbl-fn(str(key), supplement: supplement)
+    }
   }
 }
 #let cite-text = _cite-variant(bbl-citet, "prose")
@@ -100,7 +107,8 @@
 #let part(body) = context {
   let cfg = cfg-state.get()
   let f = cfg.sec-fonts.paragraph
-  block(above: tex-skip(cfg, 10 * tp), below: tex-skip(cfg, 4 * tp), sticky: true,
+  glue-above(cfg, tex-skip(cfg, 10 * tp), 4 * tp)
+  block(above: 0pt, below: tex-skip(cfg, 4 * tp), sticky: true,
     text(font: cfg.fonts.at(f.family), weight: f.weight, style: f.style,
       size: cfg.size.at(f.size), body))
 }
@@ -128,6 +136,9 @@
       + "Typst's built-in — for several files pass an array: "
       + "bibliography((\"/a.bib\", \"/b.bib\")). Got " + repr(args.pos().len())
       + " positional argument(s).")
+  // Inside the context, the path would reach the citations a layout pass later.
+  let path = args.pos().first()
+  bib-path-state.update(if type(path) == str { args } else { path })
   context {
     let cfg = cfg-state.get()
     let backend = if cfg == none { "typst" } else { cfg.bib-backend }
@@ -229,6 +240,7 @@
   acmthm: true,
   url-break-on-hyphens: true,
   fix-quirks: false,
+  flush-bottom: true,
   draft: false,
   font-size: auto,
   body,
@@ -251,6 +263,7 @@
     article-type: article-type,
     authors-per-row: authors-per-row,
     fix-quirks: fix-quirks,
+    flush-bottom: flush-bottom,
   ))
   let cfg = options.cfg
   let print-acm-reference = options.print-acm-reference
@@ -259,6 +272,7 @@
   let print-folios = options.print-folios
 
   cite-style-state.update(cite-style)
+  bib-format-state.update(if bib-backend == "biblatex" { "biblatex" } else { "bst" })
   // Reset the renderer even at auto so a previous acmart scope cannot leak its callback.
   tex-render-state.update(_ => if tex-render == auto { default-tex-render } else { tex-render })
 
@@ -354,13 +368,19 @@
     justify: true,
   )
 
+  show: if cfg.flush-bottom { mark-nested-flows } else { it => it }
+  show pagebreak.where(weak: false): it => { fill-region(); it; region-start() }
+  // Content before a weak page break detaches `set page` from its page.
+  show pagebreak.where(weak: true): it => { it; region-start() }
+  show colbreak.where(weak: false): it => { fill-region(); it; region-start() }
+  show colbreak.where(weak: true): it => { it; region-start() }
+
   set heading(numbering: cfg.heading-numbering)
   show heading: it => {
     if it.level == 1 and it.numbering != none { thm-counter.update(0) }
     render-heading(it, cfg)
   }
-  // Exclude heading paragraphs from the adjacency state used by the heading renderer.
-  show par: it => { context { if not _in-heading.get() { _body-since-heading.update(true) } }; it }
+  show par: it => { _body-since-heading.update(true); region-used(); it }
 
   let acm-dark-blue = cmyk(100%, 58%, 0%, 21%)
   let colorize = (it, body) => {
@@ -397,6 +417,7 @@
   }
 
   apply-body(cfg, amsart-lists: amsart-lists, {
+    region-start()
     if meta.title != none {
       make-footnotes(cfg, meta)
       if cfg.columns > 1 {
@@ -404,6 +425,7 @@
         place(top, scope: "parent", float: true,
           clearance: tex-skip(cfg, if teaser != none { cfg.medskip } else { cfg.bigskip }),
           block(width: 100%, spacing: 0pt, make-title-head(cfg, meta)))
+        region-start()
         make-title-body(cfg, meta)
       } else {
         make-title(cfg, meta)
@@ -420,5 +442,6 @@
     }
 
     if received != none { make-received(cfg, received) }
+    document-end()
   })
 }

@@ -30,6 +30,10 @@ Use [spacing.typ](src/parts/spacing.typ) for leading and vertical gaps.
 It compensates for the difference between TeX's baseline spacing and Typst's line boxes, using the following block's font metrics.
 The title uses its measured cap height to position the first line.
 
+`\flushbottom` is reproduced by the glue helpers in [spacing.typ](src/parts/spacing.typ): fractional spacing weighted by each gap's TeX stretch, which cannot move a break.
+TeX discards glue at a page break and Typst does not, so each glue point reads its position from the previous layout pass.
+That costs one of Typst's five layout passes; state updates that affect page breaks are therefore emitted outside `context`, where they would arrive a pass later.
+
 Font-size steps and some spacing come from `amsart`, and begin-document hooks can override acmart's earlier settings.
 Consult the executed class or a probe before changing a value that appears inconsistent with a source declaration.
 Keep the relevant upstream macro or constraint beside the code when the reason would otherwise be hard to recover.

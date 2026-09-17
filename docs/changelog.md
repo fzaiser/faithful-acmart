@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+Full pages and columns now end flush at the bottom, as in LaTeX, so vertical positions change in existing papers; page breaks do not.
+Set [`flush-bottom: false`](reference.md#format-and-page-settings) to keep ragged bottoms.
+
 ## 0.2.0 (2026-09-17)
 
 This release follows LaTeX `acmart` 2.21 and includes changes to defaults, citation handling, and page layout.

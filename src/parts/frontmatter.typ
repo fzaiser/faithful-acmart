@@ -1,7 +1,7 @@
 // Render titles, authors, and publication metadata for each format.
 
 #import "copyright.typ": permission-text, copyright-owner
-#import "spacing.typ": comp, tex-skip
+#import "spacing.typ": comp, tex-skip, region-foot
 #import "strings.typ": lang-record
 #import "body.typ": in-topmatter
 #import "punct.typ": add-punct
@@ -426,7 +426,7 @@
   }
 
   place(bottom, float: true, clearance: cfg.footins-skip - cfg.footnote-rule-kern-above,
-    block(width: 100%, spacing: 0pt, stack))
+    block(width: 100%, spacing: 0pt, { region-foot(); stack }))
 }
 
 #let make-acmcp-infobox(cfg, meta) = {

@@ -54,6 +54,7 @@ See the [format list](../README.md#choose-a-format) for the available layouts.
 | `start-page` | Positive integer for the first page number; omitted by default. |
 | `screen` | Colors links when true; some journals enable this automatically. |
 | `url-break-on-hyphens` | Allows breaks at hyphens in links by default; set false to prevent them. |
+| `flush-bottom` | Stretches the gaps around headings, lists, displays, and theorems so that full pages and columns end flush, as in LaTeX; set false for ragged bottoms. |
 
 An explicit `font-size` selects the corresponding acmart size step, including its derived font sizes and spacing.
 Most papers should retain the format's default size.
@@ -504,7 +505,8 @@ These differences affect page layout and document appearance:
 
 | Area | Difference or limitation |
 |---|---|
-| Line and page breaks | Typst lacks TeX's stretchable page glue, final-column balancing, and microtype font expansion and protrusion. Pages remain ragged at the bottom; breaks can differ. |
+| Line and page breaks | Typst lacks TeX's shrinkable glue, final-column balancing, and microtype font expansion and protrusion, so breaks can differ. |
+| Page bottoms | Pages and columns with footnotes or a bottom float stay ragged, and so does the last page. Elsewhere LaTeX's split of the slack is approximated, and content inside a container such as a block or table cell does not stretch. |
 | Math | Uses Libertinus Math and approximate display spacing, without TeX's short-display skips or exact math metrics. |
 | Baselines, captions, floats, footnotes | Small spacing differences can arise from the engines' different line-box depths. |
 | Wrapped numbered headings | No hanging indent; this preserves tagged-PDF reading order. |

@@ -1,12 +1,14 @@
 // Apply ACM styles to body content and place material in the margins.
 
-#import "spacing.typ": comp, tex-skip
+#import "spacing.typ": comp, tex-skip, glue-above, glue-below, region-foot
 #import "../formats/_base.typ": tp
 #import "theorems.typ": cfg-state, thm-figure-kind
 #import "tables.typ": table-inset, light-rule
 
 // Teasers have their own \@mkteasers spacing, so suppress ordinary float spacing and the indent shim.
 #let in-topmatter = state("acm-in-topmatter", false)
+// none for a figure in the flow, whose caption cannot lie at the foot of a region.
+#let float-scope = state("acm-float-scope", none)
 
 #let apply-body(cfg, body, amsart-lists: false) = context {
   show figure.where(kind: image): set figure(supplement: if cfg.journal { [Fig.] } else { [Figure] })
@@ -28,6 +30,8 @@
       }
       it.body
     }
+    let scope = float-scope.get()
+    if scope != none { region-foot(wide: scope == "parent") }
     layout(size => {
       let w = measure(cap).width
       if w <= size.width {
@@ -39,8 +43,10 @@
     })
   }
 
-  let env-block(it, above: 0pt, below: 0pt) = {
-    block(above: above, below: 0pt, it)
+  let env-block(it, above: 0pt, below: 0pt, stretch: 0pt) = {
+    glue-above(cfg, above, stretch)
+    block(above: 0pt, below: 0pt, it)
+    glue-below(cfg, below, stretch, carry: false)
     // A zero-height paragraph restores indentation after the environment.
     // Its spacing collapses with the following gap, as \addvspace does; block below-spacing would add to it.
     {
@@ -50,9 +56,11 @@
   }
   show figure: it => context {
     if in-topmatter.get() {
+      float-scope.update(none)
       it
     } else {
       set block(above: cfg.intextsep, below: cfg.intextsep)
+      float-scope.update(if it.placement == none { none } else { it.scope })
       it
       h(cfg.parindent)
     }
@@ -72,10 +80,13 @@
 
   set math.equation(numbering: "(1)")
   // Equations and code blocks may continue a paragraph; Typst cannot detect a LaTeX-style blank line after them.
-  show math.equation.where(block: true): set block(
-    above: tex-skip(cfg, cfg.medskip),
-    below: tex-skip(cfg, cfg.medskip),
-  )
+  // Display skips and \topsep stretch by their natural size.
+  show math.equation.where(block: true): set block(above: 0pt, below: 0pt)
+  show math.equation.where(block: true): it => {
+    glue-above(cfg, tex-skip(cfg, cfg.medskip), cfg.medskip)
+    it
+    glue-below(cfg, tex-skip(cfg, cfg.medskip), cfg.medskip)
+  }
 
   // Zero-width markers reproduce \llap, keeping the body indent independent of label width.
   let enum-pats = if cfg.name == "sigplan" { ("1.", "a.", "i.", "A.") } else { ("(1)", "(a)", "(i)", "(A)") }
@@ -120,7 +131,7 @@
         set list(indent: leftmargin.at(li) - labelsep, marker: llap(list-marks.at(ii)))
         it
       }
-      if d == 1 { env-block(inner, above: list-gap, below: list-gap) } else { inner }
+      if d == 1 { env-block(inner, above: list-gap, below: list-gap, stretch: cfg.smallskip) } else { inner }
     }
     list-depth.update(n => n - 1)
     kind-depth.update(n => n - 1)
@@ -135,7 +146,7 @@
     spacing: comp(cfg))
 
   show quote.where(block: true): it => env-block(
-    above: list-gap, below: list-gap,
+    above: list-gap, below: list-gap, stretch: cfg.smallskip,
     block(width: 100%, inset: (left: leftmargin.at(0), right: leftmargin.at(0)), {
       set par(first-line-indent: 0pt)
       it.body
@@ -147,10 +158,12 @@
   show raw: it => {
     set text(font: cfg.fonts.mono, size: 1.25em)
     if it.block {
-      block(above: tex-skip(cfg, cfg.smallskip), below: tex-skip(cfg, cfg.smallskip))[
+      glue-above(cfg, tex-skip(cfg, cfg.smallskip), cfg.smallskip)
+      block(above: 0pt, below: 0pt)[
         #set par(justify: false, first-line-indent: 0pt, leading: comp(cfg), spacing: 0pt)
         #it.lines.map(l => l.body).join(linebreak())
       ]
+      glue-below(cfg, tex-skip(cfg, cfg.smallskip), cfg.smallskip)
     } else {
       it.lines.first().body
     }
@@ -168,6 +181,7 @@
   )
   show footnote.entry: set text(size: cfg.size.footnotesize)
   show footnote.entry: set par(leading: comp(cfg, sz: "footnotesize"))
+  show footnote.entry: it => { it; region-foot() }
 
   body
 }

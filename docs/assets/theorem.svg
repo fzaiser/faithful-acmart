@@ -4,6 +4,9 @@
         <g class="typst-group">
             <g>
                 <g class="typst-group" transform="matrix(1 0 0 1 8 8)">
+                    <g/>
+                </g>
+                <g class="typst-group" transform="matrix(1 0 0 1 8 8)">
                     <g>
                         <g class="typst-text" transform="matrix(1 0 0 -1 0 9.962640099626402)">
                             <use xlink:href="#g0" x="0" y="0" fill="#000000" fill-rule="nonzero"/>
@@ -33,6 +36,9 @@
                             <use xlink:href="#g7" x="91.96513075965132" y="0" fill="#000000" fill-rule="nonzero"/>
                         </g>
                     </g>
+                </g>
+                <g class="typst-group" transform="matrix(1 0 0 1 8 25.932752179327522)">
+                    <g/>
                 </g>
                 <g class="typst-group" transform="matrix(1 0 0 1 8 25.932752179327522)">
                     <g>
@@ -167,6 +173,12 @@
                         </g>
                     </g>
                 </g>
+                <g class="typst-group" transform="matrix(1 0 0 1 8 51.25379825653798)">
+                    <g/>
+                </g>
+                <g class="typst-group" transform="matrix(1 0 0 1 8 59.2239103362391)">
+                    <g/>
+                </g>
                 <g class="typst-group" transform="matrix(1 0 0 1 8 59.2239103362391)">
                     <g>
                         <g class="typst-text" transform="matrix(1 0 0 -1 9.962640099626402 9.962640099626402)">
@@ -285,6 +297,9 @@
                             </g>
                         </g>
                     </g>
+                </g>
+                <g class="typst-group" transform="matrix(1 0 0 1 8 81.14171855541719)">
+                    <g/>
                 </g>
                 <g class="typst-group">
                     <g>

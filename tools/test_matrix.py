@@ -471,7 +471,7 @@ TESTS: dict[str, Test] = {
     "full-test": Test(
         kind="twin", pages=2, metrics_page1_only=_PAGE1_METRICS_SCOPE,
         metrics_uniform_pitch=_UNIFORM_PITCH_METRICS,
-        note="multi-page cumulative spacing (reveals the \\flushbottom difference)",
+        note="multi-page cumulative spacing; page 1 is stretched to its full height as \\flushbottom does",
     ),
     "title-test": Test(
         kind="twin", pages=1,
@@ -2112,6 +2112,10 @@ TESTS: dict[str, Test] = {
             LinkAssertion(uri="https://doi.org/https://DOI.org/10.1145/1234567.1234568"),
         ),
         note="DOI links and terminal punctuation with fix-quirks disabled.",
+    ),
+    "flush-bottom-off-test": Test(
+        kind="smoke", pages=3,
+        note="flush-bottom: false leaves full pages ragged; the golden pins the unstretched gaps.",
     ),
     "fix-quirks-doc-default-test": Test(
         kind="smoke", pages=1,
