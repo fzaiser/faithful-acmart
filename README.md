@@ -9,7 +9,9 @@ Keep detailed option contracts in the reference; do not shorten this README mere
 # faithful-acmart
 
 Write ACM-style papers in Typst, with journal and conference layouts, author metadata, ACM bibliography styles, and theorem environments.
-The package follows the bundled LaTeX `acmart` sources and tests its output against equivalent LaTeX documents.
+The package follows LaTeX `acmart` 2.21 and tests its output against equivalent LaTeX documents.
+
+**[Get started](#getting-started)** · **[Look up an option](docs/reference.md)** · **[Browse the starter](template/main.typ)** · **[Changelog](docs/changelog.md)**
 
 ![First page of the starter paper in the acmsmall journal format.](docs/assets/starter.svg)
 
@@ -25,11 +27,9 @@ TeX and Typst can produce different line and page breaks.
 See [compatibility](docs/reference.md#compatibility) for the specific limits of the port.
 Set `fix-quirks: true` to apply [corrections to inherited LaTeX quirks](docs/reference.md#corrections).
 
-**[Get started](#getting-started)** · **[Look up an option](docs/reference.md)** · **[Browse the starter](template/main.typ)**
-
 ## Getting started
 
-Install the [required fonts](#fonts), then create a project:
+Use Typst 0.14 or later and install the [required fonts](#fonts), then create a project:
 
 ```sh
 typst init @preview/faithful-acmart:0.1.0 my-paper
@@ -73,7 +73,6 @@ This example uses `nonacm: true` to suppress ACM publication notices while you t
 For a publication, use the metadata and settings supplied by your venue; the [publication reference](docs/reference.md#publication-metadata) explains where they go.
 
 Keep the wildcard import (`*`): it brings in the package's `cite` and `bibliography` replacements as well as the document style.
-The minimum compiler version is recorded in [typst.toml](typst.toml).
 
 ## Fonts
 
@@ -110,7 +109,7 @@ The reference covers [format options](docs/reference.md#format-and-page-settings
 
 ## Add authors and paper metadata
 
-Authors can have multiple affiliations, email addresses, ORCID links, and notes.
+Each author can have multiple affiliations and notes, an email address, and an ORCID link.
 The package also supports shared author notes, a corresponding-author mark, translated titles and abstracts, and receipt history.
 
 <!-- render: authors -->
@@ -232,6 +231,7 @@ Use the reference for details and the starter for a complete, editable paper:
 
 - [Reference](docs/reference.md): options, examples, and compatibility limits.
 - [Starter paper](template/main.typ): a working document with figures, tables, citations, and theorems.
+- [Changelog](docs/changelog.md): release notes and instructions for upgrading.
 
 ## Development and contributing
 

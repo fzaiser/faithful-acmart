@@ -16,6 +16,7 @@ For installation, a quick start, and rendered examples, see the [README](../READ
 - [Theorems and acknowledgments](#theorems-and-acknowledgments)
 - [Other document helpers](#other-document-helpers)
 - [Special formats](#special-formats)
+- [Corrections / `fix-quirks`](#corrections)
 - [Compatibility](#compatibility)
 
 ## Configure the document
@@ -54,7 +55,7 @@ See the [format list](../README.md#choose-a-format) for the available layouts.
 | `screen` | Colors links when true; some journals enable this automatically. |
 | `url-break-on-hyphens` | Allows breaks at hyphens in links by default; set false to prevent them. |
 
-These values select the corresponding acmart size step, including its derived font sizes and spacing.
+An explicit `font-size` selects the corresponding acmart size step, including its derived font sizes and spacing.
 Most papers should retain the format's default size.
 
 ## Authors and affiliations
@@ -298,7 +299,12 @@ These LaTeX settings are accepted without effect or explicitly rejected:
 ## Citations and bibliographies
 
 Keep the wildcard import so that `cite` and `bibliography` refer to this package's wrappers.
-The [backend overview](../README.md#cite-sources) explains the three choices.
+Set these options on `acmart.with(...)`:
+
+| Option | Values and default |
+|---|---|
+| `bib-backend` | `"bibtex"` (default) follows ACM's BibTeX style; `"biblatex"` follows ACM's BibLaTeX styles; `"typst"` uses Typst's native CSL implementation. |
+| `cite-style` | `"numeric"` (default) or `"author-year"` for the custom backends. Has no effect with `bib-backend: "typst"`, where the native style controls citations. |
 
 ### Bibliography input and arguments
 
@@ -320,7 +326,6 @@ A project-absolute path begins with `/` and is relative to the Typst project roo
 ### Citation forms
 
 For the custom backends, `cite` accepts one or more keys, as strings or labels, and the named arguments `form` and `supplement`.
-Use `cite-style: "numeric"` or `"author-year"` on `acmart` to choose the overall citation style.
 `cite(style: ...)` is not supported by those backends.
 
 | Call | Purpose |
@@ -377,9 +382,8 @@ Use it inside `figure` for a numbered caption; see the [source and rendered exam
 | `header-rows` | Number of leading rows to tag as headers when safe to infer; defaults to 1. Set 0 for no inferred header. |
 | `table.header(...)` | Explicit header for a complex table; takes precedence over inference. |
 
-The wrapper forwards table arguments, but adds spacing and header semantics.
-It does not promise identical behavior to a bare `table` call, particularly when column settings are inherited or cells have explicit positions.
-For positioned cells or a span crossing the intended header boundary, provide the header explicitly.
+Pass `columns` directly to `tabular`; header inference cannot read an inherited `set table(columns: ...)` setting.
+For positioned cells or a span crossing the intended header boundary, provide a `table.header(...)` explicitly.
 The rule helpers accept arguments to Typst's `table.hline`, such as a column range or custom stroke.
 
 ## Theorems and acknowledgments
@@ -474,7 +478,7 @@ These helpers require `sigchi-a`.
 
 ## Compatibility
 
-The package targets the bundled LaTeX `acmart` sources.
+The package targets the bundled LaTeX `acmart` 2.21 sources.
 It compares representative documents against LaTeX, but does not guarantee identical output for every paper.
 
 ### Corrections

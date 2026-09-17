@@ -18,7 +18,8 @@ The regression and package checks already arrange their own inputs and need no l
 
 Complete these steps before submitting a new package version:
 
-1. Update the manifest version and the package imports in `README.md`, `docs/`, and `template/main.typ`.
+1. Review the [changelog](docs/changelog.md), including upgrade instructions for changed defaults and stricter validation, and replace its Unreleased heading with the version and release date.
+   Update the manifest version and the package imports in `README.md`, `docs/`, and `template/main.typ`.
 2. Run `uv run python tools/test.py docs` to refresh the SVG illustrations, inspect any changes, and run the [regression suite](CONTRIBUTING.md#validation).
 3. If the example's appearance changed, rebuild the thumbnail with the local package link in place:
 
