@@ -33,7 +33,7 @@ Set `fix-quirks: true` to apply [corrections to inherited LaTeX quirks](docs/ref
 Use Typst 0.14 or later and install the [required fonts](#fonts), then create a project:
 
 ```sh
-typst init @preview/faithful-acmart:0.1.0 my-paper
+typst init @preview/faithful-acmart:0.2.0 my-paper
 cd my-paper
 typst compile main.typ
 ```
@@ -46,7 +46,7 @@ For an existing document, import the package and apply `acmart`:
 
 <!-- render: getting-started compact -->
 ```typst
-#import "@preview/faithful-acmart:0.1.0": *
+#import "@preview/faithful-acmart:0.2.0": *
 
 #show: acmart.with(
   format: "acmsmall",

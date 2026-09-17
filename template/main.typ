@@ -1,4 +1,4 @@
-#import "@preview/faithful-acmart:0.1.0": *
+#import "@preview/faithful-acmart:0.2.0": *
 
 #show: acmart.with(
   format: "acmsmall",

@@ -24,7 +24,7 @@ For installation, a quick start, and rendered examples, see the [README](../READ
 Import the public API and put one show rule before your content:
 
 ```typst
-#import "@preview/faithful-acmart:0.1.0": *
+#import "@preview/faithful-acmart:0.2.0": *
 #show: acmart.with(format: "acmsmall", nonacm: true)
 
 = Introduction

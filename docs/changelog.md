@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-09-17)
 
 This release follows LaTeX `acmart` 2.21 and includes changes to defaults, citation handling, and page layout.
 
