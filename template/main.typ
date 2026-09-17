@@ -1,122 +1,135 @@
 #import "@preview/faithful-acmart:0.1.0": *
 
+// Replace the sample authors and publication metadata with your paper's details.
 #show: acmart.with(
   format: "acmsmall",
-  title: "The Name of the Title Is Hope",
-
+  title: "Scheduling with dependency graphs",
   journal: "JACM",
-  acm-volume: 37,
-  acm-number: 4,
-  acm-article: 111,
-  acm-year: 2018,
-  acm-month: 8,
-  doi: "XXXXXXX.XXXXXXX",
+  acm-volume: 1,
+  acm-number: 1,
+  acm-article: 1,
+  acm-year: 2026,
+  acm-month: 7,
+  doi: "10.1145/nnnnnnn.nnnnnnn",
   copyright: "acmlicensed",
-  copyright-year: 2018,
-
   authors: (
     (
-      name: "Ben Trovato",
-      note: [Both authors contributed equally to this research.],
-      email: "trovato@corporation.com",
-      orcid: "1234-5678-9012",
-      affiliation: (institution: "Institute for Clarity in Documentation",
-                    city: "Dublin", state: "Ohio", country: "USA"),
+      name: "Ada Lovelace",
+      note: [Both authors contributed equally.],
+      email: "ada@example.org",
     ),
     (
-      name: "G.K.M. Tobin",
-      note: [Both authors contributed equally to this research.],
+      name: "Charles Babbage",
+      note: [Both authors contributed equally.],
       corresponding: true,
-      email: "webmaster@marysville-ohio.com",
-      affiliation: (institution: "Institute for Clarity in Documentation",
-                    city: "Dublin", state: "Ohio", country: "USA"),
-    ),
-    (
-      name: "Lars Thørväld",
-      email: "larst@affiliation.org",
-      affiliation: (institution: "The Thørväld Group",
-                    city: "Hekla", country: "Iceland"),
+      email: "charles@example.org",
+      affiliation: (
+        institution: "Analytical Engine Institute",
+        city: "London",
+        country: "UK",
+      ),
     ),
   ),
-
   abstract: [
-    A clear and well-documented Typst document is presented as an article
-    formatted for publication by ACM. Based on the acmart class, this template
-    provides ACM fonts, page layouts, and document styles while letting you
-    write idiomatic Typst. Line and page breaks can differ between the engines.
+    A task can begin only after its prerequisites have finished.
+    We represent these dependencies as a directed graph and use topological sorting to construct a valid task order.
+    A four-task example illustrates why several orders can satisfy the same constraints and how a cycle prevents completion.
   ],
-
-  ccs: (
-    (500, "Computing methodologies", "Massively parallel algorithms"),
-    (300, "Computing methodologies", "Concurrent algorithms"),
-  ),
-
-  keywords: ("typesetting", "ACM", "Typst", "templates"),
+  ccs: ((500, "Mathematics of computing", "Graph algorithms"),),
+  keywords: ("scheduling", "dependency graphs", "topological sorting"),
 )
 
-= Introduction
-ACM's consolidated article template provides a consistent style across ACM
-publications. This Typst port applies acmart's document styles to ordinary
-Typst content. You use headings, paragraphs, figures, and
-citations @Cohen:1996:EAE @Li:2008:PUC.
+= Dependencies and task order
 
-A second paragraph is indented, as in the LaTeX original. The package sets fonts
-and spacing according to the selected format.
+A data-processing workflow may collect records, clean them, validate their schema, and analyze the result.
+Some tasks must follow others, while independent tasks can run in either order.
+A dependency graph records these constraints without choosing a complete schedule.
 
-== Using the template
-Call `acmart.with(...)` in a show rule and write the body as usual. Sections,
-subsections, and run-in headings all follow the acmsmall styling.
+Let $G = (V, E)$ be a finite directed graph.
+Each vertex is a task, and an edge $(u, v) in E$ means that $u$ must finish before $v$ begins.
+Topological sorting constructs an order that respects every edge @Kahn1962.
 
-=== A finer point
-Run-in headings continue inline with the following text, just like LaTeX.
+#definition[
+  A _topological ordering_ of $G$ is a sequence containing every vertex exactly once, with $u$ before $v$ whenever $(u, v) in E$.
+]
 
-= Results
+== A four-task workflow
+
+In @workflow, collection precedes both cleaning and validation.
+Analysis requires both of those tasks to finish.
+Cleaning and validation can therefore exchange places in a sequential schedule.
 
 #figure(
-  rect(width: 5cm, height: 3cm, fill: luma(230)),
-  caption: [A placeholder figure. Captions are sans-serif and use a period
-    separator, as ACM journals require.],
-)
+  {
+    let task(name) = box(width: 65pt, inset: 6pt, stroke: 0.5pt, radius: 2pt, name)
+    grid(
+      columns: (auto, 24pt, auto, 24pt, auto),
+      row-gutter: 10pt,
+      align: center + horizon,
+      grid.cell(rowspan: 2, task[Collect]), [↗], task[Clean], [↘],
+      grid.cell(rowspan: 2, task[Analyze]),
+      [↘], task[Validate], [↗],
+    )
+  },
+  placement: none,
+  caption: [A dependency graph with two valid task orders.],
+) <workflow>
 
-Use `tabular` with `toprule`/`midrule`/`bottomrule` for booktabs-style rule weights
-and spacing. Pass `columns` directly so the wrapper can infer the header row.
+= Constructing an order
+
+#theorem(name: "Topological ordering")[
+  Every finite directed acyclic graph has a topological ordering.
+] <topological-order>
+
+#proof[
+  The empty graph has an empty ordering.
+  A nonempty finite acyclic graph has a vertex with no incoming edges: otherwise, repeatedly following incoming edges would eventually revisit a vertex and form a cycle.
+  Remove a vertex with no incoming edges, order the remaining graph by induction, and put the removed vertex first.
+]
+
+The proof of @topological-order gives a construction based on repeatedly removing a ready task.
+A task is _ready_ when all its predecessors have finished.
+An implementation can maintain an incoming-edge count for each vertex, following the approach of #cite-text(<Kahn1962>):
+
++ Count the incoming edges of each vertex and collect the vertices whose count is zero.
++ Remove a ready vertex, append it to the order, and decrease the count of each successor.
++ Add any newly ready vertices and repeat until no ready vertex remains.
+
+With adjacency lists and a queue of ready vertices, each vertex enters the queue once and each edge causes one decrement.
+The running time is therefore $O(abs(V) + abs(E))$.
+
+== Checking the result
+
+@orders lists the complete set of valid orders for @workflow.
+Both place collection first and analysis last.
 
 #figure(
   tabular(
-    columns: 3,
+    columns: 5,
     toprule(),
-    [Method], [Time (s)], [Accuracy],
+    [Order], [First], [Second], [Third], [Fourth],
     midrule(),
-    [Baseline], [12.4], [72.1%],
-    [Ours], [8.7], [88.4%],
+    [1], [Collect], [Clean], [Validate], [Analyze],
+    [2], [Collect], [Validate], [Clean], [Analyze],
     bottomrule(),
   ),
-  caption: [Tables use booktabs rules, as ACM requires.],
-)
+  placement: none,
+  caption: [Valid sequential orders for the four-task workflow.],
+) <orders>
 
-Theorem-like environments share a counter numbered within the section:
+The algorithm has two possible outcomes:
 
-#theorem[
-  Every finite directed acyclic graph has a topological ordering.
-]
+- Every task appears in the output, giving a valid order.
+- Tasks remain but none is ready, indicating a cycle among the remaining tasks.
 
-#proof[
-  A nonempty finite acyclic graph has a vertex with no incoming edges. Remove
-  that vertex, order the remaining graph by induction, and put the vertex first.
-]
+=== Cyclic dependencies
+Adding an edge from analysis back to collection creates a cycle and leaves no task ready at the start.
+Strongly connected components can help identify the tasks involved in cyclic dependencies @Tarjan1972.
 
-#definition[
-  A _topological ordering_ puts the source of every directed edge before its
-  target.
-]
+= Conclusion
 
-We can also use lists:
-
-- Idiomatic Typst source
-- acmart-faithful output
-
-+ Pick a format
-+ Write your paper
-+ Submit
+A dependency graph separates precedence constraints from the choice of a schedule.
+For an acyclic graph, topological sorting produces a valid order in linear time.
+Task durations and resource limits require additional scheduling decisions beyond the order alone.
 
 #bibliography("refs.bib")

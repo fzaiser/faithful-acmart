@@ -161,9 +161,9 @@ With the first two backends, set `cite-style: "author-year"` for author–year c
 
 <!-- render: citations -->
 ```typst
-Prior work includes @Cohen:1996:EAE[p. 42].
-#cite(<Li:2008:PUC>, <Hollis:1999:VBD>) groups several sources.
-#cite-text(<Cohen:1996:EAE>) cites an author in prose.
+Prior work includes @Kahn1962[p. 558].
+#cite(<Kahn1962>, <Tarjan1972>) groups several sources.
+#cite-text(<Kahn1962>) cites an author in prose.
 
 #bibliography("refs.bib")
 ```
