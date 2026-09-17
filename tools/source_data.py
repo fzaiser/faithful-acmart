@@ -492,6 +492,12 @@ def _doc_paths() -> list[str]:
 _DOC_BLOCK_RE = re.compile(r"^(?P<fence>`{3,})typst\n(?P<body>.*?)^(?P=fence)$", re.M | re.S)
 
 
+def _stable_svg_ids(svg: bytes) -> bytes:
+    # Typst's generated SVG ids differ between builds for different platforms.
+    ids: dict[bytes, bytes] = {}
+    return re.sub(rb'(?<=["#])g[0-9A-F]+(?=")', lambda m: ids.setdefault(m[0], b"g%d" % len(ids)), svg)
+
+
 def _check_doc_examples(root: Path, package_root: Path, package_dir: Path, *, update: bool = False) -> tuple[list[str], int]:
     package = _package_manifest()["package"]
     import_line = f'#import "@preview/{package["name"]}:{package["version"]}": *\n'
@@ -511,7 +517,7 @@ def _check_doc_examples(root: Path, package_root: Path, package_dir: Path, *, up
         elif name in illustrations:
             failures.append(f"duplicate documentation illustration: {name}")
         else:
-            illustrations[name] = output.read_bytes()
+            illustrations[name] = _stable_svg_ids(output.read_bytes())
 
     for document in _doc_paths():
         text = (ROOT / document).read_text()
