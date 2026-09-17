@@ -14,6 +14,8 @@ jobs:
     name: Regression suite
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      PACKAGE_CHECK_REV: 50eb19311fde
 
     steps:
       - name: Check out repository
@@ -44,11 +46,23 @@ jobs:
       - name: Install pinned TeX Live
         run: uv run --frozen python tools/test.py texlive
 
+      - name: Identify runner image
+        id: image
+        run: echo "os=$ImageOS" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Typst package checker
+        id: package-check
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/typst-package-check
+          key: typst-package-check-${{ steps.image.outputs.os }}-${{ env.PACKAGE_CHECK_REV }}
+
       - name: Install Typst package checker
-        run: cargo install --git https://github.com/typst/package-check --rev 50eb19311fde --locked
+        if: steps.package-check.outputs.cache-hit != 'true'
+        run: cargo install --git https://github.com/typst/package-check --rev "$PACKAGE_CHECK_REV" --locked
 
       - name: Run regression suite
-        run: uv run --frozen python tools/test.py check
+        run: uv run --frozen python tools/test.py check --jobs "$(nproc)"
 
   minimum-typst:
     name: Typst 0.14 compatibility
