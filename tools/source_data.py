@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import tomllib
 from pathlib import Path
+from xml.etree import ElementTree
 
 import test_matrix as M
 from harness import ROOT, ACMART, TESTS_DIR, TEST_CLOCK_ENV
@@ -498,6 +499,49 @@ def _stable_svg_ids(svg: bytes) -> bytes:
     return re.sub(rb'(?<=["#])g[0-9A-F]+(?=")', lambda m: ids.setdefault(m[0], b"g%d" % len(ids)), svg)
 
 
+def _compact_doc_svg(svg: bytes, pdf: Path) -> bytes:
+    import fitz
+    import numpy as np
+
+    # Measure ink at one pixel per point, but keep the original vector artwork.
+    with fitz.open(pdf) as doc:
+        page = doc[0]
+        width, height = page.rect.width, page.rect.height
+        pix = page.get_pixmap(colorspace=fitz.csGRAY)
+        pixels = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width)
+    rows, columns = np.nonzero(pixels < 250)
+    if not len(rows):
+        return svg
+    rows = np.unique(rows)
+    bands = np.split(rows, np.flatnonzero(np.diff(rows) > 72) + 1)
+    left = max(0, int(columns.min()) - 8)
+    right = min(width, int(columns.max()) + 9)
+    crops = [(max(0, int(band[0]) - 8), min(height, int(band[-1]) + 9)) for band in bands]
+    cropped_height = sum(bottom - top for top, bottom in crops)
+    cropped_width = right - left
+    ElementTree.register_namespace("", "http://www.w3.org/2000/svg")
+    ElementTree.register_namespace("xlink", "http://www.w3.org/1999/xlink")
+    artwork = ElementTree.fromstring(svg)
+    artwork.tag = "{http://www.w3.org/2000/svg}g"
+    artwork.attrib.clear()
+    artwork.set("id", "page")
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+        f'viewBox="0 0 {cropped_width} {cropped_height}" '
+        f'width="{cropped_width}pt" height="{cropped_height}pt">',
+        f'<defs>{ElementTree.tostring(artwork, encoding="unicode")}</defs>',
+    ]
+    offset = 0
+    for index, (top, bottom) in enumerate(crops):
+        size = bottom - top
+        parts.append(f'<defs><clipPath id="crop-{index}"><rect y="{offset}" '
+                     f'width="{cropped_width}" height="{size}"/></clipPath></defs>')
+        parts.append(f'<g clip-path="url(#crop-{index})"><use xlink:href="#page" '
+                     f'transform="translate({-left} {offset - top})"/></g>')
+        offset += size
+    return ("\n".join([*parts, "</svg>"]) + "\n").encode()
+
+
 def _check_doc_examples(root: Path, package_root: Path, package_dir: Path, *, update: bool = False) -> tuple[list[str], int]:
     package = _package_manifest()["package"]
     import_line = f'#import "@preview/{package["name"]}:{package["version"]}": *\n'
@@ -509,7 +553,7 @@ def _check_doc_examples(root: Path, package_root: Path, package_dir: Path, *, up
     illustrations: dict[str, bytes] = {}
     count = 0
 
-    def render(main: Path, name: str) -> None:
+    def render(main: Path, name: str, *, compact: bool = False) -> None:
         output = main.with_suffix(".svg")
         proc = _compile_against_packages(main, package_root, output)
         if proc.returncode:
@@ -517,7 +561,8 @@ def _check_doc_examples(root: Path, package_root: Path, package_dir: Path, *, up
         elif name in illustrations:
             failures.append(f"duplicate documentation illustration: {name}")
         else:
-            illustrations[name] = _stable_svg_ids(output.read_bytes())
+            svg = _stable_svg_ids(output.read_bytes())
+            illustrations[name] = _compact_doc_svg(svg, main.with_name("out.pdf")) if compact else svg
 
     for document in _doc_paths():
         text = (ROOT / document).read_text()
@@ -540,9 +585,9 @@ def _check_doc_examples(root: Path, package_root: Path, package_dir: Path, *, up
             if proc.returncode or proc.stderr.strip():
                 failures.append(f"{document}: Typst example {index}:\n{proc.stderr.strip()}")
                 continue
-            marker = re.search(r"<!-- render: ([a-z-]+) -->\n$", text[:block.start()])
+            marker = re.search(r"<!-- render: ([a-z-]+)( compact)? -->\n$", text[:block.start()])
             if marker:
-                render(main, marker[1])
+                render(main, marker[1], compact=bool(marker[2]))
 
     starter = root / "doc-starter"
     shutil.copytree(package_dir / "template", starter)

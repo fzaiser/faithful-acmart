@@ -98,6 +98,8 @@ The package check compiles these examples against the staged package and checks 
 Body-only snippets receive an `acmsmall` preamble on a compact, automatically sized page; snippets with their own show rule receive only the package import.
 
 To illustrate an example, put `<!-- render: name -->` immediately before its fence and link to `docs/assets/name.svg` from the README, or `assets/name.svg` from another document in `docs/`.
+Use `<!-- render: name compact -->` to trim page margins and large blank gaps while preserving the rendered text and graphics at their original scale.
+Caption compact illustrations to make omitted page space explicit.
 The starter illustration is the first page of `template/main.typ`.
 Regenerate illustrations with the pinned compiler:
 

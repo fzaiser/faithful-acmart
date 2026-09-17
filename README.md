@@ -43,7 +43,7 @@ Keep one `#show: acmart.with(...)` rule near the top of your paper and add optio
 
 For an existing document, import the package and apply `acmart`:
 
-<!-- render: getting-started -->
+<!-- render: getting-started compact -->
 ```typst
 #import "@preview/faithful-acmart:0.1.0": *
 
@@ -68,6 +68,8 @@ A dependency graph describes which tasks must finish before another can begin.
 ```
 
 ![Rendered title, author, abstract, keywords, and introduction from the getting-started example.](docs/assets/getting-started.svg)
+
+*Title block and contact information, with the intervening page space omitted.*
 
 This example uses `nonacm: true` to suppress ACM publication notices while you try the layout.
 For a publication, use the metadata and settings supplied by your venue; the [publication reference](docs/reference.md#publication-metadata) explains where they go.
@@ -112,7 +114,7 @@ The reference covers [format options](docs/reference.md#format-and-page-settings
 Each author can have multiple affiliations and notes, an email address, and an ORCID link.
 The package also supports shared author notes, a corresponding-author mark, translated titles and abstracts, and receipt history.
 
-<!-- render: authors -->
+<!-- render: authors compact -->
 ```typst
 #show: acmart.with(
   format: "acmsmall",
@@ -138,6 +140,8 @@ Our work studies dependencies between tasks.
 ```
 
 ![Rendered author group with a shared affiliation, a shared note mark, and contact information.](docs/assets/authors.svg)
+
+*Title block and author footnotes, with the intervening page space omitted.*
 
 Identical notes share a mark.
 In a journal title block, placing a shared affiliation on the last author groups the authors above it.
