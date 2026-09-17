@@ -2,7 +2,7 @@
 
 #import "formats/_base.typ": tp
 #import "parts/colors.typ": acm-orange, acm-purple
-#import "parts/spacing.typ": comp, tex-skip, glue-above, mark-nested-flows, fill-region, region-start, region-used, document-end
+#import "parts/spacing.typ": comp, tex-skip, glue-above, mark-nested-flows, fill-region, region-start, region-used, document-end, no-stretch
 #import "parts/headings.typ": render-heading, _body-since-heading, noindentparagraph as _noindentparagraph
 #import "parts/frontmatter.typ": make-title, make-title-head, make-title-body, make-footnotes, make-acmcp-cover, make-received
 #import "parts/metadata.typ": resolve-metadata
@@ -102,6 +102,12 @@
 #let grantnum(id, num, url: none) = if url == none { num } else { [#num (#link(url)[#url])] }
 
 #let noindentparagraph(body) = context { _noindentparagraph(cfg-state.get(), body) }
+
+// \vspace{natural plus stretch}.
+#let vspace(natural, plus: 0pt) = context {
+  let cfg = cfg-state.get()
+  if cfg == none { v(natural, weak: true) } else { glue-above(cfg, tex-skip(cfg, natural), plus) }
+}
 
 // amsart's \part uses its paragraph font but is a display heading (amsart.cls, \part).
 #let part(body) = context {

@@ -21,6 +21,7 @@
   ): set text(costs: (runt: _nested-cost))
   body
 }
+#let no-stretch(body) = { set text(costs: (runt: _nested-cost)); body }
 
 // A counter would resolve two layout passes later than the owner's location.
 #let _marker(role, owner) = metadata((acm-glue: role, owner: owner))

@@ -2117,6 +2117,10 @@ TESTS: dict[str, Test] = {
         kind="smoke", pages=3,
         note="flush-bottom: false leaves full pages ragged; the golden pins the unstretched gaps.",
     ),
+    "stretch-controls-test": Test(
+        kind="smoke", pages=3,
+        note="vspace with a large stretch takes nearly all of page 1's slack; gaps inside no-stretch keep their natural size.",
+    ),
     "fix-quirks-doc-default-test": Test(
         kind="smoke", pages=1,
         note="Omitting fix-quirks must match the explicit false variant.",

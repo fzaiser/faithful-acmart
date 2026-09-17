@@ -418,6 +418,8 @@ Use these helpers for headings, grant information, and typesetting logos:
 |---|---|
 | `part(body)` | Unnumbered display heading in acmart's paragraph-heading style |
 | `noindentparagraph(body)` | Run-in paragraph heading without its usual indentation |
+| `vspace(natural, plus: 0pt)` | Vertical gap that takes part in [`flush-bottom`](#format-and-page-settings) stretching, like `\vspace{6pt plus 2pt}`; a heading has `plus: 2pt`. |
+| `no-stretch(body)` | Keeps the gaps inside `body` at their natural size. |
 | `grantsponsor(id, name, url)` | Prints the sponsor name; the ID and URL are not displayed. |
 | `grantnum(id, num, url: none)` | Prints a grant number, with a linked URL when supplied. |
 | `latex-logo`, `tex-logo`, `bibtex-logo` | Content values for the corresponding typesetting logos |
