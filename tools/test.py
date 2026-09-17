@@ -35,6 +35,7 @@ from gates_layout import gate_metrics, gate_word_positions, gate_horizontal_rule
 from overlay import cmd_overlay
 from validate import gate_validate, cmd_validate
 from bib_oracle import cmd_bib_oracle
+from texlive import cmd_texlive
 from report import cmd_report, record_check_status
 
 
@@ -385,6 +386,7 @@ def main() -> int:
              "Choices: " + ", ".join(CHECK_GATE_SLUGS))
     check.set_defaults(fn=cmd_check)
     sub.add_parser("accept", help="rebuild Typst PDFs and refresh golden hashes").set_defaults(fn=cmd_accept)
+    sub.add_parser("texlive", help="install the pinned TeX Live that builds the LaTeX references").set_defaults(fn=cmd_texlive)
     sub.add_parser("unit", help="run pure-Typst unit tests (tests/unit/*.typ); no LaTeX").set_defaults(fn=cmd_unit)
     sub.add_parser("docs", help="compile documentation examples and refresh SVG illustrations").set_defaults(fn=cmd_docs)
     pkg = sub.add_parser("package", help="validate and compile the manifest-filtered package")

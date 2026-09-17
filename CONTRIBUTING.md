@@ -4,12 +4,15 @@ Use these instructions to develop the package and compare its output with LaTeX.
 
 ## Setup
 
-Install `uv`, a TeX distribution providing `pdflatex`, `bibtex`, and `biber`, and `typst-package-check`.
+Install `uv` and `typst-package-check`.
 Use the Typst version pinned by `TYPST_VERSION` in [tools/test_matrix.py](tools/test_matrix.py); raster goldens depend on that compiler and the locked Python dependencies.
-The [CI workflow](.github/workflows/tests.yml) records the tested installation commands and system packages.
+LaTeX references are built with a TeX Live pinned in [tools/texlive.py](tools/texlive.py), not with a system TeX distribution: the recorded LaTeX-vs-Typst differences depend on exact package versions.
+The `texlive` command installs it into your user cache directory, using a frozen TeX Live repository and only the packages the tests load.
+The [CI workflow](.github/workflows/tests.yml) records the tested installation commands.
 
 ```sh
 uv sync --frozen
+uv run python tools/test.py texlive
 ```
 
 Compile repository documents through `tools/tc`.
@@ -77,6 +80,8 @@ uv run python tools/test.py check
 ```
 
 A compiler or rasterizer upgrade also requires inspecting the resulting page changes before accepting new hashes.
+Likewise, moving the TeX Live pin requires inspecting every recorded residual that changes.
+If a test starts loading a package missing from the pinned install, add it to the package list in `tools/texlive.py`.
 Use `compat` to check a different Typst release without applying the pinned raster expectations.
 
 ## Documentation

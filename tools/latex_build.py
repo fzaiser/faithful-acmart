@@ -11,6 +11,7 @@ from harness import (
     ROOT, LATEX, ACMART, TESTS_DIR, TEST_CLOCK_ENV, _pmap,
 )
 from pdf_extract import page_count, pdf_text
+from texlive import STAMP as TEXLIVE_STAMP, texlive_env
 
 
 # Stage these dependencies beside acmart.cls so TeX resolves the bundled versions.
@@ -45,7 +46,7 @@ def _quiet(cmd: list[str], **kw) -> subprocess.CompletedProcess[str]:
 
 
 def _run_latex_tool(cmd: list[str], *, label: str, **kw) -> None:
-    proc = _quiet(cmd, **kw)
+    proc = _quiet(cmd, **{**kw, "env": texlive_env(kw.get("env"))})
     if proc.returncode != 0:
         detail = (proc.stderr + "\n" + proc.stdout).strip()
         if len(detail) > 4000:
@@ -163,6 +164,7 @@ def _shared_inputs_mtime() -> float:
         paths = [
             ACMART / "acmart.dtx",
             ACMART / "acmart.ins",
+            TEXLIVE_STAMP,
             *PINNED_LATEX_INPUTS.values(),
         ]
         for pattern in ("*.bib", "*.png", "*.jpg", "*.jpeg", "*.pdf"):

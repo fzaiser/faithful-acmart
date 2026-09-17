@@ -19,20 +19,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            biber \
-            texlive-bibtex-extra \
-            texlive-fonts-extra \
-            texlive-lang-french \
-            texlive-lang-german \
-            texlive-lang-spanish \
-            texlive-latex-extra \
-            texlive-publishers \
-            texlive-science
-
       - name: Install Typst
         uses: typst-community/setup-typst@v5
         with:
@@ -48,6 +34,15 @@ jobs:
 
       - name: Sync Python dependencies
         run: uv sync --frozen
+
+      - name: Restore pinned TeX Live
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/faithful-acmart
+          key: texlive-${{ runner.os }}-${{ hashFiles('tools/texlive.py') }}
+
+      - name: Install pinned TeX Live
+        run: uv run --frozen python tools/test.py texlive
 
       - name: Install Typst package checker
         run: cargo install --git https://github.com/typst/package-check --rev 50eb19311fde --locked

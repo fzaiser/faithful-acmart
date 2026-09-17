@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 from harness import ROOT, OUT, TESTS_DIR, ACMART
+from texlive import texlive_env
 
 
 _ORACLE_FIELDS = (
@@ -121,7 +121,8 @@ def _bibtex_reader_fields(bib: Path, bst: str, workdir: Path) -> dict[str, dict[
         f"\\bibstyle{{dump}}\n\\bibdata{{{stem}}}\n\\citation{{*}}\n")
     bbl = workdir / f"{stem}.bbl"
     bbl.unlink(missing_ok=True)
-    proc = subprocess.run(["bibtex", stem], cwd=workdir, capture_output=True, text=True)
+    proc = subprocess.run(["bibtex", stem], cwd=workdir, capture_output=True, text=True,
+                          env=texlive_env())
     if proc.returncode != 0 or not bbl.exists():
         blg = workdir / f"{stem}.blg"
         detail = (proc.stdout + proc.stderr).strip() or (
@@ -161,9 +162,6 @@ def _compare(bib_name: str, typst, bibtex, declared: set[str]) -> tuple[int, lis
 
 
 def cmd_bib_oracle(_args) -> int:
-    if shutil.which("bibtex") is None:
-        print("bib-oracle needs the real `bibtex` binary (TeX Live).", file=sys.stderr)
-        return 2
     bst = _oracle_bst()
     declared = {field.lower() for field in _ORACLE_FIELDS}
     bibs = sorted((TESTS_DIR / "twins").glob("*.bib")) \
