@@ -131,7 +131,8 @@
         set list(indent: leftmargin.at(li) - labelsep, marker: llap(list-marks.at(ii)))
         it
       }
-      if d == 1 { env-block(inner, above: list-gap, below: list-gap, stretch: cfg.smallskip) } else { inner }
+      // The depth is unresolved in the first layout pass; a top-level list there saves a pass.
+      if d <= 1 { env-block(inner, above: list-gap, below: list-gap, stretch: cfg.smallskip) } else { inner }
     }
     list-depth.update(n => n - 1)
     kind-depth.update(n => n - 1)
