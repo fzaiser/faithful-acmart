@@ -9,13 +9,14 @@ Keep detailed option contracts in the reference; do not shorten this README mere
 # faithful-acmart
 
 Write ACM-style papers in Typst, with journal and conference layouts, author metadata, ACM bibliography styles, and theorem environments.
+Typst compiles a plain-text source file into a PDF; this package supplies the ACM formatting.
 The package follows LaTeX `acmart` 2.21 and tests its output against equivalent LaTeX documents.
 
 **[Get started](#getting-started)** · **[Look up an option](docs/reference.md)** · **[Browse the starter](template/main.typ)** · **[Changelog](docs/changelog.md)**
 
 ![First page of the starter paper in the acmsmall journal format.](docs/assets/starter.svg)
 
-*The [starter paper](template/main.typ), rendered by Typst in the `acmsmall` format.*
+*The [starter guide](template/main.typ) explains how to use the package while demonstrating the `acmsmall` journal format.*
 
 - **Journal and conference formats:** choose `acmsmall`, `acmlarge`, `acmtog`, `sigconf`, or one of the other supported layouts.
 - **Front matter:** supply affiliations, author notes, ORCIDs, CCS concepts, publication metadata, and translations.
@@ -37,8 +38,8 @@ cd my-paper
 typst compile main.typ
 ```
 
-The starter includes `main.typ` and `refs.bib`.
-Replace its sample metadata and content with your own.
+The starter includes `main.typ`, a guide with working examples, and `refs.bib`, a sample bibliography.
+Read the guide alongside its source to see how the examples are written, then replace the sample metadata and content with your own.
 Keep one `#show: acmart.with(...)` rule near the top of your paper and add options to that rule as needed.
 
 For an existing document, import the package and apply `acmart`:
@@ -50,7 +51,7 @@ For an existing document, import the package and apply `acmart`:
 #show: acmart.with(
   format: "acmsmall",
   nonacm: true,
-  title: "Scheduling with dependency graphs",
+  title: "Your paper's title",
   authors: ((
     name: "Ada Lovelace",
     affiliation: (
@@ -59,12 +60,12 @@ For an existing document, import the package and apply `acmart`:
       country: "UK",
     ),
   ),),
-  abstract: [We study how dependencies constrain the order of tasks.],
-  keywords: ("scheduling", "graphs"),
+  abstract: [Write a short summary of your paper here.],
+  keywords: ("ACM", "Typst"),
 )
 
 = Introduction
-A dependency graph describes which tasks must finish before another can begin.
+Write your introduction here.
 ```
 
 ![Rendered title, author, abstract, keywords, and introduction from the getting-started example.](docs/assets/getting-started.svg)
@@ -75,6 +76,7 @@ This example uses `nonacm: true` to suppress ACM publication notices while you t
 For a publication, use the metadata and settings supplied by your venue; the [publication reference](docs/reference.md#publication-metadata) explains where they go.
 
 Keep the wildcard import (`*`): it brings in the package's `cite` and `bibliography` replacements as well as the document style.
+The `#import` line loads those functions; the `#show` rule applies the layout to the document.
 
 ## Fonts
 
@@ -119,7 +121,7 @@ The package also supports shared author notes, a corresponding-author mark, tran
 #show: acmart.with(
   format: "acmsmall",
   nonacm: true,
-  title: "Scheduling with dependency graphs",
+  title: "A paper with two authors",
   authors: (
     (
       name: "Ada Lovelace",
@@ -136,7 +138,7 @@ The package also supports shared author notes, a corresponding-author mark, tran
 )
 
 = Introduction
-Our work studies dependencies between tasks.
+The two authors above share an affiliation and a note.
 ```
 
 ![Rendered author group with a shared affiliation, a shared note mark, and contact information.](docs/assets/authors.svg)
@@ -161,9 +163,9 @@ With the first two backends, set `cite-style: "author-year"` for author–year c
 
 <!-- render: citations -->
 ```typst
-Prior work includes @Kahn1962[p. 558].
-#cite(<Kahn1962>, <Tarjan1972>) groups several sources.
-#cite-text(<Kahn1962>) cites an author in prose.
+One source with a page number: @Kahn1962[p. 558].
+Several sources together: #cite(<Kahn1962>, <Tarjan1972>).
+An author's name in the sentence: #cite-text(<Kahn1962>).
 
 #bibliography("refs.bib")
 ```
@@ -185,13 +187,13 @@ It adds rule spacing and can tag the first row as a header.
   tabular(
     columns: 2,
     toprule(),
-    [Method], [Accuracy],
+    [Format], [Columns],
     midrule(),
-    [Baseline], [72.1%],
-    [Ours], [88.4%],
+    [`acmsmall`], [1],
+    [`sigconf`], [2],
     bottomrule(),
   ),
-  caption: [Classification accuracy.],
+  caption: [Two ACM formats and their column counts.],
 )
 ```
 
@@ -208,18 +210,18 @@ The theorem environments share a counter within each numbered section and suppor
 
 <!-- render: theorem -->
 ```typst
-= Dependency graphs
+= Theorems and proofs
 
-#theorem(name: "Topological ordering")[
-  Every finite directed acyclic graph has a topological ordering.
-] <topo>
+#theorem(name: "Sum of consecutive integers")[
+  For every positive integer $n$, the sum from $1$ to $n$ is $n(n + 1) / 2$.
+] <sum-theorem>
 
 #proof[
-  A nonempty finite acyclic graph has a vertex with no incoming edges.
-  Remove that vertex, order the remaining graph by induction, and put the vertex first.
+  Add the sum in ascending order to the sum in descending order.
+  The $n$ pairs each total $n + 1$; divide by two.
 ]
 
-Apply @topo to order the tasks.
+Refer to the theorem by its label: @sum-theorem.
 ```
 
 ![Rendered numbered theorem, proof with an end-of-proof square, and a reference to Theorem 1.1.](docs/assets/theorem.svg)
@@ -231,10 +233,10 @@ See [theorems and acknowledgments](docs/reference.md#theorems-and-acknowledgment
 
 ## Documentation
 
-Use the reference for details and the starter for a complete, editable paper:
+Use the starter to learn the package and the reference to look up a setting:
 
 - [Reference](docs/reference.md): options, examples, and compatibility limits.
-- [Starter paper](template/main.typ): a working document with figures, tables, citations, and theorems.
+- [Starter guide](template/main.typ): explanations and working examples of figures, tables, citations, and theorems.
 - [Changelog](docs/changelog.md): release notes and instructions for upgrading.
 
 ## Development and contributing

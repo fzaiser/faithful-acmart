@@ -87,6 +87,7 @@ Use `compat` to check a different Typst release without applying the pinned rast
 ## Documentation
 
 The [README](README.md) is displayed on Typst Universe: it showcases the package and provides a quick start.
+The [starter guide](template/main.typ) teaches authors how to use the package through explanations and working examples in an ACM-style document.
 The [reference](docs/reference.md) explains option contracts and user-visible compatibility limits.
 Keep architecture in [DESIGN.md](DESIGN.md) and release steps in [PUBLISHING.md](PUBLISHING.md).
 Link to the reference instead of repeating detailed restrictions in several places.

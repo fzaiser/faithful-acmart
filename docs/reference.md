@@ -80,7 +80,7 @@ Every supplied affiliation requires a nonempty `country`.
 #show: acmart.with(
   format: "acmsmall",
   nonacm: true,
-  title: "Scheduling with dependency graphs",
+  title: "Your paper's title",
   authors: ((
     name: "Ada Lovelace",
     email: "ada@example.org",
@@ -88,9 +88,9 @@ Every supplied affiliation requires a nonempty `country`.
     corresponding: true,
     affiliation: (
       (institution: "Analytical Engine Institute", city: "London", country: "UK"),
-      (institution: "Institute for Graph Research", city: "Paris", country: "France"),
+      (institution: "Example Research Institute", city: "Paris", country: "France"),
     ),
-    note: [Work performed while visiting the Institute for Graph Research.],
+    note: [Work performed while visiting the second institution.],
   ),),
 )
 ```
@@ -121,9 +121,9 @@ These options describe the paper's content and appear in its front matter:
 #show: acmart.with(
   format: "sigconf",
   nonacm: true,
-  title: "Scheduling with dependency graphs",
-  abstract: [We study how dependencies constrain the order of tasks.],
-  keywords: ("scheduling", "graphs"),
+  title: "Your paper's title",
+  abstract: [Write a short summary of your paper here.],
+  keywords: ("ACM", "Typst"),
   ccs: ((500, "Mathematics of computing", "Graph algorithms"),),
 )
 ```
@@ -132,7 +132,7 @@ Alternatively, paste the output of the [ACM CCS tool](https://dl.acm.org/ccs) in
 
 ````typst
 #show: acmart.with(
-  title: "Scheduling with dependency graphs",
+  title: "Your paper's title",
   nonacm: true,
   ccs: ```
 \ccsdesc[500]{Mathematics of computing~Graph algorithms}
@@ -159,12 +159,12 @@ Do not include the main language in this dictionary.
   format: "acmsmall",
   nonacm: true,
   language: "english",
-  title: "Scheduling with dependency graphs",
-  abstract: [We describe a method for ordering tasks.],
+  title: "Your paper's title",
+  abstract: [This example includes a French translation.],
   translations: (french: (
-    title: "Ordonnancement avec des graphes de dépendances",
-    abstract: [Nous décrivons une méthode pour ordonner les tâches.],
-    keywords: ("ordonnancement", "graphes"),
+    title: "Le titre de votre article",
+    abstract: [Cet exemple comprend une traduction française.],
+    keywords: ("ACM", "Typst"),
   )),
 )
 ```
@@ -190,15 +190,15 @@ For a proceedings paper:
 ```typst
 #show: acmart.with(
   format: "sigconf",
-  title: "Scheduling with dependency graphs",
+  title: "Your paper's title",
   authors: ((name: "Ada Lovelace", affiliation: (country: "UK")),),
   conference: (
-    name: "Conference on Dependency Graphs",
-    short: "CDG '26",
+    name: "Example Conference",
+    short: "Example '26",
     date: "July 6–8, 2026",
     venue: "London, UK",
   ),
-  booktitle: [Proceedings of the Conference on Dependency Graphs],
+  booktitle: [Proceedings of the Example Conference],
   acm-year: 2026,
   acm-month: 7,
   doi: "10.1145/nnnnnnn.nnnnnnn",
@@ -206,7 +206,7 @@ For a proceedings paper:
 )
 ```
 
-The DOI and ISBN above are placeholders, not publication identifiers.
+The conference details, DOI, and ISBN above are placeholders.
 Use the values provided for your paper.
 Supplying conference metadata can also change the reference-strip layout in a journal format.
 
@@ -242,7 +242,7 @@ Use an ordered array of `(stage, date)` pairs:
 )
 
 = Conclusion
-The ordering respects every dependency.
+The receipt history appears after the document body.
 ```
 
 An empty stage becomes “Received” for the first entry and “revised” thereafter.
@@ -256,7 +256,7 @@ For example:
 #show: acmart.with(
   format: "acmsmall",
   nonacm: true,
-  title: "Scheduling with dependency graphs",
+  title: "Your paper's title",
   badges: (
     left: box(stroke: 0.5pt, inset: 4pt)[Left badge],
     right: box(stroke: 0.5pt, inset: 4pt)[Right badge],
@@ -399,7 +399,7 @@ All share one counter, reset by each numbered level-one heading.
 Before the first numbered section, the section part of the number is zero.
 
 Each environment takes content as its body, optional `name` for a parenthetical name, and optional `title` to replace the environment label.
-For example, `#lemma(name: "Source vertex")[...]` prints a numbered lemma with that name.
+For example, `#lemma(name: "A useful identity")[...]` prints a numbered lemma with that name.
 Put a Typst label after the environment and use `@label` to refer to it.
 See the [theorem source and rendered output](../README.md#theorems-and-proofs).
 
@@ -428,10 +428,10 @@ For a numbered figure, wrap the illustration in `figure` and place a label after
 ```typst
 #figure(
   rect(width: 5cm, height: 2cm, fill: luma(230)),
-  caption: [A placeholder for the dependency graph.],
-) <dependencies>
+  caption: [A sample illustration.],
+) <sample-figure>
 
-@dependencies shows the dependencies between tasks.
+Refer to the figure by its label: @sample-figure.
 ```
 
 Replace the rectangle with an image or diagram.
@@ -449,12 +449,12 @@ For `format: "acmengage"`, supply `engage-metadata` as ordered label/value pairs
 #show: acmart.with(
   format: "acmengage",
   nonacm: true,
-  title: "Exploring dependency graphs",
+  title: "An introduction to Typst",
   engage-metadata: (
-    ("Course", "Algorithms"),
-    ("Topic", "Topological sorting"),
+    ("Course", "Technical writing"),
+    ("Topic", "Figures and tables"),
   ),
-  abstract: [Students order tasks subject to dependencies.],
+  abstract: [Students add a figure and a table to a document.],
 )
 ```
 
