@@ -86,6 +86,7 @@
   urlstyle-sans: false,
   secnumdepth: 3,
   title-width-reduction: 0pt,
+  textbottom-stretch: 0pt,
   sec-fonts: generic-sec-fonts,
   thm: (
     plain-head: "smallcaps", def-head: "italic", indent: auto,
@@ -113,6 +114,8 @@
     footnote-rule-short: 4 * 12 * tp,
     footnote-rule-kern-above: 3 * tp, footnote-rule-kern-below: 2.6 * tp,
     footins-skip: 7 * tp,
+    // \skip\footins and \textfloatsep stretch; \@textbottom does in the formats without \flushbottom.
+    footins-stretch: 11 * tp, float-stretch: 8 * tp, textbottom-stretch: textbottom-stretch,
     parindent: parindent,
     parskip: 0pt,
     runin-sep: 3.5 * tp,

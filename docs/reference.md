@@ -508,7 +508,7 @@ These differences affect page layout and document appearance:
 | Area | Difference or limitation |
 |---|---|
 | Line and page breaks | Typst lacks TeX's shrinkable glue, final-column balancing, and microtype font expansion and protrusion, so breaks can differ. |
-| Page bottoms | Pages and columns with footnotes or a bottom float stay ragged, and so does the last page. Elsewhere LaTeX's split of the slack is approximated, and content inside a container such as a block or table cell does not stretch. |
+| Page bottoms | The last page stays ragged, as with `\clearpage`. Elsewhere LaTeX's split of the slack is approximated, including the shares above footnotes and around floats; content inside a container such as a block or table cell does not stretch. |
 | Math | Uses Libertinus Math and approximate display spacing, without TeX's short-display skips or exact math metrics. |
 | Baselines, captions, floats, footnotes | Small spacing differences can arise from the engines' different line-box depths. |
 | Wrapped numbered headings | No hanging indent; this preserves tagged-PDF reading order. |

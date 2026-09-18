@@ -2121,6 +2121,10 @@ TESTS: dict[str, Test] = {
         kind="smoke", pages=3,
         note="vspace with a large stretch takes nearly all of page 1's slack; gaps inside no-stretch keep their natural size.",
     ),
+    "edge-stretch-test": Test(
+        kind="smoke", pages=5,
+        note="Footnote pages end flush with the footnote gap reserved; page 4 keeps its natural break, where a reservation would trip the widow rule.",
+    ),
     "fix-quirks-doc-default-test": Test(
         kind="smoke", pages=1,
         note="Omitting fix-quirks must match the explicit false variant.",

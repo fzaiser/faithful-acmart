@@ -4,6 +4,7 @@
 
 #let sigchia(font-size: 10pt) = make-format(
   name: "sigchi-a",
+  textbottom-stretch: 1 * tp,
   kind: "proceedings",
   ladder: size-ladder(font-size, format: "sigchi-a"),
   paper: (width: 11in, height: 8.5in),

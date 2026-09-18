@@ -31,6 +31,7 @@ It compensates for the difference between TeX's baseline spacing and Typst's lin
 The title uses its measured cap height to position the first line.
 
 `\flushbottom` is reproduced by the glue helpers in [spacing.typ](src/parts/spacing.typ): fractional spacing weighted by each gap's TeX stretch, which cannot move a break.
+The gaps Typst cannot stretch, above footnotes and beside floats, take their share as fixed height measured from the previous pass; a region whose measured slack then changes has lost a line to that height and stops reserving.
 TeX discards glue at a page break and Typst does not, so each glue point reads its position from the previous layout pass.
 That costs one of Typst's five layout passes; state updates that affect page breaks are therefore emitted outside `context`, where they would arrive a pass later.
 Citations resolve in the second pass, so a paper's breaks are final in the second, its glue in the third, and the fourth confirms; anything that changes a break later than the second pass uses the one pass left.

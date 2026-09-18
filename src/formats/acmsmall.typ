@@ -4,6 +4,7 @@
 
 #let acmsmall(font-size: 10pt) = make-format(
   name: "acmsmall",
+  textbottom-stretch: 1 * tp,
   ladder: size-ladder(font-size, format: "acmsmall"),
   paper: (width: 6.75in, height: 10in),
   margin: (

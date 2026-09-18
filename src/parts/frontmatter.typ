@@ -1,7 +1,7 @@
 // Render titles, authors, and publication metadata for each format.
 
 #import "copyright.typ": permission-text, copyright-owner
-#import "spacing.typ": comp, tex-skip, region-foot
+#import "spacing.typ": comp, tex-skip, region-foot, notes-gap, notes-record
 #import "strings.typ": lang-record
 #import "body.typ": in-topmatter
 #import "punct.typ": add-punct
@@ -425,8 +425,11 @@
     }
   }
 
-  place(bottom, float: true, clearance: cfg.footins-skip - cfg.footnote-rule-kern-above,
-    block(width: 100%, spacing: 0pt, { region-foot(); stack }))
+  context {
+    let gap = notes-gap(cfg)
+    place(bottom, float: true, clearance: cfg.footins-skip - cfg.footnote-rule-kern-above + gap,
+      block(width: 100%, spacing: 0pt, { region-foot(notes: true); notes-record(gap); stack }))
+  }
 }
 
 #let make-acmcp-infobox(cfg, meta) = {

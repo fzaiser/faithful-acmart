@@ -1,14 +1,14 @@
 // Apply ACM styles to body content and place material in the margins.
 
-#import "spacing.typ": comp, tex-skip, glue-above, glue-below, region-foot
+#import "spacing.typ": comp, tex-skip, glue-above, glue-below, region-foot, float-gap, float-marker, float-record, nested-flow
 #import "../formats/_base.typ": tp
 #import "theorems.typ": cfg-state, thm-figure-kind
 #import "tables.typ": table-inset, light-rule
 
 // Teasers have their own \@mkteasers spacing, so suppress ordinary float spacing and the indent shim.
 #let in-topmatter = state("acm-in-topmatter", false)
-// none for a figure in the flow, whose caption cannot lie at the foot of a region.
-#let float-scope = state("acm-float-scope", none)
+// The column float being rendered; its caption marks the region it lands in.
+#let float-owner = state("acm-float-owner", none)
 
 #let apply-body(cfg, body, amsart-lists: false) = context {
   show figure.where(kind: image): set figure(supplement: if cfg.journal { [Fig.] } else { [Figure] })
@@ -30,8 +30,8 @@
       }
       it.body
     }
-    let scope = float-scope.get()
-    if scope != none { region-foot(wide: scope == "parent") }
+    let owner = float-owner.get()
+    if owner != none { float-marker(owner.at, owner.stretches) }
     layout(size => {
       let w = measure(cap).width
       if w <= size.width {
@@ -56,12 +56,21 @@
   }
   show figure: it => context {
     if in-topmatter.get() {
-      float-scope.update(none)
+      float-owner.update(none)
       it
     } else {
       set block(above: cfg.intextsep, below: cfg.intextsep)
-      float-scope.update(if it.placement == none { none } else { it.scope })
+      // A page-wide float lies outside the columns TeX stretches.
+      let floats = cfg.flush-bottom and it.placement != none and not nested-flow()
+      let stretches = floats and (it.scope == "column" or cfg.columns == 1)
+      float-owner.update(if floats { (at: it.location(), stretches: stretches) })
+      let gap = if floats { float-gap(cfg, it.location()) } else { (extra: 0pt, before: 0pt) }
+      let hidden = gap.before + gap.extra / 2
+      if hidden > 0pt { v(-hidden) }
+      if stretches { float-record(it.location(), gap.extra) }
+      set place(clearance: place.clearance + gap.extra)
       it
+      if hidden > 0pt { v(hidden) }
       h(cfg.parindent)
     }
   }

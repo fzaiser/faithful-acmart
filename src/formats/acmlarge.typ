@@ -4,6 +4,7 @@
 
 #let acmlarge(font-size: 10pt) = make-format(
   name: "acmlarge",
+  textbottom-stretch: 1 * tp,
   ladder: size-ladder(font-size, format: "acmlarge"),
   paper: (width: 8.5in, height: 11in),
   margin: (

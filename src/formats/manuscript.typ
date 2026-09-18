@@ -4,6 +4,7 @@
 
 #let manuscript(font-size: 9pt) = make-format(
   name: "manuscript",
+  textbottom-stretch: 1 * tp,
   // setspace's \onehalfspacing selects its factor by \@ptsize.
   ladder: size-ladder(font-size, format: "manuscript",
     baseline-stretch: ("8": 1.25, "9": 1.25, "10": 1.25, "11": 1.213, "12": 1.241)
