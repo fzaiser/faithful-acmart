@@ -183,6 +183,8 @@
       }
     }
   }
+  // Reference entries are not paragraphs.
+  _body-since-heading.update(true)
 }
 
 #let acmart(

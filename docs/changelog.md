@@ -5,6 +5,7 @@
 Full pages and columns now end flush at the bottom, as in LaTeX, so vertical positions change in existing papers; page breaks do not.
 Set [`flush-bottom: false`](reference.md#format-and-page-settings) to keep ragged bottoms.
 `vspace` adds a gap with its own stretch, and `no-stretch` exempts part of the document.
+A heading that directly follows the bibliography now has its space above it.
 
 ## 0.2.0 (2026-09-17)
 
