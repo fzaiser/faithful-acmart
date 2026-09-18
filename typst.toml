@@ -29,6 +29,7 @@ exclude = [
     "/scratch",
     "/.gitignore",
     "/.python-version",
+    "/AGENTS.md",
     "/CLAUDE.md",
     "/CONTRIBUTING.md",
     "/DESIGN.md",
