@@ -101,7 +101,10 @@
 
 #let grantnum(id, num, url: none) = if url == none { num } else { [#num (#link(url)[#url])] }
 
-#let noindentparagraph(body) = context { _noindentparagraph(cfg-state.get(), body) }
+#let noindentparagraph(body) = context {
+  let cfg = cfg-state.get()
+  if cfg == none { body } else { _noindentparagraph(cfg, body) }
+}
 
 // \vspace{natural plus stretch}.
 #let vspace(natural, plus: 0pt) = context {
@@ -112,6 +115,7 @@
 // amsart's \part uses its paragraph font but is a display heading (amsart.cls, \part).
 #let part(body) = context {
   let cfg = cfg-state.get()
+  if cfg == none { return body }
   let f = cfg.sec-fonts.paragraph
   glue-above(cfg, tex-skip(cfg, 10 * tp), 4 * tp)
   block(above: 0pt, below: tex-skip(cfg, 4 * tp), sticky: true,

@@ -189,6 +189,7 @@
 
 #let _marginpar(body, centering: false) = context {
   let cfg = cfg-state.get()
+  if cfg == none { return body }
   let mp = cfg.marginpar
   assert(mp != none, message: "faithful-acmart: sidebar/marginfigure/margintable need a margin-note column (format: \"sigchi-a\")")
   // Horizontal alignment keeps the note anchored in the flow.
@@ -212,6 +213,7 @@
 
 #let fulltextwidth(body) = context {
   let cfg = cfg-state.get()
+  if cfg == none { return body }
   let mp = cfg.marginpar
   assert(mp != none, message: "faithful-acmart: fulltextwidth needs a margin-note column (format: \"sigchi-a\")")
   let off = mp.width + mp.sep

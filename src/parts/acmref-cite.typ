@@ -256,7 +256,9 @@
 }
 
 #let entry-label(key) = label("acmref:" + key)
-#let cite-num-link(num, key) = link(entry-label(key))[#num]
+// A link to a label that does not exist yet drops its body, which would change line breaks between layout passes.
+#let entry-link(key, body) = if query(entry-label(key)).len() > 0 { link(entry-label(key), body) } else { body }
+#let cite-num-link(num, key) = entry-link(key)[#num]
 
 #let cite-ay(p, keys, mode: "citep", supplement: none) = {
   let ks = cite-order(keys, p.order)
@@ -282,7 +284,7 @@
   let tail(i) = if mode != "citep" and supplement != none and i == lgroups.len() - 1 {
     [, #supplement]
   } else { [] }
-  let parts = lgroups.enumerate().map(((i, g)) => link(entry-label(g.key),
+  let parts = lgroups.enumerate().map(((i, g)) => entry-link(g.key,
     if mode == "citet" { g.shown + " [" + years(g) + tail(i) + "]" }
     else { g.shown + " " + years(g) + tail(i) }))
   let note = if mode == "citep" and supplement != none { [, #supplement] } else { [] }
@@ -294,7 +296,7 @@
     let num = p.order.position(x => x == k) + 1
     let label = cite-label-content(p, k)
     let note = if supplement != none and i == ordered.len() - 1 { [, #supplement] } else { [] }
-    link(entry-label(k), if brackets { [#label \[#num#note\]] } else { [#label #num#note] })
+    entry-link(k, if brackets { [#label \[#num#note\]] } else { [#label #num#note] })
   }).join(", ")
 }
 
@@ -416,7 +418,7 @@
     let extras = if cite-style-state.get() == "author-year" { p.extras } else { (:) }
     let note = if supp != none { [, #supp] } else { [] }
     "[" + cite-order(ks, p.order).map(k =>
-      link(entry-label(k), cite-year(p, k) + extras.at(k, default: ""))).join(", ") + note + "]"
+      entry-link(k, cite-year(p, k) + extras.at(k, default: ""))).join(", ") + note + "]"
   })
 }
 
@@ -445,7 +447,7 @@
     let note = if supp != none and keeps-postnote(p) { [, #supp] } else { [] }
     cite-order(ks, p.order)
       .filter(k => not (bare and not p.labels.at(k).at("named", default: true)))
-      .map(k => link(entry-label(k), cite-label-content(p, k))).join("; ") + note
+      .map(k => entry-link(k, cite-label-content(p, k))).join("; ") + note
   })
 }
 

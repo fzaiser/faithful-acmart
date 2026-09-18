@@ -4,6 +4,8 @@
 #import "punct.typ": add-punct
 #import "../formats/_base.typ": tp
 
+// The state is unknown in the first layout pass.
+// Realizing the bare body there registers its citations, counters, and labels a pass earlier.
 #let cfg-state = state("acmart-cfg", none)
 
 #let anon-state = state("acmart-anon", false)
@@ -62,6 +64,7 @@
     kind: thm-figure-kind, supplement: title, numbering: "1", outlined: false,
     context {
       let cfg = cfg-state.get()
+      if cfg == none { return body }
       let number = _thm-number(here())
 
       let hf = if kind == "plain" { cfg.thm.plain-head } else { cfg.thm.def-head }
@@ -88,13 +91,15 @@
 
 #let acks(body) = context {
   if anon-state.get() { return }
-  heading(level: 1, numbering: none)[#cfg-state.get().strings.acks]
+  let cfg = cfg-state.get()
+  if cfg != none { heading(level: 1, numbering: none, cfg.strings.acks) }
   body
 }
 
 #let proof(body, name: none) = {
   context {
     let cfg = cfg-state.get()
+    if cfg == none { return body }
     let name = if name != none { name } else { cfg.strings.proof }
     // The proof uses \topsep and \labelsep from its trivlist, independently of the theorem style (acmart.dtx, proof).
     thm-block(cfg, _head-font(cfg.thm.proof-head, add-punct(name, fix: cfg.fix-quirks)),
