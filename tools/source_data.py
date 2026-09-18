@@ -398,7 +398,7 @@ def _package_files() -> list[Path]:
 
 
 _MD_LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
-_IMAGE_SUFFIXES = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
+_DIRECT_ASSET_SUFFIXES = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf"}
 
 
 def _relative_link_targets(text: str) -> list[str]:
@@ -440,16 +440,17 @@ def _is_shipped(target: str, rels: set[str]) -> bool:
 
 
 def _release_document(text: str, manifest: dict, rels: set[str], document: str = "README.md") -> str:
-    """Rewrite links to unshipped files using the release tag; use raw URLs for images."""
+    """Link to release-tag file views, keeping shipped images and PDFs local."""
     package = manifest["package"]
     repository = package["repository"]
     tag = f"v{package['version']}"
     for target in sorted(set(_relative_link_targets(text))):
         path, _, fragment = target.partition("#")
         path = (ROOT / document).parent.joinpath(path).resolve().relative_to(ROOT).as_posix()
-        if _is_shipped(path, rels):
-            continue
-        if Path(path).suffix.lower() in _IMAGE_SUFFIXES:
+        # Universe rewrites relative links to raw files, losing Markdown rendering and code highlighting.
+        if Path(path).suffix.lower() in _DIRECT_ASSET_SUFFIXES:
+            if _is_shipped(path, rels):
+                continue
             host = repository.replace("github.com", "raw.githubusercontent.com")
             url = f"{host}/{tag}/{path}"
         else:
@@ -693,14 +694,16 @@ def gate_package(report: bool = False, out_dir: Path | None = None) -> list[str]
                     slugs = {re.sub(r" +", "-", re.sub(r"[^\w\- ]", "", h.lower())) for h in headings}
                     if fragment not in slugs:
                         failures.append(f"{document}: missing heading in {target}")
-            unshipped = sorted({
-                target for target in _relative_link_targets(staged_text)
-                if not _is_shipped((ROOT / document).parent.joinpath(target.partition("#")[0]).resolve().relative_to(ROOT).as_posix(), set(rels))
-            })
-            if unshipped:
+            unresolved = []
+            for target in sorted(set(_relative_link_targets(staged_text))):
+                path = (ROOT / document).parent.joinpath(target.partition("#")[0]).resolve()
+                if (path.suffix.lower() not in _DIRECT_ASSET_SUFFIXES
+                        or not _is_shipped(path.relative_to(ROOT).as_posix(), set(rels))):
+                    unresolved.append(target)
+            if unresolved:
                 failures.append(
-                    f"staged {document} links to unshipped paths (expected {release_tag} URLs): "
-                    + ", ".join(unshipped))
+                    f"staged {document} has relative links requiring {release_tag} URLs: "
+                    + ", ".join(unresolved))
 
             scans.extend(((prose, False), (code, True)))
 
