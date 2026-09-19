@@ -30,11 +30,11 @@ Use [spacing.typ](src/parts/spacing.typ) for leading and vertical gaps.
 It compensates for the difference between TeX's baseline spacing and Typst's line boxes, using the following block's font metrics.
 The title uses its measured cap height to position the first line.
 
-`\flushbottom` is reproduced by the glue helpers in [spacing.typ](src/parts/spacing.typ): fractional spacing weighted by each gap's TeX stretch, which cannot move a break.
-The gaps Typst cannot stretch, above footnotes and beside floats, take their share as fixed height measured from the previous pass; a region whose measured slack then changes has lost a line to that height and stops reserving.
-TeX discards glue at a page break and Typst does not, so each glue point reads its position from the previous layout pass.
-That costs one of Typst's five layout passes; state updates that affect page breaks are therefore emitted outside `context`, where they would arrive a pass later.
-Citations resolve in the second pass, so a paper's breaks are final in the second, its glue in the third, and the fourth confirms; anything that changes a break later than the second pass uses the one pass left.
+The glue helpers in [spacing.typ](src/parts/spacing.typ) approximate `\flushbottom` with fractional spacing weighted by each gap's TeX stretch, which cannot move a break.
+The gaps above footnotes and beside floats cannot be fractional, so they receive fixed height measured from the previous pass.
+Fixed height counts against Typst's widow and orphan checks, so even a correct measurement can move a line; a region whose measured slack changes after reserving falls back to fractional spacing alone.
+TeX discards glue at a page break and Typst does not, so each glue point reads its position from the previous layout pass; the first layout lacks citations and is never measured.
+A cited paper thus needs four of Typst's five passes and a fallback the fifth, so state updates that affect page breaks are emitted outside `context`, where they would arrive a pass later.
 
 Font-size steps and some spacing come from `amsart`, and begin-document hooks can override acmart's earlier settings.
 Consult the executed class or a probe before changing a value that appears inconsistent with a source declaration.

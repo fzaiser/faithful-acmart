@@ -54,7 +54,7 @@ See the [format list](../README.md#choose-a-format) for the available layouts.
 | `start-page` | Positive integer for the first page number; omitted by default. |
 | `screen` | Colors links when true; some journals enable this automatically. |
 | `url-break-on-hyphens` | Allows breaks at hyphens in links by default; set false to prevent them. |
-| `flush-bottom` | Stretches the gaps around headings, lists, displays, and theorems so that full pages and columns end flush, as in LaTeX; set false for ragged bottoms. |
+| `flush-bottom` | Stretches vertical gaps to fill full pages and columns, subject to the [layout limitations](#layout); set false for ragged bottoms. |
 
 An explicit `font-size` selects the corresponding acmart size step, including its derived font sizes and spacing.
 Most papers should retain the format's default size.
@@ -508,7 +508,7 @@ These differences affect page layout and document appearance:
 | Area | Difference or limitation |
 |---|---|
 | Line and page breaks | Typst lacks TeX's shrinkable glue, final-column balancing, and microtype font expansion and protrusion, so breaks can differ. |
-| Page bottoms | The last page stays ragged, as with `\clearpage`. Elsewhere LaTeX's split of the slack is approximated, including the shares above footnotes and around floats; content inside a container such as a block or table cell does not stretch. |
+| Page bottoms | The last page stays ragged, as with `\clearpage`. Elsewhere stretching approximates LaTeX's division of unused height, with the fallback described below; content inside a container such as a block or table cell does not stretch. |
 | Math | Uses Libertinus Math and approximate display spacing, without TeX's short-display skips or exact math metrics. |
 | Baselines, captions, floats, footnotes | Small spacing differences can arise from the engines' different line-box depths. |
 | Wrapped numbered headings | No hanging indent; this preserves tagged-PDF reading order. |
@@ -519,6 +519,10 @@ These differences affect page layout and document appearance:
 | `acmcp` | Long URLs and email addresses wrap differently in the narrow infobox. |
 | Front-matter marks | Use consistent superscript sizes rather than LaTeX's oversized section-sign mark; corresponding-author marks have a fixed order. |
 | Timestamp and PDF metadata | The timestamp contains a date without the time of day. Typst's document API does not provide PDF Subject metadata. |
+
+With `flush-bottom: true`, the gaps above footnotes and around floats take a fixed share of a page's unused height, and the body gaps divide the rest.
+If adding that share changes the page's unused height, the page or column falls back to stretching its body gaps only.
+Some combinations of footnotes, floats, and theorems then exceed Typst's layout passes and produce its non-convergence warning; `flush-bottom: false` avoids it.
 
 ### Bibliography fidelity
 

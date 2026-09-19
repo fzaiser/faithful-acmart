@@ -101,7 +101,7 @@
     }
   }
   // Fractional spacing never moves a line, but reserved height counts against Typst's widow and orphan rules.
-  // A region whose slack changed after it reserved has lost a line to the next region and stops reserving.
+  // Changed slack can indicate moved content, so the region stops reserving as a precaution.
   let hold = previous != none and (previous.hold or calc.abs((previous.slack - slack).pt()) > 0.05)
   // The recorded value stays put once written, or the record itself would never settle.
   let record = if previous != none { previous.slack } else { slack }
@@ -147,7 +147,7 @@
 #let float-record(owner, height) = [#metadata((owner: owner, height: height))<acm-glue-float-extra>]
 
 // The last stretch point of a region reserves the height above footnotes and at \@textbottom.
-// It also records the region's slack, so the next pass can tell whether reserving moved a line.
+// It also records the region's slack, so the next pass can detect a change after reserving.
 #let _region-edge(cfg, own) = {
   if own == none { return none }
   let region = _region(own.at)
