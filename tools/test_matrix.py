@@ -2279,8 +2279,7 @@ ERROR_CASES: dict[str, tuple] = {
     "bad-bib-backend": ('bib-backend: "sqlite",', "`bib-backend` must be"),
     "bad-cite-style": ('cite-style: "footnote",', "`cite-style` must be"),
     "bad-flush-bottom": ('flush-bottom: "maybe",', "`flush-bottom` must be"),
-    # No natural document is known to reach this error, so the case plants a slack record that cannot match;
-    # it covers the check's wiring and message, not the detection.
+    # A synthetic slack mismatch tests the error path, not the detection of pagination changes.
     "flush-bottom-moved-content": ('nonacm: true,', "changed after `flush-bottom: true` reserved",
         '= Body\nText.\n#metadata((owner: none, stretch: 0pt, kind: "above", fresh: false, edge: (height: 0pt, slack: 500pt)))<acm-glue-point>\n#metadata(none)<acm-glue-share>\n'),
     "bad-acm-month": ("acm-month: 13,", "`acm-month` must be an integer 1..12"),

@@ -1,6 +1,4 @@
-// Typst's widow check tests two lines against the remaining height, so reserved height can move a line
-// that the unused height measured afterwards seems to leave room for.
-// The flush-bottom safeguard in src/parts/spacing.typ exists for this case.
+// Typst's widow check needs room for two lines, so a reservation can move a line that still appears to fit by itself.
 #set page(width: 240pt, height: 120pt, margin: 10pt, columns: 2)
 #set text(font: "Libertinus Serif", size: 10pt, top-edge: 8pt, bottom-edge: -2pt)
 #set par(leading: 0pt, spacing: 0pt)

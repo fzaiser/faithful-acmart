@@ -30,7 +30,7 @@
   if sep == auto [ ] else { h(cfg.runin-sep) }
 }
 
-// A context that captures a numbered heading gets a new location in the second layout pass, so it captures the fields.
+// Capture fields before entering context; capturing the heading itself changes the context's location during relayout.
 #let render-heading(it, cfg) = {
   let (lvl, pattern, outlined, title, loc) = (it.level, it.numbering, it.outlined, it.body, it.location())
   context {

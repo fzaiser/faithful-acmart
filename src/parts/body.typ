@@ -7,7 +7,7 @@
 
 // Teasers have their own \@mkteasers spacing, so suppress ordinary float spacing and the indent shim.
 #let in-topmatter = state("acm-in-topmatter", false)
-// The column float being rendered; its caption marks the region it lands in.
+// The caption locates the float after placement, when its destination column is known.
 #let float-owner = state("acm-float-owner", none)
 
 #let apply-body(cfg, body, amsart-lists: false) = context {
@@ -37,7 +37,6 @@
       if w <= size.width {
         align(center, cap)
       } else {
-        // Use the full column width for justification and left-align the final caption line.
         block(width: 100%, align(left, { set par(justify: true); cap }))
       }
     })
@@ -140,7 +139,7 @@
         set list(indent: leftmargin.at(li) - labelsep, marker: llap(list-marks.at(ii)))
         it
       }
-      // The depth is unresolved in the first layout pass; a top-level list there saves a pass.
+      // Unresolved depth reads as zero; keep the wrapper in that pass so it does not delay pagination.
       if d <= 1 { env-block(inner, above: list-gap, below: list-gap, stretch: cfg.smallskip) } else { inner }
     }
     list-depth.update(n => n - 1)

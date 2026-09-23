@@ -1,14 +1,15 @@
 # Contributing
 
-Use these instructions to develop the package and compare its output with LaTeX.
-
 ## Setup
 
 Install `uv` and `typst-package-check`.
-Use the Typst version pinned by `TYPST_VERSION` in [tools/test_matrix.py](tools/test_matrix.py); raster goldens depend on that compiler and the locked Python dependencies.
-LaTeX references are built with a TeX Live pinned in [tools/texlive.py](tools/texlive.py), not with a system TeX distribution: the recorded LaTeX-vs-Typst differences depend on exact package versions.
-The `texlive` command installs it into your user cache directory, using a frozen TeX Live repository and only the packages the tests load.
-The [CI workflow](.github/workflows/tests.yml) records the tested installation commands.
+Reproducible comparisons require pinned tools:
+
+| Tool | Version and setup |
+|---|---|
+| Typst | `TYPST_VERSION` in [test_matrix.py](tools/test_matrix.py); installation commands in [CI](.github/workflows/tests.yml) |
+| Python dependencies | `uv sync --frozen` |
+| TeX Live | The `texlive` command installs the [pinned distribution](tools/texlive.py) in your user cache. |
 
 ```sh
 uv sync --frozen
@@ -36,7 +37,7 @@ uv run python tools/test.py unit
 uv run python tools/test.py check
 ```
 
-`check` builds reference PDFs from the bundled LaTeX class and bibliography styles, rerunning TeX until references stabilize.
+`check` builds reference PDFs from the bundled LaTeX class and bibliography styles.
 It compares text, typography, layout, and PDF semantics, checks Typst raster goldens, and validates the distributable package.
 Use `check --help` for the current gates.
 
@@ -57,13 +58,13 @@ uv run python tools/test.py smoke body-test
 uv run python tools/test.py report body-test
 ```
 
-The HTML report in `tests/out/report/index.html` gives each page three SVG columns: LaTeX, Typst, and an overlay of the two.
-The overlay tints LaTeX ink blue and Typst ink red and multiplies them, so ink only one engine painted keeps that engine's color.
+Open `tests/out/report/index.html` for side-by-side pages and an overlay: blue for LaTeX, red for Typst.
 Without a fixture name, `report` selects failures from the last `check`.
 
 Read [DESIGN.md](DESIGN.md) before changing layout assumptions.
 Use `tools/test.py probe --format <name>` to measure the bundled class, and the `text`, `metrics`, or `linepitch` commands to inspect output; each has `--help`.
 `source-data` checks transcribed data against upstream sources, and `bib-oracle` compares the bibliography reader with BibTeX.
+For bibliography date changes, compare the affected forms with Biber and update the reference's capability statement.
 
 Fix the implementation or fixture when a comparison reveals a bug.
 For an accepted engine difference, record its cause and bounded expectation in the matrix.
@@ -86,23 +87,31 @@ Use `compat` to check a different Typst release without applying the pinned rast
 
 ## Documentation
 
-The [README](README.md) is displayed on Typst Universe: it showcases the package and provides a quick start.
-The [starter guide](template/main.typ) teaches authors how to use the package through explanations and working examples in an ACM-style document.
-The [reference](docs/reference.md) explains option contracts and user-visible compatibility limits.
-Keep architecture in [DESIGN.md](DESIGN.md) and release steps in [PUBLISHING.md](PUBLISHING.md).
-Link to the reference instead of repeating detailed restrictions in several places.
+Keep each explanation in the document that serves its reader:
+
+| Document | Purpose |
+|---|---|
+| [README](README.md) | Typst Universe showcase and quick start |
+| [Starter](template/main.typ) | A guide with working examples in an ACM-style paper |
+| [Reference](docs/reference.md) | Option contracts and user-visible limits |
+| [Design](DESIGN.md) | Architecture and design constraints |
+| [Publishing](PUBLISHING.md) | Release workflow |
 
 Write for human readers, using concrete examples, short explanations, and tables where they help comparison.
 Introduce each section with a sentence before a table or list.
-Every runnable example uses a column-zero backtick fence labelled `typst`; use a longer fence when the example contains a raw block.
-The package check compiles these examples against the staged package and checks links, headings, package versions, and rendered illustrations.
-Body-only snippets receive an `acmsmall` preamble on a compact, automatically sized page; snippets with their own show rule receive only the package import.
+Link to detailed restrictions instead of repeating them.
+Keep measurements and test expectations in code, with comments only for non-obvious constraints.
 
-To illustrate an example, put `<!-- render: name -->` immediately before its fence and link to `docs/assets/name.svg` from the README, or `assets/name.svg` from another document in `docs/`.
-Use `<!-- render: name compact -->` to trim page margins and large blank gaps while preserving the rendered text and graphics at their original scale.
-Caption compact illustrations to make omitted page space explicit.
-The starter illustration is the first page of `template/main.typ`.
-Regenerate illustrations with the pinned compiler:
+Examples are compiled by the package check:
+
+- Use a column-zero backtick fence labelled `typst`; use a longer fence around examples containing raw blocks.
+- Body-only snippets receive an `acmsmall` preamble; snippets with a show rule receive only the package import.
+- To render an illustration, put `<!-- render: name -->` before the fence and link to `docs/assets/name.svg` from the README, or `assets/name.svg` from `docs/`.
+- Add `compact` after the name to trim margins and large blank gaps.
+  Caption these illustrations to explain the omitted space.
+- The starter illustration shows the first page of `template/main.typ`.
+
+Regenerate and check illustrations with the pinned compiler:
 
 ```sh
 uv run python tools/test.py docs
@@ -110,6 +119,4 @@ uv run python tools/test.py package
 ```
 
 Inspect changed SVGs before committing them.
-The package check rejects stale illustrations; it does not update them.
-Keep format measurements and test expectations in code, and explain only non-obvious constraints in code comments.
-When changing bibliography date handling, compare the affected forms with Biber as well as updating the capability statement.
+The package check rejects stale illustrations and checks links, headings, and package versions.

@@ -1,15 +1,12 @@
 <!--
-Typst Universe displays this README on the package page, so it serves as both a showcase and a getting-started guide.
-Help prospective users assess the package through representative examples and a clear account of its capabilities and limits.
-Write for human readers: use clear, concise, precise language and lists or tables where they make information easier to scan.
-Prefer rendered SVG examples when they explain the output better than prose.
-Keep detailed option contracts in the reference; do not shorten this README merely to avoid overlap with the other documentation.
+This README is the Typst Universe showcase and quick start.
+Write for paper authors: use concise explanations, representative rendered examples, and lists or tables where helpful.
+Keep detailed option contracts in docs/reference.md; preserve enough context here for newcomers.
 -->
 
 # faithful-acmart
 
 Write ACM-style papers in Typst, with journal and conference layouts, author metadata, ACM bibliography styles, and theorem environments.
-Typst compiles a plain-text source file into a PDF; this package supplies the ACM formatting.
 The package follows LaTeX `acmart` 2.21 and tests its output against equivalent LaTeX documents.
 
 **[Get started](#getting-started)** · **[Look up an option](docs/reference.md)** · **[Browse the starter](template/main.typ)** · **[Changelog](docs/changelog.md)**
@@ -40,7 +37,6 @@ typst compile main.typ
 
 The starter includes `main.typ`, a guide with working examples, and `refs.bib`, a sample bibliography.
 Read the guide alongside its source to see how the examples are written, then replace the sample metadata and content with your own.
-Keep one `#show: acmart.with(...)` rule near the top of your paper and add options to that rule as needed.
 
 For an existing document, import the package and apply `acmart`:
 
@@ -76,7 +72,7 @@ This example uses `nonacm: true` to suppress ACM publication notices while you t
 For a publication, use the metadata and settings supplied by your venue; the [publication reference](docs/reference.md#publication-metadata) explains where they go.
 
 Keep the wildcard import (`*`): it brings in the package's `cite` and `bibliography` replacements as well as the document style.
-The `#import` line loads those functions; the `#show` rule applies the layout to the document.
+Keep one `#show: acmart.with(...)` rule near the top of your paper and add settings to it.
 
 ## Fonts
 
@@ -231,14 +227,6 @@ Refer to the theorem by its label: @sum-theorem.
 There are also lemmas, corollaries, propositions, conjectures, definitions, examples, and remarks.
 See [theorems and acknowledgments](docs/reference.md#theorems-and-acknowledgments) for naming and numbering.
 
-## Documentation
-
-Use the starter to learn the package and the reference to look up a setting:
-
-- [Reference](docs/reference.md): options, examples, and compatibility limits.
-- [Starter guide](template/main.typ): explanations and working examples of figures, tables, citations, and theorems.
-- [Changelog](docs/changelog.md): release notes and instructions for upgrading.
-
 ## Development and contributing
 
 The repository includes paired Typst and LaTeX documents for checking the port's behavior.
@@ -254,4 +242,3 @@ The project was developed with AI coding assistance and human review.
 
 The package is [MIT licensed](LICENSE); the [starter template is MIT-0](template/LICENSE).
 The [Creative Commons badges](src/assets/cc/README.md) are trademarks covered by their own usage policy.
-The ACM journal logo must be supplied by the user.

@@ -54,7 +54,7 @@ See the [format list](../README.md#choose-a-format) for the available layouts.
 | `start-page` | Positive integer for the first page number; omitted by default. |
 | `screen` | Colors links when true; some journals enable this automatically. |
 | `url-break-on-hyphens` | Allows breaks at hyphens in links by default; set false to prevent them. |
-| `flush-bottom` | `true` stretches vertical gaps so that full pages and columns end flush, as in LaTeX, including the gaps above footnotes and around floats; see [its limits](#layout). `"body"` stretches only the gaps around headings, lists, displays, and theorems, which never moves a page break. `false` leaves bottoms ragged. |
+| `flush-bottom` | Controls vertical stretching; defaults to `true`. See [modes and limits](#layout). |
 
 An explicit `font-size` selects the corresponding acmart size step, including its derived font sizes and spacing.
 Most papers should retain the format's default size.
@@ -281,7 +281,6 @@ These options default to false unless stated otherwise.
 | `timestamp` | Adds the compile date to the running page decoration. |
 | `nonacm` | Suppresses ACM publication notices and normally the ACM Reference Format block; also affects list spacing. A Creative Commons notice is retained when `copyright: "cc"`. |
 | `author-version` | Omits the standard permission paragraph and, outside manuscript format, prints the author-version notice. |
-| `screen` | Uses colored links. |
 
 `anon(body, substitute: "ANONYMIZED")` replaces its body only in anonymous mode.
 For example, `#anon(substitute: [Repository withheld])[Our repository URL]`.
@@ -379,11 +378,10 @@ Use it inside `figure` for a numbered caption; see the [source and rendered exam
 |---|---|
 | `toprule()`, `bottomrule()` | Heavier outer rules |
 | `midrule()` | Lighter separator rule |
-| `columns` | Pass directly to `tabular`, so it can determine row boundaries. |
+| `columns` | Pass directly to `tabular`; header inference cannot read an inherited `set table(columns: ...)`. |
 | `header-rows` | Number of leading rows to tag as headers when safe to infer; defaults to 1. Set 0 for no inferred header. |
 | `table.header(...)` | Explicit header for a complex table; takes precedence over inference. |
 
-Pass `columns` directly to `tabular`; header inference cannot read an inherited `set table(columns: ...)` setting.
 For positioned cells or a span crossing the intended header boundary, provide a `table.header(...)` explicitly.
 The rule helpers accept arguments to Typst's `table.hline`, such as a column range or custom stroke.
 
@@ -412,13 +410,13 @@ Set `name` for a heading such as `[Proof of the lemma]`.
 
 ## Other document helpers
 
-Use these helpers for headings, grant information, and typesetting logos:
+Use these helpers for headings, spacing, grant information, and typesetting logos:
 
 | Helper | Purpose |
 |---|---|
 | `part(body)` | Unnumbered display heading in acmart's paragraph-heading style |
 | `noindentparagraph(body)` | Run-in paragraph heading without its usual indentation |
-| `vspace(natural, plus: 0pt)` | Vertical gap that takes part in [`flush-bottom`](#format-and-page-settings) stretching, like `\vspace{6pt plus 2pt}`; a heading has `plus: 2pt`. |
+| `vspace(natural, plus: 0pt)` | Vertical gap with optional stretch, e.g. `vspace(6pt, plus: 2pt)`. The `plus` value sets its share of spare page space. |
 | `no-stretch(body)` | Keeps the gaps inside `body` at their natural size. |
 | `grantsponsor(id, name, url)` | Prints the sponsor name; the ID and URL are not displayed. |
 | `grantnum(id, num, url: none)` | Prints a grant number, with a linked URL when supplied. |
@@ -508,7 +506,6 @@ These differences affect page layout and document appearance:
 | Area | Difference or limitation |
 |---|---|
 | Line and page breaks | Typst lacks TeX's shrinkable glue, final-column balancing, and microtype font expansion and protrusion, so breaks can differ. |
-| Page bottoms | The last page stays ragged, as with `\clearpage`, and with `flush-bottom: "body"` so does a page or column with footnotes or a bottom float. Content inside a container such as a block or table cell does not stretch. |
 | Math | Uses Libertinus Math and approximate display spacing, without TeX's short-display skips or exact math metrics. |
 | Baselines, captions, floats, footnotes | Small spacing differences can arise from the engines' different line-box depths. |
 | Wrapped numbered headings | No hanging indent; this preserves tagged-PDF reading order. |
@@ -520,9 +517,20 @@ These differences affect page layout and document appearance:
 | Front-matter marks | Use consistent superscript sizes rather than LaTeX's oversized section-sign mark; corresponding-author marks have a fixed order. |
 | Timestamp and PDF metadata | The timestamp contains a date without the time of day. Typst's document API does not provide PDF Subject metadata. |
 
-`flush-bottom: true` reserves fixed height for the gaps above footnotes and around floats, and Typst's page breaking can let that height push a line to the next page or column.
-The package compares each page's free height with the value it measured before reserving, and stops with an error naming the page when they differ.
-The fixes are to move the footnote or float; to wrap every heading, list, and display on that page in `no-stretch`; or to use `flush-bottom: "body"`.
+Choose how full pages and columns use spare vertical space with `flush-bottom`:
+
+| Value | Effect |
+|---|---|
+| `true` (default) | Stretches gaps in the body, above footnotes, and around floats. Can report a layout error if the added spacing changes pagination. |
+| `"body"` | Stretches body gaps without moving page breaks. Pages or columns with footnotes or a bottom float stay ragged. |
+| `false` | Keeps natural spacing and ragged bottoms. |
+
+The last page stays ragged in every mode.
+Gaps inside containers such as blocks and table cells do not stretch.
+Use [`vspace` and `no-stretch`](#other-document-helpers) to adjust spacing locally.
+
+If stretching reports an error, use `flush-bottom: "body"` or move the footnote or float on the reported page.
+To keep that page's natural spacing, wrap each of its headings, lists, and displays in `no-stretch`.
 
 ### Bibliography fidelity
 

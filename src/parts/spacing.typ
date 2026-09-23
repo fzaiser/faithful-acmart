@@ -7,12 +7,8 @@
 
 #let tex-skip(cfg, skip, sz: "normalsize") = skip + comp(cfg, sz: sz)
 
-// TeX glue `natural plus stretch`: the natural gap, then fractional spacing weighted by the stretch.
-// Fractional spacing deletes adjacent weak spacing, so a zero-height block separates the two.
-// The natural gap stays next to the neighboring content, where it collapses and Typst drops it at a region boundary.
-
 // Fractional spacing would expand an auto-height container to the end of its region.
-// Only a style reaches every descendant of a container; this cost leaves line breaking unchanged.
+// Use an inherited text cost as the opt-out marker; its small difference leaves line breaking unchanged.
 #let _nested-cost = 100.0001%
 #let mark-nested-flows(body) = {
   show selector.or(
@@ -24,7 +20,7 @@
 #let no-stretch(body) = { set text(costs: (runt: _nested-cost)); body }
 #let nested-flow() = text.costs.runt == _nested-cost
 
-// An author's own fractional spacing outweighs these, as \vfill does.
+// Fractional spacing is weighted by TeX's glue stretch, but an author's own spacing outweighs it, as \vfill does.
 #let _fr(stretch) = v(stretch / 1pt * 1e-12 * 1fr, weak: true)
 // \newpage fills with \vfil.
 #let fill-region() = v(1e-6 * 1fr)
@@ -36,13 +32,12 @@
 
 #let region-foot(notes: false, ref: none) = [#metadata((notes: notes, ref: ref))<acm-glue-foot>]
 
-// The first layout lacks everything that reads the document, such as citations, so its positions are ignored:
-// every point stretches in the second layout, whose slack is then measured whole.
+// Skip measurements until queried content, including citations, has entered the layout.
 #let _measurable() = query(<acm-glue-complete>).any(m => m.value)
 
 #let _region(pos) = (pos.page, calc.floor(pos.x / (page.width / page.columns)))
 
-// \clearpage fills the last page, and the balance package levels its columns.
+// Like \clearpage, leave the last page at natural spacing.
 #let _region-stretches(cfg, at) = {
   let end = query(<acm-glue-end>)
   if end.len() > 0 and end.last().location().page() == at.page { return false }
@@ -57,8 +52,7 @@
   not (query(<acm-glue-foot>).any(m => below(m, false)) or query(<acm-glue-float>).any(m => below(m, m.value.wide)))
 }
 
-// Whether a point stretched in the layout that put it at `at`.
-// The decision must come from one layout: a flag stored with the point would be a pass older than its position.
+// Reconstruct whether the point stretched from its position; a stored flag would lag that position by a pass.
 #let _active(cfg, point, at) = {
   if point.fresh or not _region-stretches(cfg, at) { return false }
   if point.kind == "above" {
@@ -75,8 +69,7 @@
   }
 }
 
-// Fractional spacing never moves a line, but reserved height counts against Typst's widow and orphan rules,
-// so a region's slack can change after it reserved; withdrawing the height would need more passes than Typst allows.
+// Reservations can change pagination through widow and orphan checks; undoing them would exceed Typst's pass budget.
 // The check sits outside the glue contexts because a failing context emits nothing, which would erase the record.
 #let _check-reservations(cfg) = {
   let (heights, records) = ((), (:))
@@ -115,9 +108,8 @@
   if cfg.flush-edges { context _check-reservations(cfg) }
 }
 
-// Typst cannot stretch the gaps at a region's edges: above footnotes, beside a float, and \@textbottom.
-// Their share of the slack is reserved as fixed height, and fractional spacing divides the rest.
-// The slack is what the previous pass gave to both, so it does not depend on the split.
+// Edge gaps cannot use fractional spacing, so reserve their share as fixed height.
+// Measure reserved and fractional height together to keep total slack independent of that split.
 #let _region-slack(cfg, region) = {
   if not cfg.flush-edges or not _measurable() { return none }
   let (points, shares) = (query(<acm-glue-point>), query(<acm-glue-share>))
@@ -140,10 +132,8 @@
     reserved.insert(edge.value.owner, edge.value.height)
   }
   let feet = query(<acm-glue-foot>).filter(m => _region(m.location().position()) == region)
-  // Typst commits a footnote entry to the column's insertions and only then restarts the column
-  // with a smaller area, so a reference line that no longer fits leaves its entry behind.
-  // Whether that happens depends on the area the first attempt saw, which reserved height changes,
-  // so a region holding such an orphaned entry cannot predict its own slack.
+  // Typst can move a reference line after committing its footnote to this column.
+  // Reservations affect that decision, so a column with a stranded footnote cannot predict its slack.
   let stranded = feet.any(m => m.value.ref != none and _region(m.value.ref.position()) != region)
   let floats = query(<acm-glue-float>).filter(m => m.value.stretches and _region(m.location().position()) == region)
   for extra in query(<acm-glue-float-extra>) {
@@ -152,15 +142,12 @@
       reserved.insert(repr(extra.value.owner), extra.value.height)
     }
   }
-  // The recorded value stays put once written, or the record itself would never settle.
-  // A stranded region still records, so a reservation that strands an entry later is caught.
+  // Preserve the original slack even for stranded footnotes, so later pagination changes remain detectable.
   let record = if previous != none { previous.slack } else { slack }
   let edge = cfg.textbottom-stretch + floats.len() * cfg.float-stretch
   if feet.len() > 0 { edge += cfg.footins-stretch }
-  // One line of the slack cannot be reserved. Typst's widow check sets a line only when the next line
-  // fits too; when that next line then moves out because its footnote does not fit, the height it
-  // leaves behind is measured as slack, but the widow check of the line before it still needs that
-  // height free. A margin of one line passes 200 generated documents; any smaller margin fails 16.
+  // If a line moves because its footnote does not fit, the preceding line's widow check still needs that height free.
+  // Leave one baseline interval unreserved even though it measures as slack.
   let room = calc.max(0pt, slack - cfg.baselineskip)
   let per-stretch = if stranded { 0 } else {
     calc.min(slack / (body + edge), if edge > 0pt { room / edge } else { 0 })
@@ -169,7 +156,7 @@
     footnotes: feet.len() > 0, notes: feet.any(m => m.value.notes), floats: floats)
 }
 
-// A recomputed height differs from the recorded one by rounding, which would never settle.
+// Ignore rounding differences so repeated measurements can converge.
 #let _settle(height, slack, owner) = {
   let previous = slack.reserved.at(owner, default: none)
   if previous != none and calc.abs((previous - height).pt()) < 0.01 { previous } else { height }
@@ -185,8 +172,7 @@
 }
 #let notes-record(height) = _edge-record("notes", height)
 
-// Typst sends an `auto` float to the top or bottom by the height used before it, which reserved height
-// would change; `before` is what the caller hides from that decision with spacing around the float.
+// Exclude earlier reservations from the used height that decides an `auto` float's placement.
 #let float-gap(cfg, owner) = {
   let marker = query(<acm-glue-float>).find(m => m.value.owner == owner)
   if marker == none { return (extra: 0pt, before: 0pt) }
@@ -233,6 +219,7 @@
 
 // The element after this glue carries no top spacing of its own.
 // `override` behaves like `v(natural, weak: true)`, which replaces a preceding gap instead of taking the maximum.
+// A zero-height block protects natural spacing from adjacent fractional spacing, which would discard it.
 #let glue-above(cfg, natural, stretch, override: false) = context {
   let stretches = cfg.flush-bottom and text.costs.runt != _nested-cost
   let own = if stretches and _measurable() { _own-point(here()) }

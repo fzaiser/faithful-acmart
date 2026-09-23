@@ -38,9 +38,8 @@ Complete these steps before submitting a new package version:
    ```
 
 The package command writes the bundle only after its checks pass and requires an empty destination.
-The bundle includes the reference and SVG illustrations.
-It links files and directories to GitHub views at the release tag to avoid [Typst Universe's raw-file links](https://github.com/typst/packages/issues/1571#issuecomment-2593340906), while keeping images and PDFs directly accessible.
-Keep those generated URLs out of source documents: use relative inline links and the [documentation example conventions](CONTRIBUTING.md#documentation).
+It converts relative documentation links to GitHub views at the release tag, while keeping images and PDFs directly accessible.
+Use relative inline links in source documents so the package command can rewrite them.
 
 ## Submit
 

@@ -183,7 +183,7 @@
       }
     }
   }
-  // Reference entries are not paragraphs.
+  // Reference entries bypass the paragraph rule that normally restores spacing before headings.
   _body-since-heading.update(true)
 }
 
@@ -200,8 +200,8 @@
   teaser: none,
   received: none,
   badges: none,
-  // Translations are keyed by language, e.g. (french: (title: [...], abstract: [...])).
   language: none,
+  // Translations are keyed by language, e.g. (french: (title: [...], abstract: [...])).
   translations: (:),
   journal: none,
   acm-volume: 1,
