@@ -2,9 +2,8 @@
 
 ## Unreleased
 
-Full pages and columns now stretch toward a flush bottom, changing vertical positions in existing papers.
-Stretching includes gaps above footnotes and around floats, subject to the [fallback and convergence limitations](reference.md#layout).
-Set [`flush-bottom: false`](reference.md#format-and-page-settings) to keep ragged bottoms.
+Full pages and columns now end flush at the bottom, as in LaTeX, so vertical positions change in existing papers; page breaks do not.
+Where stretching the gaps above footnotes or around floats would move a page break, compilation stops with an [error](reference.md#layout); [`flush-bottom: "body"`](reference.md#format-and-page-settings) avoids those gaps, and `false` keeps ragged bottoms.
 `vspace` adds a gap with its own stretch, and `no-stretch` exempts part of the document.
 A heading that directly follows the bibliography now has its space above it.
 

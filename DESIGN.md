@@ -32,9 +32,10 @@ The title uses its measured cap height to position the first line.
 
 The glue helpers in [spacing.typ](src/parts/spacing.typ) approximate `\flushbottom` with fractional spacing weighted by each gap's TeX stretch, which cannot move a break.
 The gaps above footnotes and beside floats cannot be fractional, so they receive fixed height measured from the previous pass.
-Fixed height counts against Typst's widow and orphan checks, so even a correct measurement can move a line; a region whose measured slack changes after reserving falls back to fractional spacing alone.
+`flush-bottom: "body"` instead leaves a region with footnotes or a bottom float unstretched, which puts its slack where TeX puts most of it.
+Fixed height takes part in Typst's page breaking, so even a reservation smaller than the measured slack can move a line; withdrawing it would need more passes than Typst allows, so a region whose slack changes after reserving is an error.
 TeX discards glue at a page break and Typst does not, so each glue point reads its position from the previous layout pass; the first layout lacks citations and is never measured.
-A cited paper thus needs four of Typst's five passes and a fallback the fifth, so state updates that affect page breaks are emitted outside `context`, where they would arrive a pass later.
+A cited paper thus needs four of Typst's five passes, so state updates that affect page breaks are emitted outside `context`, where they would arrive a pass later.
 
 Font-size steps and some spacing come from `amsart`, and begin-document hooks can override acmart's earlier settings.
 Consult the executed class or a probe before changing a value that appears inconsistent with a source declaration.

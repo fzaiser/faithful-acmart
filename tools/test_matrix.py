@@ -2117,13 +2117,17 @@ TESTS: dict[str, Test] = {
         kind="smoke", pages=3,
         note="flush-bottom: false leaves full pages ragged; the golden pins the unstretched gaps.",
     ),
+    "flush-bottom-body-test": Test(
+        kind="smoke", pages=5,
+        note="flush-bottom: \"body\" leaves footnote pages unstretched and stretches the others.",
+    ),
     "stretch-controls-test": Test(
         kind="smoke", pages=3,
         note="vspace with a large stretch takes nearly all of page 1's slack; gaps inside no-stretch keep their natural size.",
     ),
     "edge-stretch-test": Test(
         kind="smoke", pages=5,
-        note="Footnote pages end flush with the footnote gap reserved; page 4 keeps its natural break, where a reservation would trip the widow rule.",
+        note="The footnote gap takes its share of the slack, so footnote pages end flush with a wider gap above the notes.",
     ),
     "fix-quirks-doc-default-test": Test(
         kind="smoke", pages=1,
@@ -2259,6 +2263,11 @@ ERROR_CASES: dict[str, tuple] = {
     "bad-format": ('format: "not-a-format",', "unknown format"),
     "bad-bib-backend": ('bib-backend: "sqlite",', "`bib-backend` must be"),
     "bad-cite-style": ('cite-style: "footnote",', "`cite-style` must be"),
+    "bad-flush-bottom": ('flush-bottom: "maybe",', "`flush-bottom` must be"),
+    # No natural document is known to reach this error, so the case plants a slack record that cannot match;
+    # it covers the check's wiring and message, not the detection.
+    "flush-bottom-moved-content": ('nonacm: true,', "pushed a line to the next",
+        '= Body\nText.\n#metadata((owner: none, stretch: 0pt, kind: "above", fresh: false, edge: (height: 0pt, slack: 500pt)))<acm-glue-point>\n#metadata(none)<acm-glue-share>\n'),
     "bad-acm-month": ("acm-month: 13,", "`acm-month` must be an integer 1..12"),
     "ccs-malformed-ccsdesc": (
         'ccs: "\\\\ccsdesc[500]{Ok~Fine} \\\\ccsdesc[x]{Bad~Thing}",',

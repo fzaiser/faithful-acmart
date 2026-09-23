@@ -31,7 +31,7 @@
       it.body
     }
     let owner = float-owner.get()
-    if owner != none { float-marker(owner.at, owner.stretches) }
+    if owner != none { float-marker(owner) }
     layout(size => {
       let w = measure(cap).width
       if w <= size.width {
@@ -63,7 +63,7 @@
       // A page-wide float lies outside the columns TeX stretches.
       let floats = cfg.flush-bottom and it.placement != none and not nested-flow()
       let stretches = floats and (it.scope == "column" or cfg.columns == 1)
-      float-owner.update(if floats { (at: it.location(), stretches: stretches) })
+      float-owner.update(if floats { (owner: it.location(), stretches: stretches, wide: it.scope == "parent") })
       let gap = if floats { float-gap(cfg, it.location()) } else { (extra: 0pt, before: 0pt) }
       let hidden = gap.before + gap.extra / 2
       if hidden > 0pt { v(-hidden) }
@@ -191,7 +191,7 @@
   )
   show footnote.entry: set text(size: cfg.size.footnotesize)
   show footnote.entry: set par(leading: comp(cfg, sz: "footnotesize"))
-  show footnote.entry: it => { it; region-foot() }
+  show footnote.entry: it => { it; region-foot(ref: it.note.location()) }
 
   body
 }

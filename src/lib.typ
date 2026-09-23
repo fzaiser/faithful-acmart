@@ -454,6 +454,6 @@
     }
 
     if received != none { make-received(cfg, received) }
-    document-end()
+    document-end(cfg)
   })
 }

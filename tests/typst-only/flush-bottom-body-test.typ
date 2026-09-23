@@ -1,6 +1,6 @@
 #import "/src/lib.typ": *
 
-#show: acmart.with(format: "acmsmall", nonacm: true, title: [Edge stretch], authors: ((name: "A. Author", affiliation: (institution: "Inst", country: "X")),), abstract: lorem(40))
+#show: acmart.with(format: "acmsmall", nonacm: true, flush-bottom: "body", title: [Body stretch], authors: ((name: "A. Author", affiliation: (institution: "Inst", country: "X")),), abstract: lorem(40))
 
 #for i in range(1, 12) [
   = Section #i

@@ -103,12 +103,12 @@
   assert(type(data.fix-quirks) == bool,
     message: "faithful-acmart: `fix-quirks` must be a boolean; got " + repr(data.fix-quirks) + ".")
 
-  assert(type(data.flush-bottom) == bool,
-    message: "faithful-acmart: `flush-bottom` must be a boolean; got " + repr(data.flush-bottom) + ".")
+  assert(data.flush-bottom in (true, false, "body"),
+    message: "faithful-acmart: `flush-bottom` must be true, false, or \"body\"; got " + repr(data.flush-bottom) + ".")
 
   let lang = resolve-language(data.language)
   let cfg = cfg + (strings: lang, lang: lang.code, bib-backend: bib-backend,
-    fix-quirks: data.fix-quirks, flush-bottom: data.flush-bottom)
+    fix-quirks: data.fix-quirks, flush-bottom: data.flush-bottom != false, flush-edges: data.flush-bottom == true)
   let cfg = cfg + bibstrip-flags
 
   assert(bib-backend in ("typst", "bibtex", "biblatex"),
