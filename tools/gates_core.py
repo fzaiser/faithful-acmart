@@ -12,7 +12,7 @@ from harness import (
     ROOT, TESTS_DIR, OUT, ERROR, GOLDEN, GOLDEN_FILE, DIFF, TC,
     TEST_CLOCK_ENV, latex_pdf, typst_pdf, compile_typst, default_jobs, _pmap,
 )
-from pdf_extract import page_count, page_hashes, rasterize, extractor_version
+from pdf_extract import page_count, page_hashes, rasterize, extractor_version, words
 
 
 def gate_matrix_integrity(report: bool = False) -> list[str]:
@@ -317,6 +317,91 @@ def gate_format_sweep(report: bool = False) -> list[str]:
             failures.append(f"{fmt} @ {size}pt: Typst emitted warnings:\n{stderr.strip()}")
         elif report:
             print(f"ok   {fmt} @ {size}pt")
+    return failures
+# The seed varies the block lengths, so footnotes, bottom floats, headings, and lists land in
+# different places relative to the page and column breaks.
+_FLUSH_BOTTOM_DOC = '''#import "/src/lib.typ": *
+#let seed = {seed}
+#show: acmart.with(format: "{fmt}", {size}nonacm: true, flush-bottom: {flush})
+#for i in range(12) [
+  = Section #i
+  #lorem(35 + calc.rem(seed * 17 + i * 13, 90))
+
+  #lorem(30 + calc.rem(seed * 7, 60))#footnote[Note #i. #lorem(calc.rem(seed * 5, 30))]
+  - item one
+  - item two
+  #if calc.rem(i, 3) == 0 [
+    #theorem[#lorem(15 + calc.rem(seed, 17))]
+    #proof[#lorem(12)]
+  ]
+  #if calc.rem(seed, 3) == 1 and calc.rem(i, 4) == 1 [
+    #figure(rect(width: 80%, height: 25pt), caption: [Float #i], placement: bottom)
+  ]
+  #lorem(25 + calc.rem(seed * 11, 45))
+]
+'''
+
+
+def _column_words(pdf: Path, columns: int) -> list[tuple[str, list[str]]]:
+    """Ordered words per page and text column, labelled for failure messages."""
+    out: list[tuple[str, list[str]]] = []
+    for page, data in sorted(words(pdf).items()):
+        middle = data["w"] / 2
+        for column in range(columns):
+            label = f"page {page}" if columns == 1 else f"page {page} column {column + 1}"
+            out.append((label, [w[4] for w in data["words"]
+                                if columns == 1 or (w[0] > middle) == (column == 1)]))
+    return out
+
+
+def _flush_bottom_name(fmt: str, seed: int, size: int | None) -> str:
+    return f"{fmt} seed {seed} @ {f'{size}pt' if size else 'default size'}"
+
+
+def _flush_bottom_case(job: tuple[str, int, int, int | None]) -> list[str]:
+    fmt, seed, columns, size = job
+    name = _flush_bottom_name(fmt, seed, size)
+    out_dir = OUT / "flush-bottom"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stem = f"{fmt}-{seed}-{size or 'default'}"
+    built: dict[bool, Path] = {}
+    for flush in (True, False):
+        src = out_dir / f"{stem}-{'on' if flush else 'off'}.typ"
+        src.write_text(_FLUSH_BOTTOM_DOC.format(
+            seed=seed, fmt=fmt, flush=str(flush).lower(),
+            size=f"font-size: {size}pt, " if size else ""))
+        pdf = src.with_suffix(".pdf")
+        rc, stderr = compile_typst(src, pdf)
+        mode = f"flush-bottom: {str(flush).lower()}"
+        if rc != 0:
+            return [f"{name}: {mode} failed to compile (rc={rc})\n{stderr.strip()}"]
+        if stderr.strip():
+            return [f"{name}: {mode} emitted diagnostics:\n{stderr.strip()}"]
+        built[flush] = pdf
+
+    on, off = _column_words(built[True], columns), _column_words(built[False], columns)
+    if len(on) != len(off):
+        return [f"{name}: flush-bottom changed the region count "
+                f"({len(on)} vs {len(off)} with flush-bottom: false)"]
+    for (label, a), (_, b) in zip(on, off):
+        if a == b:
+            continue
+        index = next(i for i in range(max(len(a), len(b))) if a[i:i + 1] != b[i:i + 1])
+        return [f"{name}: {label} holds different text than the flush-bottom: false build "
+                f"(word {index + 1}: {a[index:index + 1]} vs {b[index:index + 1]})"]
+    return []
+
+
+def gate_flush_bottom() -> list[str]:
+    jobs = [(fmt, seed, columns, size)
+            for fmt, seed, columns in M.FLUSH_BOTTOM_CASES
+            for size in M.FLUSH_BOTTOM_FONT_SIZES]
+    failures: list[str] = []
+    for job, local in zip(jobs, _pmap(_flush_bottom_case, jobs, default_jobs())):
+        failures.extend(local)
+        if not local:
+            fmt, seed, _, size = job
+            print("ok   " + _flush_bottom_name(fmt, seed, size))
     return failures
 def gate_unit(report: bool = False) -> list[str]:
     failures: list[str] = []

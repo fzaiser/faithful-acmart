@@ -521,7 +521,7 @@ These differences affect page layout and document appearance:
 | Timestamp and PDF metadata | The timestamp contains a date without the time of day. Typst's document API does not provide PDF Subject metadata. |
 
 `flush-bottom: true` reserves fixed height for the gaps above footnotes and around floats, and Typst's page breaking can let that height push a line to the next page or column.
-Compilation then stops with an error naming the page.
+The package compares each page's free height with the value it measured before reserving, and stops with an error naming the page when they differ.
 The fixes are to move the footnote or float; to wrap every heading, list, and display on that page in `no-stretch`; or to use `flush-bottom: "body"`.
 
 ### Bibliography fidelity

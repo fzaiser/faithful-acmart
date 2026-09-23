@@ -101,8 +101,8 @@
   if cfg.columns > 1 { where += ", column " + str(calc.rem(first, 100) + 1) }
   let next = if cfg.columns > 1 { "column" } else { "page" }
   assert(moved.len() == 0, message:
-    "faithful-acmart: `flush-bottom: true` reserves space above the footnotes and around the floats on " + where
-    + ", and that space pushed a line to the next " + next + ".\n"
+    "faithful-acmart: " + where + " changed after `flush-bottom: true` reserved space above its footnotes and around its floats, "
+    + "usually because that space pushed a line to the next " + next + ".\n"
     + "Possible fixes:\n"
     + "(1) move the footnote or float;\n"
     + "(2) wrap every heading, list, and display on that page in `no-stretch`, so the page keeps its natural spacing;\n"
@@ -144,7 +144,7 @@
   // with a smaller area, so a reference line that no longer fits leaves its entry behind.
   // Whether that happens depends on the area the first attempt saw, which reserved height changes,
   // so a region holding such an orphaned entry cannot predict its own slack.
-  if feet.any(m => m.value.ref != none and _region(m.value.ref.position()) != region) { return none }
+  let stranded = feet.any(m => m.value.ref != none and _region(m.value.ref.position()) != region)
   let floats = query(<acm-glue-float>).filter(m => m.value.stretches and _region(m.location().position()) == region)
   for extra in query(<acm-glue-float-extra>) {
     if floats.any(m => m.value.owner == extra.value.owner) {
@@ -153,12 +153,18 @@
     }
   }
   // The recorded value stays put once written, or the record itself would never settle.
+  // A stranded region still records, so a reservation that strands an entry later is caught.
   let record = if previous != none { previous.slack } else { slack }
   let edge = cfg.textbottom-stretch + floats.len() * cfg.float-stretch
   if feet.len() > 0 { edge += cfg.footins-stretch }
-  // Reserving close to the measured slack moves a line in some regions; a line's height of margin is empirical.
-  let room = if slack < cfg.baselineskip { slack } else { slack - cfg.baselineskip }
-  let per-stretch = calc.min(slack / (body + edge), if edge > 0pt { room / edge } else { 0 })
+  // One line of the slack cannot be reserved. Typst's widow check sets a line only when the next line
+  // fits too; when that next line then moves out because its footnote does not fit, the height it
+  // leaves behind is measured as slack, but the widow check of the line before it still needs that
+  // height free. A margin of one line passes 200 generated documents; any smaller margin fails 16.
+  let room = calc.max(0pt, slack - cfg.baselineskip)
+  let per-stretch = if stranded { 0 } else {
+    calc.min(slack / (body + edge), if edge > 0pt { room / edge } else { 0 })
+  }
   (slack: record, per-stretch: per-stretch, reserved: reserved,
     footnotes: feet.len() > 0, notes: feet.any(m => m.value.notes), floats: floats)
 }

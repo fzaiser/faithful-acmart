@@ -24,7 +24,7 @@ from latex_build import build_all_latex, latex_build, gate_latex_oracle
 from source_data import gate_source_data, gate_package, cmd_docs
 from gates_core import (
     gate_matrix_integrity, gate_smoke, gate_golden, write_golden,
-    gate_errors, gate_format_sweep, gate_unit,
+    gate_errors, gate_format_sweep, gate_flush_bottom, gate_unit,
 )
 from gates_text import gate_text
 from gates_semantic import (
@@ -157,6 +157,7 @@ def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
         ("unit",             "Tier 0.5 (unit)",             gate_unit),
         ("package",          "Tier 0.75 (package)",         gate_package),
         ("format-sweep",     "Tier 0.8 (format×size sweep)", gate_format_sweep),
+        ("flush-bottom",     "Tier 0.9 (flush-bottom stress)", gate_flush_bottom),
         ("golden",           "Tier 1 (golden)",             gate_golden),
         ("text",             "Tier 1.5 (text)",             gate_text),
         ("metadata",         "Tier 1.55 (metadata)",        gate_metadata),
@@ -173,7 +174,7 @@ def _check_gates(args, compiled) -> list[tuple[str, str, "callable"]]:
     ]
 CHECK_GATE_SLUGS = [
     "matrix-integrity", "source-data", "latex-oracle", "smoke", "unit",
-    "package", "format-sweep", "golden", "text", "metadata", "errors", "links",
+    "package", "format-sweep", "flush-bottom", "golden", "text", "metadata", "errors", "links",
     "validate", "fonts", "structure", "order", "outline", "metrics",
     "word-positions", "rules",
 ]
@@ -187,6 +188,7 @@ GATE_BUILD_NEEDS = {
     "unit":             (False, False),
     "package":          (False, False),
     "format-sweep":     (False, False),
+    "flush-bottom":     (False, False),
     "golden":           (True,  False),
     "text":             (True,  True),
     "metadata":         (True,  True),
