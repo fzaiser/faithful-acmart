@@ -36,7 +36,9 @@ The gaps above footnotes and beside floats cannot be fractional, so they receive
 A line whose footnote did not fit leaves its height as slack, but the widow check of the line before it still needs that height, so one line of the slack stays unreserved.
 A region whose slack changes after reserving is an error, since withdrawing the height would need more passes than Typst allows.
 TeX discards glue at a page break and Typst does not, so each glue point reads its position from the previous layout pass; the first layout lacks citations and is never measured.
-A cited paper thus needs four of Typst's five passes, so state updates that affect page breaks are emitted outside `context`, where they would arrive a pass later.
+When page breaks settle in the second pass and reservations leave them unchanged, spacing can settle in the third and be confirmed in the fourth.
+Later changes can consume or exceed Typst's five-pass budget.
+State updates that affect page breaks are emitted outside `context` to avoid an additional pass of delay.
 
 Font-size steps and some spacing come from `amsart`, and begin-document hooks can override acmart's earlier settings.
 Consult the executed class or a probe before changing a value that appears inconsistent with a source declaration.
